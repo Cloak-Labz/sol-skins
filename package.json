@@ -1,0 +1,29 @@
+{
+  "name": "phygibox-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Phygital loot boxes platform on Solana",
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter api dev\" \"pnpm --filter web dev\" \"pnpm --filter worker dev\"",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "db:migrate": "pnpm --filter api prisma migrate deploy",
+    "db:seed": "pnpm --filter api prisma db seed",
+    "anchor:build": "pnpm --filter anchor build",
+    "anchor:test": "pnpm --filter anchor test",
+    "clean": "turbo run clean",
+    "typecheck": "turbo run typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "@types/node": "^20.19.17",
+    "typescript": "^5.9.2",
+    "concurrently": "^8.2.2"
+  },
+  "packageManager": "pnpm@10.15.1",
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}

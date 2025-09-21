@@ -1,0 +1,189 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  walletAddress String   @unique
+  createdAt     DateTime @default(now())
+
+  // Relations
+  userSkins      UserSkin[]
+  transactions   Transaction[]
+  assignments    Assignment[]
+
+  @@map("users")
+}
+
+model LootBox {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  price       Decimal  @db.Decimal(10, 2)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  skins        Skin[]
+  transactions Transaction[]
+
+  @@map("loot_boxes")
+}
+
+model Skin {
+  id            String     @id @default(cuid())
+  name          String
+  rarity        SkinRarity
+  marketCategory String
+  metadata      Json
+  priceRef      Decimal    @db.Decimal(10, 2)
+  status        SkinStatus @default(available)
+  inventoryRef  String @unique
+  assignedNft   String?
+  lootBoxId     String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  // Relations
+  lootBox     LootBox     @relation(fields: [lootBoxId], references: [id])
+  userSkins   UserSkin[]
+  transactions Transaction[]
+  assignments Assignment[]
+
+  @@index([status])
+  @@map("skins")
+}
+
+model UserSkin {
+  id        String         @id @default(cuid())
+  userId    String
+  skinId    String
+  nftMint   String         @unique
+  status    UserSkinStatus @default(owned)
+  createdAt DateTime       @default(now())
+
+  // Relations
+  user User  @relation(fields: [userId], references: [id])
+  skin Skin  @relation(fields: [skinId], references: [id])
+
+  @@index([userId])
+  @@map("user_skins")
+}
+
+model Transaction {
+  id           String           @id @default(cuid())
+  userId       String
+  lootBoxId    String
+  skinId       String?
+  type         TransactionType
+  txSignature  String
+  amount       Decimal          @db.Decimal(10, 2)
+  status       TransactionStatus @default(pending)
+  createdAt    DateTime         @default(now())
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id])
+  lootBox LootBox @relation(fields: [lootBoxId], references: [id])
+  skin    Skin?   @relation(fields: [skinId], references: [id])
+
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("transactions")
+}
+
+model MerkleSnapshot {
+  id          String   @id @default(cuid())
+  merkleRoot  String
+  createdAt   DateTime @default(now())
+  operatorSig String
+  totalItems  Int
+
+  // Relations
+  assignments Assignment[]
+
+  @@map("merkle_snapshots")
+}
+
+model Assignment {
+  id           String   @id @default(cuid())
+  nftMint      String   @unique
+  inventoryId  String
+  randomness   String
+  proof        Json
+  backendSig   String
+  txSignature  String
+  createdAt    DateTime @default(now())
+  userId       String
+  skinId       String
+  merkleSnapshotId String?
+
+  // Relations
+  user           User            @relation(fields: [userId], references: [id])
+  skin           Skin            @relation(fields: [skinId], references: [id])
+  merkleSnapshot MerkleSnapshot? @relation(fields: [merkleSnapshotId], references: [id])
+
+  @@index([nftMint])
+  @@map("assignments")
+}
+
+model TreasuryLedger {
+  id      String        @id @default(cuid())
+  txType  TreasuryTxType
+  amount  Decimal       @db.Decimal(10, 2)
+  currency String       @default("USDC")
+  txRef   String
+  createdAt DateTime    @default(now())
+
+  @@map("treasury_ledger")
+}
+
+// Enums
+enum SkinRarity {
+  common
+  rare
+  epic
+  legendary
+  mythic
+}
+
+enum SkinStatus {
+  available
+  reserved
+  assigned
+  returned
+  burned
+  back_to_pool
+}
+
+enum UserSkinStatus {
+  owned
+  burned
+  buybacked
+}
+
+enum TransactionType {
+  open_box
+  buyback
+  payout
+}
+
+enum TransactionStatus {
+  pending
+  success
+  failed
+}
+
+enum TreasuryTxType {
+  deposit
+  buyback
+  fee
+  withdraw
+}

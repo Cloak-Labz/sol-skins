@@ -1,0 +1,16 @@
+{
+  "name": "@phygibox/anchor",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build": "anchor build",
+    "test": "anchor test",
+    "deploy": "anchor deploy",
+    "clean": "anchor clean"
+  },
+  "devDependencies": {
+    "@coral-xyz/anchor": "^0.31.1",
+    "@solana/web3.js": "^1.95.2",
+    "typescript": "^5.9.2"
+  }
+}
