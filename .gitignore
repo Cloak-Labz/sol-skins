@@ -129,3 +129,4 @@ keypair.json
 
 # Build artifacts
 *.tsbuildinfo
+.DS_Store
