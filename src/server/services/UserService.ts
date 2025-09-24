@@ -79,9 +79,9 @@ export class UserService {
       const filteredUpdates = Object.keys(updates)
         .filter(key => allowedUpdates.includes(key))
         .reduce((obj, key) => {
-          obj[key] = updates[key];
+          (obj as any)[key] = (updates as any)[key];
           return obj;
-        }, {} as any);
+        }, {} as Partial<User>);
 
       await this.userRepository.update(id, {
         ...filteredUpdates,

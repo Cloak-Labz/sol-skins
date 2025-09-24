@@ -22,7 +22,7 @@ export class LootBoxSkinPool {
   @Column('uuid')
   skinTemplateId: string;
 
-  @Column({ default: 1 })
+  @Column({ type: 'int', default: 1 })
   weight: number;
 
   @CreateDateColumn()

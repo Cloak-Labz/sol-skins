@@ -148,7 +148,7 @@ export class AuthMiddleware {
     const requests = new Map<string, { count: number; resetTime: number }>();
 
     return (req: Request, res: Response, next: NextFunction) => {
-      const walletAddress = req.user?.walletAddress || req.ip;
+      const walletAddress = req.user?.walletAddress || req.ip || 'unknown';
       const now = Date.now();
 
       // Clean up expired entries

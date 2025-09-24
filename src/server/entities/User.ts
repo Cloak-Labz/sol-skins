@@ -16,13 +16,13 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ unique: true, length: 44 })
+  @Column({ type: 'varchar', unique: true, length: 44 })
   walletAddress: string;
 
-  @Column({ nullable: true, length: 50 })
+  @Column({ type: 'varchar', nullable: true, length: 50 })
   username?: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   email?: string;
 
   @CreateDateColumn()
@@ -34,7 +34,7 @@ export class User {
   @Column({ nullable: true, type: 'timestamp' })
   lastLogin?: Date;
 
-  @Column({ default: true })
+  @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
@@ -43,7 +43,7 @@ export class User {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   totalEarned: number;
 
-  @Column({ default: 0 })
+  @Column({ type: 'int', default: 0 })
   casesOpened: number;
 
   // Relations

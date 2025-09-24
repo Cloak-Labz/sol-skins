@@ -28,7 +28,7 @@ export class PriceHistory {
   priceUsd: number;
 
   @Column({
-    type: 'enum',
+    type: 'varchar',
     enum: PriceSource,
   })
   source: PriceSource;

@@ -34,10 +34,10 @@ export class SkinTemplate {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ length: 50 })
+  @Column({ type: 'varchar', length: 50 })
   weapon: string;
 
-  @Column({ length: 100 })
+  @Column({ type: 'varchar', length: 100 })
   skinName: string;
 
   @Column({
@@ -55,19 +55,19 @@ export class SkinTemplate {
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   basePriceUsd: number;
 
-  @Column({ length: 500, nullable: true })
+  @Column({ type: 'varchar', length: 500, nullable: true })
   imageUrl?: string;
 
-  @Column({ length: 500, nullable: true })
+  @Column({ type: 'varchar', length: 500, nullable: true })
   exteriorImageUrl?: string;
 
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   collection?: string;
 
-  @Column({ default: true })
+  @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
   @CreateDateColumn()

@@ -16,10 +16,10 @@ export class UserSession {
   @Column('uuid')
   userId: string;
 
-  @Column({ length: 44 })
+  @Column({ type: 'varchar', length: 44 })
   walletAddress: string;
 
-  @Column({ unique: true })
+  @Column({ type: 'varchar', unique: true })
   sessionToken: string;
 
   @Column({ type: 'timestamp' })
@@ -31,7 +31,7 @@ export class UserSession {
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' })
   lastUsedAt: Date;
 
-  @Column({ default: true })
+  @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
   // Relations

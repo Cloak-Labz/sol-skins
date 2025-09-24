@@ -25,7 +25,7 @@ export async function createApp(): Promise<Express> {
   app.set('trust proxy', 1);
 
   // Security middleware
-  app.use(helmet(helmetConfig));
+  app.use(helmetConfig);
   app.use(cors(corsOptions));
   app.use(securityHeaders);
 

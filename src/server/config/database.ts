@@ -1,14 +1,14 @@
 import { DataSource } from 'typeorm';
 import { config } from './env';
-import { User } from '@/entities/User';
-import { LootBoxType } from '@/entities/LootBoxType';
-import { SkinTemplate } from '@/entities/SkinTemplate';
-import { LootBoxSkinPool } from '@/entities/LootBoxSkinPool';
-import { UserSkin } from '@/entities/UserSkin';
-import { Transaction } from '@/entities/Transaction';
-import { CaseOpening } from '@/entities/CaseOpening';
-import { PriceHistory } from '@/entities/PriceHistory';
-import { UserSession } from '@/entities/UserSession';
+import { User } from '../entities/User';
+import { LootBoxType } from '../entities/LootBoxType';
+import { SkinTemplate } from '../entities/SkinTemplate';
+import { LootBoxSkinPool } from '../entities/LootBoxSkinPool';
+import { UserSkin } from '../entities/UserSkin';
+import { Transaction } from '../entities/Transaction';
+import { CaseOpening } from '../entities/CaseOpening';
+import { PriceHistory } from '../entities/PriceHistory';
+import { UserSession } from '../entities/UserSession';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',

@@ -55,7 +55,7 @@ export class Transaction {
   userSkinId?: string;
 
   // Blockchain
-  @Column({ unique: true, length: 88, nullable: true })
+  @Column({ type: 'varchar', unique: true, length: 88, nullable: true })
   txHash?: string;
 
   @Column({ type: 'bigint', nullable: true })

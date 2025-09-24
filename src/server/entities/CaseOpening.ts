@@ -29,10 +29,10 @@ export class CaseOpening {
   lootBoxTypeId: string;
 
   // VRF process
-  @Column({ length: 100, nullable: true })
+  @Column({ type: 'varchar', length: 100, nullable: true })
   vrfRequestId?: string;
 
-  @Column({ length: 66, nullable: true })
+  @Column({ type: 'varchar', length: 66, nullable: true })
   randomnessSeed?: string;
 
   // Result

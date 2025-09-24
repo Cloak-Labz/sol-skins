@@ -24,7 +24,7 @@ export class LootBoxType {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ length: 100 })
+  @Column({ type: 'varchar', length: 100 })
   name: string;
 
   @Column({ type: 'text', nullable: true })
@@ -36,13 +36,13 @@ export class LootBoxType {
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   priceUsdc?: number;
 
-  @Column({ length: 500, nullable: true })
+  @Column({ type: 'varchar', length: 500, nullable: true })
   imageUrl?: string;
 
-  @Column({ default: true })
+  @Column({ type: 'boolean', default: true })
   isActive: boolean;
 
-  @Column({ default: false })
+  @Column({ type: 'boolean', default: false })
   isFeatured: boolean;
 
   @Column({

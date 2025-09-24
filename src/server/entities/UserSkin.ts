@@ -25,7 +25,7 @@ export class UserSkin {
   @Column('uuid', { nullable: true })
   skinTemplateId?: string;
 
-  @Column({ unique: true, length: 44 })
+  @Column({ type: 'varchar', unique: true, length: 44 })
   nftMintAddress: string;
 
   // Opening data
@@ -36,10 +36,10 @@ export class UserSkin {
   openedAt: Date;
 
   // Status
-  @Column({ default: true })
+  @Column({ type: 'boolean', default: true })
   isInInventory: boolean;
 
-  @Column({ default: false })
+  @Column({ type: 'boolean', default: false })
   soldViaBuyback: boolean;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
@@ -49,13 +49,13 @@ export class UserSkin {
   buybackAt?: Date;
 
   // NFT data
-  @Column({ length: 500, nullable: true })
+  @Column({ type: 'varchar', length: 500, nullable: true })
   metadataUri?: string;
 
-  @Column({ length: 200, nullable: true })
+  @Column({ type: 'varchar', length: 200, nullable: true })
   name?: string;
 
-  @Column({ length: 10, nullable: true })
+  @Column({ type: 'varchar', length: 10, nullable: true })
   symbol?: string;
 
   // Tracking

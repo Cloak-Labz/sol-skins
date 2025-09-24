@@ -130,7 +130,7 @@ export const requestSizeLimit = (req: Request, res: Response, next: NextFunction
     });
   }
 
-  next();
+  return next();
 };
 
 // IP whitelisting for admin endpoints
@@ -141,9 +141,9 @@ export const adminIPWhitelist = (req: Request, res: Response, next: NextFunction
     // Add production admin IPs here
   ];
 
-  const clientIP = req.ip || req.connection.remoteAddress;
+  const clientIP = req.ip || (req as any).connection?.remoteAddress;
 
-  if (config.env === 'production' && !allowedIPs.includes(clientIP!)) {
+  if (config.env === 'production' && clientIP && !allowedIPs.includes(clientIP)) {
     logger.warn('Unauthorized admin access attempt:', {
       ip: clientIP,
       userAgent: req.get('User-Agent'),
@@ -159,7 +159,7 @@ export const adminIPWhitelist = (req: Request, res: Response, next: NextFunction
     });
   }
 
-  next();
+  return next();
 };
 
 // Compression middleware configuration
