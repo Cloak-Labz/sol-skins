@@ -1,15 +1,18 @@
 import { Router } from 'express';
+import { CasesController } from '../controllers/CasesController';
+import { validateSchema, schemas } from '../middlewares/validation';
 
 export const casesRoutes = Router();
+const casesController = new CasesController();
 
-casesRoutes.post('/open', (req, res) => {
-  res.json({ message: 'Open case endpoint - to be implemented' });
-});
+// POST /cases/open
+casesRoutes.post('/open', validateSchema(schemas.openCase), casesController.openCase);
 
-casesRoutes.get('/opening/:id/status', (req, res) => {
-  res.json({ message: 'Case opening status endpoint - to be implemented' });
-});
+// GET /cases/opening/:id/status
+casesRoutes.get('/opening/:id/status', casesController.getOpeningStatus);
 
-casesRoutes.post('/opening/:id/decision', (req, res) => {
-  res.json({ message: 'Case opening decision endpoint - to be implemented' });
-}); 
+// POST /cases/opening/:id/decision
+casesRoutes.post('/opening/:id/decision', validateSchema(schemas.caseDecision), casesController.makeDecision);
+
+// GET /cases/openings (user's case openings)
+casesRoutes.get('/openings', casesController.getUserCaseOpenings); 

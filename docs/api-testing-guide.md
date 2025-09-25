@@ -394,7 +394,7 @@ curl -X GET "$API_BASE/admin/stats/overview" \
 
 ```bash
 # GET /health
-curl -X GET "http://localhost:3001/health"
+curl -X GET "http://localhost:3002/health"
 ```
 
 **Resposta esperada:**
@@ -529,5 +529,5 @@ curl -s -X GET "$API_BASE/history/transactions" \
 ## Documentação Swagger
 
 A documentação interativa está disponível em:
-- **Development**: http://localhost:3001/api-docs
-- **JSON Schema**: http://localhost:3001/api-docs.json 
+- **Development**: http://localhost:3002/api-docs
+- **JSON Schema**: http://localhost:3002/api-docs.json 

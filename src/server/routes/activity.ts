@@ -1,7 +1,11 @@
 import { Router } from 'express';
+import { ActivityController } from '../controllers/ActivityController';
 
 export const activityRoutes = Router();
+const activityController = new ActivityController();
 
-activityRoutes.get('/recent', (req, res) => {
-  res.json({ message: 'Get recent activity endpoint - to be implemented' });
-}); 
+// GET /activity/recent
+activityRoutes.get('/recent', activityController.getRecentActivity);
+
+// GET /activity/stats
+activityRoutes.get('/stats', activityController.getActivityStats); 

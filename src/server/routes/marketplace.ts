@@ -1,11 +1,20 @@
 import { Router } from 'express';
+import { MarketplaceController } from '../controllers/MarketplaceController';
+import { validateSchema, schemas } from '../middlewares/validation';
 
 export const marketplaceRoutes = Router();
+const marketplaceController = new MarketplaceController();
 
-marketplaceRoutes.get('/loot-boxes', (req, res) => {
-  res.json({ message: 'Get loot boxes endpoint - to be implemented' });
-});
+// GET /marketplace/loot-boxes
+marketplaceRoutes.get('/loot-boxes', validateSchema(schemas.lootBoxesQuery, 'query'), marketplaceController.getLootBoxes);
 
-marketplaceRoutes.get('/loot-boxes/:id', (req, res) => {
-  res.json({ message: 'Get loot box details endpoint - to be implemented' });
-}); 
+// GET /marketplace/loot-boxes/:id
+marketplaceRoutes.get('/loot-boxes/:id', marketplaceController.getLootBoxById);
+
+// GET /marketplace/featured
+marketplaceRoutes.get('/featured', marketplaceController.getFeatured);
+
+// Admin routes (simplified for now)
+marketplaceRoutes.post('/loot-boxes', marketplaceController.createLootBox);
+marketplaceRoutes.put('/loot-boxes/:id', marketplaceController.updateLootBox);
+marketplaceRoutes.delete('/loot-boxes/:id', marketplaceController.deleteLootBox); 

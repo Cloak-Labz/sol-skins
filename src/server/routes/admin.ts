@@ -1,7 +1,17 @@
 import { Router } from 'express';
+import { AdminController } from '../controllers/AdminController';
 
 export const adminRoutes = Router();
+const adminController = new AdminController();
 
-adminRoutes.get('/stats/overview', (req, res) => {
-  res.json({ message: 'Get admin stats endpoint - to be implemented' });
-}); 
+// GET /admin/stats/overview
+adminRoutes.get('/stats/overview', adminController.getOverviewStats);
+
+// GET /admin/users
+adminRoutes.get('/users', adminController.getUsersStats);
+
+// GET /admin/stats/transactions
+adminRoutes.get('/stats/transactions', adminController.getTransactionStats);
+
+// GET /admin/stats/case-openings
+adminRoutes.get('/stats/case-openings', adminController.getCaseOpeningStats); 

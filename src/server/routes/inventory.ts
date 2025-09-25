@@ -1,11 +1,18 @@
 import { Router } from 'express';
+import { InventoryController } from '../controllers/InventoryController';
+import { validateSchema, schemas } from '../middlewares/validation';
 
 export const inventoryRoutes = Router();
+const inventoryController = new InventoryController();
 
-inventoryRoutes.get('/', (req, res) => {
-  res.json({ message: 'Get inventory endpoint - to be implemented' });
-});
+// GET /inventory
+inventoryRoutes.get('/', validateSchema(schemas.inventoryQuery, 'query'), inventoryController.getInventory);
 
-inventoryRoutes.post('/:skinId/buyback', (req, res) => {
-  res.json({ message: 'Buyback skin endpoint - to be implemented' });
-}); 
+// GET /inventory/value
+inventoryRoutes.get('/value', inventoryController.getInventoryValue);
+
+// GET /inventory/:skinId
+inventoryRoutes.get('/:skinId', inventoryController.getSkinDetails);
+
+// POST /inventory/:skinId/buyback
+inventoryRoutes.post('/:skinId/buyback', validateSchema(schemas.buyback), inventoryController.sellSkin); 

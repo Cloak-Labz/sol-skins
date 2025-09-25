@@ -1,12 +1,18 @@
 import { Router } from 'express';
+import { AuthController } from '../controllers/AuthController';
+import { validateSchema, schemas } from '../middlewares/validation';
 
 export const authRoutes = Router();
+const authController = new AuthController();
 
-// Placeholder routes - will be implemented with controllers
-authRoutes.post('/connect', (req, res) => {
-  res.json({ message: 'Auth connect endpoint - to be implemented' });
-});
+// POST /auth/connect
+authRoutes.post('/connect', validateSchema(schemas.connectWallet), authController.connect);
 
-authRoutes.post('/disconnect', (req, res) => {
-  res.json({ message: 'Auth disconnect endpoint - to be implemented' });
-}); 
+// POST /auth/disconnect  
+authRoutes.post('/disconnect', authController.disconnect);
+
+// GET /auth/profile
+authRoutes.get('/profile', authController.getProfile);
+
+// PUT /auth/profile
+authRoutes.put('/profile', authController.updateProfile); 
