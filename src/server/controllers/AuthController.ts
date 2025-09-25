@@ -1,49 +1,50 @@
 import { Request, Response } from 'express';
 import { UserService } from '../services/UserService';
-import { AuthMiddleware } from '../middlewares/auth';
+import { WalletAuthMiddleware } from '../middlewares/walletAuth';
 import { ResponseUtil } from '../utils/response';
 import { catchAsync } from '../middlewares/errorHandler';
 
 export class AuthController {
   private userService: UserService;
-  private authMiddleware: AuthMiddleware;
+  private walletAuth: WalletAuthMiddleware;
 
   constructor() {
     this.userService = new UserService();
-    this.authMiddleware = new AuthMiddleware(this.userService);
+    this.walletAuth = new WalletAuthMiddleware(this.userService);
   }
 
   connect = catchAsync(async (req: Request, res: Response) => {
     const { walletAddress, signature, message } = req.body;
 
-    // Verify signature
-    const isValidSignature = await this.authMiddleware.verifyWalletSignature(
-      walletAddress,
-      signature,
-      message
-    );
+    // Verify signature if provided
+    if (signature && message) {
+      const isValidSignature = this.walletAuth.verifyWalletSignature(
+        message,
+        signature,
+        walletAddress
+      );
 
-    if (!isValidSignature) {
-      return ResponseUtil.unauthorized(res, 'Invalid signature');
+      if (!isValidSignature) {
+        return ResponseUtil.unauthorized(res, 'Invalid signature');
+      }
     }
 
     // Find or create user
     let user = await this.userService.findByWalletAddress(walletAddress);
     
     if (!user) {
-      user = await this.userService.createUser(walletAddress);
+      user = await this.userService.createUser({
+        walletAddress,
+        username: null,
+        email: null,
+        totalSpent: 0,
+        totalEarned: 0,
+        casesOpened: 0
+      });
     }
 
     // Update last login
     await this.userService.updateLastLogin(user.id);
-
-    // Generate session token
-    const sessionToken = this.authMiddleware.generateToken(user.id, walletAddress);
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
-
-    // Create session record
-    await this.userService.createSession(user.id, walletAddress, sessionToken, expiresAt);
 
     ResponseUtil.success(res, {
       user: {
@@ -54,21 +55,13 @@ export class AuthController {
         totalEarned: user.totalEarned,
         casesOpened: user.casesOpened,
       },
-      sessionToken,
-      expiresAt,
+      message: 'Wallet connected successfully'
     });
   });
 
   disconnect = catchAsync(async (req: Request, res: Response) => {
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    
-    if (token) {
-      const decoded = this.authMiddleware.verifyToken(token);
-      if (decoded?.userId) {
-        await this.userService.deactivateAllUserSessions(decoded.userId);
-      }
-    }
-
+    // For wallet-based auth, we just return success
+    // The frontend will handle clearing the wallet connection
     ResponseUtil.success(res, { message: 'Successfully disconnected' });
   });
 
@@ -101,4 +94,4 @@ export class AuthController {
 
     ResponseUtil.success(res, { message: 'Profile updated successfully' });
   });
-} 
+}

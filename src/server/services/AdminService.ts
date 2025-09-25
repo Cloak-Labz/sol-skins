@@ -147,4 +147,4 @@ export class AdminService {
   async getCaseOpeningStats(days?: number) {
     return this.caseOpeningRepository.getOpeningStats(days);
   }
-} 
+}

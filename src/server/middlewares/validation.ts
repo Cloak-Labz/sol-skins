@@ -43,8 +43,13 @@ export const schemas = {
   // Auth schemas
   connectWallet: Joi.object({
     walletAddress: Joi.string().length(44).required(),
-    signature: Joi.string().required(),
-    message: Joi.string().required(),
+    signature: Joi.string().optional(),
+    message: Joi.string().optional(),
+  }),
+
+  updateProfile: Joi.object({
+    username: Joi.string().min(3).max(50).optional(),
+    email: Joi.string().email().optional(),
   }),
 
   // Pagination schema
@@ -55,7 +60,7 @@ export const schemas = {
 
   // Marketplace schemas
   lootBoxesQuery: Joi.object({
-    search: Joi.string().max(100).optional(),
+    search: Joi.string().optional(),
     sortBy: Joi.string().valid('featured', 'price-low', 'price-high', 'name').default('featured'),
     filterBy: Joi.string().valid('all', 'standard', 'premium', 'special', 'limited', 'legendary').default('all'),
     page: Joi.number().integer().min(1).default(1),
@@ -65,7 +70,7 @@ export const schemas = {
   // Case opening schemas
   openCase: Joi.object({
     lootBoxTypeId: Joi.string().uuid().required(),
-    paymentMethod: Joi.string().valid('SOL', 'USDC').required(),
+    paymentMethod: Joi.string().valid('SOL', 'USDC').default('SOL'),
   }),
 
   caseDecision: Joi.object({
@@ -74,7 +79,7 @@ export const schemas = {
 
   // Inventory schemas
   inventoryQuery: Joi.object({
-    search: Joi.string().max(100).optional(),
+    search: Joi.string().optional(),
     sortBy: Joi.string().valid('date', 'price-high', 'price-low', 'name', 'rarity').default('date'),
     filterBy: Joi.string().valid('all', 'common', 'uncommon', 'rare', 'epic', 'legendary').default('all'),
     page: Joi.number().integer().min(1).default(1),
@@ -82,12 +87,12 @@ export const schemas = {
   }),
 
   buyback: Joi.object({
-    minAcceptablePrice: Joi.number().positive().required(),
+    minAcceptablePrice: Joi.number().positive().optional(),
   }),
 
-  // History schemas
+  // Transaction history schemas
   transactionsQuery: Joi.object({
-    search: Joi.string().max(100).optional(),
+    search: Joi.string().optional(),
     type: Joi.string().valid('all', 'open_case', 'buyback', 'payout').default('all'),
     sortBy: Joi.string().valid('date', 'amount-high', 'amount-low').default('date'),
     page: Joi.number().integer().min(1).default(1),
@@ -98,32 +103,24 @@ export const schemas = {
   leaderboardQuery: Joi.object({
     period: Joi.string().valid('all-time', 'monthly', 'weekly').default('all-time'),
     metric: Joi.string().valid('inventory-value', 'cases-opened', 'profit').default('inventory-value'),
-    limit: Joi.number().integer().min(1).max(100).default(100),
+    limit: Joi.number().integer().min(1).max(1000).default(100),
   }),
 
-  // UUID param validation
-  uuidParam: Joi.object({
-    id: Joi.string().uuid().required(),
-  }),
-
-  skinIdParam: Joi.object({
-    skinId: Joi.string().uuid().required(),
+  // Activity schemas
+  activityQuery: Joi.object({
+    limit: Joi.number().integer().min(1).max(100).default(50),
   }),
 };
 
-// Sanitization functions
+// Input sanitization functions
 export const sanitizeInput = (input: string): string => {
-  if (typeof input !== 'string') return input;
-  
   return input
     .trim()
-    .replace(/[<>]/g, '') // Remove basic HTML tags
-    .replace(/javascript:/gi, '') // Remove javascript: protocol
-    .replace(/on\w+=/gi, '') // Remove event handlers
-    .slice(0, 1000); // Limit length
+    .replace(/[<>]/g, '') // Remove potential HTML tags
+    .replace(/['"]/g, '') // Remove quotes
+    .substring(0, 1000); // Limit length
 };
 
-// Sanitization middleware
 export const sanitizeBody = (req: Request, res: Response, next: NextFunction) => {
   if (req.body && typeof req.body === 'object') {
     for (const key in req.body) {
@@ -145,27 +142,3 @@ export const sanitizeQuery = (req: Request, res: Response, next: NextFunction) =
   }
   next();
 };
-
-// Express validator rules for common validations
-export const validationRules = {
-  walletAddress: body('walletAddress')
-    .isLength({ min: 44, max: 44 })
-    .withMessage('Wallet address must be exactly 44 characters')
-    .matches(/^[1-9A-HJ-NP-Za-km-z]+$/)
-    .withMessage('Invalid wallet address format'),
-
-  uuid: (field: string) => param(field)
-    .isUUID()
-    .withMessage(`${field} must be a valid UUID`),
-
-  pagination: [
-    query('page')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('Page must be a positive integer'),
-    query('limit')
-      .optional()
-      .isInt({ min: 1, max: 100 })
-      .withMessage('Limit must be between 1 and 100'),
-  ],
-}; 

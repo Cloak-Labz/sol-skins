@@ -1,18 +1,22 @@
 import { Router } from 'express';
 import { CasesController } from '../controllers/CasesController';
 import { validateSchema, schemas } from '../middlewares/validation';
+import { WalletAuthMiddleware } from '../middlewares/walletAuth';
+import { UserService } from '../services/UserService';
 
 export const casesRoutes = Router();
 const casesController = new CasesController();
+const userService = new UserService();
+const walletAuth = new WalletAuthMiddleware(userService);
 
-// POST /cases/open
-casesRoutes.post('/open', validateSchema(schemas.openCase), casesController.openCase);
+// POST /cases/open - Open a case (requires wallet)
+casesRoutes.post('/open', walletAuth.requireWallet, validateSchema(schemas.openCase), casesController.openCase);
 
-// GET /cases/opening/:id/status
-casesRoutes.get('/opening/:id/status', casesController.getOpeningStatus);
+// GET /cases/opening/:id/status - Get case opening status (requires wallet)
+casesRoutes.get('/opening/:id/status', walletAuth.requireWallet, casesController.getOpeningStatus);
 
-// POST /cases/opening/:id/decision
-casesRoutes.post('/opening/:id/decision', validateSchema(schemas.caseDecision), casesController.makeDecision);
+// POST /cases/opening/:id/decision - Make decision on case opening (requires wallet)
+casesRoutes.post('/opening/:id/decision', walletAuth.requireWallet, validateSchema(schemas.caseDecision), casesController.makeDecision);
 
-// GET /cases/openings (user's case openings)
-casesRoutes.get('/openings', casesController.getUserCaseOpenings); 
+// GET /cases/openings - Get user's case openings (requires wallet)
+casesRoutes.get('/openings', walletAuth.requireWallet, casesController.getUserCaseOpenings);
