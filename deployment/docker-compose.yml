@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:14
-    container_name: phygibox-postgres
+    container_name: d3-postgres
     environment:
       POSTGRES_DB: loot
       POSTGRES_USER: postgres
@@ -20,7 +20,7 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: phygibox-redis
+    container_name: d3-redis
     ports:
       - "6379:6379"
     volumes:

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# PhygiBox Setup Script
+# Dust3 Setup Script
 set -e
 
-echo "🚀 Setting up PhygiBox..."
+echo "🚀 Setting up Dust3..."
 
 # Check prerequisites
 echo "📋 Checking prerequisites..."
@@ -57,7 +57,7 @@ pnpm test
 
 echo "✅ Setup complete!"
 echo ""
-echo "🎉 PhygiBox is ready to go!"
+echo "🎉 Dust3 is ready to go!"
 echo ""
 echo "Next steps:"
 echo "1. Start development servers: pnpm dev"
