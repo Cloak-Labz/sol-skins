@@ -1,0 +1,61 @@
+import { apiClient } from './api';
+import { 
+  User, 
+  ConnectWalletRequest, 
+  UpdateProfileRequest 
+} from '../types/api';
+
+class AuthService {
+  // Connect wallet to backend
+  async connectWallet(
+    walletAddress: string, 
+    signature?: string, 
+    message?: string
+  ): Promise<{ user: User; message: string }> {
+    const request: ConnectWalletRequest = {
+      walletAddress,
+      signature,
+      message,
+    };
+
+    const response = await apiClient.post('/auth/connect', request);
+    
+    // Set wallet address in API client for future requests
+    apiClient.setWalletAddress(walletAddress);
+    
+    return response;
+  }
+
+  // Disconnect wallet
+  async disconnectWallet(): Promise<{ message: string }> {
+    const response = await apiClient.post('/auth/disconnect');
+    
+    // Clear wallet address from API client
+    apiClient.setWalletAddress(null);
+    
+    return response;
+  }
+
+  // Get user profile
+  async getProfile(): Promise<User> {
+    return apiClient.get('/auth/profile');
+  }
+
+  // Update user profile
+  async updateProfile(updates: UpdateProfileRequest): Promise<{ message: string }> {
+    return apiClient.put('/auth/profile', updates);
+  }
+
+  // Check if user is connected
+  isConnected(): boolean {
+    return apiClient.getWalletAddress() !== null;
+  }
+
+  // Get current wallet address
+  getCurrentWalletAddress(): string | null {
+    return apiClient.getWalletAddress();
+  }
+}
+
+export const authService = new AuthService();
+export default authService;

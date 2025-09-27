@@ -1,104 +1,79 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { Search, Filter, Package } from "lucide-react"
+import { Search, Filter, Package, Loader2 } from "lucide-react"
 import Link from "next/link"
-
-interface LootBox {
-  id: string
-  name: string
-  price: number
-  currency: "SOL" | "USDC"
-  image: string
-  rarity: string
-  description: string
-  chances: {
-    common: number
-    uncommon: number
-    rare: number
-    epic: number
-    legendary: number
-  }
-  featured?: boolean
-}
+import { marketplaceService } from "@/lib/services"
+import { LootBoxType } from "@/lib/types/api"
+import { formatSOL, getRarityBgColor } from "../../lib/utils"
 
 export default function MarketplacePage() {
+  const [lootBoxes, setLootBoxes] = useState<LootBoxType[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState("featured")
   const [filterBy, setFilterBy] = useState("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
-  const lootBoxes: LootBox[] = [
-    {
-      id: "1",
-      name: "Weapon Case",
-      price: 2.5,
-      currency: "SOL",
-      image: "🎯",
-      rarity: "Standard",
-      description: "Contains various weapon skins from different collections",
-      chances: { common: 79.92, uncommon: 15.98, rare: 3.2, epic: 0.64, legendary: 0.26 },
-      featured: true,
-    },
-    {
-      id: "2",
-      name: "Knife Case",
-      price: 15.0,
-      currency: "SOL",
-      image: "🗡️",
-      rarity: "Premium",
-      description: "Exclusive knife skins with guaranteed rare drops",
-      chances: { common: 0, uncommon: 50, rare: 35, epic: 12, legendary: 3 },
-      featured: true,
-    },
-    {
-      id: "3",
-      name: "Glove Case",
-      price: 8.5,
-      currency: "SOL",
-      image: "🧤",
-      rarity: "Special",
-      description: "Rare glove skins collection",
-      chances: { common: 20, uncommon: 40, rare: 25, epic: 12, legendary: 3 },
-    },
-    {
-      id: "4",
-      name: "Operation Case",
-      price: 5.0,
-      currency: "SOL",
-      image: "⚡",
-      rarity: "Limited",
-      description: "Limited time operation skins",
-      chances: { common: 60, uncommon: 25, rare: 10, epic: 4, legendary: 1 },
-    },
-    {
-      id: "5",
-      name: "Sticker Capsule",
-      price: 1.2,
-      currency: "SOL",
-      image: "🏷️",
-      rarity: "Common",
-      description: "Team stickers and holo stickers",
-      chances: { common: 85, uncommon: 12, rare: 2.5, epic: 0.4, legendary: 0.1 },
-    },
-    {
-      id: "6",
-      name: "Dragon Lore Case",
-      price: 50.0,
-      currency: "SOL",
-      image: "🐉",
-      rarity: "Legendary",
-      description: "Ultra rare case with guaranteed high-value skins",
-      chances: { common: 0, uncommon: 0, rare: 40, epic: 45, legendary: 15 },
-      featured: true,
-    },
-  ]
+  // Load loot boxes from API
+  useEffect(() => {
+    loadLootBoxes()
+  }, [searchTerm, sortBy, filterBy, currentPage])
 
-  const getRarityColor = (rarity: string) => {
+  const loadLootBoxes = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      
+      const filters = {
+        search: searchTerm || undefined,
+        sortBy: sortBy as any,
+        filterBy: filterBy as any,
+        page: currentPage,
+        limit: 20
+      }
+
+      const response = await marketplaceService.getLootBoxes(filters)
+      
+      // Handle the actual API response structure
+      if (response.success && response.data) {
+        setLootBoxes(response.data)
+        setTotalPages(response.pagination?.totalPages || 1)
+      } else {
+        setLootBoxes([])
+        setTotalPages(1)
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load loot boxes')
+      setLootBoxes([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value)
+    setCurrentPage(1) // Reset to first page when searching
+  }
+
+  const handleSortChange = (value: string) => {
+    setSortBy(value)
+    setCurrentPage(1)
+  }
+
+  const handleFilterChange = (value: string) => {
+    setFilterBy(value)
+    setCurrentPage(1)
+  }
+
+  const getRarityColorClass = (rarity: string) => {
     switch (rarity.toLowerCase()) {
       case "standard":
         return "bg-muted text-muted-foreground"
@@ -115,26 +90,35 @@ export default function MarketplacePage() {
     }
   }
 
-  const filteredBoxes = lootBoxes.filter((box) => {
-    const matchesSearch = box.name.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesFilter = filterBy === "all" || box.rarity.toLowerCase() === filterBy.toLowerCase()
-    return matchesSearch && matchesFilter
-  })
+  // Show loading state only on initial load
+  if (loading && lootBoxes.length === 0) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] p-8 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-4" />
+          <p className="text-white">Loading loot boxes...</p>
+        </div>
+      </div>
+    )
+  }
 
-  const sortedBoxes = [...filteredBoxes].sort((a, b) => {
-    switch (sortBy) {
-      case "price-low":
-        return a.price - b.price
-      case "price-high":
-        return b.price - a.price
-      case "name":
-        return a.name.localeCompare(b.name)
-      case "featured":
-        return (b.featured ? 1 : 0) - (a.featured ? 1 : 0)
-      default:
-        return 0
-    }
-  })
+  if (error) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">❌</div>
+          <h3 className="text-xl font-semibold text-white mb-2">Error loading loot boxes</h3>
+          <p className="text-[#999] mb-4">{error}</p>
+          <Button 
+            onClick={loadLootBoxes}
+            className="bg-[#333] hover:bg-[#444] text-white border-0"
+          >
+            Try Again
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-8">
@@ -149,11 +133,11 @@ export default function MarketplacePage() {
           <Input
             placeholder="Search loot boxes..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             className="pl-10 bg-[#1a1a1a] border-[#333] text-white placeholder:text-[#666]"
           />
         </div>
-        <Select value={sortBy} onValueChange={setSortBy}>
+        <Select value={sortBy} onValueChange={handleSortChange}>
           <SelectTrigger className="w-full md:w-48 bg-[#1a1a1a] border-[#333] text-white">
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
@@ -164,7 +148,7 @@ export default function MarketplacePage() {
             <SelectItem value="name">Name</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={filterBy} onValueChange={setFilterBy}>
+        <Select value={filterBy} onValueChange={handleFilterChange}>
           <SelectTrigger className="w-full md:w-48 bg-[#1a1a1a] border-[#333] text-white">
             <Filter className="w-4 h-4 mr-2" />
             <SelectValue placeholder="Filter by rarity" />
@@ -181,12 +165,12 @@ export default function MarketplacePage() {
       </div>
 
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {sortedBoxes.map((box) => (
+        {lootBoxes.map((box) => (
           <Card
             key={box.id}
             className="bg-[#111] border-[#333] hover:border-[#555] transition-all duration-200 hover:scale-105 relative overflow-hidden"
           >
-            {box.featured && (
+            {box.isFeatured && (
               <div className="absolute top-4 right-4 z-10">
                 <Badge className="bg-[#333] text-white border-0">Featured</Badge>
               </div>
@@ -194,10 +178,20 @@ export default function MarketplacePage() {
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between mb-2">
                 <CardTitle className="text-white">{box.name}</CardTitle>
-                <Badge className="bg-[#1a1a1a] text-[#999] border-[#333]">{box.rarity}</Badge>
+                <Badge className={getRarityColorClass(box.rarity)}>
+                  {box.rarity}
+                </Badge>
               </div>
-              <div className="aspect-square bg-[#1a1a1a] rounded-lg flex items-center justify-center text-6xl mb-4 border border-[#333]">
-                {box.image}
+              <div className="aspect-square bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-4 border border-[#333] overflow-hidden">
+                {box.imageUrl ? (
+                  <img 
+                    src={box.imageUrl} 
+                    alt={box.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="text-6xl">📦</div>
+                )}
               </div>
             </CardHeader>
             <CardContent className="pt-0">
@@ -241,7 +235,7 @@ export default function MarketplacePage() {
 
               <div className="flex items-center justify-between">
                 <div className="text-2xl font-bold text-white">
-                  {box.price} {box.currency}
+                  {formatSOL(parseFloat(box.priceSol))}
                 </div>
                 <Link href={`/open/${box.id}`}>
                   <Button className="bg-[#333] hover:bg-[#444] text-white border-0">
@@ -255,11 +249,42 @@ export default function MarketplacePage() {
         ))}
       </div>
 
-      {sortedBoxes.length === 0 && (
+      {loading && (
+        <div className="flex justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-white" />
+        </div>
+      )}
+
+      {lootBoxes.length === 0 && !loading && (
         <div className="text-center py-12">
           <div className="text-6xl mb-4">📦</div>
           <h3 className="text-xl font-semibold text-white mb-2">No loot boxes found</h3>
           <p className="text-[#999]">Try adjusting your search or filters</p>
+        </div>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-8 gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+            disabled={currentPage === 1}
+            className="bg-[#1a1a1a] border-[#333] text-white hover:bg-[#333]"
+          >
+            Previous
+          </Button>
+          <span className="flex items-center px-4 text-white">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+            disabled={currentPage === totalPages}
+            className="bg-[#1a1a1a] border-[#333] text-white hover:bg-[#333]"
+          >
+            Next
+          </Button>
         </div>
       )}
     </div>
