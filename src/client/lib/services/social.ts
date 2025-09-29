@@ -18,7 +18,18 @@ class SocialService {
     const queryString = params.toString();
     const url = queryString ? `/leaderboard?${queryString}` : '/leaderboard';
     
-    return apiClient.get(url);
+    const response = await apiClient.get(url);
+    console.log('SocialService: Received response:', response);
+    console.log('SocialService: Response type:', typeof response);
+    console.log('SocialService: Full response structure:', JSON.stringify(response, null, 2));
+    
+    // Check if response is already the data array (from interceptor) or if it's the full response
+    if (Array.isArray(response)) {
+      console.log('SocialService: Response is already an array, returning directly');
+      return response;
+    }
+    
+    return response.data;
   }
 
   // Get user's rank
@@ -29,7 +40,15 @@ class SocialService {
     const queryString = params.toString();
     const url = queryString ? `/leaderboard/rank?${queryString}` : '/leaderboard/rank';
     
-    return apiClient.get(url);
+    const response = await apiClient.get(url);
+    
+    // Check if response is already the data object (from interceptor) or if it's the full response
+    if (response && !response.success && !response.data) {
+      console.log('SocialService: Response is already the data object, returning directly');
+      return response;
+    }
+    
+    return response.data;
   }
 
   // Get recent activity
@@ -40,7 +59,15 @@ class SocialService {
     const queryString = params.toString();
     const url = queryString ? `/activity/recent?${queryString}` : '/activity/recent';
     
-    return apiClient.get(url);
+    const response = await apiClient.get(url);
+    
+    // Check if response is already the data array (from interceptor) or if it's the full response
+    if (Array.isArray(response)) {
+      console.log('SocialService: Response is already an array, returning directly');
+      return response;
+    }
+    
+    return response.data;
   }
 
   // Get activity stats
@@ -50,7 +77,15 @@ class SocialService {
     recentBuybacks: number;
     topUsers: string[];
   }> {
-    return apiClient.get('/activity/stats');
+    const response = await apiClient.get('/activity/stats');
+    
+    // Check if response is already the data object (from interceptor) or if it's the full response
+    if (response && !response.success && !response.data) {
+      console.log('SocialService: Response is already the data object, returning directly');
+      return response;
+    }
+    
+    return response.data;
   }
 }
 

@@ -28,17 +28,44 @@ class HistoryService {
     const queryString = params.toString();
     const url = queryString ? `/history/transactions?${queryString}` : '/history/transactions';
     
-    return apiClient.get(url);
+    const response = await apiClient.get(url);
+    console.log('HistoryService: Received response:', response);
+    console.log('HistoryService: Response type:', typeof response);
+    console.log('HistoryService: Full response structure:', JSON.stringify(response, null, 2));
+    
+    // Check if response is already the data object (from interceptor) or if it's the full response
+    if (response && !response.success && !response.data) {
+      console.log('HistoryService: Response is already the data object, returning directly');
+      return response;
+    }
+    
+    return response.data;
   }
 
   // Get specific transaction
   async getTransactionById(id: string): Promise<Transaction> {
-    return apiClient.get(`/history/transactions/${id}`);
+    const response = await apiClient.get(`/history/transactions/${id}`);
+    
+    // Check if response is already the data object (from interceptor) or if it's the full response
+    if (response && !response.success && !response.data) {
+      console.log('HistoryService: Response is already the data object, returning directly');
+      return response;
+    }
+    
+    return response.data;
   }
 
   // Get transaction summary
   async getTransactionSummary(): Promise<TransactionSummary> {
-    return apiClient.get('/history/summary');
+    const response = await apiClient.get('/history/summary');
+    
+    // Check if response is already the data object (from interceptor) or if it's the full response
+    if (response && !response.success && !response.data) {
+      console.log('HistoryService: Response is already the data object, returning directly');
+      return response;
+    }
+    
+    return response.data;
   }
 }
 

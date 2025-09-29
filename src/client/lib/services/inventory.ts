@@ -29,7 +29,18 @@ class InventoryService {
     const queryString = params.toString();
     const url = queryString ? `/inventory?${queryString}` : '/inventory';
     
-    return apiClient.get(url);
+    const response = await apiClient.get(url);
+    console.log('InventoryService: Received response:', response);
+    console.log('InventoryService: Response type:', typeof response);
+    console.log('InventoryService: Full response structure:', JSON.stringify(response, null, 2));
+    
+    // Check if response is already the data object (from interceptor) or if it's the full response
+    if (response && !response.success && !response.data) {
+      console.log('InventoryService: Response is already the data object, returning directly');
+      return response;
+    }
+    
+    return response.data;
   }
 
   // Get inventory value
@@ -40,12 +51,28 @@ class InventoryService {
       [key: string]: number;
     };
   }> {
-    return apiClient.get('/inventory/value');
+    const response = await apiClient.get('/inventory/value');
+    
+    // Check if response is already the data object (from interceptor) or if it's the full response
+    if (response && !response.success && !response.data) {
+      console.log('InventoryService: Response is already the data object, returning directly');
+      return response;
+    }
+    
+    return response.data;
   }
 
   // Get specific skin details
   async getSkinDetails(skinId: string): Promise<UserSkin> {
-    return apiClient.get(`/inventory/${skinId}`);
+    const response = await apiClient.get(`/inventory/${skinId}`);
+    
+    // Check if response is already the data object (from interceptor) or if it's the full response
+    if (response && !response.success && !response.data) {
+      console.log('InventoryService: Response is already the data object, returning directly');
+      return response;
+    }
+    
+    return response.data;
   }
 
   // Sell skin via buyback
@@ -65,7 +92,15 @@ class InventoryService {
       status: string;
     };
   }> {
-    return apiClient.post(`/inventory/${skinId}/buyback`, request);
+    const response = await apiClient.post(`/inventory/${skinId}/buyback`, request);
+    
+    // Check if response is already the data object (from interceptor) or if it's the full response
+    if (response && !response.success && !response.data) {
+      console.log('InventoryService: Response is already the data object, returning directly');
+      return response;
+    }
+    
+    return response.data;
   }
 }
 

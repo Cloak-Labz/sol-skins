@@ -13,6 +13,16 @@ export class CasesService {
     }
   }> {
     const response = await apiClient.post('/cases/open', request)
+    console.log('CasesService: Received response:', response);
+    console.log('CasesService: Response type:', typeof response);
+    console.log('CasesService: Full response structure:', JSON.stringify(response, null, 2));
+    
+    // Check if response is already the data object (from interceptor) or if it's the full response
+    if (response && !response.success && !response.data) {
+      console.log('CasesService: Response is already the data object, wrapping it');
+      return { success: true, data: response };
+    }
+    
     return response.data
   }
 
@@ -21,6 +31,13 @@ export class CasesService {
     data: CaseOpening
   }> {
     const response = await apiClient.get(`/cases/opening/${id}/status`)
+    
+    // Check if response is already the data object (from interceptor) or if it's the full response
+    if (response && !response.success && !response.data) {
+      console.log('CasesService: Response is already the data object, wrapping it');
+      return { success: true, data: response };
+    }
+    
     return response.data
   }
 
@@ -33,6 +50,13 @@ export class CasesService {
     }
   }> {
     const response = await apiClient.post(`/cases/opening/${id}/decision`, decision)
+    
+    // Check if response is already the data object (from interceptor) or if it's the full response
+    if (response && !response.success && !response.data) {
+      console.log('CasesService: Response is already the data object, wrapping it');
+      return { success: true, data: response };
+    }
+    
     return response.data
   }
 
@@ -41,6 +65,13 @@ export class CasesService {
     data: CaseOpening[]
   }> {
     const response = await apiClient.get('/cases/openings')
+    
+    // Check if response is already the data array (from interceptor) or if it's the full response
+    if (Array.isArray(response)) {
+      console.log('CasesService: Response is already an array, returning directly');
+      return { success: true, data: response };
+    }
+    
     return response.data
   }
 }
