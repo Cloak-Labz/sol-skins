@@ -18,23 +18,40 @@ class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor to add wallet address to requests
+    // Request interceptor to add wallet address to request body
     this.client.interceptors.request.use(
       (config) => {
-        if (this.walletAddress && config.data) {
-          config.data.walletAddress = this.walletAddress;
+        console.log('API Request:', config.method?.toUpperCase(), config.url)
+        console.log('Request data before interceptor:', config.data)
+        console.log('Wallet address:', this.walletAddress)
+        
+        if (this.walletAddress) {
+          if (config.data) {
+            // Add wallet address to request body for POST/PUT requests
+            config.data.walletAddress = this.walletAddress;
+            console.log('Request data after adding wallet:', config.data)
+          } else if (config.method === 'get' && config.url?.includes('/leaderboard/rank')) {
+            // For GET requests to leaderboard/rank, we need to send wallet address in body
+            config.data = { walletAddress: this.walletAddress };
+            console.log('Request data after adding wallet for GET:', config.data)
+          }
         }
         return config;
       },
-      (error) => Promise.reject(error)
+      (error) => {
+        console.error('Request interceptor error:', error)
+        return Promise.reject(error)
+      }
     );
 
     // Response interceptor for error handling
     this.client.interceptors.response.use(
       (response: AxiosResponse<ApiResponse>) => {
-        return response;
+        console.log('API Response:', response.status, response.data)
+        return response; // Return the full response to maintain structure
       },
       (error) => {
+        console.error('API Error:', error.response?.status, error.response?.data)
         // Handle common errors
         if (error.response?.status === 401) {
           // Unauthorized - clear wallet session
@@ -49,6 +66,7 @@ class ApiClient {
 
   // Authentication methods
   setWalletAddress(address: string | null) {
+    console.log('Setting wallet address:', address)
     this.walletAddress = address;
   }
 
@@ -76,22 +94,22 @@ class ApiClient {
   }
 
   // GET request helper
-  private async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async get<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     return this.request<T>({ ...config, method: 'GET', url });
   }
 
   // POST request helper
-  private async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async post<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     return this.request<T>({ ...config, method: 'POST', url, data });
   }
 
   // PUT request helper
-  private async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async put<T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
     return this.request<T>({ ...config, method: 'PUT', url, data });
   }
 
   // DELETE request helper
-  private async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async delete<T>(url: string, config?: AxiosRequestConfig): Promise<T> {
     return this.request<T>({ ...config, method: 'DELETE', url });
   }
 

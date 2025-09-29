@@ -153,3 +153,35 @@
 .animate-float {
   animation: float 4s ease-in-out infinite;
 }
+
+/* Fix wallet modal overlay issues */
+.wallet-adapter-modal-wrapper {
+  z-index: 9999 !important;
+}
+
+.wallet-adapter-modal-overlay {
+  z-index: 9998 !important;
+}
+
+/* Ensure page content is above any potential overlays */
+main {
+  position: relative;
+  z-index: 10;
+}
+
+/* Fix any potential overlay issues */
+.relative {
+  position: relative;
+}
+
+/* Ensure buttons are clickable */
+button, [role="button"] {
+  position: relative;
+  z-index: 20;
+}
+
+/* Fix any wallet adapter button issues */
+.wallet-adapter-button {
+  position: relative;
+  z-index: 30;
+}

@@ -3,13 +3,59 @@
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Plus, Minus, Info, Zap } from "lucide-react"
+import { ArrowLeft, Plus, Minus, Info, Zap, Loader2, Wallet } from "lucide-react"
 import Link from "next/link"
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { casesService, marketplaceService } from "@/lib/services"
+import { apiClient } from "@/lib/services/api"
+import { toast } from "react-hot-toast"
+import { useWallet } from "@solana/wallet-adapter-react"
 
 export default function PacksPage() {
+  const { connected, publicKey, connect } = useWallet()
   const [quantity, setQuantity] = useState(1)
   const [superchargeMode, setSuperchargeMode] = useState(false)
+  const [isOpening, setIsOpening] = useState(false)
+  const [lootBoxes, setLootBoxes] = useState<any[]>([])
+  const [selectedLootBox, setSelectedLootBox] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
+
+  // Load available loot boxes from backend
+  useEffect(() => {
+    loadLootBoxes()
+  }, [])
+
+  // Update API client with wallet address when wallet connects
+  useEffect(() => {
+    if (connected && publicKey) {
+      apiClient.setWalletAddress(publicKey.toString())
+      console.log('Wallet connected:', publicKey.toString())
+    } else {
+      apiClient.setWalletAddress(null)
+    }
+  }, [connected, publicKey])
+
+  const loadLootBoxes = async () => {
+    try {
+      setLoading(true)
+      console.log('Loading loot boxes...')
+      const response = await marketplaceService.getLootBoxes({ limit: 10 })
+      console.log('Loot boxes response:', response)
+      
+      if (response.success && response.data) {
+        setLootBoxes(response.data)
+        // Select the first loot box as default
+        if (response.data.length > 0) {
+          setSelectedLootBox(response.data[0])
+        }
+      }
+    } catch (error) {
+      console.error('Error loading loot boxes:', error)
+      toast.error('Failed to load loot boxes')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const probabilityData = [
     { range: "$12-$30", percentage: "88.47%", color: "text-gray-400" },
@@ -30,17 +76,82 @@ export default function PacksPage() {
     { id: 7, name: "Coming Soon", image: "/coming-soon-pack.jpg", active: false, comingSoon: true },
   ]
 
+  const handleOpenPack = async () => {
+    console.log('=== OPENING PACK DEBUG ===')
+    console.log('Connected:', connected)
+    console.log('Public Key:', publicKey?.toString())
+    console.log('Selected Loot Box:', selectedLootBox)
+    console.log('API Client Wallet:', apiClient.getWalletAddress())
+    
+    if (isOpening) return
+
+    // Check wallet connection
+    if (!connected || !publicKey) {
+      toast.error('Please connect your wallet first')
+      return
+    }
+
+    if (!selectedLootBox) {
+      toast.error('No loot box selected')
+      return
+    }
+
+    try {
+      setIsOpening(true)
+      console.log('Opening pack with loot box:', selectedLootBox.id)
+      toast.loading('Opening pack...', { id: 'opening-pack' })
+
+      // Test the API call directly
+      console.log('Making API call...')
+      const response = await casesService.openCase({
+        lootBoxTypeId: selectedLootBox.id,
+        paymentMethod: 'SOL'
+      })
+
+      console.log('Case opening response:', response)
+
+      if (response.success) {
+        toast.success('Pack opened successfully!', { 
+          id: 'opening-pack',
+          duration: 4000 
+        })
+
+        // Redirect to case opening page
+        setTimeout(() => {
+          window.location.href = `/open/${response.data.caseOpeningId}`
+        }, 2000)
+      }
+      
+    } catch (error) {
+      console.error('Error opening pack:', error)
+      toast.error(`Failed to open pack: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: 'opening-pack' })
+    } finally {
+      setIsOpening(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] p-6 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-4" />
+          <p className="text-white">Loading loot boxes...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-6">
-      <div className="mb-6">
-        <Link href="/packs" className="inline-flex items-center text-gray-400 hover:text-white transition-colors">
+    <div className="min-h-screen bg-[#0a0a0a] p-6 relative z-50">
+      <div className="mb-6 relative z-50">
+        <Link href="/marketplace" className="inline-flex items-center text-gray-400 hover:text-white transition-colors">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
+          Back to Marketplace
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto">
-        <div className="relative">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto relative z-50">
+        <div className="relative z-50">
           <Card className="bg-[#1a1a1a] border-[#333] rounded-2xl overflow-hidden">
             <CardContent className="p-0 relative">
               {/* Status badges */}
@@ -56,15 +167,25 @@ export default function PacksPage() {
 
               {/* Main pack image */}
               <div className="aspect-square bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] flex items-center justify-center">
-                <img src="/cs-go-rookie-pack-with-purple-neon-effects.jpg" alt="Rookie Pack" className="w-full h-full object-cover" />
+                {selectedLootBox?.imageUrl ? (
+                  <img 
+                    src={selectedLootBox.imageUrl} 
+                    alt={selectedLootBox.name} 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <div className="text-8xl">📦</div>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-6 relative z-50">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-4">Rookie Pack</h1>
+            <h1 className="text-4xl font-bold text-white mb-4">
+              {selectedLootBox?.name || 'Select a Loot Box'}
+            </h1>
             <p className="text-gray-400 text-lg leading-relaxed">
               Open a pack to instantly reveal your card and choose to hold, trade, redeem, or accept a{" "}
               <span className="text-white font-semibold">85% instant buyback offer</span> based on your card's fair
@@ -94,21 +215,34 @@ export default function PacksPage() {
             <p className="text-gray-400 text-sm mb-4">Real-time probability data</p>
 
             <div className="grid grid-cols-3 gap-3">
-              {probabilityData.map((item, index) => (
-                <Card key={index} className="bg-[#111] border-[#333] rounded-lg">
-                  <CardContent className="p-3">
-                    <p className="text-gray-400 text-xs mb-1">{item.range}</p>
-                    <p className={`font-bold text-sm ${item.color}`}>{item.percentage}</p>
-                  </CardContent>
-                </Card>
-              ))}
+              {selectedLootBox?.chances ? (
+                Object.entries(selectedLootBox.chances).map(([rarity, chance], index) => (
+                  <Card key={index} className="bg-[#111] border-[#333] rounded-lg">
+                    <CardContent className="p-3">
+                      <p className="text-gray-400 text-xs mb-1 capitalize">{rarity}</p>
+                      <p className="font-bold text-sm text-white">{chance}%</p>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                probabilityData.map((item, index) => (
+                  <Card key={index} className="bg-[#111] border-[#333] rounded-lg">
+                    <CardContent className="p-3">
+                      <p className="text-gray-400 text-xs mb-1">{item.range}</p>
+                      <p className={`font-bold text-sm ${item.color}`}>{item.percentage}</p>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 relative z-50">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-white text-3xl font-bold">$25.00</span>
+                <span className="text-white text-3xl font-bold">
+                  {selectedLootBox ? `${parseFloat(selectedLootBox.priceSol)} SOL` : '$25.00'}
+                </span>
                 <span className="text-gray-400 ml-2">per pack</span>
                 <span className="text-blue-400 ml-2">• +2,500 pts</span>
               </div>
@@ -116,8 +250,9 @@ export default function PacksPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="bg-[#1a1a1a] border-[#333] text-white hover:bg-[#333] w-8 h-8 p-0"
+                  className="bg-[#1a1a1a] border-[#333] text-white hover:bg-[#333] w-8 h-8 p-0 relative z-50"
                   onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                  disabled={isOpening}
                 >
                   <Minus className="w-4 h-4" />
                 </Button>
@@ -125,15 +260,16 @@ export default function PacksPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="bg-[#1a1a1a] border-[#333] text-white hover:bg-[#333] w-8 h-8 p-0"
+                  className="bg-[#1a1a1a] border-[#333] text-white hover:bg-[#333] w-8 h-8 p-0 relative z-50"
                   onClick={() => setQuantity(quantity + 1)}
+                  disabled={isOpening}
                 >
                   <Plus className="w-4 h-4" />
                 </Button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-[#111] rounded-lg border border-[#333]">
+            <div className="flex items-center justify-between p-4 bg-[#111] rounded-lg border border-[#333] relative z-50">
               <div className="flex items-center gap-3">
                 <Zap className="w-5 h-5 text-yellow-400" />
                 <div>
@@ -144,9 +280,10 @@ export default function PacksPage() {
               </div>
               <button
                 onClick={() => setSuperchargeMode(!superchargeMode)}
-                className={`relative w-12 h-6 rounded-full transition-colors ${
+                disabled={isOpening}
+                className={`relative w-12 h-6 rounded-full transition-colors z-50 ${
                   superchargeMode ? "bg-blue-500" : "bg-[#333]"
-                }`}
+                } ${isOpening ? "opacity-50 cursor-not-allowed" : ""}`}
               >
                 <div
                   className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
@@ -156,31 +293,53 @@ export default function PacksPage() {
               </button>
             </div>
 
-            <Button className="w-full bg-white text-black hover:bg-gray-200 font-bold py-4 text-lg rounded-lg">
-              Open Pack
-            </Button>
+            {!connected ? (
+              <Button 
+                onClick={() => connect()}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 text-lg rounded-lg relative z-50"
+              >
+                <Wallet className="w-5 h-5 mr-2" />
+                Connect Wallet to Open Pack
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleOpenPack}
+                disabled={isOpening}
+                className="w-full bg-white text-black hover:bg-gray-200 font-bold py-4 text-lg rounded-lg disabled:opacity-50 disabled:cursor-not-allowed relative z-50"
+              >
+                {isOpening ? (
+                  <>
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                    Opening Pack...
+                  </>
+                ) : (
+                  `Open Pack${quantity > 1 ? 's' : ''}`
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
-      <div className="mt-12 max-w-7xl mx-auto">
+      <div className="mt-12 max-w-7xl mx-auto relative z-50">
+        <h3 className="text-xl font-bold text-white mb-4">Available Loot Boxes</h3>
         <div className="flex gap-4 overflow-x-auto pb-4">
-          {otherPacks.map((pack) => (
+          {lootBoxes.map((lootBox) => (
             <Card
-              key={pack.id}
-              className={`flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 transition-all ${
-                pack.active
+              key={lootBox.id}
+              className={`flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 transition-all relative z-50 cursor-pointer ${
+                selectedLootBox?.id === lootBox.id
                   ? "border-purple-500 bg-purple-500/20"
-                  : pack.comingSoon
-                    ? "border-[#333] bg-[#1a1a1a] opacity-50"
-                    : "border-[#333] bg-[#1a1a1a] hover:border-[#555] cursor-pointer"
+                  : "border-[#333] bg-[#1a1a1a] hover:border-[#555]"
               }`}
+              onClick={() => setSelectedLootBox(lootBox)}
             >
               <CardContent className="p-0 w-full h-full">
-                <img src={pack.image || "/placeholder.svg"} alt={pack.name} className="w-full h-full object-cover" />
-                {pack.comingSoon && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                    <span className="text-gray-400 text-xs font-semibold">Coming Soon</span>
+                {lootBox.imageUrl ? (
+                  <img src={lootBox.imageUrl} alt={lootBox.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a]">
+                    <div className="text-2xl">📦</div>
                   </div>
                 )}
               </CardContent>

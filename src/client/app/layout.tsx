@@ -6,6 +6,8 @@ import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
 import Footer from "@/components/footer";
 import { SolanaProvider } from "@/components/solana-provider";
+import { UserProvider } from "@/lib/contexts/UserContext";
+import { Toaster } from "react-hot-toast";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -36,12 +38,26 @@ export default function RootLayout({
     >
       <body className="antialiased min-h-screen bg-[#0a0a0a]">
         <SolanaProvider>
-          <Sidebar />
-          <Header />
-          <main className="ml-64 pt-16 min-h-screen flex flex-col">
-            <div className="flex-1">{children}</div>
-            <Footer />
-          </main>
+          <UserProvider>
+            <div className="relative">
+              <Sidebar />
+              <Header />
+              <main className="ml-64 pt-16 min-h-screen flex flex-col relative z-10">
+                <div className="flex-1 relative z-10">{children}</div>
+                <Footer />
+              </main>
+            </div>
+            <Toaster 
+              position="top-right"
+              toastOptions={{
+                style: {
+                  background: '#1a1a1a',
+                  color: '#fff',
+                  border: '1px solid #333',
+                },
+              }}
+            />
+          </UserProvider>
         </SolanaProvider>
       </body>
     </html>

@@ -69,14 +69,7 @@ export class WalletAuthMiddleware {
       
       if (!user) {
         // Create new user for this wallet
-        user = await this.userService.createUser({
-          walletAddress,
-          username: null,
-          email: null,
-          totalSpent: 0,
-          totalEarned: 0,
-          casesOpened: 0
-        });
+        user = await this.userService.createUser(walletAddress);
       }
 
       // Check if user is active

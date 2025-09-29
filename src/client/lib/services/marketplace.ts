@@ -20,7 +20,7 @@ export class MarketplaceService {
     if (filters.page) params.append('page', filters.page.toString())
     if (filters.limit) params.append('limit', filters.limit.toString())
 
-    const response = await apiClient.client.get(`/marketplace/loot-boxes?${params.toString()}`)
+    const response = await apiClient.get(`/marketplace/loot-boxes?${params.toString()}`)
     return response.data
   }
 
@@ -28,12 +28,12 @@ export class MarketplaceService {
     success: boolean
     data: LootBoxTypeDetails
   }> {
-    const response = await apiClient.client.get(`/marketplace/loot-boxes/${id}`)
+    const response = await apiClient.get(`/marketplace/loot-boxes/${id}`)
     return response.data
   }
 
   async getFeaturedLootBoxes(): Promise<LootBoxType[]> {
-    const response = await apiClient.client.get('/marketplace/loot-boxes?filterBy=featured&limit=6')
+    const response = await apiClient.get('/marketplace/loot-boxes?filterBy=featured&limit=6')
     return response.data.data || []
   }
 }

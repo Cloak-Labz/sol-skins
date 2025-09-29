@@ -1,41 +1,48 @@
-import { apiClient } from './api';
-import { 
-  CaseOpening, 
-  OpenCaseRequest, 
-  CaseDecisionRequest 
-} from '../types/api';
+import { apiClient } from './api'
+import { CaseOpening, OpenCaseRequest, CaseDecisionRequest } from '../types/api'
 
-class CasesService {
-  // Open a case
+export class CasesService {
   async openCase(request: OpenCaseRequest): Promise<{
-    caseOpeningId: string;
-    nftMintAddress: string;
-    vrfRequestId: string;
-    transactionId: string;
-    estimatedCompletionTime: string;
+    success: boolean
+    data: {
+      caseOpeningId: string
+      nftMintAddress: string
+      vrfRequestId: string
+      transactionId: string
+      estimatedCompletionTime: string
+    }
   }> {
-    return apiClient.post('/cases/open', request);
+    const response = await apiClient.post('/cases/open', request)
+    return response.data
   }
 
-  // Get case opening status
-  async getCaseOpeningStatus(id: string): Promise<CaseOpening> {
-    return apiClient.get(`/cases/opening/${id}/status`);
-  }
-
-  // Make decision on case opening
-  async makeCaseDecision(id: string, decision: CaseDecisionRequest): Promise<{
-    decision: string;
-    nftMintAddress: string;
-    addedToInventory: boolean;
+  async getOpeningStatus(id: string): Promise<{
+    success: boolean
+    data: CaseOpening
   }> {
-    return apiClient.post(`/cases/opening/${id}/decision`, decision);
+    const response = await apiClient.get(`/cases/opening/${id}/status`)
+    return response.data
   }
 
-  // Get user's case openings
-  async getUserCaseOpenings(): Promise<CaseOpening[]> {
-    return apiClient.get('/cases/openings');
+  async makeDecision(id: string, decision: CaseDecisionRequest): Promise<{
+    success: boolean
+    data: {
+      decision: string
+      nftMintAddress: string
+      addedToInventory: boolean
+    }
+  }> {
+    const response = await apiClient.post(`/cases/opening/${id}/decision`, decision)
+    return response.data
+  }
+
+  async getUserCaseOpenings(): Promise<{
+    success: boolean
+    data: CaseOpening[]
+  }> {
+    const response = await apiClient.get('/cases/openings')
+    return response.data
   }
 }
 
-export const casesService = new CasesService();
-export default casesService;
+export const casesService = new CasesService()

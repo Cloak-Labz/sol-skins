@@ -33,14 +33,7 @@ export class AuthController {
     let user = await this.userService.findByWalletAddress(walletAddress);
     
     if (!user) {
-      user = await this.userService.createUser({
-        walletAddress,
-        username: null,
-        email: null,
-        totalSpent: 0,
-        totalEarned: 0,
-        casesOpened: 0
-      });
+      user = await this.userService.createUser(walletAddress);
     }
 
     // Update last login

@@ -17,8 +17,8 @@ export interface User {
   walletAddress: string
   username?: string
   email?: string
-  totalSpent: number
-  totalEarned: number
+  totalSpent: number | string
+  totalEarned: number | string
   casesOpened: number
   createdAt: string
   lastLogin?: string
@@ -144,8 +144,8 @@ export interface Transaction {
 }
 
 export interface TransactionSummary {
-  totalSpent: number
-  totalEarned: number
+  totalSpent: number | string
+  totalEarned: number | string
   netProfit: number
   casesOpened: number
   skinsOwned: number
@@ -170,8 +170,8 @@ export interface LeaderboardEntry {
   }
   inventoryValue: number
   casesOpened: number
-  totalSpent: number
-  totalEarned: number
+  totalSpent: number | string
+  totalEarned: number | string
   netProfit: number
 }
 
@@ -261,4 +261,34 @@ export interface BuybackResponse {
     txHash: string
     status: string
   }
+}
+
+// Leaderboard types
+export interface LeaderboardEntry {
+  rank: number
+  user: {
+    id: string
+    username?: string
+    walletAddress: string
+  }
+  inventoryValue: number
+  casesOpened: number
+  totalSpent: number | string
+  totalEarned: number | string
+  netProfit: number
+}
+
+export interface UserRank {
+  rank: number
+  totalUsers: number
+  percentile: number
+  metric: string
+  value: number
+}
+
+export interface LeaderboardFilters {
+  period?: 'all-time' | 'monthly' | 'weekly'
+  metric?: 'inventory-value' | 'cases-opened' | 'profit'
+  limit?: number
+  page?: number
 }

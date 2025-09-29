@@ -23,7 +23,7 @@ class AuthService {
     // Set wallet address in API client for future requests
     apiClient.setWalletAddress(walletAddress);
     
-    return response;
+    return response.data;
   }
 
   // Disconnect wallet
@@ -33,17 +33,19 @@ class AuthService {
     // Clear wallet address from API client
     apiClient.setWalletAddress(null);
     
-    return response;
+    return response.data;
   }
 
   // Get user profile
   async getProfile(): Promise<User> {
-    return apiClient.get('/auth/profile');
+    const response = await apiClient.get('/auth/profile');
+    return response.data;
   }
 
   // Update user profile
   async updateProfile(updates: UpdateProfileRequest): Promise<{ message: string }> {
-    return apiClient.put('/auth/profile', updates);
+    const response = await apiClient.put('/auth/profile', updates);
+    return response.data;
   }
 
   // Check if user is connected

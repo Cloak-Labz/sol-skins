@@ -38,6 +38,12 @@ export function UserProvider({ children }: UserProviderProps) {
   }, [walletAddress]);
 
   const connectWallet = async (address: string, signature?: string, message?: string) => {
+    // Prevent multiple simultaneous connection attempts
+    if (isLoading) {
+      console.log('Connection already in progress, skipping...');
+      return;
+    }
+    
     try {
       setIsLoading(true);
       setError(null);
