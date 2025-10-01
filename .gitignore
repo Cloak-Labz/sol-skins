@@ -130,3 +130,10 @@ keypair.json
 # Build artifacts
 *.tsbuildinfo
 .DS_Store
+
+
+# skinvault
+skinvault/target/
+skinvault/dist/
+skinvault/node_modules/
+skinvault/test-ledger/
