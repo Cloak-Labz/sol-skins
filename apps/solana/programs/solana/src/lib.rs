@@ -126,4 +126,27 @@ pub mod skinvault {
     pub fn deposit_treasury(ctx: Context<DepositTreasury>, amount: u64) -> Result<()> {
         instructions::admin::deposit_treasury_handler(ctx, amount)
     }
+
+    /// Withdraw USDC from the treasury (authority only)
+    pub fn withdraw_treasury(ctx: Context<WithdrawTreasury>, amount: u64) -> Result<()> {
+        instructions::admin::withdraw_treasury_handler(ctx, amount)
+    }
+
+    /// Emergency pause/unpause all user operations
+    pub fn emergency_pause(ctx: Context<EmergencyPause>, paused: bool) -> Result<()> {
+        instructions::admin::emergency_pause_handler(ctx, paused)
+    }
+
+    /// Initiate authority transfer (step 1 of 2)
+    pub fn initiate_authority_transfer(
+        ctx: Context<EmergencyPause>,
+        new_authority: Pubkey,
+    ) -> Result<()> {
+        instructions::admin::initiate_authority_transfer_handler(ctx, new_authority)
+    }
+
+    /// Accept authority transfer (step 2 of 2)
+    pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
+        instructions::admin::accept_authority_handler(ctx)
+    }
 }

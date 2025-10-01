@@ -8,6 +8,12 @@ use crate::vrf::*;
 #[derive(Accounts)]
 pub struct OpenBox<'info> {
     #[account(
+        seeds = [b"global"],
+        bump = global.bump
+    )]
+    pub global: Account<'info, Global>,
+
+    #[account(
         mut,
         seeds = [b"box", box_state.nft_mint.as_ref()],
         bump = box_state.bump,
@@ -41,6 +47,9 @@ pub fn open_box_handler(
     ctx: Context<OpenBox>,
     pool_size: u64,
 ) -> Result<()> {
+    // Check if program is paused
+    require!(!ctx.accounts.global.paused, SkinVaultError::BuybackDisabled);
+    
     require!(pool_size > 0, SkinVaultError::InvalidPoolSize);
     require!(
         pool_size <= ctx.accounts.batch.total_items,

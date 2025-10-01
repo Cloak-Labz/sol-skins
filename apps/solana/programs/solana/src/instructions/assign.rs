@@ -1,5 +1,6 @@
 use anchor_lang::prelude::*;
 
+use crate::cpi::metaplex;
 use crate::errors::SkinVaultError;
 use crate::events::*;
 use crate::merkle::*;
@@ -7,7 +8,14 @@ use crate::state::*;
 use crate::utils::*;
 
 #[derive(Accounts)]
+#[instruction(inventory_id_hash: [u8; 32])]
 pub struct Assign<'info> {
+    #[account(
+        seeds = [b"global"],
+        bump = global.bump
+    )]
+    pub global: Account<'info, Global>,
+
     #[account(
         seeds = [b"batch", batch.batch_id.to_le_bytes().as_ref()],
         bump = batch.bump
@@ -23,8 +31,38 @@ pub struct Assign<'info> {
     )]
     pub box_state: Account<'info, BoxState>,
 
+    /// Track inventory assignment to prevent reuse
+    #[account(
+        init,
+        payer = signer,
+        seeds = [b"inventory", inventory_id_hash.as_ref()],
+        bump,
+        space = InventoryAssignment::LEN
+    )]
+    pub inventory_assignment: Account<'info, InventoryAssignment>,
+
+    /// CHECK: Metadata account for updating after assignment (optional)
+    #[account(
+        mut,
+        seeds = [
+            b"metadata",
+            mpl_token_metadata::ID.as_ref(),
+            box_state.nft_mint.as_ref(),
+        ],
+        bump,
+        seeds::program = mpl_token_metadata::ID,
+    )]
+    pub metadata: UncheckedAccount<'info>,
+
+    /// CHECK: Metaplex Token Metadata Program
+    #[account(address = mpl_token_metadata::ID)]
+    pub metadata_program: UncheckedAccount<'info>,
+
     /// Only box owner or authority can assign inventory
+    #[account(mut)]
     pub signer: Signer<'info>,
+    
+    pub system_program: Program<'info, System>,
 }
 
 pub fn assign_handler(
@@ -33,6 +71,9 @@ pub fn assign_handler(
     merkle_proof: Vec<[u8; 32]>,
     _backend_signature: Option<[u8; 64]>, // Optional backend signature for additional verification
 ) -> Result<()> {
+    // Check if program is paused
+    require!(!ctx.accounts.global.paused, SkinVaultError::BuybackDisabled);
+    
     // Validate inventory hash
     validate_inventory_hash(&inventory_id_hash)?;
 
@@ -49,6 +90,14 @@ pub fn assign_handler(
         &ctx.accounts.batch.merkle_root,
         &merkle_proof,
     )?;
+
+    // Initialize inventory assignment (prevents double-assignment)
+    let assignment = &mut ctx.accounts.inventory_assignment;
+    assignment.inventory_id_hash = inventory_id_hash;
+    assignment.box_mint = box_state.nft_mint;
+    assignment.batch_id = box_state.batch_id;
+    assignment.assigned_at = Clock::get()?.unix_timestamp;
+    assignment.bump = ctx.bumps.inventory_assignment;
 
     // Assign inventory to box
     let box_state = &mut ctx.accounts.box_state;

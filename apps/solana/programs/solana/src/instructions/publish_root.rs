@@ -8,7 +8,7 @@ use crate::state::*;
 #[instruction(batch_id: u64)]
 pub struct PublishMerkleRoot<'info> {
     #[account(
-        seeds = [b"skinvault", global.authority.as_ref()],
+        seeds = [b"global"],
         bump = global.bump,
         has_one = authority @ SkinVaultError::Unauthorized
     )]

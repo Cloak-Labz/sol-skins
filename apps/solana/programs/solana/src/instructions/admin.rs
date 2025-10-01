@@ -13,7 +13,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = authority,
-        seeds = [b"skinvault", authority.key().as_ref()],
+        seeds = [b"global"],
         bump,
         space = Global::LEN
     )]
@@ -43,7 +43,7 @@ pub struct Initialize<'info> {
 pub struct SetOracle<'info> {
     #[account(
         mut,
-        seeds = [b"skinvault", authority.key().as_ref()],
+        seeds = [b"global"],
         bump = global.bump,
         has_one = authority @ SkinVaultError::Unauthorized
     )]
@@ -56,7 +56,7 @@ pub struct SetOracle<'info> {
 pub struct ToggleBuyback<'info> {
     #[account(
         mut,
-        seeds = [b"skinvault", authority.key().as_ref()],
+        seeds = [b"global"],
         bump = global.bump,
         has_one = authority @ SkinVaultError::Unauthorized
     )]
@@ -69,7 +69,7 @@ pub struct ToggleBuyback<'info> {
 pub struct SetMinTreasuryBalance<'info> {
     #[account(
         mut,
-        seeds = [b"skinvault", authority.key().as_ref()],
+        seeds = [b"global"],
         bump = global.bump,
         has_one = authority @ SkinVaultError::Unauthorized
     )]
@@ -81,7 +81,7 @@ pub struct SetMinTreasuryBalance<'info> {
 #[derive(Accounts)]
 pub struct DepositTreasury<'info> {
     #[account(
-        seeds = [b"skinvault", global.authority.as_ref()],
+        seeds = [b"global"],
         bump = global.bump
     )]
     pub global: Account<'info, Global>,
@@ -122,6 +122,8 @@ pub fn initialize_handler(
     global.total_boxes_minted = 0;
     global.total_buybacks = 0;
     global.total_buyback_volume = 0;
+    global.paused = false;
+    global.pending_authority = None;
     global.bump = ctx.bumps.global;
 
     msg!("SkinVault initialized with authority: {}", global.authority);
@@ -205,5 +207,148 @@ pub fn deposit_treasury_handler(
 
     msg!("Treasury deposit: {} USDC from {}", amount, ctx.accounts.depositor.key());
 
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct WithdrawTreasury<'info> {
+    #[account(
+        seeds = [b"global"],
+        bump = global.bump,
+        has_one = authority @ SkinVaultError::Unauthorized
+    )]
+    pub global: Account<'info, Global>,
+
+    #[account(
+        mut,
+        associated_token::mint = usdc_mint,
+        associated_token::authority = global
+    )]
+    pub treasury_ata: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        constraint = recipient_ata.mint == usdc_mint.key() @ SkinVaultError::Unauthorized
+    )]
+    pub recipient_ata: Account<'info, TokenAccount>,
+
+    #[account(address = global.usdc_mint)]
+    pub usdc_mint: Account<'info, Mint>,
+
+    pub authority: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+}
+
+pub fn withdraw_treasury_handler(
+    ctx: Context<WithdrawTreasury>,
+    amount: u64,
+) -> Result<()> {
+    let global = &ctx.accounts.global;
+    let treasury_balance = ctx.accounts.treasury_ata.amount;
+    
+    // Ensure minimum balance remains
+    let remaining_balance = treasury_balance
+        .checked_sub(amount)
+        .ok_or(SkinVaultError::ArithmeticOverflow)?;
+    
+    require!(
+        remaining_balance >= global.min_treasury_balance,
+        SkinVaultError::TreasuryInsufficient
+    );
+    
+    // Transfer from treasury using PDA signer
+    let global_seeds: &[&[u8]] = &[
+        b"global",
+        &[global.bump],
+    ];
+    let signer_seeds: &[&[&[u8]]] = &[global_seeds];
+    
+    crate::cpi::spl::transfer_tokens(
+        &ctx.accounts.token_program,
+        &ctx.accounts.treasury_ata,
+        &ctx.accounts.recipient_ata,
+        &global.to_account_info(),
+        amount,
+        Some(signer_seeds),
+    )?;
+    
+    msg!("Treasury withdrawal: {} USDC to {}", amount, ctx.accounts.authority.key());
+    
+    Ok(())
+}
+
+// Emergency Controls
+
+#[derive(Accounts)]
+pub struct EmergencyPause<'info> {
+    #[account(
+        mut,
+        seeds = [b"global"],
+        bump = global.bump,
+        has_one = authority @ SkinVaultError::Unauthorized
+    )]
+    pub global: Account<'info, Global>,
+    
+    pub authority: Signer<'info>,
+}
+
+pub fn emergency_pause_handler(
+    ctx: Context<EmergencyPause>,
+    paused: bool,
+) -> Result<()> {
+    ctx.accounts.global.paused = paused;
+    
+    msg!("Emergency pause set to: {}", paused);
+    
+    Ok(())
+}
+
+// Authority Transfer (2-step for safety)
+
+pub fn initiate_authority_transfer_handler(
+    ctx: Context<EmergencyPause>,
+    new_authority: Pubkey,
+) -> Result<()> {
+    let global = &mut ctx.accounts.global;
+    global.pending_authority = Some(new_authority);
+    
+    msg!(
+        "Authority transfer initiated from {} to {}",
+        global.authority,
+        new_authority
+    );
+    
+    Ok(())
+}
+
+#[derive(Accounts)]
+pub struct AcceptAuthority<'info> {
+    #[account(
+        mut,
+        seeds = [b"global"],
+        bump = global.bump,
+        constraint = global.pending_authority == Some(new_authority.key())
+            @ SkinVaultError::Unauthorized
+    )]
+    pub global: Account<'info, Global>,
+    
+    pub new_authority: Signer<'info>,
+}
+
+pub fn accept_authority_handler(
+    ctx: Context<AcceptAuthority>,
+) -> Result<()> {
+    let global = &mut ctx.accounts.global;
+    let old_authority = global.authority;
+    
+    global.authority = ctx.accounts.new_authority.key();
+    global.pending_authority = None;
+    
+    msg!(
+        "Authority transferred from {} to {}",
+        old_authority,
+        global.authority
+    );
+    
     Ok(())
 }

@@ -14,6 +14,48 @@ export type Skinvault = {
   },
   "instructions": [
     {
+      "name": "acceptAuthority",
+      "docs": [
+        "Accept authority transfer (step 2 of 2)"
+      ],
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "newAuthority",
+          "signer": true
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "assign",
       "docs": [
         "Assign an inventory item to an opened box"
@@ -29,6 +71,24 @@ export type Skinvault = {
         135
       ],
       "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
         {
           "name": "batch",
           "pda": {
@@ -73,11 +133,149 @@ export type Skinvault = {
           }
         },
         {
+          "name": "inventoryAssignment",
+          "docs": [
+            "Track inventory assignment to prevent reuse"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  105,
+                  110,
+                  118,
+                  101,
+                  110,
+                  116,
+                  111,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "inventoryIdHash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "metadata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  11,
+                  112,
+                  101,
+                  177,
+                  227,
+                  209,
+                  124,
+                  69,
+                  56,
+                  157,
+                  82,
+                  127,
+                  107,
+                  4,
+                  195,
+                  205,
+                  88,
+                  184,
+                  108,
+                  115,
+                  26,
+                  160,
+                  253,
+                  181,
+                  73,
+                  182,
+                  209,
+                  188,
+                  3,
+                  248,
+                  41,
+                  70
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "box_state.nft_mint",
+                "account": "boxState"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                11,
+                112,
+                101,
+                177,
+                227,
+                209,
+                124,
+                69,
+                56,
+                157,
+                82,
+                127,
+                107,
+                4,
+                195,
+                205,
+                88,
+                184,
+                108,
+                115,
+                26,
+                160,
+                253,
+                181,
+                73,
+                182,
+                209,
+                188,
+                3,
+                248,
+                41,
+                70
+              ]
+            }
+          }
+        },
+        {
+          "name": "metadataProgram",
+          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+        },
+        {
           "name": "signer",
           "docs": [
             "Only box owner or authority can assign inventory"
           ],
+          "writable": true,
           "signer": true
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -137,21 +335,13 @@ export type Skinvault = {
               {
                 "kind": "const",
                 "value": [
-                  115,
-                  107,
-                  105,
-                  110,
-                  118,
-                  97,
-                  117,
+                  103,
                   108,
-                  116
+                  111,
+                  98,
+                  97,
+                  108
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "global.authority",
-                "account": "global"
               }
             ]
           }
@@ -271,6 +461,56 @@ export type Skinvault = {
       ]
     },
     {
+      "name": "emergencyPause",
+      "docs": [
+        "Emergency pause/unpause all user operations"
+      ],
+      "discriminator": [
+        21,
+        143,
+        27,
+        142,
+        200,
+        181,
+        210,
+        255
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
       "name": "initialize",
       "docs": [
         "Initialize the SkinVault program"
@@ -294,20 +534,13 @@ export type Skinvault = {
               {
                 "kind": "const",
                 "value": [
-                  115,
-                  107,
-                  105,
-                  110,
-                  118,
-                  97,
-                  117,
+                  103,
                   108,
-                  116
+                  111,
+                  98,
+                  97,
+                  108
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "authority"
               }
             ]
           }
@@ -437,6 +670,56 @@ export type Skinvault = {
       ]
     },
     {
+      "name": "initiateAuthorityTransfer",
+      "docs": [
+        "Initiate authority transfer (step 1 of 2)"
+      ],
+      "discriminator": [
+        210,
+        43,
+        101,
+        215,
+        119,
+        140,
+        106,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "newAuthority",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
       "name": "mintBox",
       "docs": [
         "Mint a new loot box NFT"
@@ -460,21 +743,13 @@ export type Skinvault = {
               {
                 "kind": "const",
                 "value": [
-                  115,
-                  107,
-                  105,
-                  110,
-                  118,
-                  97,
-                  117,
+                  103,
                   108,
-                  116
+                  111,
+                  98,
+                  97,
+                  108
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "global.authority",
-                "account": "global"
               }
             ]
           }
@@ -514,6 +789,216 @@ export type Skinvault = {
           ]
         },
         {
+          "name": "metadata",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  11,
+                  112,
+                  101,
+                  177,
+                  227,
+                  209,
+                  124,
+                  69,
+                  56,
+                  157,
+                  82,
+                  127,
+                  107,
+                  4,
+                  195,
+                  205,
+                  88,
+                  184,
+                  108,
+                  115,
+                  26,
+                  160,
+                  253,
+                  181,
+                  73,
+                  182,
+                  209,
+                  188,
+                  3,
+                  248,
+                  41,
+                  70
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "nftMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                11,
+                112,
+                101,
+                177,
+                227,
+                209,
+                124,
+                69,
+                56,
+                157,
+                82,
+                127,
+                107,
+                4,
+                195,
+                205,
+                88,
+                184,
+                108,
+                115,
+                26,
+                160,
+                253,
+                181,
+                73,
+                182,
+                209,
+                188,
+                3,
+                248,
+                41,
+                70
+              ]
+            }
+          }
+        },
+        {
+          "name": "masterEdition",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  116,
+                  97,
+                  100,
+                  97,
+                  116,
+                  97
+                ]
+              },
+              {
+                "kind": "const",
+                "value": [
+                  11,
+                  112,
+                  101,
+                  177,
+                  227,
+                  209,
+                  124,
+                  69,
+                  56,
+                  157,
+                  82,
+                  127,
+                  107,
+                  4,
+                  195,
+                  205,
+                  88,
+                  184,
+                  108,
+                  115,
+                  26,
+                  160,
+                  253,
+                  181,
+                  73,
+                  182,
+                  209,
+                  188,
+                  3,
+                  248,
+                  41,
+                  70
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "nftMint"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  100,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                11,
+                112,
+                101,
+                177,
+                227,
+                209,
+                124,
+                69,
+                56,
+                157,
+                82,
+                127,
+                107,
+                4,
+                195,
+                205,
+                88,
+                184,
+                108,
+                115,
+                26,
+                160,
+                253,
+                181,
+                73,
+                182,
+                209,
+                188,
+                3,
+                248,
+                41,
+                70
+              ]
+            }
+          }
+        },
+        {
           "name": "boxState",
           "writable": true,
           "pda": {
@@ -539,12 +1024,24 @@ export type Skinvault = {
           "signer": true
         },
         {
+          "name": "metadataProgram",
+          "address": "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+        },
+        {
+          "name": "sysvarInstructions",
+          "address": "Sysvar1nstructions1111111111111111111111111"
+        },
+        {
           "name": "tokenProgram",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         },
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        },
+        {
+          "name": "rent",
+          "address": "SysvarRent111111111111111111111111111111111"
         }
       ],
       "args": [
@@ -574,6 +1071,24 @@ export type Skinvault = {
         199
       ],
       "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
         {
           "name": "boxState",
           "writable": true,
@@ -686,21 +1201,13 @@ export type Skinvault = {
               {
                 "kind": "const",
                 "value": [
-                  115,
-                  107,
-                  105,
-                  110,
-                  118,
-                  97,
-                  117,
+                  103,
                   108,
-                  116
+                  111,
+                  98,
+                  97,
+                  108
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "global.authority",
-                "account": "global"
               }
             ]
           }
@@ -788,21 +1295,13 @@ export type Skinvault = {
               {
                 "kind": "const",
                 "value": [
-                  115,
-                  107,
-                  105,
-                  110,
-                  118,
-                  97,
-                  117,
+                  103,
                   108,
-                  116
+                  111,
+                  98,
+                  97,
+                  108
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "global.authority",
-                "account": "global"
               }
             ]
           }
@@ -948,6 +1447,20 @@ export type Skinvault = {
           }
         },
         {
+          "name": "nftMint",
+          "docs": [
+            "NFT mint to be burned"
+          ],
+          "writable": true
+        },
+        {
+          "name": "sellerNftAta",
+          "docs": [
+            "Seller's NFT token account (to be burned and closed)"
+          ],
+          "writable": true
+        },
+        {
           "name": "seller",
           "writable": true,
           "signer": true
@@ -988,20 +1501,13 @@ export type Skinvault = {
               {
                 "kind": "const",
                 "value": [
-                  115,
-                  107,
-                  105,
-                  110,
-                  118,
-                  97,
-                  117,
+                  103,
                   108,
-                  116
+                  111,
+                  98,
+                  97,
+                  108
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "authority"
               }
             ]
           }
@@ -1045,20 +1551,13 @@ export type Skinvault = {
               {
                 "kind": "const",
                 "value": [
-                  115,
-                  107,
-                  105,
-                  110,
-                  118,
-                  97,
-                  117,
+                  103,
                   108,
-                  116
+                  111,
+                  98,
+                  97,
+                  108
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "authority"
               }
             ]
           }
@@ -1101,21 +1600,13 @@ export type Skinvault = {
               {
                 "kind": "const",
                 "value": [
-                  115,
-                  107,
-                  105,
-                  110,
-                  118,
-                  97,
-                  117,
+                  103,
                   108,
-                  116
+                  111,
+                  98,
+                  97,
+                  108
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "global.authority",
-                "account": "global"
               }
             ]
           }
@@ -1205,20 +1696,13 @@ export type Skinvault = {
               {
                 "kind": "const",
                 "value": [
-                  115,
-                  107,
-                  105,
-                  110,
-                  118,
-                  97,
-                  117,
+                  103,
                   108,
-                  116
+                  111,
+                  98,
+                  97,
+                  108
                 ]
-              },
-              {
-                "kind": "account",
-                "path": "authority"
               }
             ]
           }
@@ -1254,6 +1738,24 @@ export type Skinvault = {
         36
       ],
       "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
         {
           "name": "batch",
           "writable": true,
@@ -1328,6 +1830,13 @@ export type Skinvault = {
           }
         },
         {
+          "name": "vrfAuthority",
+          "docs": [
+            "Only oracle or authority can provide VRF results"
+          ],
+          "signer": true
+        },
+        {
           "name": "boxOwner",
           "writable": true
         }
@@ -1345,6 +1854,156 @@ export type Skinvault = {
               32
             ]
           }
+        }
+      ]
+    },
+    {
+      "name": "withdrawTreasury",
+      "docs": [
+        "Withdraw USDC from the treasury (authority only)"
+      ],
+      "discriminator": [
+        40,
+        63,
+        122,
+        158,
+        144,
+        216,
+        83,
+        96
+      ],
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasuryAta",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "global"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "usdcMint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "recipientAta",
+          "writable": true
+        },
+        {
+          "name": "usdcMint"
+        },
+        {
+          "name": "authority",
+          "signer": true,
+          "relations": [
+            "global"
+          ]
+        },
+        {
+          "name": "tokenProgram",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
         }
       ]
     }
@@ -1387,6 +2046,19 @@ export type Skinvault = {
         108,
         114,
         127
+      ]
+    },
+    {
+      "name": "inventoryAssignment",
+      "discriminator": [
+        218,
+        51,
+        157,
+        54,
+        70,
+        221,
+        18,
+        210
       ]
     },
     {
@@ -1850,6 +2522,20 @@ export type Skinvault = {
             "type": "u64"
           },
           {
+            "name": "redeemed",
+            "docs": [
+              "Whether the box has been redeemed (sold back)"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "redeemTime",
+            "docs": [
+              "Timestamp when redeemed (zero if not redeemed)"
+            ],
+            "type": "i64"
+          },
+          {
             "name": "bump",
             "docs": [
               "Bump seed for PDA"
@@ -1981,6 +2667,22 @@ export type Skinvault = {
             "type": "u64"
           },
           {
+            "name": "paused",
+            "docs": [
+              "Emergency pause flag (stops all user operations)"
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "pendingAuthority",
+            "docs": [
+              "Pending authority for 2-step transfer"
+            ],
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
             "name": "bump",
             "docs": [
               "Bump seed for PDA"
@@ -2011,6 +2713,54 @@ export type Skinvault = {
           {
             "name": "batchId",
             "type": "u64"
+          }
+        ]
+      }
+    },
+    {
+      "name": "inventoryAssignment",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "inventoryIdHash",
+            "docs": [
+              "Hash of the assigned inventory"
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "boxMint",
+            "docs": [
+              "Box mint that owns this inventory"
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "batchId",
+            "docs": [
+              "Batch this inventory came from"
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "assignedAt",
+            "docs": [
+              "Timestamp of assignment"
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "Bump seed for PDA"
+            ],
+            "type": "u8"
           }
         ]
       }

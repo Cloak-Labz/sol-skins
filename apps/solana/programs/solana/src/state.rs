@@ -29,6 +29,12 @@ pub struct Global {
     /// Total USDC volume from buybacks
     pub total_buyback_volume: u64,
     
+    /// Emergency pause flag (stops all user operations)
+    pub paused: bool,
+    
+    /// Pending authority for 2-step transfer
+    pub pending_authority: Option<Pubkey>,
+    
     /// Bump seed for PDA
     pub bump: u8,
 }
@@ -44,6 +50,8 @@ impl Global {
         8 +  // total_boxes_minted
         8 +  // total_buybacks
         8 +  // total_buyback_volume
+        1 +  // paused
+        33 + // pending_authority (Option<Pubkey>)
         1;   // bump
 }
 
@@ -108,6 +116,12 @@ pub struct BoxState {
     /// Random index generated during opening
     pub random_index: u64,
     
+    /// Whether the box has been redeemed (sold back)
+    pub redeemed: bool,
+    
+    /// Timestamp when redeemed (zero if not redeemed)
+    pub redeem_time: i64,
+    
     /// Bump seed for PDA
     pub bump: u8,
 }
@@ -122,6 +136,8 @@ impl BoxState {
         8 +  // mint_time
         8 +  // open_time
         8 +  // random_index
+        1 +  // redeemed
+        8 +  // redeem_time
         1;   // bump
 }
 
@@ -180,5 +196,32 @@ impl VrfPending {
         8 +  // request_id
         8 +  // request_time
         8 +  // pool_size
+        1;   // bump
+}
+
+#[account]
+pub struct InventoryAssignment {
+    /// Hash of the assigned inventory
+    pub inventory_id_hash: [u8; 32],
+    
+    /// Box mint that owns this inventory
+    pub box_mint: Pubkey,
+    
+    /// Batch this inventory came from
+    pub batch_id: u64,
+    
+    /// Timestamp of assignment
+    pub assigned_at: i64,
+    
+    /// Bump seed for PDA
+    pub bump: u8,
+}
+
+impl InventoryAssignment {
+    pub const LEN: usize = 8 + // discriminator
+        32 + // inventory_id_hash
+        32 + // box_mint
+        8 +  // batch_id
+        8 +  // assigned_at
         1;   // bump
 }

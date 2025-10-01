@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{Mint, Token, TokenAccount};
+use anchor_spl::token::{burn, close_account, Burn, CloseAccount, Mint, Token, TokenAccount};
 
 use crate::errors::SkinVaultError;
 use crate::events::*;
@@ -10,7 +10,7 @@ use crate::utils::*;
 pub struct SellBack<'info> {
     #[account(
         mut,
-        seeds = [b"skinvault", global.authority.as_ref()],
+        seeds = [b"global"],
         bump = global.bump
     )]
     pub global: Account<'info, Global>,
@@ -45,9 +45,26 @@ pub struct SellBack<'info> {
         bump = box_state.bump,
         constraint = box_state.owner == seller.key() @ SkinVaultError::NotBoxOwner,
         constraint = box_state.opened @ SkinVaultError::NotOpenedYet,
-        constraint = box_state.assigned_inventory != [0u8; 32] @ SkinVaultError::InventoryAlreadyAssigned
+        constraint = box_state.assigned_inventory != [0u8; 32] @ SkinVaultError::InventoryAlreadyAssigned,
+        constraint = !box_state.redeemed @ SkinVaultError::AlreadyOpened
     )]
     pub box_state: Account<'info, BoxState>,
+
+    /// NFT mint to be burned
+    #[account(
+        mut,
+        constraint = nft_mint.key() == box_state.nft_mint @ SkinVaultError::Unauthorized
+    )]
+    pub nft_mint: Account<'info, Mint>,
+
+    /// Seller's NFT token account (to be burned and closed)
+    #[account(
+        mut,
+        constraint = seller_nft_ata.mint == nft_mint.key() @ SkinVaultError::Unauthorized,
+        constraint = seller_nft_ata.owner == seller.key() @ SkinVaultError::Unauthorized,
+        constraint = seller_nft_ata.amount == 1 @ SkinVaultError::Unauthorized
+    )]
+    pub seller_nft_ata: Account<'info, TokenAccount>,
 
     #[account(mut)]
     pub seller: Signer<'info>,
@@ -61,6 +78,9 @@ pub fn sell_back_handler(
 ) -> Result<()> {
     let global = &mut ctx.accounts.global;
     let current_time = Clock::get()?.unix_timestamp;
+
+    // Check if program is paused
+    require!(!global.paused, SkinVaultError::BuybackDisabled);
 
     // Check buyback is enabled
     require!(global.buyback_enabled, SkinVaultError::BuybackDisabled);
@@ -94,8 +114,7 @@ pub fn sell_back_handler(
 
     // Transfer USDC from treasury to user
     let global_seeds: &[&[u8]] = &[
-        b"skinvault",
-        global.authority.as_ref(),
+        b"global",
         &[global.bump],
     ];
     let signer_seeds: &[&[&[u8]]] = &[global_seeds];
@@ -118,9 +137,35 @@ pub fn sell_back_handler(
         .checked_add(payout)
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
-    // Mark box as redeemed (optional: could burn NFT here instead)
+    // Burn the NFT
+    burn(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            Burn {
+                mint: ctx.accounts.nft_mint.to_account_info(),
+                from: ctx.accounts.seller_nft_ata.to_account_info(),
+                authority: ctx.accounts.seller.to_account_info(),
+            },
+        ),
+        1,
+    )?;
+
+    // Close the NFT token account and reclaim rent
+    close_account(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            CloseAccount {
+                account: ctx.accounts.seller_nft_ata.to_account_info(),
+                destination: ctx.accounts.seller.to_account_info(),
+                authority: ctx.accounts.seller.to_account_info(),
+            },
+        ),
+    )?;
+
+    // Mark box as redeemed
     let box_state = &mut ctx.accounts.box_state;
-    // For now, we'll keep the box state but could add a "redeemed" flag
+    box_state.redeemed = true;
+    box_state.redeem_time = Clock::get()?.unix_timestamp;
 
     emit!(BuybackExecuted {
         nft_mint: box_state.nft_mint,
@@ -138,6 +183,7 @@ pub fn sell_back_handler(
         market_price,
         spread_fee
     );
+    msg!("NFT burned and token account closed");
 
     Ok(())
 }

@@ -9,7 +9,7 @@ use crate::utils::*;
 #[instruction(inventory_id_hash: [u8; 32])]
 pub struct SetPriceSigned<'info> {
     #[account(
-        seeds = [b"skinvault", global.authority.as_ref()],
+        seeds = [b"global"],
         bump = global.bump
     )]
     pub global: Account<'info, Global>,

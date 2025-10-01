@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
+use crate::cpi::metaplex;
 use crate::errors::SkinVaultError;
 use crate::events::*;
 use crate::state::*;
@@ -10,7 +11,7 @@ use crate::state::*;
 pub struct MintBox<'info> {
     #[account(
         mut,
-        seeds = [b"skinvault", global.authority.as_ref()],
+        seeds = [b"global"],
         bump = global.bump
     )]
     pub global: Account<'info, Global>,
@@ -38,6 +39,33 @@ pub struct MintBox<'info> {
     )]
     pub nft_ata: Account<'info, TokenAccount>,
 
+    /// CHECK: Metadata account PDA
+    #[account(
+        mut,
+        seeds = [
+            b"metadata",
+            mpl_token_metadata::ID.as_ref(),
+            nft_mint.key().as_ref(),
+        ],
+        bump,
+        seeds::program = mpl_token_metadata::ID,
+    )]
+    pub metadata: UncheckedAccount<'info>,
+
+    /// CHECK: Master Edition account PDA (optional, for NFTs)
+    #[account(
+        mut,
+        seeds = [
+            b"metadata",
+            mpl_token_metadata::ID.as_ref(),
+            nft_mint.key().as_ref(),
+            b"edition",
+        ],
+        bump,
+        seeds::program = mpl_token_metadata::ID,
+    )]
+    pub master_edition: UncheckedAccount<'info>,
+
     #[account(
         init,
         payer = payer,
@@ -49,9 +77,18 @@ pub struct MintBox<'info> {
 
     #[account(mut)]
     pub payer: Signer<'info>,
+
+    /// CHECK: Metaplex Token Metadata Program
+    #[account(address = mpl_token_metadata::ID)]
+    pub metadata_program: UncheckedAccount<'info>,
+    
+    /// CHECK: Sysvar instructions
+    #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
+    pub sysvar_instructions: UncheckedAccount<'info>,
     
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    pub rent: Sysvar<'info, Rent>,
 }
 
 pub fn mint_box_handler(
@@ -59,6 +96,9 @@ pub fn mint_box_handler(
     batch_id: u64,
     metadata_uri: String,
 ) -> Result<()> {
+    // Check if program is paused
+    require!(!ctx.accounts.global.paused, SkinVaultError::BuybackDisabled);
+    
     let current_time = Clock::get()?.unix_timestamp;
 
     // Validate metadata URI
@@ -78,6 +118,8 @@ pub fn mint_box_handler(
     box_state.mint_time = current_time;
     box_state.open_time = 0;
     box_state.random_index = 0;
+    box_state.redeemed = false;
+    box_state.redeem_time = 0;
     box_state.bump = ctx.bumps.box_state;
 
     // Update counters
@@ -89,15 +131,47 @@ pub fn mint_box_handler(
         .checked_add(1)
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
+    // Create NFT metadata using Metaplex
+    let box_name = format!("SkinVault Box #{}", global.total_boxes_minted);
+    let box_symbol = "SVBOX".to_string();
+    
+    // Create metadata with creator (the program authority)
+    let creators = vec![metaplex::Creator {
+        address: global.authority,
+        verified: false, // Will be verified if needed
+        share: 100,
+    }];
+
+    metaplex::create_nft_metadata(
+        &ctx.accounts.metadata_program.to_account_info(),
+        &ctx.accounts.metadata.to_account_info(),
+        Some(&ctx.accounts.master_edition.to_account_info()),
+        &ctx.accounts.nft_mint.to_account_info(),
+        &ctx.accounts.payer.to_account_info(), // mint authority
+        &ctx.accounts.payer.to_account_info(), // payer
+        &ctx.accounts.payer.to_account_info(), // update authority (user can update)
+        &ctx.accounts.system_program.to_account_info(),
+        &ctx.accounts.sysvar_instructions.to_account_info(),
+        &ctx.accounts.token_program.to_account_info(),
+        box_name,
+        box_symbol,
+        metadata_uri.clone(),
+        Some(creators),
+        500, // 5% seller fee basis points
+        None, // collection (can add later)
+        true, // is_mutable (so metadata can be updated after opening)
+        None, // no PDA signer needed - user is authority
+    )?;
+
     emit!(BoxMinted {
         nft_mint: box_state.nft_mint,
         batch_id,
         owner: box_state.owner,
-        metadata_uri,
+        metadata_uri: metadata_uri.clone(),
     });
 
     msg!(
-        "Box minted: {} for batch {} by {}",
+        "Box minted with metadata: {} for batch {} by {}",
         box_state.nft_mint,
         batch_id,
         box_state.owner

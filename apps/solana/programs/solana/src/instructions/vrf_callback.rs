@@ -9,6 +9,12 @@ use crate::vrf::*;
 #[derive(Accounts)]
 pub struct VrfCallback<'info> {
     #[account(
+        seeds = [b"global"],
+        bump = global.bump
+    )]
+    pub global: Account<'info, Global>,
+
+    #[account(
         mut,
         seeds = [b"batch", batch.batch_id.to_le_bytes().as_ref()],
         bump = batch.bump
@@ -31,6 +37,14 @@ pub struct VrfCallback<'info> {
         close = box_owner
     )]
     pub vrf_pending: Account<'info, VrfPending>,
+
+    /// Only oracle or authority can provide VRF results
+    #[account(
+        constraint = vrf_authority.key() == global.oracle_pubkey 
+                  || vrf_authority.key() == global.authority
+        @ SkinVaultError::Unauthorized
+    )]
+    pub vrf_authority: Signer<'info>,
 
     /// CHECK: Box owner who will receive the refunded rent
     #[account(
