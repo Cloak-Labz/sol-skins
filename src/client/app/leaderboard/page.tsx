@@ -1,30 +1,52 @@
-"use client"
+"use client";
 
-import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { useState, useEffect } from "react"
-import { leaderboardService } from "@/lib/services"
-import { LeaderboardEntry, UserRank } from "@/lib/types/api"
-import { useUser } from "@/lib/contexts/UserContext"
-import { formatCurrency, formatSOL } from "@/lib/utils"
-import { Loader2, Trophy, TrendingUp, Users } from "lucide-react"
-import { toast } from "react-hot-toast"
-import { apiClient } from "@/lib/services/api"
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useState, useEffect } from "react";
+import { leaderboardService } from "@/lib/services";
+import { LeaderboardEntry, UserRank } from "@/lib/types/api";
+import { useUser } from "@/lib/contexts/UserContext";
+import { formatCurrency, formatSOL } from "@/lib/utils";
+import {
+  Loader2,
+  Trophy,
+  TrendingUp,
+  Users,
+  Info,
+  Timer,
+  Gift,
+} from "lucide-react";
+import { toast } from "react-hot-toast";
+import { apiClient } from "@/lib/services/api";
 
 export default function LeaderboardPage() {
-  const { user, isConnected } = useUser()
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
-  const [userRank, setUserRank] = useState<UserRank | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [metric, setMetric] = useState<'inventory-value' | 'cases-opened' | 'profit'>('inventory-value')
-  const [period, setPeriod] = useState<'all-time' | 'monthly' | 'weekly'>('all-time')
+  const { user, isConnected } = useUser();
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [userRank, setUserRank] = useState<UserRank | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [metric, setMetric] = useState<
+    "inventory-value" | "cases-opened" | "profit"
+  >("inventory-value");
+  const [period, setPeriod] = useState<"all-time" | "monthly" | "weekly">(
+    "all-time"
+  );
+  const [countdown, setCountdown] = useState<string>("");
+  const [mounted, setMounted] = useState(false);
 
   // Load leaderboard data whenever metric or period changes
   useEffect(() => {
-    loadLeaderboard()
-  }, [metric, period])
+    loadLeaderboard();
+  }, [metric, period]);
 
   // Load user rank if connected
   useEffect(() => {
@@ -32,67 +54,121 @@ export default function LeaderboardPage() {
       // Add a small delay to ensure wallet address is set in API client
       const timer = setTimeout(() => {
         if (apiClient.getWalletAddress()) {
-          console.log('Loading user rank - wallet connected and user loaded')
-          loadUserRank()
+          console.log("Loading user rank - wallet connected and user loaded");
+          loadUserRank();
         } else {
-          console.log('Wallet connected but API client wallet address not set yet')
+          console.log(
+            "Wallet connected but API client wallet address not set yet"
+          );
         }
-      }, 100)
-      
-      return () => clearTimeout(timer)
+      }, 100);
+
+      return () => clearTimeout(timer);
     }
-  }, [isConnected, user, metric])
+  }, [isConnected, user, metric]);
+
+  // Simple local countdown to mimic "Winners picked in" UI for design testing
+  useEffect(() => {
+    const target = new Date(
+      Date.now() +
+        4 * 24 * 60 * 60 * 1000 +
+        4 * 60 * 60 * 1000 +
+        10 * 60 * 1000 +
+        50 * 1000
+    );
+    const interval = setInterval(() => {
+      const diff = target.getTime() - Date.now();
+      if (diff <= 0) {
+        setCountdown("0d 00h 00m 00s");
+        clearInterval(interval);
+        return;
+      }
+      const d = Math.floor(diff / (24 * 60 * 60 * 1000));
+      const h = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+      const m = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
+      const s = Math.floor((diff % (60 * 1000)) / 1000);
+      setCountdown(
+        `${d}d ${String(h).padStart(2, "0")}h ${String(m).padStart(
+          2,
+          "0"
+        )}m ${String(s).padStart(2, "0")}s`
+      );
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // Trigger entrance animations after mount
+  useEffect(() => {
+    const t = setTimeout(() => setMounted(true), 50);
+    return () => clearTimeout(t);
+  }, []);
 
   const loadLeaderboard = async () => {
     try {
-      setLoading(true)
-      console.log('Loading leaderboard with filters:', { metric, period })
+      setLoading(true);
+      console.log("Loading leaderboard with filters:", { metric, period });
       const data = await leaderboardService.getLeaderboard({
         metric,
         period,
-        limit: 50
-      })
-      
-      console.log('Leaderboard data:', data)
-      
+        limit: 50,
+      });
+
+      console.log("Leaderboard data:", data);
+
       // Handle both unwrapped array and wrapped response
-      const leaderboardData = Array.isArray(data) ? data : data.data
-      console.log('Setting leaderboard data:', leaderboardData)
-      setLeaderboard(leaderboardData)
+      const leaderboardData = Array.isArray(data) ? data : data.data;
+      console.log("Setting leaderboard data:", leaderboardData);
+      setLeaderboard(leaderboardData);
     } catch (error) {
-      console.error('Error loading leaderboard:', error)
-      toast.error('Failed to load leaderboard')
+      console.error("Error loading leaderboard:", error);
+      toast.error("Failed to load leaderboard");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const loadUserRank = async () => {
     try {
-      console.log('Loading user rank with metric:', metric)
-      const data = await leaderboardService.getUserRank(metric)
-      console.log('User rank data:', data)
-      setUserRank(data)
+      console.log("Loading user rank with metric:", metric);
+      const data = await leaderboardService.getUserRank(metric);
+      console.log("User rank data:", data);
+      setUserRank(data);
     } catch (error) {
-      console.error('Error loading user rank:', error)
+      console.error("Error loading user rank:", error);
     }
-  }
+  };
 
   const getMetricLabel = (metric: string) => {
     switch (metric) {
-      case 'inventory-value': return 'Inventory Value'
-      case 'cases-opened': return 'Cases Opened'
-      case 'profit': return 'Net Profit'
-      default: return 'Inventory Value'
+      case "inventory-value":
+        return "Inventory Value";
+      case "cases-opened":
+        return "Cases Opened";
+      case "profit":
+        return "Net Profit";
+      default:
+        return "Inventory Value";
     }
-  }
+  };
 
   const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Trophy className="w-5 h-5 text-yellow-500" />
-    if (rank === 2) return <Trophy className="w-5 h-5 text-gray-400" />
-    if (rank === 3) return <Trophy className="w-5 h-5 text-amber-600" />
-    return <span className="text-sm font-bold text-gray-400">#{rank}</span>
-  }
+    if (rank === 1) return <Trophy className="w-5 h-5 text-yellow-500" />;
+    if (rank === 2) return <Trophy className="w-5 h-5 text-gray-400" />;
+    if (rank === 3) return <Trophy className="w-5 h-5 text-amber-600" />;
+    return <span className="text-sm font-bold text-gray-400">#{rank}</span>;
+  };
+
+  const getDisplayName = (entry: LeaderboardEntry) =>
+    entry.user.username ||
+    `${entry.user.walletAddress.slice(0, 4)}...${entry.user.walletAddress.slice(
+      -4
+    )}`;
+
+  // Derive a large "points" number for design testing (inspired by screenshot)
+  const getPoints = (entry: LeaderboardEntry) =>
+    Math.max(0, Math.round(entry.inventoryValue * 1000));
+
+  const podium = leaderboard.slice(0, 3);
 
   if (loading) {
     return (
@@ -102,18 +178,114 @@ export default function LeaderboardPage() {
           <p className="text-white">Loading leaderboard...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  console.log('Rendering leaderboard with data:', leaderboard)
-  console.log('Leaderboard length:', leaderboard.length)
+  console.log("Rendering leaderboard with data:", leaderboard);
+  console.log("Leaderboard length:", leaderboard.length);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white mb-4">Leaderboard</h1>
-        <p className="text-[#999] text-lg">Top collectors and their achievements</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-4xl font-bold text-white mb-2">Leaderboard</h1>
+          <p className="text-[#999]">Top collectors and their achievements</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="bg-[#111] border border-[#333] text-[#bbb] px-3 py-1.5 rounded-lg inline-flex items-center gap-2">
+            <Timer className="w-4 h-4" />
+            <span className="text-sm">Winners picked in:</span>
+            <span className="text-white font-medium text-sm">{countdown}</span>
+          </div>
+          <Button
+            className="bg-[#1f1f1f] hover:bg-[#2a2a2a] border border-[#333] text-white"
+            size="sm"
+          >
+            <Gift className="w-4 h-4 mr-2" /> Win prizes!
+          </Button>
+        </div>
       </div>
+
+      {/* Podium */}
+      {podium.length > 0 && (
+        <div className="flex justify-center items-end gap-2 mb-6">
+          {podium
+            .slice()
+            .sort((a, b) => a.rank - b.rank)
+            .map((p) => {
+              const isFirst = p.rank === 1;
+              const orderClass = isFirst
+                ? "order-2"
+                : p.rank === 2
+                ? "order-1"
+                : "order-3";
+              const height = isFirst ? "h-20" : "h-14";
+              const width = isFirst ? "w-24" : "w-20";
+              const avatarSize = isFirst ? "size-14" : "size-12";
+              const delayMs = p.rank === 2 ? 0 : p.rank === 1 ? 90 : 180;
+              return (
+                <div
+                  key={p.user.id}
+                  className={`flex flex-col items-center ${orderClass} transition-all duration-500 ease-out ${
+                    mounted
+                      ? "opacity-100 translate-y-0 scale-100"
+                      : "opacity-0 translate-y-2 scale-95"
+                  }`}
+                  style={{ transitionDelay: `${delayMs}ms` }}
+                >
+                  <Avatar
+                    className={`${avatarSize} mb-2 bg-[#141414] border border-[#333]`}
+                  >
+                    <AvatarFallback className="bg-gradient-to-br from-[#222] to-[#111] text-[#aaa] text-xs">
+                      {`#${p.rank}`}
+                    </AvatarFallback>
+                  </Avatar>
+                  <p className="text-white font-semibold text-xs truncate max-w-[140px] text-center">
+                    {getDisplayName(p)}
+                  </p>
+                  <p className="text-white font-bold text-base">
+                    {getPoints(p).toLocaleString()}
+                  </p>
+                  <p className="text-[#666] text-[11px] mb-1">points</p>
+                  <div
+                    className={`bg-[#151515] border border-[#333] ${height} ${width} rounded-lg origin-bottom transition-transform duration-500 ease-out ${
+                      mounted ? "scale-y-100" : "scale-y-0"
+                    }`}
+                    style={{ transitionDelay: `${delayMs}ms` }}
+                  />
+                </div>
+              );
+            })}
+        </div>
+      )}
+
+      {/* Helper badges */}
+      <div className="flex items-center gap-3 mb-4">
+        <div className="bg-[#111] border border-[#333] text-[#bbb] px-3 py-1.5 rounded-lg inline-flex items-center gap-2">
+          <Info className="w-4 h-4" />
+          <span className="text-sm">$0.01 = 1 point</span>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <Tabs
+        value={period}
+        onValueChange={(v: any) => setPeriod(v)}
+        className="mb-4"
+      >
+        <TabsList>
+          <TabsTrigger value="weekly">Weekly</TabsTrigger>
+          <TabsTrigger value="all-time">All Time</TabsTrigger>
+          <TabsTrigger value="prizes">Prizes</TabsTrigger>
+        </TabsList>
+        <TabsContent value="prizes">
+          <Card className="bg-[#111] border-[#333] rounded-xl mb-4">
+            <CardContent className="p-6 text-[#bbb]">
+              Design placeholder for prizes breakdown.
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Filters */}
       <div className="flex gap-4 mb-6">
@@ -125,17 +297,6 @@ export default function LeaderboardPage() {
             <SelectItem value="inventory-value">Inventory Value</SelectItem>
             <SelectItem value="cases-opened">Cases Opened</SelectItem>
             <SelectItem value="profit">Net Profit</SelectItem>
-          </SelectContent>
-        </Select>
-
-        <Select value={period} onValueChange={(value: any) => setPeriod(value)}>
-          <SelectTrigger className="w-48 bg-[#111] border-[#333] text-white">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-[#111] border-[#333]">
-            <SelectItem value="all-time">All Time</SelectItem>
-            <SelectItem value="monthly">This Month</SelectItem>
-            <SelectItem value="weekly">This Week</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -169,15 +330,15 @@ export default function LeaderboardPage() {
         </Card>
       )}
 
-      {/* Leaderboard */}
+      {/* Leaderboard Table */}
       <Card className="bg-[#111] border-[#333] rounded-xl overflow-hidden">
         <CardContent className="p-0">
           <div className="grid grid-cols-6 gap-4 p-4 border-b border-[#333] bg-[#1a1a1a]">
-            <div className="text-[#666] text-sm font-medium">Rank</div>
-            <div className="text-[#666] text-sm font-medium">User</div>
-            <div className="text-[#666] text-sm font-medium">Inventory Value</div>
-            <div className="text-[#666] text-sm font-medium">Cases Opened</div>
-            <div className="text-[#666] text-sm font-medium">Total Spent</div>
+            <div className="text-[#666] text-sm font-medium">#</div>
+            <div className="text-[#666] text-sm font-medium">Name</div>
+            <div className="text-[#666] text-sm font-medium">Volume</div>
+            <div className="text-[#666] text-sm font-medium">Claw Pulls</div>
+            <div className="text-[#666] text-sm font-medium">Points</div>
             <div className="text-[#666] text-sm font-medium">Net Profit</div>
           </div>
           {leaderboard.length === 0 ? (
@@ -185,52 +346,69 @@ export default function LeaderboardPage() {
               <p className="text-gray-400">No leaderboard data available</p>
             </div>
           ) : (
-            leaderboard.map((entry, index) => (
-            <div
-              key={entry.user.id}
-              className="grid grid-cols-6 gap-4 p-4 border-b border-[#333] last:border-b-0 hover:bg-[#1a1a1a] transition-colors"
-            >
-              <div className="flex items-center">
-                <div className="flex items-center gap-2">
-                  {getRankIcon(entry.rank)}
-                </div>
-              </div>
-              <div className="flex items-center">
-                <p className="text-white font-medium">
-                  {entry.user.username || `${entry.user.walletAddress.slice(0, 4)}...${entry.user.walletAddress.slice(-4)}`}
-                </p>
-              </div>
-              <div className="flex items-center">
-                <p className="text-white font-bold">
-                  {formatCurrency(entry.inventoryValue)}
-                </p>
-              </div>
-              <div className="flex items-center">
-                <p className="text-[#999]">{entry.casesOpened}</p>
-              </div>
-              <div className="flex items-center">
-                <p className="text-red-400 font-bold">
-                  -{formatCurrency(typeof entry.totalSpent === 'string' ? parseFloat(entry.totalSpent) : entry.totalSpent)}
-                </p>
-              </div>
-              <div className="flex items-center">
-                <Badge 
-                  variant="secondary" 
-                  className={`${
-                    entry.netProfit >= 0 
-                      ? "bg-green-500/20 text-green-400 border-green-500/30" 
-                      : "bg-red-500/20 text-red-400 border-red-500/30"
-                  }`}
+            leaderboard
+              .filter((entry) => entry.rank > 3)
+              .map((entry) => (
+                <div
+                  key={entry.user.id}
+                  className="grid grid-cols-6 gap-4 p-4 border-b border-[#333] last:border-b-0 hover:bg-[#1a1a1a] transition-colors"
                 >
-                  {entry.netProfit >= 0 ? '+' : ''}{formatCurrency(entry.netProfit)}
-                </Badge>
-              </div>
-            </div>
-            ))
+                  <div className="flex items-center">
+                    <div className="flex items-center gap-2">
+                      {getRankIcon(entry.rank)}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage
+                        alt={getDisplayName(entry)}
+                        src={`https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(
+                          getDisplayName(entry)
+                        )}`}
+                      />
+                      <AvatarFallback>
+                        {getDisplayName(entry).slice(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <p className="text-white font-medium">
+                      {getDisplayName(entry)}
+                    </p>
+                  </div>
+                  <div className="flex items-center">
+                    <p className="text-white font-bold">
+                      {formatCurrency(
+                        typeof entry.totalEarned === "string"
+                          ? parseFloat(entry.totalEarned)
+                          : entry.totalEarned
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex items-center">
+                    <p className="text-[#999]">{entry.casesOpened}</p>
+                  </div>
+                  <div className="flex items-center">
+                    <p className="text-white font-bold">
+                      {getPoints(entry).toLocaleString()}
+                    </p>
+                  </div>
+                  <div className="flex items-center">
+                    <Badge
+                      variant="secondary"
+                      className={`${
+                        entry.netProfit >= 0
+                          ? "bg-green-500/20 text-green-400 border-green-500/30"
+                          : "bg-red-500/20 text-red-400 border-red-500/30"
+                      }`}
+                    >
+                      {entry.netProfit >= 0 ? "+" : ""}
+                      {formatCurrency(entry.netProfit)}
+                    </Badge>
+                  </div>
+                </div>
+              ))
           )}
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
-
