@@ -58,7 +58,8 @@ export type Skinvault = {
     {
       "name": "assign",
       "docs": [
-        "Assign an inventory item to an opened box"
+        "Assign an inventory item to an opened box",
+        "Optionally updates NFT metadata to show the actual skin"
       ],
       "discriminator": [
         73,
@@ -300,13 +301,12 @@ export type Skinvault = {
           }
         },
         {
-          "name": "backendSignature",
+          "name": "newMetadata",
           "type": {
             "option": {
-              "array": [
-                "u8",
-                64
-              ]
+              "defined": {
+                "name": "skinMetadata"
+              }
             }
           }
         }
@@ -2320,6 +2320,9 @@ export type Skinvault = {
   "types": [
     {
       "name": "batch",
+      "docs": [
+        "Batch of inventory items with Merkle root for verification"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -2457,6 +2460,9 @@ export type Skinvault = {
     },
     {
       "name": "boxState",
+      "docs": [
+        "State of an individual loot box NFT"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -2600,6 +2606,9 @@ export type Skinvault = {
     },
     {
       "name": "global",
+      "docs": [
+        "Global program state - singleton PDA with fixed seed \"global\""
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -2719,6 +2728,9 @@ export type Skinvault = {
     },
     {
       "name": "inventoryAssignment",
+      "docs": [
+        "Tracks which inventory items have been assigned to prevent double-assignment"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -2841,6 +2853,9 @@ export type Skinvault = {
     },
     {
       "name": "priceStore",
+      "docs": [
+        "Oracle-signed price for an inventory item"
+      ],
       "type": {
         "kind": "struct",
         "fields": [
@@ -2895,6 +2910,49 @@ export type Skinvault = {
       }
     },
     {
+      "name": "skinMetadata",
+      "docs": [
+        "Metadata for updating NFT after inventory assignment"
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "name",
+            "docs": [
+              "New name (e.g., \"AK-47 | Redline\")"
+            ],
+            "type": "string"
+          },
+          {
+            "name": "symbol",
+            "docs": [
+              "New symbol (optional, defaults to \"SVBOX\")"
+            ],
+            "type": {
+              "option": "string"
+            }
+          },
+          {
+            "name": "uri",
+            "docs": [
+              "New metadata URI (e.g., \"https://arweave.net/ak47-redline.json\")"
+            ],
+            "type": "string"
+          },
+          {
+            "name": "sellerFeeBasisPoints",
+            "docs": [
+              "Seller fee basis points (optional, defaults to existing)"
+            ],
+            "type": {
+              "option": "u16"
+            }
+          }
+        ]
+      }
+    },
+    {
       "name": "treasuryDeposit",
       "type": {
         "kind": "struct",
@@ -2916,6 +2974,9 @@ export type Skinvault = {
     },
     {
       "name": "vrfPending",
+      "docs": [
+        "Temporary state for pending VRF randomness requests"
+      ],
       "type": {
         "kind": "struct",
         "fields": [

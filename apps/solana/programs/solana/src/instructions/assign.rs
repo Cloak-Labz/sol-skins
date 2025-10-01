@@ -4,7 +4,7 @@ use crate::cpi::metaplex;
 use crate::errors::SkinVaultError;
 use crate::events::*;
 use crate::merkle::*;
-use crate::state::*;
+use crate::states::*;
 use crate::utils::*;
 
 #[derive(Accounts)]
@@ -69,7 +69,7 @@ pub fn assign_handler(
     ctx: Context<Assign>,
     inventory_id_hash: [u8; 32],
     merkle_proof: Vec<[u8; 32]>,
-    _backend_signature: Option<[u8; 64]>, // Optional backend signature for additional verification
+    new_metadata: Option<SkinMetadata>, // Optional: Update NFT to show actual skin
 ) -> Result<()> {
     // Check if program is paused
     require!(!ctx.accounts.global.paused, SkinVaultError::BuybackDisabled);
@@ -103,6 +103,27 @@ pub fn assign_handler(
     let box_state = &mut ctx.accounts.box_state;
     box_state.assigned_inventory = inventory_id_hash;
 
+    // Update NFT metadata if new metadata provided (transforms mystery box → actual skin)
+    if let Some(metadata) = new_metadata {
+        msg!("Updating NFT metadata to: {}", metadata.name);
+        
+        metaplex::update_nft_metadata(
+            &ctx.accounts.metadata_program.to_account_info(),
+            &ctx.accounts.metadata.to_account_info(),
+            &ctx.accounts.signer.to_account_info(), // Box owner is update authority
+            Some(metadata.name.clone()),
+            metadata.symbol,
+            Some(metadata.uri.clone()),
+            None, // Keep existing creators
+            metadata.seller_fee_basis_points,
+            None, // User signs, not PDA
+        )?;
+
+        msg!("NFT metadata updated: {} -> {}", box_state.nft_mint, metadata.uri);
+    } else {
+        msg!("NFT metadata not updated (no new metadata provided)");
+    }
+
     emit!(InventoryAssigned {
         nft_mint: box_state.nft_mint,
         inventory_id_hash,
@@ -116,6 +137,22 @@ pub fn assign_handler(
     );
 
     Ok(())
+}
+
+/// Metadata for updating NFT after inventory assignment
+#[derive(AnchorSerialize, AnchorDeserialize, Clone)]
+pub struct SkinMetadata {
+    /// New name (e.g., "AK-47 | Redline")
+    pub name: String,
+    
+    /// New symbol (optional, defaults to "SVBOX")
+    pub symbol: Option<String>,
+    
+    /// New metadata URI (e.g., "https://arweave.net/ak47-redline.json")
+    pub uri: String,
+    
+    /// Seller fee basis points (optional, defaults to existing)
+    pub seller_fee_basis_points: Option<u16>,
 }
 
 /// Helper function to convert bytes to hex string for logging

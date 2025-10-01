@@ -6,7 +6,7 @@ pub mod errors;
 pub mod events;
 pub mod instructions;
 pub mod merkle;
-pub mod state;
+pub mod states;
 pub mod utils;
 pub mod vrf;
 
@@ -14,7 +14,7 @@ pub use constants::*;
 pub use errors::*;
 pub use events::*;
 pub use instructions::*;
-pub use state::*;
+pub use states::*;
 
 declare_id!("FuXM6BsXE54CAXaJLYRL91io2bgUMBFMWVDxTHkbaP9F");
 
@@ -64,17 +64,18 @@ pub mod skinvault {
     }
 
     /// Assign an inventory item to an opened box
+    /// Optionally updates NFT metadata to show the actual skin
     pub fn assign(
         ctx: Context<Assign>,
         inventory_id_hash: [u8; 32],
         merkle_proof: Vec<[u8; 32]>,
-        backend_signature: Option<[u8; 64]>,
+        new_metadata: Option<SkinMetadata>,
     ) -> Result<()> {
         instructions::assign::assign_handler(
             ctx,
             inventory_id_hash,
             merkle_proof,
-            backend_signature,
+            new_metadata,
         )
     }
 

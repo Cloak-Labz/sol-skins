@@ -3,7 +3,7 @@ use anchor_spl::token::{burn, close_account, Burn, CloseAccount, Mint, Token, To
 
 use crate::errors::SkinVaultError;
 use crate::events::*;
-use crate::state::*;
+use crate::states::*;
 use crate::utils::*;
 
 #[derive(Accounts)]

@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 
 use crate::errors::SkinVaultError;
 use crate::events::*;
-use crate::state::*;
+use crate::states::*;
 use crate::vrf::*;
 
 #[derive(Accounts)]

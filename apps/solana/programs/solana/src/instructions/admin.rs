@@ -6,7 +6,7 @@ use anchor_spl::{
 
 use crate::errors::SkinVaultError;
 use crate::events::*;
-use crate::state::*;
+use crate::states::*;
 
 #[derive(Accounts)]
 pub struct Initialize<'info> {

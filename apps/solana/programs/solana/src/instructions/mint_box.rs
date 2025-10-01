@@ -4,7 +4,7 @@ use anchor_spl::token::{Mint, Token, TokenAccount};
 use crate::cpi::metaplex;
 use crate::errors::SkinVaultError;
 use crate::events::*;
-use crate::state::*;
+use crate::states::*;
 
 #[derive(Accounts)]
 #[instruction(batch_id: u64)]
