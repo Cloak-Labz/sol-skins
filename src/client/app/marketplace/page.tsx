@@ -22,10 +22,13 @@ export default function MarketplacePage() {
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
 
-  // Load loot boxes from API
+  // Load loot boxes from API (doesn't require wallet connection)
   useEffect(() => {
     loadLootBoxes()
   }, [searchTerm, sortBy, filterBy, currentPage])
+  
+  // Reset to page 1 when filters change
+  // (split from loadLootBoxes effect to avoid double load)
 
   const loadLootBoxes = async () => {
     try {

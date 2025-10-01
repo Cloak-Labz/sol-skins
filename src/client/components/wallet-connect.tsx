@@ -6,7 +6,8 @@ import {
   WalletDisconnectButton,
 } from "@solana/wallet-adapter-react-ui";
 import { Button } from "@/components/ui/button";
-import { Wallet, Loader2 } from "lucide-react";
+import { Wallet, Loader2, Settings } from "lucide-react";
+import Link from "next/link";
 import { useUser } from "@/lib/contexts/UserContext";
 import { useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
@@ -20,40 +21,26 @@ export function WalletConnect() {
   // Auto-connect to backend when wallet connects
   useEffect(() => {
     if (connected && publicKey && !user && !isLoading && !connectingRef.current) {
-      const now = Date.now();
-      const timeSinceLastAttempt = now - lastAttemptRef.current;
-      
-      // Debounce: only attempt connection if at least 2 seconds have passed
-      if (timeSinceLastAttempt < 2000) {
-        console.log('Debouncing wallet connection attempt...');
-        return;
-      }
-      
       const walletAddress = publicKey.toString();
       console.log('Wallet connected, connecting to backend:', walletAddress);
       
       connectingRef.current = true;
-      lastAttemptRef.current = now;
       
-      // Add a small delay to prevent rapid reconnections
-      const timer = setTimeout(() => {
-        connectWallet(walletAddress)
-          .then(() => {
-            console.log('Wallet connected successfully to backend');
-            connectingRef.current = false;
-          })
-          .catch((error) => {
-            console.error('Failed to connect wallet to backend:', error);
-            connectingRef.current = false;
-          });
-      }, 1000); // Increased delay
-      
-      return () => {
-        clearTimeout(timer);
-        connectingRef.current = false;
-      };
+      // Connect immediately without delay
+      connectWallet(walletAddress)
+        .then(() => {
+          console.log('Wallet connected successfully to backend');
+          toast.success('Wallet connected!');
+        })
+        .catch((error) => {
+          console.error('Failed to connect wallet to backend:', error);
+          toast.error('Failed to connect wallet');
+        })
+        .finally(() => {
+          connectingRef.current = false;
+        });
     }
-  }, [connected, publicKey, user, isLoading, connectWallet]);
+  }, [connected, publicKey, user]);
 
   // Handle wallet disconnection
   const handleDisconnect = async () => {
@@ -82,8 +69,17 @@ export function WalletConnect() {
           ) : (
             <Wallet className="w-4 h-4 mr-2" />
           )}
-          {publicKey.toString().slice(0, 4)}...{publicKey.toString().slice(-4)}
+          {user?.username || `${publicKey.toString().slice(0, 4)}...${publicKey.toString().slice(-4)}`}
         </Button>
+        <Link href="/profile">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <Settings className="w-4 h-4" />
+          </Button>
+        </Link>
         <Button
           variant="destructive"
           size="sm"

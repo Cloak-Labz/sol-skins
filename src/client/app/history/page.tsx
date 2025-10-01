@@ -1,136 +1,91 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
-import { Search, ExternalLink, Package, Coins, ShoppingBag, TrendingUp, TrendingDown } from "lucide-react"
-
-interface Transaction {
-  id: string
-  type: "open_case" | "buyback" | "payout"
-  timestamp: string
-  amount: number
-  currency: "SOL" | "USDC"
-  status: "completed" | "pending" | "failed"
-  txHash: string
-  details: {
-    caseName?: string
-    skinName?: string
-    skinWeapon?: string
-    skinRarity?: string
-    skinImage?: string
-  }
-}
+import { Search, ExternalLink, Package, Coins, ShoppingBag, TrendingUp, TrendingDown, Loader2 } from "lucide-react"
+import { historyService } from "@/lib/services"
+import { Transaction } from "@/lib/types/api"
+import { useUser } from "@/lib/contexts/UserContext"
+import { toast } from "react-hot-toast"
+import { formatCurrency, formatSOL } from "@/lib/utils"
 
 export default function HistoryPage() {
+  const { isConnected } = useUser()
   const [searchTerm, setSearchTerm] = useState("")
   const [filterBy, setFilterBy] = useState("all")
   const [sortBy, setSortBy] = useState("date")
+  const [loading, setLoading] = useState(true)
+  const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [summary, setSummary] = useState({ totalSpent: 0, totalEarned: 0, netProfit: 0 })
 
-  const transactions: Transaction[] = [
-    {
-      id: "1",
-      type: "open_case",
-      timestamp: "2024-01-15T14:30:00Z",
-      amount: -2.5,
-      currency: "SOL",
-      status: "completed",
-      txHash: "5fHJvEy2CcqzqYw7VtNjRqMfHgXrz5UrGSREKWUDgzq8Pw3x6BtaRJqHFfVtaRcGgXrz5UrGSRE",
-      details: {
-        caseName: "Weapon Case",
-        skinName: "Redline",
-        skinWeapon: "AK-47",
-        skinRarity: "Rare",
-        skinImage: "🔫",
-      },
-    },
-    {
-      id: "2",
-      type: "buyback",
-      timestamp: "2024-01-14T16:45:00Z",
-      amount: 106.93,
-      currency: "USDC",
-      status: "completed",
-      txHash: "3dGCvDx9BbqzqYw7VtNjRqMfHgXrz5UrGSREKWUDgzq8Pw3x6BtaRJqHFfVtaRcGgXrz5UrGSRE",
-      details: {
-        skinName: "Asiimov",
-        skinWeapon: "M4A4",
-        skinRarity: "Epic",
-        skinImage: "⚡",
-      },
-    },
-    {
-      id: "3",
-      type: "open_case",
-      timestamp: "2024-01-12T10:15:00Z",
-      amount: -15.0,
-      currency: "SOL",
-      status: "completed",
-      txHash: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsUPw3x6BtaRJqHFfVtaRcGgXrz5UrGSRE",
-      details: {
-        caseName: "Knife Case",
-        skinName: "Fade",
-        skinWeapon: "Karambit",
-        skinRarity: "Legendary",
-        skinImage: "🗡️",
-      },
-    },
-    {
-      id: "4",
-      type: "payout",
-      timestamp: "2024-01-10T09:20:00Z",
-      amount: 2082.5,
-      currency: "USDC",
-      status: "completed",
-      txHash: "9yQNfKWUDgzq8Pw3x6BtaRJqHFfVtaRcGgXrz5UrGSREKWUDgzq8Pw3x6BtaRJqHFfVtaRcGg",
-      details: {
-        skinName: "Dragon Lore",
-        skinWeapon: "AWP",
-        skinRarity: "Legendary",
-        skinImage: "🐉",
-      },
-    },
-    {
-      id: "5",
-      type: "open_case",
-      timestamp: "2024-01-08T20:30:00Z",
-      amount: -5.0,
-      currency: "SOL",
-      status: "completed",
-      txHash: "8kMNtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsUPw3x6BtaRJqHFfVtaRcGgXrz5UrGSRE",
-      details: {
-        caseName: "Operation Case",
-        skinName: "Blue Steel",
-        skinWeapon: "Glock-18",
-        skinRarity: "Common",
-        skinImage: "🔵",
-      },
-    },
-    {
-      id: "6",
-      type: "open_case",
-      timestamp: "2024-01-05T11:45:00Z",
-      amount: -1.2,
-      currency: "SOL",
-      status: "pending",
-      txHash: "4bFGtE1BaqzqYw7VtNjRqMfHgXrz5UrGSREKWUDgzq8Pw3x6BtaRJqHFfVtaRcGgXrz5UrGSRE",
-      details: {
-        caseName: "Sticker Capsule",
-      },
-    },
-  ]
+  // Load transactions from backend
+  useEffect(() => {
+    if (isConnected) {
+      loadTransactions()
+      loadSummary()
+    } else {
+      // Not connected - clear data and stop loading
+      setLoading(false)
+      setTransactions([])
+      setSummary({ totalSpent: 0, totalEarned: 0, netProfit: 0 })
+    }
+  }, [isConnected]) // Only depend on isConnected
+  
+  // Reload when filters change (only if connected)
+  useEffect(() => {
+    if (isConnected) {
+      loadTransactions()
+    }
+  }, [filterBy, sortBy])
+
+  const loadTransactions = async () => {
+    try {
+      setLoading(true)
+      const response = await historyService.getTransactions({
+        type: filterBy === 'all' ? undefined : filterBy as any,
+        sortBy: sortBy as any,
+        limit: 100
+      })
+
+      if (response.success) {
+        setTransactions(response.data)
+      }
+    } catch (err) {
+      console.error('Failed to load transactions:', err)
+      toast.error('Failed to load transaction history')
+      setTransactions([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadSummary = async () => {
+    try {
+      const response = await historyService.getTransactionSummary()
+      
+      if (response.success) {
+        const data = response.data
+        setSummary({
+          totalSpent: data.totalCost || 0,
+          totalEarned: data.totalPayout || 0,
+          netProfit: data.netProfit || 0
+        })
+      }
+    } catch (err) {
+      console.error('Failed to load transaction summary:', err)
+    }
+  }
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
-      case "open_case":
+      case "case_opening":
         return Package
       case "buyback":
         return Coins
-      case "payout":
-        return TrendingUp
       default:
         return ShoppingBag
     }
@@ -174,36 +129,44 @@ export default function HistoryPage() {
   }
 
   const filteredTransactions = transactions.filter((tx) => {
-    const matchesSearch =
-      tx.details.skinName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.details.skinWeapon?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tx.details.caseName?.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesFilter = filterBy === "all" || tx.type === filterBy
-    return matchesSearch && matchesFilter
+    if (!searchTerm) return true
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      tx.skinName?.toLowerCase().includes(searchLower) ||
+      tx.lootBoxName?.toLowerCase().includes(searchLower)
+    )
   })
 
-  const sortedTransactions = [...filteredTransactions].sort((a, b) => {
-    switch (sortBy) {
-      case "amount-high":
-        return Math.abs(b.amount) - Math.abs(a.amount)
-      case "amount-low":
-        return Math.abs(a.amount) - Math.abs(b.amount)
-      case "date":
-        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-      default:
-        return 0
-    }
-  })
+  // Show not connected state
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🔒</div>
+            <h3 className="text-xl font-semibold text-foreground mb-2">Wallet Not Connected</h3>
+            <p className="text-muted-foreground">
+              Please connect your wallet to view your transaction history
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
-  const totalSpent = transactions
-    .filter((tx) => tx.amount < 0 && tx.status === "completed")
-    .reduce((sum, tx) => sum + Math.abs(tx.amount), 0)
-
-  const totalEarned = transactions
-    .filter((tx) => tx.amount > 0 && tx.status === "completed")
-    .reduce((sum, tx) => sum + tx.amount, 0)
-
-  const netProfit = totalEarned - totalSpent
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-4" />
+            <p className="text-white">Loading transaction history...</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen py-8">
@@ -224,7 +187,7 @@ export default function HistoryPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-2xl font-bold text-red-400">${totalSpent.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-red-400">{formatCurrency(summary.totalSpent)}</div>
             </CardContent>
           </Card>
 
@@ -236,7 +199,7 @@ export default function HistoryPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-2xl font-bold text-green-400">${totalEarned.toFixed(2)}</div>
+              <div className="text-2xl font-bold text-green-400">{formatCurrency(summary.totalEarned)}</div>
             </CardContent>
           </Card>
 
@@ -245,8 +208,8 @@ export default function HistoryPage() {
               <CardTitle className="text-sm text-muted-foreground">Net Profit/Loss</CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className={`text-2xl font-bold ${netProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
-                {netProfit >= 0 ? "+" : ""}${netProfit.toFixed(2)}
+              <div className={`text-2xl font-bold ${summary.netProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
+                {summary.netProfit >= 0 ? "+" : ""}{formatCurrency(summary.netProfit)}
               </div>
             </CardContent>
           </Card>
@@ -277,19 +240,21 @@ export default function HistoryPage() {
             <SelectTrigger className="w-full md:w-48 bg-input border-border">
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Transactions</SelectItem>
-              <SelectItem value="open_case">Case Openings</SelectItem>
-              <SelectItem value="buyback">Buybacks</SelectItem>
-              <SelectItem value="payout">Payouts</SelectItem>
-            </SelectContent>
+          <SelectContent>
+            <SelectItem value="all">All Transactions</SelectItem>
+            <SelectItem value="case_opening">Case Openings</SelectItem>
+            <SelectItem value="buyback">Buybacks</SelectItem>
+          </SelectContent>
           </Select>
         </div>
 
         {/* Transactions List */}
         <div className="space-y-4">
-          {sortedTransactions.map((tx) => {
+          {filteredTransactions.map((tx) => {
             const Icon = getTransactionIcon(tx.type)
+            const isDebit = tx.type === 'case_opening'
+            const amount = isDebit ? -parseFloat(tx.amountSol) : parseFloat(tx.amountUsdc || tx.amountSol)
+            
             return (
               <Card key={tx.id} className="bg-card border-border hover:border-accent/50 transition-colors">
                 <CardContent className="p-6">
@@ -302,9 +267,8 @@ export default function HistoryPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-3 mb-1">
                           <h3 className="font-semibold text-foreground">
-                            {tx.type === "open_case" && "Case Opening"}
+                            {tx.type === "case_opening" && "Case Opening"}
                             {tx.type === "buyback" && "Instant Buyback"}
-                            {tx.type === "payout" && "Payout"}
                           </h3>
                           <Badge className={getStatusColor(tx.status)}>
                             {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
@@ -313,21 +277,16 @@ export default function HistoryPage() {
 
                         <div className="flex items-center gap-4 text-sm text-muted-foreground">
                           <span>{new Date(tx.timestamp).toLocaleString()}</span>
-                          {tx.details.caseName && <span>• {tx.details.caseName}</span>}
+                          {tx.lootBoxName && <span>• {tx.lootBoxName}</span>}
                         </div>
 
-                        {tx.details.skinName && (
+                        {tx.skinName && (
                           <div className="flex items-center gap-2 mt-2">
-                            <span className="text-2xl">{tx.details.skinImage}</span>
+                            <span className="text-2xl">🔫</span>
                             <div>
                               <span className="text-foreground font-medium">
-                                {tx.details.skinWeapon} | {tx.details.skinName}
+                                {tx.skinName}
                               </span>
-                              {tx.details.skinRarity && (
-                                <span className={`ml-2 text-sm ${getRarityColor(tx.details.skinRarity)}`}>
-                                  {tx.details.skinRarity}
-                                </span>
-                              )}
                             </div>
                           </div>
                         )}
@@ -335,18 +294,20 @@ export default function HistoryPage() {
                     </div>
 
                     <div className="text-right">
-                      <div className={`text-xl font-bold ${getTransactionColor(tx.type, tx.amount)}`}>
-                        {tx.amount > 0 ? "+" : ""}${Math.abs(tx.amount).toFixed(2)} {tx.currency}
+                      <div className={`text-xl font-bold ${getTransactionColor(tx.type, amount)}`}>
+                        {amount > 0 ? "+" : ""}{formatCurrency(Math.abs(amount))}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-accent hover:text-accent/80 p-0 h-auto"
-                        onClick={() => window.open(`https://explorer.solana.com/tx/${tx.txHash}`, "_blank")}
-                      >
-                        <ExternalLink className="w-4 h-4 mr-1" />
-                        View on Explorer
-                      </Button>
+                      {tx.txHash && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-accent hover:text-accent/80 p-0 h-auto"
+                          onClick={() => window.open(`https://explorer.solana.com/tx/${tx.txHash}`, "_blank")}
+                        >
+                          <ExternalLink className="w-4 h-4 mr-1" />
+                          View on Explorer
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -355,7 +316,7 @@ export default function HistoryPage() {
           })}
         </div>
 
-        {sortedTransactions.length === 0 && (
+        {filteredTransactions.length === 0 && (
           <div className="text-center py-12">
             <div className="text-6xl mb-4">📊</div>
             <h3 className="text-xl font-semibold text-foreground mb-2">No transactions found</h3>

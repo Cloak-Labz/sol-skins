@@ -30,13 +30,6 @@ export function UserProvider({ children }: UserProviderProps) {
 
   const isConnected = walletAddress !== null;
 
-  // Load user data when wallet is connected
-  useEffect(() => {
-    if (walletAddress && !user) {
-      refreshUser();
-    }
-  }, [walletAddress]);
-
   const connectWallet = async (address: string, signature?: string, message?: string) => {
     // Prevent multiple simultaneous connection attempts
     if (isLoading) {
@@ -48,13 +41,19 @@ export function UserProvider({ children }: UserProviderProps) {
       setIsLoading(true);
       setError(null);
       
+      console.log('Connecting wallet to backend:', address);
       const response = await authService.connectWallet(address, signature, message);
+      console.log('Backend response:', response);
+      
       setUser(response.user);
       setWalletAddress(address);
+      
+      console.log('Wallet connected successfully');
     } catch (err) {
+      console.error('Wallet connection error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet';
       setError(errorMessage);
-      throw err;
+      // Don't throw - just show error to user
     } finally {
       setIsLoading(false);
     }

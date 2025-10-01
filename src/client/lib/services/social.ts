@@ -59,15 +59,9 @@ class SocialService {
     const queryString = params.toString();
     const url = queryString ? `/activity/recent?${queryString}` : '/activity/recent';
     
-    const response = await apiClient.get(url);
-    
-    // Check if response is already the data array (from interceptor) or if it's the full response
-    if (Array.isArray(response)) {
-      console.log('SocialService: Response is already an array, returning directly');
-      return response;
-    }
-    
-    return response.data;
+    // apiClient.get unwraps the response and returns just the data
+    const activities = await apiClient.get<ActivityItem[]>(url);
+    return activities;
   }
 
   // Get activity stats

@@ -1,96 +1,64 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Input } from "@/components/ui/input"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Search, Filter, Coins, ExternalLink, Package } from "lucide-react"
-
-interface InventorySkin {
-  id: string
-  name: string
-  weapon: string
-  rarity: "Common" | "Uncommon" | "Rare" | "Epic" | "Legendary"
-  condition: string
-  price: number
-  image: string
-  nftAddress: string
-  acquiredDate: string
-  canSell: boolean
-}
+import { Search, Filter, Coins, ExternalLink, Package, Loader2 } from "lucide-react"
+import { inventoryService } from "@/lib/services"
+import { UserSkin } from "@/lib/types/api"
+import { useUser } from "@/lib/contexts/UserContext"
+import { toast } from "react-hot-toast"
+import { formatCurrency } from "@/lib/utils"
 
 export default function InventoryPage() {
+  const { isConnected } = useUser()
   const [searchTerm, setSearchTerm] = useState("")
   const [sortBy, setSortBy] = useState("date")
   const [filterBy, setFilterBy] = useState("all")
-  const [selectedSkin, setSelectedSkin] = useState<InventorySkin | null>(null)
+  const [selectedSkin, setSelectedSkin] = useState<UserSkin | null>(null)
   const [isSellingDialogOpen, setIsSellingDialogOpen] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [selling, setSelling] = useState(false)
+  const [inventorySkins, setInventorySkins] = useState<UserSkin[]>([])
+  const [totalValue, setTotalValue] = useState(0)
 
-  const inventorySkins: InventorySkin[] = [
-    {
-      id: "1",
-      name: "Redline",
-      weapon: "AK-47",
-      rarity: "Rare",
-      condition: "Field-Tested",
-      price: 45.2,
-      image: "🔫",
-      nftAddress: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-      acquiredDate: "2024-01-15",
-      canSell: true,
-    },
-    {
-      id: "2",
-      name: "Dragon Lore",
-      weapon: "AWP",
-      rarity: "Legendary",
-      condition: "Factory New",
-      price: 2450.0,
-      image: "🐉",
-      nftAddress: "9yQNfKWUDgzq8Pw3x6BtaRJqHFfVtaRcGgXrz5UrGSRE",
-      acquiredDate: "2024-01-10",
-      canSell: true,
-    },
-    {
-      id: "3",
-      name: "Asiimov",
-      weapon: "M4A4",
-      rarity: "Epic",
-      condition: "Well-Worn",
-      price: 125.5,
-      image: "⚡",
-      nftAddress: "3dGCvDx9BbqzqYw7VtNjRqMfHgXrz5UrGSREKWUDgzq8",
-      acquiredDate: "2024-01-12",
-      canSell: true,
-    },
-    {
-      id: "4",
-      name: "Fade",
-      weapon: "Karambit",
-      rarity: "Legendary",
-      condition: "Minimal Wear",
-      price: 1200.0,
-      image: "🗡️",
-      nftAddress: "5fHJvEy2CcqzqYw7VtNjRqMfHgXrz5UrGSREKWUDgzq8",
-      acquiredDate: "2024-01-08",
-      canSell: false,
-    },
-    {
-      id: "5",
-      name: "Blue Steel",
-      weapon: "Glock-18",
-      rarity: "Common",
-      condition: "Battle-Scarred",
-      price: 8.5,
-      image: "🔵",
-      nftAddress: "8kMNtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU",
-      acquiredDate: "2024-01-14",
-      canSell: true,
-    },
-  ]
+  // Load inventory from backend
+  useEffect(() => {
+    if (isConnected) {
+      loadInventory()
+    } else {
+      // Not connected - clear data and stop loading
+      setLoading(false)
+      setInventorySkins([])
+      setTotalValue(0)
+    }
+  }, [isConnected]) // Only depend on isConnected, filters handled in loadInventory
+
+  const loadInventory = async () => {
+    try {
+      setLoading(true)
+      const response = await inventoryService.getInventory({
+        sortBy: sortBy as any,
+        filterBy: filterBy === 'all' ? undefined : filterBy as any
+      })
+
+      if (response.success) {
+        setInventorySkins(response.data.skins)
+        setTotalValue(response.data.summary.totalValue)
+      }
+    } catch (err) {
+      console.error('Failed to load inventory:', err)
+      toast.error('Failed to load inventory')
+      setInventorySkins([])
+      setTotalValue(0)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getRarityColor = (rarity: string) => {
     switch (rarity.toLowerCase()) {
@@ -127,41 +95,70 @@ export default function InventoryPage() {
   }
 
   const filteredSkins = inventorySkins.filter((skin) => {
-    const matchesSearch =
-      skin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      skin.weapon.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesFilter = filterBy === "all" || skin.rarity.toLowerCase() === filterBy.toLowerCase()
-    return matchesSearch && matchesFilter
+    if (!searchTerm) return true
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      skin.skinTemplate.skinName.toLowerCase().includes(searchLower) ||
+      skin.skinTemplate.weapon.toLowerCase().includes(searchLower)
+    )
   })
 
-  const sortedSkins = [...filteredSkins].sort((a, b) => {
-    switch (sortBy) {
-      case "price-low":
-        return a.price - b.price
-      case "price-high":
-        return b.price - a.price
-      case "name":
-        return a.name.localeCompare(b.name)
-      case "rarity":
-        return b.rarity.localeCompare(a.rarity)
-      case "date":
-        return new Date(b.acquiredDate).getTime() - new Date(a.acquiredDate).getTime()
-      default:
-        return 0
-    }
-  })
-
-  const totalValue = inventorySkins.reduce((sum, skin) => sum + skin.price, 0)
-
-  const handleSellSkin = (skin: InventorySkin) => {
+  const handleSellSkin = (skin: UserSkin) => {
     setSelectedSkin(skin)
     setIsSellingDialogOpen(true)
   }
 
-  const confirmSell = () => {
-    // Handle sell logic here
-    setIsSellingDialogOpen(false)
-    setSelectedSkin(null)
+  const confirmSell = async () => {
+    if (!selectedSkin) return
+
+    try {
+      setSelling(true)
+      const response = await inventoryService.sellSkin(selectedSkin.id, {})
+      
+      if (response.success) {
+        toast.success(`Sold for ${formatCurrency(response.data.payoutAmount)}!`)
+        setIsSellingDialogOpen(false)
+        setSelectedSkin(null)
+        // Reload inventory
+        loadInventory()
+      }
+    } catch (err) {
+      console.error('Failed to sell skin:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to sell skin')
+    } finally {
+      setSelling(false)
+    }
+  }
+
+  // Show not connected state
+  if (!isConnected) {
+    return (
+      <div className="min-h-screen py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center py-12">
+            <div className="text-6xl mb-4">🔒</div>
+            <h3 className="text-xl font-semibold text-foreground mb-2">Wallet Not Connected</h3>
+            <p className="text-muted-foreground">
+              Please connect your wallet to view your inventory
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="min-h-screen py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-4" />
+            <p className="text-white">Loading inventory...</p>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -222,50 +219,62 @@ export default function InventoryPage() {
         </div>
 
         {/* Inventory Grid */}
-        {sortedSkins.length > 0 ? (
+        {filteredSkins.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {sortedSkins.map((skin) => (
+            {filteredSkins.map((skin) => (
               <Card
                 key={skin.id}
-                className={`bg-card border-2 ${getRarityColor(skin.rarity)} ${getRarityGlow(skin.rarity)} hover:scale-105 transition-all duration-200`}
+                className={`bg-card border-2 ${getRarityColor(skin.skinTemplate.rarity)} ${getRarityGlow(skin.skinTemplate.rarity)} hover:scale-105 transition-all duration-200`}
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <Badge className={getRarityColor(skin.rarity)}>{skin.rarity}</Badge>
-                    {!skin.canSell && (
+                    <Badge className={getRarityColor(skin.skinTemplate.rarity)}>{skin.skinTemplate.rarity}</Badge>
+                    {skin.status !== 'owned' && (
                       <Badge variant="outline" className="text-xs">
-                        Locked
+                        {skin.status}
                       </Badge>
                     )}
                   </div>
                   <div className="aspect-square bg-muted rounded-lg flex items-center justify-center text-6xl mb-4 animate-float">
-                    {skin.image}
+                    {skin.skinTemplate.imageUrl ? (
+                      <img 
+                        src={skin.skinTemplate.imageUrl} 
+                        alt={skin.skinTemplate.skinName}
+                        className="w-full h-full object-cover rounded-lg"
+                      />
+                    ) : (
+                      '🔫'
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <CardTitle className="text-lg mb-1">{skin.weapon}</CardTitle>
-                  <p className="text-accent font-semibold mb-1">{skin.name}</p>
+                  <CardTitle className="text-lg mb-1">{skin.skinTemplate.weapon}</CardTitle>
+                  <p className="text-accent font-semibold mb-1">{skin.skinTemplate.skinName}</p>
                   <p className="text-sm text-muted-foreground mb-3">{skin.condition}</p>
 
                   <div className="flex justify-between items-center mb-4">
-                    <span className="text-2xl font-bold text-foreground">${skin.price.toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-foreground">
+                      {formatCurrency(skin.currentPrice)}
+                    </span>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(skin.acquiredDate).toLocaleDateString()}
+                      {new Date(skin.acquiredAt).toLocaleDateString()}
                     </span>
                   </div>
 
                   <div className="space-y-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full border-accent/50 text-accent hover:bg-accent/10 bg-transparent"
-                      onClick={() => window.open(`https://explorer.solana.com/address/${skin.nftAddress}`, "_blank")}
-                    >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      View NFT
-                    </Button>
+                    {skin.mintAddress && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full border-accent/50 text-accent hover:bg-accent/10 bg-transparent"
+                        onClick={() => window.open(`https://explorer.solana.com/address/${skin.mintAddress}`, "_blank")}
+                      >
+                        <ExternalLink className="w-4 h-4 mr-2" />
+                        View NFT
+                      </Button>
+                    )}
 
-                    {skin.canSell && (
+                    {skin.status === 'owned' && (
                       <Button
                         size="sm"
                         className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -307,35 +316,60 @@ export default function InventoryPage() {
             {selectedSkin && (
               <div className="space-y-4">
                 <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
-                  <div className="text-4xl">{selectedSkin.image}</div>
+                  <div className="text-4xl">
+                    {selectedSkin.skinTemplate.imageUrl ? (
+                      <img 
+                        src={selectedSkin.skinTemplate.imageUrl} 
+                        alt={selectedSkin.skinTemplate.skinName}
+                        className="w-16 h-16 object-cover rounded"
+                      />
+                    ) : (
+                      '🔫'
+                    )}
+                  </div>
                   <div>
                     <h3 className="font-semibold text-foreground">
-                      {selectedSkin.weapon} | {selectedSkin.name}
+                      {selectedSkin.skinTemplate.weapon} | {selectedSkin.skinTemplate.skinName}
                     </h3>
                     <p className="text-sm text-muted-foreground">{selectedSkin.condition}</p>
-                    <Badge className={getRarityColor(selectedSkin.rarity)}>{selectedSkin.rarity}</Badge>
+                    <Badge className={getRarityColor(selectedSkin.skinTemplate.rarity)}>{selectedSkin.skinTemplate.rarity}</Badge>
                   </div>
                 </div>
 
                 <div className="bg-accent/10 p-4 rounded-lg">
                   <div className="flex justify-between items-center">
                     <span className="text-foreground">Buyback Price:</span>
-                    <span className="text-2xl font-bold text-accent">${(selectedSkin.price * 0.85).toFixed(2)}</span>
+                    <span className="text-2xl font-bold text-accent">
+                      {formatCurrency(selectedSkin.currentPrice * 0.85)}
+                    </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    85% of market value (${selectedSkin.price.toFixed(2)})
+                    85% of market value ({formatCurrency(selectedSkin.currentPrice)})
                   </p>
                 </div>
 
                 <div className="flex gap-3">
-                  <Button variant="outline" onClick={() => setIsSellingDialogOpen(false)} className="flex-1">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setIsSellingDialogOpen(false)} 
+                    className="flex-1"
+                    disabled={selling}
+                  >
                     Cancel
                   </Button>
                   <Button
                     onClick={confirmSell}
                     className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    disabled={selling}
                   >
-                    Confirm Sale
+                    {selling ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Selling...
+                      </>
+                    ) : (
+                      'Confirm Sale'
+                    )}
                   </Button>
                 </div>
               </div>

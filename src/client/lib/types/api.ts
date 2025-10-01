@@ -186,15 +186,23 @@ export interface ActivityItem {
   id: string
   type: 'case_opened' | 'skin_sold' | 'rare_drop'
   user: {
+    id: string
     username?: string
     walletAddress: string
   }
   skin?: {
+    id: string
     weapon: string
     skinName: string
     rarity: string
+    condition: string
     imageUrl?: string
-    valueUsd: number
+    valueUsd: string
+  }
+  lootBox?: {
+    id: string
+    name: string
+    rarity: string
   }
   timestamp: string
 }

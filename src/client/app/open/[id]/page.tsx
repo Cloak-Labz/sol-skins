@@ -31,9 +31,8 @@ export default function OpenCasePage() {
   // Load loot box details
   useEffect(() => {
     if (!params.id) return
-    if (!isConnected) return
     loadLootBoxDetails()
-  }, [params.id, isConnected])
+  }, [params.id])
 
   // Poll for case opening status if we have an opening in progress
   useEffect(() => {
@@ -50,20 +49,12 @@ export default function OpenCasePage() {
       setLoading(true)
       setError(null)
       
-      // First, get the case opening details to find the loot box ID
-      const opening = await casesService.getOpeningStatus(params.id!)
-      setCaseOpening(opening)
-      
-      // Then get the loot box details using the loot box ID from the case opening
-      if (opening.lootBoxTypeId) {
-        const lootBoxResponse = await marketplaceService.getLootBoxById(opening.lootBoxTypeId)
-        setLootBox(lootBoxResponse.data)
-      } else {
-        setError('Missing loot box reference for this opening')
-      }
+      // params.id is the loot box ID, not the case opening ID
+      const lootBoxResponse = await marketplaceService.getLootBoxById(params.id!)
+      setLootBox(lootBoxResponse.data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load case opening details')
-      toast.error('Failed to load case opening details')
+      setError(err instanceof Error ? err.message : 'Failed to load loot box details')
+      toast.error('Failed to load loot box details')
     } finally {
       setLoading(false)
     }
@@ -93,6 +84,10 @@ export default function OpenCasePage() {
 
   const openCase = async () => {
     if (!lootBox) return
+    if (!isConnected) {
+      toast.error('Please connect your wallet first')
+      return
+    }
 
     try {
       setIsOpening(true)
@@ -104,8 +99,8 @@ export default function OpenCasePage() {
         paymentMethod: 'SOL' // Default to SOL for now
       })
 
-      // Create a mock case opening object for the UI
-      const mockOpening: CaseOpening = {
+      // Create a case opening object for the UI
+      const newOpening: CaseOpening = {
         id: response.data.caseOpeningId,
         status: 'pending',
         vrfRequestId: response.data.vrfRequestId,
@@ -113,57 +108,70 @@ export default function OpenCasePage() {
         estimatedCompletionTime: response.data.estimatedCompletionTime
       }
 
-      setCaseOpening(mockOpening)
+      setCaseOpening(newOpening)
       toast.success('Case opening initiated!')
 
-      // Simulate the opening process
+      // Animation sequence
       setTimeout(() => {
         setAnimationPhase("slowing")
       }, 2000)
 
-      // The actual result will come from polling the backend
-      // For now, we'll simulate it after 4 seconds
-      setTimeout(() => {
-        if (caseOpening?.status === 'pending') {
-          // Simulate a result if backend hasn't responded yet
-          simulateResult()
-        }
-      }, 4000)
+      // Since we're simulating, we need to get the result
+      // In production, this would be VRF callback
+      setTimeout(async () => {
+        // Simulate result
+        simulateResult()
+      }, 5000)
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to open case')
       setIsOpening(false)
       setAnimationPhase("idle")
-      toast.error('Failed to open case')
+      toast.error(err instanceof Error ? err.message : 'Failed to open case')
     }
   }
 
   const simulateResult = () => {
-    if (!lootBox?.possibleSkins) return
+    if (!lootBox?.possibleSkins || lootBox.possibleSkins.length === 0) {
+      // Fallback if no skins available
+      toast.error('No skins available in this loot box')
+      setIsOpening(false)
+      setAnimationPhase("idle")
+      return
+    }
 
     // Select random skin with weighted probabilities based on loot box chances
     const random = Math.random() * 100
     let selectedSkin: any
 
     const chances = lootBox.chances
-    if (random < parseFloat(chances.legendary)) {
+    const legendaryThreshold = parseFloat(chances.legendary)
+    const epicThreshold = legendaryThreshold + parseFloat(chances.epic)
+    const rareThreshold = epicThreshold + parseFloat(chances.rare)
+    const uncommonThreshold = rareThreshold + parseFloat(chances.uncommon)
+
+    if (random < legendaryThreshold) {
       selectedSkin = lootBox.possibleSkins.find(s => s.rarity === 'Legendary')
-    } else if (random < parseFloat(chances.legendary) + parseFloat(chances.epic)) {
+    } else if (random < epicThreshold) {
       selectedSkin = lootBox.possibleSkins.find(s => s.rarity === 'Epic')
-    } else if (random < parseFloat(chances.legendary) + parseFloat(chances.epic) + parseFloat(chances.rare)) {
+    } else if (random < rareThreshold) {
       selectedSkin = lootBox.possibleSkins.find(s => s.rarity === 'Rare')
-    } else if (random < parseFloat(chances.legendary) + parseFloat(chances.epic) + parseFloat(chances.rare) + parseFloat(chances.uncommon)) {
+    } else if (random < uncommonThreshold) {
       selectedSkin = lootBox.possibleSkins.find(s => s.rarity === 'Uncommon')
     } else {
       selectedSkin = lootBox.possibleSkins.find(s => s.rarity === 'Common')
     }
 
-    if (selectedSkin) {
-      setRevealedSkin(selectedSkin)
-      setAnimationPhase("revealed")
-      setShowResult(true)
-      setIsOpening(false)
+    // Fallback to random skin if no skin found for rarity
+    if (!selectedSkin) {
+      selectedSkin = lootBox.possibleSkins[Math.floor(Math.random() * lootBox.possibleSkins.length)]
     }
+
+    console.log('Simulated result:', selectedSkin)
+    setRevealedSkin(selectedSkin)
+    setAnimationPhase("revealed")
+    setShowResult(true)
+    setIsOpening(false)
   }
 
   const keepSkin = async () => {
@@ -272,7 +280,11 @@ export default function OpenCasePage() {
                 {revealedSkin.weapon} | {revealedSkin.skinName}
               </h2>
               <p className="text-muted-foreground mb-4">{revealedSkin.condition}</p>
-              <div className="text-4xl font-bold text-accent mb-8">${revealedSkin.basePriceUsd?.toFixed(2) || '0.00'}</div>
+              <div className="text-4xl font-bold text-accent mb-8">
+                ${typeof revealedSkin.basePriceUsd === 'number' 
+                  ? revealedSkin.basePriceUsd.toFixed(2) 
+                  : parseFloat(revealedSkin.basePriceUsd || '0').toFixed(2)}
+              </div>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Button
@@ -352,12 +364,18 @@ export default function OpenCasePage() {
                 <h2 className="text-2xl font-bold text-foreground mb-2">Opening Case...</h2>
                 <div className="w-full bg-muted rounded-full h-2">
                   <div
-                    className="bg-accent h-2 rounded-full transition-all duration-4000 ease-out"
+                    className="bg-accent h-2 rounded-full transition-all ease-out"
                     style={{
-                      width: animationPhase === "spinning" ? "30%" : animationPhase === "slowing" ? "80%" : "100%",
+                      width: animationPhase === "spinning" ? "30%" : animationPhase === "slowing" ? "95%" : "100%",
+                      transitionDuration: animationPhase === "spinning" ? "1s" : animationPhase === "slowing" ? "3s" : "0.5s"
                     }}
                   ></div>
                 </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {animationPhase === "spinning" && "Randomizing..."}
+                  {animationPhase === "slowing" && "Almost there..."}
+                  {animationPhase === "revealed" && "Complete!"}
+                </p>
               </div>
 
               {/* Roulette Strip */}
