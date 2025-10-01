@@ -1,5 +1,6 @@
 export { authService } from './auth'
 export { marketplaceService } from './marketplace'
+export { skinMarketplaceService } from './skinMarketplace'
 export { casesService } from './cases'
 export { inventoryService } from './inventory'
 export { historyService } from './history'

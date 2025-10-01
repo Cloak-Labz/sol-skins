@@ -9,6 +9,7 @@ import { Transaction } from '../entities/Transaction';
 import { CaseOpening } from '../entities/CaseOpening';
 import { PriceHistory } from '../entities/PriceHistory';
 import { UserSession } from '../entities/UserSession';
+import { SkinListing } from '../entities/SkinListing';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -29,6 +30,7 @@ export const AppDataSource = new DataSource({
     CaseOpening,
     PriceHistory,
     UserSession,
+    SkinListing,
   ],
   migrations: ['src/database/migrations/*.ts'],
   subscribers: ['src/database/subscribers/*.ts'],

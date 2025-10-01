@@ -9,42 +9,59 @@ import { Input } from "@/components/ui/input"
 import { Search, Filter, ShoppingCart, Loader2, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { formatCurrency } from "@/lib/utils"
+import { skinMarketplaceService, SkinListing } from "@/lib/services/skinMarketplace"
+import { useUser } from "@/lib/contexts/UserContext"
+import { toast } from "react-hot-toast"
 
 export default function MarketplacePage() {
+  const { isConnected } = useUser()
   const [searchTerm, setSearchTerm] = useState("")
-  const [sortBy, setSortBy] = useState("price-low")
+  const [sortBy, setSortBy] = useState("newest")
   const [filterBy, setFilterBy] = useState("all")
+  const [listings, setListings] = useState<SkinListing[]>([])
+  const [loading, setLoading] = useState(true)
+  const [buying, setBuying] = useState<string | null>(null)
 
-  // Placeholder data - will be replaced with actual user listings
-  const listings = [
-    {
-      id: "1",
-      skinName: "AK-47 | Redline",
-      condition: "Field-Tested",
-      rarity: "Rare",
-      price: 45.20,
-      seller: "User123",
-      imageUrl: null,
-    },
-    {
-      id: "2",
-      skinName: "AWP | Dragon Lore",
-      condition: "Factory New",
-      rarity: "Legendary",
-      price: 2450.00,
-      seller: "ProPlayer",
-      imageUrl: null,
-    },
-    {
-      id: "3",
-      skinName: "M4A4 | Asiimov",
-      condition: "Well-Worn",
-      rarity: "Epic",
-      price: 125.50,
-      seller: "Trader99",
-      imageUrl: null,
-    },
-  ]
+  useEffect(() => {
+    loadListings()
+  }, [searchTerm, sortBy, filterBy])
+
+  const loadListings = async () => {
+    try {
+      setLoading(true)
+      const data = await skinMarketplaceService.getListings({
+        search: searchTerm || undefined,
+        sortBy: sortBy as any,
+        filterBy: filterBy === 'all' ? undefined : filterBy,
+        limit: 50,
+      })
+      setListings(data)
+    } catch (err) {
+      console.error('Failed to load listings:', err)
+      toast.error('Failed to load marketplace listings')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBuy = async (listingId: string) => {
+    if (!isConnected) {
+      toast.error('Please connect your wallet first')
+      return
+    }
+
+    try {
+      setBuying(listingId)
+      await skinMarketplaceService.buySkin(listingId)
+      toast.success('Skin purchased successfully!')
+      loadListings() // Refresh listings
+    } catch (err) {
+      console.error('Failed to buy skin:', err)
+      toast.error(err instanceof Error ? err.message : 'Failed to purchase skin')
+    } finally {
+      setBuying(null)
+    }
+  }
 
   const getRarityColor = (rarity: string) => {
     switch (rarity.toLowerCase()) {
@@ -134,7 +151,11 @@ export default function MarketplacePage() {
       </div>
 
       {/* Listings Grid */}
-      {listings.length > 0 ? (
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <Loader2 className="w-8 h-8 animate-spin text-white" />
+        </div>
+      ) : listings.length > 0 ? (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {listings.map((listing) => (
             <Card
@@ -173,11 +194,19 @@ export default function MarketplacePage() {
                     {formatCurrency(listing.price)}
                   </div>
                   <Button 
+                    onClick={() => handleBuy(listing.id)}
+                    disabled={buying === listing.id}
                     className="bg-[#333] hover:bg-[#444] text-white border-0"
                     size="sm"
                   >
-                    <ShoppingCart className="w-4 h-4 mr-2" />
-                    Buy
+                    {buying === listing.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <ShoppingCart className="w-4 h-4 mr-2" />
+                        Buy
+                      </>
+                    )}
                   </Button>
                 </div>
               </CardContent>
@@ -197,14 +226,6 @@ export default function MarketplacePage() {
         </div>
       )}
 
-      {/* Coming Soon Notice */}
-      <div className="mt-12 p-6 bg-[#111] border border-[#333] rounded-lg text-center">
-        <div className="text-4xl mb-4">⚠️</div>
-        <h3 className="text-xl font-bold text-white mb-2">Marketplace Coming Soon</h3>
-        <p className="text-[#999]">
-          Peer-to-peer trading is under development. You'll be able to list and buy skins from other players soon!
-        </p>
-      </div>
     </div>
   )
 }

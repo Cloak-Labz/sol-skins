@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authRoutes } from './auth';
 import { marketplaceRoutes } from './marketplace';
+import { skinMarketplaceRoutes } from './skinMarketplace';
 import { casesRoutes } from './cases';
 import { inventoryRoutes } from './inventory';
 import { historyRoutes } from './history';
@@ -13,7 +14,8 @@ export async function createRoutes(): Promise<Router> {
 
   // Mount route modules
   router.use('/auth', authRoutes);
-  router.use('/marketplace', marketplaceRoutes);
+  router.use('/marketplace', marketplaceRoutes); // Loot boxes
+  router.use('/skin-marketplace', skinMarketplaceRoutes); // P2P skin trading
   router.use('/cases', casesRoutes);
   router.use('/inventory', inventoryRoutes);
   router.use('/history', historyRoutes);
