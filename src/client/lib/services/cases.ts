@@ -26,19 +26,14 @@ export class CasesService {
     return response.data
   }
 
-  async getOpeningStatus(id: string): Promise<{
-    success: boolean
-    data: CaseOpening
-  }> {
-    const response = await apiClient.get(`/cases/opening/${id}/status`)
+  async getOpeningStatus(id: string): Promise<CaseOpening> {
+    const wallet = apiClient.getWalletAddress();
+    const url = wallet
+      ? `/cases/opening/${id}/status?walletAddress=${encodeURIComponent(wallet)}`
+      : `/cases/opening/${id}/status`;
     
-    // Check if response is already the data object (from interceptor) or if it's the full response
-    if (response && !response.success && !response.data) {
-      console.log('CasesService: Response is already the data object, wrapping it');
-      return { success: true, data: response };
-    }
-    
-    return response.data
+    // ApiClient returns the inner data object (CaseOpening)
+    return apiClient.get<CaseOpening>(url);
   }
 
   async makeDecision(id: string, decision: CaseDecisionRequest): Promise<{
@@ -64,15 +59,11 @@ export class CasesService {
     success: boolean
     data: CaseOpening[]
   }> {
-    const response = await apiClient.get('/cases/openings')
-    
-    // Check if response is already the data array (from interceptor) or if it's the full response
-    if (Array.isArray(response)) {
-      console.log('CasesService: Response is already an array, returning directly');
-      return { success: true, data: response };
-    }
-    
-    return response.data
+    const wallet = apiClient.getWalletAddress();
+    const url = wallet
+      ? `/cases/openings?walletAddress=${encodeURIComponent(wallet)}`
+      : '/cases/openings';
+    return apiClient.get(url);
   }
 }
 

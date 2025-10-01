@@ -9,9 +9,11 @@ import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useParams } from "next/navigation"
 import { casesService, marketplaceService } from "@/lib/services"
+import { apiClient } from "@/lib/services/api"
 import { LootBoxTypeDetails, CaseOpening } from "@/lib/types/api"
 import { formatSOL, getRarityColor, getRarityBgColor } from "@/lib/utils"
 import { toast } from "react-hot-toast"
+import { useUser } from "@/lib/contexts/UserContext"
 
 export default function OpenCasePage() {
   const params = useParams<{ id: string }>()
@@ -22,15 +24,16 @@ export default function OpenCasePage() {
   const [revealedSkin, setRevealedSkin] = useState<any>(null)
   const [showResult, setShowResult] = useState(false)
   const [animationPhase, setAnimationPhase] = useState<"idle" | "spinning" | "slowing" | "revealed">("idle")
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { isConnected } = useUser()
 
   // Load loot box details
   useEffect(() => {
-    if (params.id) {
-      loadLootBoxDetails()
-    }
-  }, [params.id])
+    if (!params.id) return
+    if (!isConnected) return
+    loadLootBoxDetails()
+  }, [params.id, isConnected])
 
   // Poll for case opening status if we have an opening in progress
   useEffect(() => {
@@ -46,11 +49,21 @@ export default function OpenCasePage() {
     try {
       setLoading(true)
       setError(null)
-      const response = await marketplaceService.getLootBoxById(params.id!)
-      setLootBox(response.data)
+      
+      // First, get the case opening details to find the loot box ID
+      const opening = await casesService.getOpeningStatus(params.id!)
+      setCaseOpening(opening)
+      
+      // Then get the loot box details using the loot box ID from the case opening
+      if (opening.lootBoxTypeId) {
+        const lootBoxResponse = await marketplaceService.getLootBoxById(opening.lootBoxTypeId)
+        setLootBox(lootBoxResponse.data)
+      } else {
+        setError('Missing loot box reference for this opening')
+      }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load loot box details')
-      toast.error('Failed to load loot box details')
+      setError(err instanceof Error ? err.message : 'Failed to load case opening details')
+      toast.error('Failed to load case opening details')
     } finally {
       setLoading(false)
     }
@@ -60,8 +73,7 @@ export default function OpenCasePage() {
     if (!caseOpening) return
     
     try {
-      const response = await casesService.getOpeningStatus(caseOpening.id)
-      const updatedOpening = response.data
+      const updatedOpening = await casesService.getOpeningStatus(caseOpening.id)
       setCaseOpening(updatedOpening)
 
       if (updatedOpening.status === 'completed' && updatedOpening.skinResult) {

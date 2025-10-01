@@ -12,7 +12,7 @@ import { useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 
 export function WalletConnect() {
-  const { connected, publicKey } = useWallet();
+  const { connected, publicKey, disconnect: walletDisconnect } = useWallet();
   const { user, isLoading, connectWallet, disconnectWallet } = useUser();
   const connectingRef = useRef(false);
   const lastAttemptRef = useRef(0);
@@ -58,6 +58,9 @@ export function WalletConnect() {
   // Handle wallet disconnection
   const handleDisconnect = async () => {
     try {
+      // First disconnect the wallet adapter to stop auto-connect effect
+      await walletDisconnect();
+      // Then disconnect from backend session
       await disconnectWallet();
       toast.success('Wallet disconnected');
     } catch (error) {

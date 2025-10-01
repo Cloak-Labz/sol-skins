@@ -26,14 +26,28 @@ class ApiClient {
         console.log('Wallet address:', this.walletAddress)
         
         if (this.walletAddress) {
-          if (config.data) {
+          const url = config.url || '';
+          const method = (config.method || 'get').toLowerCase();
+
+          const needsWalletInGetBody = (
+            url.includes('/leaderboard/rank') ||
+            url.includes('/cases/opening') ||
+            url.includes('/cases/openings') ||
+            url.startsWith('/inventory') ||
+            url.startsWith('/history')
+          );
+
+          if (config.data && method !== 'get') {
             // Add wallet address to request body for POST/PUT requests
-            config.data.walletAddress = this.walletAddress;
+            (config.data as any).walletAddress = this.walletAddress;
             console.log('Request data after adding wallet:', config.data)
-          } else if (config.method === 'get' && config.url?.includes('/leaderboard/rank')) {
-            // For GET requests to leaderboard/rank, we need to send wallet address in body
-            config.data = { walletAddress: this.walletAddress };
-            console.log('Request data after adding wallet for GET:', config.data)
+          } else if (method === 'get' && needsWalletInGetBody) {
+            // Browsers ignore GET bodies; pass wallet via query string
+            const urlObj = new URL((config.baseURL || '') + (config.url || ''), 'http://dummy');
+            urlObj.searchParams.set('walletAddress', this.walletAddress);
+            const newPath = urlObj.pathname + (urlObj.search ? urlObj.search : '');
+            config.url = newPath;
+            console.log('Request url after adding wallet for GET:', config.url)
           }
         }
         return config;

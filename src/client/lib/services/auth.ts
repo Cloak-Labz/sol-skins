@@ -23,7 +23,8 @@ class AuthService {
     // Set wallet address in API client for future requests
     apiClient.setWalletAddress(walletAddress);
     
-    return response.data;
+    // ApiClient returns the inner data already: { user, message }
+    return response;
   }
 
   // Disconnect wallet
@@ -38,8 +39,9 @@ class AuthService {
 
   // Get user profile
   async getProfile(): Promise<User> {
+    // ApiClient returns the inner data already (the user object)
     const response = await apiClient.get('/auth/profile');
-    return response.data;
+    return response;
   }
 
   // Update user profile
