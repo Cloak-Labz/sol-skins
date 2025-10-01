@@ -43,10 +43,9 @@ class ApiClient {
             console.log('Request data after adding wallet:', config.data)
           } else if (method === 'get' && needsWalletInGetBody) {
             // Browsers ignore GET bodies; pass wallet via query string
-            const urlObj = new URL((config.baseURL || '') + (config.url || ''), 'http://dummy');
-            urlObj.searchParams.set('walletAddress', this.walletAddress);
-            const newPath = urlObj.pathname + (urlObj.search ? urlObj.search : '');
-            config.url = newPath;
+            const currentUrl = config.url || '';
+            const separator = currentUrl.includes('?') ? '&' : '?';
+            config.url = currentUrl + separator + 'walletAddress=' + encodeURIComponent(this.walletAddress);
             console.log('Request url after adding wallet for GET:', config.url)
           }
         }

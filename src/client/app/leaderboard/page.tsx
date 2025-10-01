@@ -20,14 +20,11 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true)
   const [metric, setMetric] = useState<'inventory-value' | 'cases-opened' | 'profit'>('inventory-value')
   const [period, setPeriod] = useState<'all-time' | 'monthly' | 'weekly'>('all-time')
-  const [leaderboardLoaded, setLeaderboardLoaded] = useState(false)
 
-  // Load leaderboard data
+  // Load leaderboard data whenever metric or period changes
   useEffect(() => {
-    if (!leaderboardLoaded) {
-      loadLeaderboard()
-    }
-  }, [metric, period, leaderboardLoaded])
+    loadLeaderboard()
+  }, [metric, period])
 
   // Load user rank if connected
   useEffect(() => {
@@ -50,26 +47,18 @@ export default function LeaderboardPage() {
     try {
       setLoading(true)
       console.log('Loading leaderboard with filters:', { metric, period })
-      const response = await leaderboardService.getLeaderboard({
+      const data = await leaderboardService.getLeaderboard({
         metric,
         period,
         limit: 50
       })
       
-      console.log('Leaderboard response:', response)
-      console.log('Response data type:', typeof response.data)
-      console.log('Response data length:', Array.isArray(response.data) ? response.data.length : 'not an array')
-      console.log('Full response structure:', JSON.stringify(response, null, 2))
+      console.log('Leaderboard data:', data)
       
-      if (response.success) {
-        console.log('Setting leaderboard data:', response.data)
-        setLeaderboard(response.data)
-        setLeaderboardLoaded(true)
-        console.log('Leaderboard state set to:', response.data)
-      } else {
-        console.error('Leaderboard response not successful:', response)
-        toast.error('Failed to load leaderboard data')
-      }
+      // Handle both unwrapped array and wrapped response
+      const leaderboardData = Array.isArray(data) ? data : data.data
+      console.log('Setting leaderboard data:', leaderboardData)
+      setLeaderboard(leaderboardData)
     } catch (error) {
       console.error('Error loading leaderboard:', error)
       toast.error('Failed to load leaderboard')
@@ -81,15 +70,9 @@ export default function LeaderboardPage() {
   const loadUserRank = async () => {
     try {
       console.log('Loading user rank with metric:', metric)
-      const response = await leaderboardService.getUserRank(metric)
-      console.log('User rank response:', response)
-      
-      if (response.success) {
-        console.log('Setting user rank data:', response.data)
-        setUserRank(response.data)
-      } else {
-        console.error('User rank response not successful:', response)
-      }
+      const data = await leaderboardService.getUserRank(metric)
+      console.log('User rank data:', data)
+      setUserRank(data)
     } catch (error) {
       console.error('Error loading user rank:', error)
     }

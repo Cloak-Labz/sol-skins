@@ -43,32 +43,31 @@ class LeaderboardService {
   }
 
   // Get user's current rank
-  async getUserRank(metric?: string): Promise<{
-    success: boolean;
-    data: UserRank;
-  }> {
+  async getUserRank(metric?: string): Promise<UserRank> {
     const params = new URLSearchParams();
     if (metric) params.append('metric', metric);
     
     const queryString = params.toString();
     const url = queryString ? `/leaderboard/rank?${queryString}` : '/leaderboard/rank';
     
-    const response = await apiClient.get(url);
-    return response.data;
+    const response = await apiClient.get<UserRank>(url);
+    return response;
   }
 
   // Get leaderboard statistics
   async getLeaderboardStats(): Promise<{
-    success: boolean;
-    data: {
+    totalUsers: number;
+    totalValue: number;
+    averageValue: number;
+    topRarity: string;
+  }> {
+    const response = await apiClient.get<{
       totalUsers: number;
       totalValue: number;
       averageValue: number;
       topRarity: string;
-    };
-  }> {
-    const response = await apiClient.get('/leaderboard/stats');
-    return response.data;
+    }>('/leaderboard/stats');
+    return response;
   }
 }
 

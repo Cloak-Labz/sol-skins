@@ -50,7 +50,9 @@ export class WalletAuthMiddleware {
   // Middleware to protect routes with wallet authentication
   public requireWallet = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const { walletAddress, signature, message } = req.body;
+      // For GET requests, check query params; for POST/PUT, check body
+      const walletAddress = req.body.walletAddress || req.query.walletAddress as string;
+      const { signature, message } = req.body;
 
       if (!walletAddress) {
         return next(new AppError('Wallet address required', 400, 'MISSING_WALLET'));
