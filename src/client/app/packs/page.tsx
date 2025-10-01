@@ -77,12 +77,6 @@ export default function PacksPage() {
   ]
 
   const handleOpenPack = async () => {
-    console.log('=== OPENING PACK DEBUG ===')
-    console.log('Connected:', connected)
-    console.log('Public Key:', publicKey?.toString())
-    console.log('Selected Loot Box:', selectedLootBox)
-    console.log('API Client Wallet:', apiClient.getWalletAddress())
-    
     if (isOpening) return
 
     // Check wallet connection
@@ -96,38 +90,8 @@ export default function PacksPage() {
       return
     }
 
-    try {
-      setIsOpening(true)
-      console.log('Opening pack with loot box:', selectedLootBox.id)
-      toast.loading('Opening pack...', { id: 'opening-pack' })
-
-      // Test the API call directly
-      console.log('Making API call...')
-      const response = await casesService.openCase({
-        lootBoxTypeId: selectedLootBox.id,
-        paymentMethod: 'SOL'
-      })
-
-      console.log('Case opening response:', response)
-
-      if (response.success) {
-        toast.success('Pack opened successfully!', { 
-          id: 'opening-pack',
-          duration: 4000 
-        })
-
-        // Redirect to case opening page
-        setTimeout(() => {
-          window.location.href = `/open/${response.data.caseOpeningId}`
-        }, 2000)
-      }
-      
-    } catch (error) {
-      console.error('Error opening pack:', error)
-      toast.error(`Failed to open pack: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: 'opening-pack' })
-    } finally {
-      setIsOpening(false)
-    }
+    // Redirect directly to the opening page with the loot box ID
+    window.location.href = `/open/${selectedLootBox.id}`
   }
 
   if (loading) {

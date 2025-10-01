@@ -30,9 +30,6 @@ export function Sidebar() {
   ]
 
   const socialItems = [
-    { href: "/stream", label: "Stream", icon: Video, soon: true },
-    { href: "/trade", label: "Trade", icon: ArrowLeftRight, soon: true },
-    { href: "/chat", label: "Chat", icon: MessageCircle, soon: true },
     { href: "/activity", label: "Activity", icon: Activity },
     { href: "/profile", label: "Profile", icon: User },
   ]
