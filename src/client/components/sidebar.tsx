@@ -22,13 +22,13 @@ export function Sidebar() {
   const pathname = usePathname();
 
   const mainNavItems = [
+    { href: "/app-dashboard/packs", label: "Packs", icon: Package },
     { href: "/app-dashboard", label: "Dashboard", icon: Home },
     {
       href: "/app-dashboard/marketplace",
       label: "Marketplace",
       icon: ShoppingBag,
     },
-    { href: "/app-dashboard/packs", label: "Packs", icon: Package },
     { href: "/app-dashboard/inventory", label: "Inventory", icon: Package },
     { href: "/app-dashboard/leaderboard", label: "Leaderboard", icon: Trophy },
   ];

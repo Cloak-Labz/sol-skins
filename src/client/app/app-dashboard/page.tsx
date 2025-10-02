@@ -1,18 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
-
 export default function DashboardPage() {
-  const router = useRouter();
-  useEffect(() => {
-    router.replace("/app-dashboard/packs");
-  }, [router]);
-
   return (
-    <div className="min-h-screen bg-black p-8 flex items-center justify-center">
-      <Loader2 className="w-8 h-8 animate-spin text-[#E99500]" />
+    <div className="min-h-screen bg-black p-8 font-sans">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <h1 className="text-3xl md:text-4xl font-bold text-white">Dashboard</h1>
+        <p className="text-[#999]">Bem-vindo ao seu painel.</p>
+      </div>
     </div>
   );
 }
