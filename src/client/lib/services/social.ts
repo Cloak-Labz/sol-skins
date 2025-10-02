@@ -1,14 +1,21 @@
 import { apiClient } from './api';
-import { 
-  LeaderboardEntry, 
-  UserRank, 
-  ActivityItem, 
-  LeaderboardFilters 
+import {
+  LeaderboardEntry,
+  UserRank,
+  ActivityItem,
+  LeaderboardFilters
 } from '../types/api';
+import { MOCK_CONFIG } from '../config/mock';
+import { mockLeaderboardService, mockSocialService } from '../mocks/services';
 
 class SocialService {
   // Get leaderboard
   async getLeaderboard(filters?: LeaderboardFilters): Promise<LeaderboardEntry[]> {
+    if (MOCK_CONFIG.ENABLE_MOCK) {
+      const result = await mockLeaderboardService.getLeaderboard(filters);
+      return result.data;
+    }
+
     const params = new URLSearchParams();
     
     if (filters?.period) params.append('period', filters.period);
@@ -53,12 +60,16 @@ class SocialService {
 
   // Get recent activity
   async getRecentActivity(limit?: number): Promise<ActivityItem[]> {
+    if (MOCK_CONFIG.ENABLE_MOCK) {
+      return mockSocialService.getRecentActivity(limit || 10);
+    }
+
     const params = new URLSearchParams();
     if (limit) params.append('limit', limit.toString());
-    
+
     const queryString = params.toString();
     const url = queryString ? `/activity/recent?${queryString}` : '/activity/recent';
-    
+
     // apiClient.get unwraps the response and returns just the data
     const activities = await apiClient.get<ActivityItem[]>(url);
     return activities;

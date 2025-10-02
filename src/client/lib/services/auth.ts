@@ -1,7 +1,7 @@
 import { apiClient } from "./api";
 import { User, ConnectWalletRequest, UpdateProfileRequest } from "../types/api";
-import { ENABLE_PROFILE_MOCK } from "../featureFlags";
-import { getMockUser, updateMockUser } from "./auth.mock";
+import { MOCK_CONFIG } from "../config/mock";
+import { mockAuthService, mockUserService } from "../mocks/services";
 
 class AuthService {
   // Connect wallet to backend
@@ -10,13 +10,11 @@ class AuthService {
     signature?: string,
     message?: string
   ): Promise<{ user: User; message: string }> {
-    if (ENABLE_PROFILE_MOCK) {
+    if (MOCK_CONFIG.ENABLE_MOCK) {
       // Simulate connecting by returning a mock user and setting api client wallet
       apiClient.setWalletAddress(walletAddress);
-      return {
-        user: { ...getMockUser(), walletAddress },
-        message: "mock-connected",
-      };
+      const result = await mockAuthService.connectWallet(walletAddress);
+      return result.data;
     }
     const request: ConnectWalletRequest = {
       walletAddress,
@@ -35,8 +33,9 @@ class AuthService {
 
   // Disconnect wallet
   async disconnectWallet(): Promise<{ message: string }> {
-    if (ENABLE_PROFILE_MOCK) {
+    if (MOCK_CONFIG.ENABLE_MOCK) {
       apiClient.setWalletAddress(null);
+      await mockAuthService.disconnectWallet();
       return { message: "mock-disconnected" };
     }
     const response = await apiClient.post("/auth/disconnect");
@@ -49,8 +48,9 @@ class AuthService {
 
   // Get user profile
   async getProfile(): Promise<User> {
-    if (ENABLE_PROFILE_MOCK) {
-      return getMockUser();
+    if (MOCK_CONFIG.ENABLE_MOCK) {
+      const result = await mockUserService.getProfile();
+      return result.data.user;
     }
     // ApiClient returns the inner data already (the user object)
     const response = await apiClient.get("/auth/profile");
@@ -61,8 +61,9 @@ class AuthService {
   async updateProfile(
     updates: UpdateProfileRequest
   ): Promise<{ message: string }> {
-    if (ENABLE_PROFILE_MOCK) {
-      return updateMockUser(updates);
+    if (MOCK_CONFIG.ENABLE_MOCK) {
+      await mockUserService.updateProfile(updates);
+      return { message: "Profile updated successfully" };
     }
     const response = await apiClient.put("/auth/profile", updates);
     return response.data;

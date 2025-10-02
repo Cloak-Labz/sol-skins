@@ -23,6 +23,7 @@ import {
   Calendar,
   TrendingUp,
   Package,
+  Lock,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -127,7 +128,7 @@ export default function ProfilePage() {
       <div className="min-h-screen py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🔒</div>
+            <Lock className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-xl font-semibold text-foreground mb-2">
               Wallet Not Connected
             </h3>

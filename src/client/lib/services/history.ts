@@ -1,9 +1,11 @@
 import { apiClient } from './api';
-import { 
-  Transaction, 
-  TransactionSummary, 
-  TransactionFilters 
+import {
+  Transaction,
+  TransactionSummary,
+  TransactionFilters
 } from '../types/api';
+import { MOCK_CONFIG } from '../config/mock';
+import { mockHistoryService } from '../mocks/services';
 
 class HistoryService {
   // Get user transactions
@@ -17,6 +19,11 @@ class HistoryService {
       totalPages: number;
     };
   }> {
+    if (MOCK_CONFIG.ENABLE_MOCK) {
+      const result = await mockHistoryService.getHistory(filters);
+      return result.data;
+    }
+
     const params = new URLSearchParams();
     
     if (filters?.search) params.append('search', filters.search);

@@ -22,16 +22,16 @@ export function Sidebar() {
   const pathname = usePathname()
 
   const mainNavItems = [
-    { href: "/", label: "Home", icon: Home },
-    { href: "/marketplace", label: "Marketplace", icon: ShoppingBag },
-    { href: "/packs", label: "Packs", icon: Package },
-    { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
-    { href: "/about", label: "About", icon: Info },
+    { href: "/app-dashboard", label: "Dashboard", icon: Home },
+    { href: "/app-dashboard/marketplace", label: "Marketplace", icon: ShoppingBag },
+    { href: "/app-dashboard/packs", label: "Packs", icon: Package },
+    { href: "/app-dashboard/inventory", label: "Inventory", icon: Package },
+    { href: "/app-dashboard/leaderboard", label: "Leaderboard", icon: Trophy },
   ]
 
   const socialItems = [
-    { href: "/activity", label: "Activity", icon: Activity },
-    { href: "/profile", label: "Profile", icon: User },
+    { href: "/app-dashboard/activity", label: "Activity", icon: Activity },
+    { href: "/app-dashboard/profile", label: "Profile", icon: User },
   ]
 
   const exploreItems = [
@@ -43,12 +43,12 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 h-full w-64 bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-[#1a1a1a]">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-6 h-6 bg-white rounded-sm flex items-center justify-center">
-            <div className="w-3 h-3 bg-black rounded-sm"></div>
+        <Link href="/app-dashboard" className="flex items-center gap-2">
+          <div className="text-2xl font-bold">
+            <span className="text-white">Dust</span>
+            <span className="text-[#E99500]">3</span>
           </div>
-          <span className="text-white font-semibold text-lg">solskins</span>
-          <span className="text-[#666] text-xs bg-[#1a1a1a] px-2 py-1 rounded">BETA</span>
+          <span className="text-[#666] text-xs bg-[#E99500]/10 px-2 py-1 rounded border border-[#E99500]/30">BETA</span>
         </Link>
       </div>
 

@@ -1,58 +1,60 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { ArrowLeft, Package, Loader2, ExternalLink } from "lucide-react"
-import Link from "next/link"
-import { marketplaceService } from "@/lib/services"
-import { LootBoxDetails, SkinTemplate } from "@/lib/types/api"
-import { formatCurrency, getRarityColor, getRarityBgColor } from "@/lib/utils"
+import { useState, useEffect } from "react";
+import { useParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Package, Loader2, ExternalLink, Box } from "lucide-react";
+import Link from "next/link";
+import { marketplaceService } from "@/lib/services";
+import { LootBoxDetails, SkinTemplate } from "@/lib/types/api";
+import { formatCurrency, getRarityColor, getRarityBgColor } from "@/lib/utils";
 
 export default function LootBoxDetailsPage() {
-  const params = useParams()
-  const [lootBox, setLootBox] = useState<LootBoxDetails | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const params = useParams();
+  const [lootBox, setLootBox] = useState<LootBoxDetails | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (params.id) {
-      loadLootBoxDetails(params.id as string)
+      loadLootBoxDetails(params.id as string);
     }
-  }, [params.id])
+  }, [params.id]);
 
   const loadLootBoxDetails = async (id: string) => {
     try {
-      setLoading(true)
-      setError(null)
-      
-      const details = await marketplaceService.getLootBoxById(id)
-      setLootBox(details)
+      setLoading(true);
+      setError(null);
+
+      const details = await marketplaceService.getLootBoxById(id);
+      setLootBox(details);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load loot box details')
+      setError(
+        err instanceof Error ? err.message : "Failed to load loot box details"
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const getRarityColorClass = (rarity: string) => {
     switch (rarity.toLowerCase()) {
       case "common":
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
       case "uncommon":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "rare":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       case "epic":
-        return "bg-purple-100 text-purple-800"
+        return "bg-purple-100 text-purple-800";
       case "legendary":
-        return "bg-orange-100 text-orange-800"
+        return "bg-orange-100 text-orange-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -62,7 +64,7 @@ export default function LootBoxDetailsPage() {
           <p className="text-white">Loading loot box details...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -70,9 +72,11 @@ export default function LootBoxDetailsPage() {
       <div className="min-h-screen bg-[#0a0a0a] p-8 flex items-center justify-center">
         <div className="text-center">
           <div className="text-6xl mb-4">❌</div>
-          <h3 className="text-xl font-semibold text-white mb-2">Error loading loot box</h3>
+          <h3 className="text-xl font-semibold text-white mb-2">
+            Error loading loot box
+          </h3>
           <p className="text-[#999] mb-4">{error}</p>
-          <Button 
+          <Button
             onClick={() => loadLootBoxDetails(params.id as string)}
             className="bg-[#333] hover:bg-[#444] text-white border-0"
           >
@@ -80,25 +84,32 @@ export default function LootBoxDetailsPage() {
           </Button>
         </div>
       </div>
-    )
+    );
   }
 
   if (!lootBox) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] p-8 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-6xl mb-4">📦</div>
-          <h3 className="text-xl font-semibold text-white mb-2">Loot box not found</h3>
-          <p className="text-[#999]">The loot box you're looking for doesn't exist</p>
+          <Box className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+          <h3 className="text-xl font-semibold text-white mb-2">
+            Loot box not found
+          </h3>
+          <p className="text-[#999]">
+            The loot box you're looking for doesn't exist
+          </p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-8">
       <div className="mb-8">
-        <Link href="/marketplace" className="inline-flex items-center text-[#999] hover:text-white mb-4">
+        <Link
+          href="/marketplace"
+          className="inline-flex items-center text-[#999] hover:text-white mb-4"
+        >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back to Marketplace
         </Link>
@@ -121,51 +132,63 @@ export default function LootBoxDetailsPage() {
             <CardContent>
               <div className="aspect-square bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-4 border border-[#333] overflow-hidden">
                 {lootBox.imageUrl ? (
-                  <img 
-                    src={lootBox.imageUrl} 
+                  <img
+                    src={lootBox.imageUrl}
                     alt={lootBox.name}
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <div className="text-6xl">📦</div>
+                  <Box className="w-16 h-16 text-muted-foreground" />
                 )}
               </div>
-              
+
               <div className="text-3xl font-bold text-white mb-4">
                 {formatCurrency(lootBox.priceSol)} SOL
               </div>
 
               <div className="mb-6">
-                <h4 className="text-lg font-semibold text-white mb-3">Drop Chances:</h4>
+                <h4 className="text-lg font-semibold text-white mb-3">
+                  Drop Chances:
+                </h4>
                 <div className="space-y-2">
                   {lootBox.chances.legendary > 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-white">Legendary</span>
-                      <span className="text-[#ccc] font-mono">{lootBox.chances.legendary}%</span>
+                      <span className="text-[#ccc] font-mono">
+                        {lootBox.chances.legendary}%
+                      </span>
                     </div>
                   )}
                   {lootBox.chances.epic > 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-white">Epic</span>
-                      <span className="text-[#aaa] font-mono">{lootBox.chances.epic}%</span>
+                      <span className="text-[#aaa] font-mono">
+                        {lootBox.chances.epic}%
+                      </span>
                     </div>
                   )}
                   {lootBox.chances.rare > 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-white">Rare</span>
-                      <span className="text-[#999] font-mono">{lootBox.chances.rare}%</span>
+                      <span className="text-[#999] font-mono">
+                        {lootBox.chances.rare}%
+                      </span>
                     </div>
                   )}
                   {lootBox.chances.uncommon > 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-white">Uncommon</span>
-                      <span className="text-[#777] font-mono">{lootBox.chances.uncommon}%</span>
+                      <span className="text-[#777] font-mono">
+                        {lootBox.chances.uncommon}%
+                      </span>
                     </div>
                   )}
                   {lootBox.chances.common > 0 && (
                     <div className="flex justify-between items-center">
                       <span className="text-white">Common</span>
-                      <span className="text-[#666] font-mono">{lootBox.chances.common}%</span>
+                      <span className="text-[#666] font-mono">
+                        {lootBox.chances.common}%
+                      </span>
                     </div>
                   )}
                 </div>
@@ -187,7 +210,8 @@ export default function LootBoxDetailsPage() {
             <CardHeader>
               <CardTitle className="text-white">Possible Skins</CardTitle>
               <p className="text-[#999] text-sm">
-                {lootBox.possibleSkins.length} different skins can be obtained from this case
+                {lootBox.possibleSkins.length} different skins can be obtained
+                from this case
               </p>
             </CardHeader>
             <CardContent>
@@ -199,8 +223,8 @@ export default function LootBoxDetailsPage() {
                   >
                     <div className="w-12 h-12 bg-[#2a2a2a] rounded flex items-center justify-center overflow-hidden">
                       {skin.imageUrl ? (
-                        <img 
-                          src={skin.imageUrl} 
+                        <img
+                          src={skin.imageUrl}
                           alt={`${skin.weapon} ${skin.skinName}`}
                           className="w-full h-full object-cover"
                         />
@@ -234,5 +258,5 @@ export default function LootBoxDetailsPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

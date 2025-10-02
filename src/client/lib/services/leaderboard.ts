@@ -1,7 +1,7 @@
 import { apiClient } from "./api";
 import { LeaderboardEntry, UserRank, LeaderboardFilters } from "../types/api";
-import { ENABLE_LEADERBOARD_MOCK } from "../featureFlags";
-import { getMockLeaderboard, getMockUserRank } from "./leaderboard.mock";
+import { MOCK_CONFIG } from "../config/mock";
+import { mockLeaderboardService } from "../mocks/services";
 
 class LeaderboardService {
   // Get leaderboard rankings
@@ -15,8 +15,8 @@ class LeaderboardService {
       totalPages: number;
     };
   }> {
-    if (ENABLE_LEADERBOARD_MOCK) {
-      return getMockLeaderboard(filters);
+    if (MOCK_CONFIG.ENABLE_MOCK) {
+      return mockLeaderboardService.getLeaderboard(filters);
     }
     const params = new URLSearchParams();
 
@@ -57,8 +57,13 @@ class LeaderboardService {
 
   // Get user's current rank
   async getUserRank(metric?: string): Promise<UserRank> {
-    if (ENABLE_LEADERBOARD_MOCK) {
-      return getMockUserRank(metric);
+    if (MOCK_CONFIG.ENABLE_MOCK) {
+      return {
+        rank: 1,
+        metric: metric || 'inventoryValue',
+        value: '1250.75',
+        totalUsers: 5000
+      };
     }
     const params = new URLSearchParams();
     if (metric) params.append("metric", metric);
@@ -79,7 +84,7 @@ class LeaderboardService {
     averageValue: number;
     topRarity: string;
   }> {
-    if (ENABLE_LEADERBOARD_MOCK) {
+    if (MOCK_CONFIG.ENABLE_MOCK) {
       return {
         totalUsers: 5000,
         totalValue: 125_000_000,

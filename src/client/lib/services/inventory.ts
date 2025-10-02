@@ -1,10 +1,12 @@
 import { apiClient } from './api';
-import { 
-  UserSkin, 
-  InventorySummary, 
-  InventoryFilters, 
-  BuybackRequest 
+import {
+  UserSkin,
+  InventorySummary,
+  InventoryFilters,
+  BuybackRequest
 } from '../types/api';
+import { MOCK_CONFIG } from '../config/mock';
+import { mockInventoryService } from '../mocks/services';
 
 class InventoryService {
   // Get user inventory
@@ -18,6 +20,10 @@ class InventoryService {
       totalPages: number;
     };
   }> {
+    if (MOCK_CONFIG.ENABLE_MOCK) {
+      return mockInventoryService.getInventory(filters);
+    }
+
     const params = new URLSearchParams();
     
     if (filters?.search) params.append('search', filters.search);
@@ -92,6 +98,10 @@ class InventoryService {
       status: string;
     };
   }> {
+    if (MOCK_CONFIG.ENABLE_MOCK) {
+      return mockInventoryService.sellSkin(skinId, request);
+    }
+
     const response = await apiClient.post(`/inventory/${skinId}/buyback`, request);
     
     // Check if response is already the data object (from interceptor) or if it's the full response
