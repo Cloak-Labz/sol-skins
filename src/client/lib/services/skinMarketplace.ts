@@ -1,4 +1,6 @@
 import { apiClient } from './api';
+import { MOCK_CONFIG } from '../config/mock';
+import { mockMarketplaceService } from '../mocks/services';
 
 export interface SkinListing {
   id: string
@@ -29,6 +31,11 @@ class SkinMarketplaceService {
     filterBy?: string
     limit?: number
   }): Promise<SkinListing[]> {
+    if (MOCK_CONFIG.ENABLE_MOCK) {
+      const result = await mockMarketplaceService.getListings(filters);
+      return result.data as any;
+    }
+
     const params = new URLSearchParams();
     if (filters?.search) params.append('search', filters.search);
     if (filters?.sortBy) params.append('sortBy', filters.sortBy);
@@ -44,6 +51,10 @@ class SkinMarketplaceService {
 
   // List a skin for sale
   async listSkin(userSkinId: string, priceUsd: number): Promise<any> {
+    if (MOCK_CONFIG.ENABLE_MOCK) {
+      return mockMarketplaceService.createListing(userSkinId, priceUsd);
+    }
+
     const response = await apiClient.post('/skin-marketplace/list', {
       userSkinId,
       priceUsd,
@@ -53,6 +64,10 @@ class SkinMarketplaceService {
 
   // Buy a skin
   async buySkin(listingId: string): Promise<any> {
+    if (MOCK_CONFIG.ENABLE_MOCK) {
+      return mockMarketplaceService.buyListing(listingId);
+    }
+
     const response = await apiClient.post(`/skin-marketplace/buy/${listingId}`, {});
     return response;
   }

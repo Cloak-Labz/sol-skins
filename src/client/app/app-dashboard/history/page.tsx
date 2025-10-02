@@ -1,141 +1,162 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Search, ExternalLink, Package, Coins, ShoppingBag, TrendingUp, TrendingDown, Loader2 } from "lucide-react"
-import { historyService } from "@/lib/services"
-import { Transaction } from "@/lib/types/api"
-import { useUser } from "@/lib/contexts/UserContext"
-import { toast } from "react-hot-toast"
-import { formatCurrency, formatSOL } from "@/lib/utils"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import {
+  Search,
+  ExternalLink,
+  Package,
+  Coins,
+  ShoppingBag,
+  TrendingUp,
+  TrendingDown,
+  Loader2,
+  Lock,
+  BarChart3,
+} from "lucide-react";
+import { historyService } from "@/lib/services";
+import { Transaction } from "@/lib/types/api";
+import { useUser } from "@/lib/contexts/UserContext";
+import { toast } from "react-hot-toast";
+import { formatCurrency, formatSOL } from "@/lib/utils";
 
 export default function HistoryPage() {
-  const { isConnected } = useUser()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterBy, setFilterBy] = useState("all")
-  const [sortBy, setSortBy] = useState("date")
-  const [loading, setLoading] = useState(true)
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [summary, setSummary] = useState({ totalSpent: 0, totalEarned: 0, netProfit: 0 })
+  const { isConnected } = useUser();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterBy, setFilterBy] = useState("all");
+  const [sortBy, setSortBy] = useState("date");
+  const [loading, setLoading] = useState(true);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [summary, setSummary] = useState({
+    totalSpent: 0,
+    totalEarned: 0,
+    netProfit: 0,
+  });
 
   // Load transactions from backend
   useEffect(() => {
     if (isConnected) {
-      loadTransactions()
-      loadSummary()
+      loadTransactions();
+      loadSummary();
     } else {
       // Not connected - clear data and stop loading
-      setLoading(false)
-      setTransactions([])
-      setSummary({ totalSpent: 0, totalEarned: 0, netProfit: 0 })
+      setLoading(false);
+      setTransactions([]);
+      setSummary({ totalSpent: 0, totalEarned: 0, netProfit: 0 });
     }
-  }, [isConnected]) // Only depend on isConnected
-  
+  }, [isConnected]); // Only depend on isConnected
+
   // Reload when filters change (only if connected)
   useEffect(() => {
     if (isConnected) {
-      loadTransactions()
+      loadTransactions();
     }
-  }, [filterBy, sortBy])
+  }, [filterBy, sortBy]);
 
   const loadTransactions = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
       const response = await historyService.getTransactions({
-        type: filterBy === 'all' ? undefined : filterBy as any,
+        type: filterBy === "all" ? undefined : (filterBy as any),
         sortBy: sortBy as any,
-        limit: 100
-      })
+        limit: 100,
+      });
 
       if (response.success) {
-        setTransactions(response.data)
+        setTransactions(response.data);
       }
     } catch (err) {
-      console.error('Failed to load transactions:', err)
-      toast.error('Failed to load transaction history')
-      setTransactions([])
+      console.error("Failed to load transactions:", err);
+      toast.error("Failed to load transaction history");
+      setTransactions([]);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const loadSummary = async () => {
     try {
-      const response = await historyService.getTransactionSummary()
-      
+      const response = await historyService.getTransactionSummary();
+
       if (response.success) {
-        const data = response.data
+        const data = response.data;
         setSummary({
           totalSpent: data.totalCost || 0,
           totalEarned: data.totalPayout || 0,
-          netProfit: data.netProfit || 0
-        })
+          netProfit: data.netProfit || 0,
+        });
       }
     } catch (err) {
-      console.error('Failed to load transaction summary:', err)
+      console.error("Failed to load transaction summary:", err);
     }
-  }
+  };
 
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case "case_opening":
-        return Package
+        return Package;
       case "buyback":
-        return Coins
+        return Coins;
       default:
-        return ShoppingBag
+        return ShoppingBag;
     }
-  }
+  };
 
   const getTransactionColor = (type: string, amount: number) => {
-    if (amount > 0) return "text-green-400"
-    if (amount < 0) return "text-red-400"
-    return "text-muted-foreground"
-  }
+    if (amount > 0) return "text-green-400";
+    if (amount < 0) return "text-red-400";
+    return "text-muted-foreground";
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
-        return "bg-green-500/20 text-green-400"
+        return "bg-green-500/20 text-green-400";
       case "pending":
-        return "bg-yellow-500/20 text-yellow-400"
+        return "bg-yellow-500/20 text-yellow-400";
       case "failed":
-        return "bg-red-500/20 text-red-400"
+        return "bg-red-500/20 text-red-400";
       default:
-        return "bg-muted text-muted-foreground"
+        return "bg-muted text-muted-foreground";
     }
-  }
+  };
 
   const getRarityColor = (rarity?: string) => {
-    if (!rarity) return ""
+    if (!rarity) return "";
     switch (rarity.toLowerCase()) {
       case "common":
-        return "text-gray-400"
+        return "text-gray-400";
       case "uncommon":
-        return "text-green-400"
+        return "text-green-400";
       case "rare":
-        return "text-blue-400"
+        return "text-blue-400";
       case "epic":
-        return "text-purple-400"
+        return "text-purple-400";
       case "legendary":
-        return "text-yellow-400"
+        return "text-yellow-400";
       default:
-        return "text-muted-foreground"
+        return "text-muted-foreground";
     }
-  }
+  };
 
   const filteredTransactions = transactions.filter((tx) => {
-    if (!searchTerm) return true
-    const searchLower = searchTerm.toLowerCase()
+    if (!searchTerm) return true;
+    const searchLower = searchTerm.toLowerCase();
     return (
       tx.skinName?.toLowerCase().includes(searchLower) ||
       tx.lootBoxName?.toLowerCase().includes(searchLower)
-    )
-  })
+    );
+  });
 
   // Show not connected state
   if (!isConnected) {
@@ -143,15 +164,17 @@ export default function HistoryPage() {
       <div className="min-h-screen py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🔒</div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">Wallet Not Connected</h3>
+            <Lock className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-xl font-semibold text-foreground mb-2">
+              Wallet Not Connected
+            </h3>
             <p className="text-muted-foreground">
               Please connect your wallet to view your transaction history
             </p>
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   // Show loading state
@@ -165,7 +188,7 @@ export default function HistoryPage() {
           </div>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -173,8 +196,12 @@ export default function HistoryPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Transaction History</h1>
-          <p className="text-muted-foreground text-lg">Track all your SolSkins activity</p>
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            Transaction History
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Track all your SolSkins activity
+          </p>
         </div>
 
         {/* Stats Cards */}
@@ -187,7 +214,9 @@ export default function HistoryPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-2xl font-bold text-red-400">{formatCurrency(summary.totalSpent)}</div>
+              <div className="text-2xl font-bold text-red-400">
+                {formatCurrency(summary.totalSpent)}
+              </div>
             </CardContent>
           </Card>
 
@@ -199,17 +228,26 @@ export default function HistoryPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="text-2xl font-bold text-green-400">{formatCurrency(summary.totalEarned)}</div>
+              <div className="text-2xl font-bold text-green-400">
+                {formatCurrency(summary.totalEarned)}
+              </div>
             </CardContent>
           </Card>
 
           <Card className="bg-card border-border">
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm text-muted-foreground">Net Profit/Loss</CardTitle>
+              <CardTitle className="text-sm text-muted-foreground">
+                Net Profit/Loss
+              </CardTitle>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className={`text-2xl font-bold ${summary.netProfit >= 0 ? "text-green-400" : "text-red-400"}`}>
-                {summary.netProfit >= 0 ? "+" : ""}{formatCurrency(summary.netProfit)}
+              <div
+                className={`text-2xl font-bold ${
+                  summary.netProfit >= 0 ? "text-green-400" : "text-red-400"
+                }`}
+              >
+                {summary.netProfit >= 0 ? "+" : ""}
+                {formatCurrency(summary.netProfit)}
               </div>
             </CardContent>
           </Card>
@@ -240,23 +278,28 @@ export default function HistoryPage() {
             <SelectTrigger className="w-full md:w-48 bg-input border-border">
               <SelectValue placeholder="Filter by type" />
             </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Transactions</SelectItem>
-            <SelectItem value="case_opening">Case Openings</SelectItem>
-            <SelectItem value="buyback">Buybacks</SelectItem>
-          </SelectContent>
+            <SelectContent>
+              <SelectItem value="all">All Transactions</SelectItem>
+              <SelectItem value="case_opening">Case Openings</SelectItem>
+              <SelectItem value="buyback">Buybacks</SelectItem>
+            </SelectContent>
           </Select>
         </div>
 
         {/* Transactions List */}
         <div className="space-y-4">
           {filteredTransactions.map((tx) => {
-            const Icon = getTransactionIcon(tx.type)
-            const isDebit = tx.type === 'case_opening'
-            const amount = isDebit ? -parseFloat(tx.amountSol) : parseFloat(tx.amountUsdc || tx.amountSol)
-            
+            const Icon = getTransactionIcon(tx.type);
+            const isDebit = tx.type === "case_opening";
+            const amount = isDebit
+              ? -parseFloat(tx.amountSol)
+              : parseFloat(tx.amountUsdc || tx.amountSol);
+
             return (
-              <Card key={tx.id} className="bg-card border-border hover:border-accent/50 transition-colors">
+              <Card
+                key={tx.id}
+                className="bg-card border-border hover:border-accent/50 transition-colors"
+              >
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
@@ -271,7 +314,8 @@ export default function HistoryPage() {
                             {tx.type === "buyback" && "Instant Buyback"}
                           </h3>
                           <Badge className={getStatusColor(tx.status)}>
-                            {tx.status.charAt(0).toUpperCase() + tx.status.slice(1)}
+                            {tx.status.charAt(0).toUpperCase() +
+                              tx.status.slice(1)}
                           </Badge>
                         </div>
 
@@ -294,15 +338,26 @@ export default function HistoryPage() {
                     </div>
 
                     <div className="text-right">
-                      <div className={`text-xl font-bold ${getTransactionColor(tx.type, amount)}`}>
-                        {amount > 0 ? "+" : ""}{formatCurrency(Math.abs(amount))}
+                      <div
+                        className={`text-xl font-bold ${getTransactionColor(
+                          tx.type,
+                          amount
+                        )}`}
+                      >
+                        {amount > 0 ? "+" : ""}
+                        {formatCurrency(Math.abs(amount))}
                       </div>
                       {tx.txHash && (
                         <Button
                           variant="ghost"
                           size="sm"
                           className="text-accent hover:text-accent/80 p-0 h-auto"
-                          onClick={() => window.open(`https://explorer.solana.com/tx/${tx.txHash}`, "_blank")}
+                          onClick={() =>
+                            window.open(
+                              `https://explorer.solana.com/tx/${tx.txHash}`,
+                              "_blank"
+                            )
+                          }
                         >
                           <ExternalLink className="w-4 h-4 mr-1" />
                           View on Explorer
@@ -312,14 +367,16 @@ export default function HistoryPage() {
                   </div>
                 </CardContent>
               </Card>
-            )
+            );
           })}
         </div>
 
         {filteredTransactions.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">📊</div>
-            <h3 className="text-xl font-semibold text-foreground mb-2">No transactions found</h3>
+            <BarChart3 className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-xl font-semibold text-foreground mb-2">
+              No transactions found
+            </h3>
             <p className="text-muted-foreground">
               {searchTerm || filterBy !== "all"
                 ? "Try adjusting your search or filters"
@@ -329,5 +386,5 @@ export default function HistoryPage() {
         )}
       </div>
     </div>
-  )
+  );
 }

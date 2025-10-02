@@ -1,261 +1,529 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import Link from "next/link"
-import { ArrowRight, Loader2 } from "lucide-react"
-import { socialService, leaderboardService } from "@/lib/services"
-import { ActivityItem, LeaderboardEntry } from "@/lib/types/api"
-import { formatCurrency } from "@/lib/utils"
+import { Suspense } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import Link from "next/link";
+import {
+  ArrowRight,
+  Loader2,
+  Shield,
+  Zap,
+  TrendingUp,
+  CheckCircle2,
+} from "lucide-react";
+import { motion } from "framer-motion";
+import dynamic from "next/dynamic";
 
-export default function HomePage() {
-  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([])
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([])
-  const [loadingActivity, setLoadingActivity] = useState(true)
-  const [loadingLeaderboard, setLoadingLeaderboard] = useState(true)
+// Dynamic import for 3D components to avoid SSR issues
+const FloatingBox = dynamic(() => import("@/components/FloatingBox"), {
+  ssr: false,
+  loading: () => (
+    <div className="aspect-square bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-2xl border border-[#333] flex items-center justify-center">
+      <Loader2 className="w-12 h-12 animate-spin text-[#E99500]" />
+    </div>
+  ),
+});
 
-  useEffect(() => {
-    loadRecentActivity()
-    loadLeaderboard()
-  }, [])
-
-  const loadRecentActivity = async () => {
-    try {
-      setLoadingActivity(true)
-      const data = await socialService.getRecentActivity(4) // Get only 4 for home page
-      setRecentActivity(data)
-    } catch (error) {
-      console.error('Failed to load recent activity:', error)
-    } finally {
-      setLoadingActivity(false)
-    }
-  }
-
-  const loadLeaderboard = async () => {
-    try {
-      setLoadingLeaderboard(true)
-      const response = await leaderboardService.getLeaderboard({ limit: 5 })
-      // The response is either an array or {success: true, data: [...]}
-      const data = Array.isArray(response) ? response : response.data
-      setLeaderboard(data)
-    } catch (error) {
-      console.error('Failed to load leaderboard:', error)
-    } finally {
-      setLoadingLeaderboard(false)
-    }
-  }
-
-  const getActionText = (type: string) => {
-    switch (type) {
-      case 'case_opening': return 'opened'
-      case 'buyback': return 'sold'
-      default: return type
-    }
-  }
-
-  const getTimeAgo = (timestamp: string) => {
-    const now = new Date()
-    const then = new Date(timestamp)
-    const diffInMinutes = Math.floor((now.getTime() - then.getTime()) / (1000 * 60))
-    
-    if (diffInMinutes < 1) return 'just now'
-    if (diffInMinutes < 60) return `${diffInMinutes}m ago`
-    
-    const diffInHours = Math.floor(diffInMinutes / 60)
-    if (diffInHours < 24) return `${diffInHours}h ago`
-    
-    const diffInDays = Math.floor(diffInHours / 24)
-    return `${diffInDays}d ago`
-  }
-
+export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-8">
-      <section className="mb-16">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div className="space-y-8">
-            <div>
-              <h1 className="text-5xl lg:text-6xl font-bold text-white mb-6 leading-tight">
-                Introducing
-                <br />
-                <span className="text-white">CS:GO Skin Drop</span>
-              </h1>
-              <p className="text-[#999] text-lg leading-relaxed mb-8">
-                Open a digital pack to instantly reveal a real skin. Choose to hold, trade, redeem, or sell it back to
-                us at 85% value!
-              </p>
-              <Button size="lg" className="bg-[#333] hover:bg-[#444] text-white border-0 rounded-lg px-8 py-3">
-                View Drop
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
+    <div className="min-h-screen bg-black">
+      {/* Landing Page Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-lg border-b border-[#333]">
+        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-auto">
+              <img
+                src="/assets/DUST3-SVG.svg"
+                alt="Dust3 logo"
+                className="h-8 w-auto"
+              />
             </div>
           </div>
+          <nav className="hidden md:flex items-center gap-8">
+            <a
+              href="#how-it-works"
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              How It Works
+            </a>
+            <a
+              href="#trust"
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              Trust
+            </a>
+            <a
+              href="#liquidity"
+              className="text-gray-400 hover:text-white transition-colors"
+            >
+              Liquidity
+            </a>
+            <Link href="/app-dashboard/packs">
+              <Button className="bg-[#E99500] hover:bg-[#c77f00] text-black font-bold">
+                Launch App
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
+            </Link>
+          </nav>
+        </div>
+      </header>
 
-          <div className="relative">
-            <div className="aspect-square bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-2xl border border-[#333] p-8 flex items-center justify-center">
-              <div className="text-8xl">📦</div>
-            </div>
+      {/* Hero Section */}
+      <section className="relative overflow-hidden pt-32 pb-20 px-8">
+        {/* Animated background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#E99500]/10 via-black to-black" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(233,149,0,0.1),transparent_50%)]" />
+
+        <div className="relative max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Left Column - Text Content */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+              className="space-y-8"
+            >
+              <div>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.2 }}
+                  className="inline-block mb-4"
+                >
+                  <span className="text-[#E99500] font-bold text-sm tracking-wider uppercase bg-[#E99500]/10 px-4 py-2 rounded-full border border-[#E99500]/30">
+                    Where CS skins meet Web3 fairness
+                  </span>
+                </motion.div>
+
+                <h1 className="text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+                  Unbox the future
+                  <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E99500] to-[#ffaa1a]">
+                    of CS skins
+                  </span>
+                </h1>
+
+                <p className="text-gray-400 text-xl leading-relaxed mb-8">
+                  On-chain. Transparent. Instant.
+                  <br />
+                  <span className="text-white font-medium">
+                    Every box is provably fair. Every skin is backed by reality.
+                  </span>
+                </p>
+
+                <div className="flex flex-wrap gap-4">
+                  <Link href="/app-dashboard/packs">
+                    <Button
+                      size="lg"
+                      className="bg-[#E99500] hover:bg-[#c77f00] text-black font-bold border-0 rounded-lg px-8 py-6 text-lg transition-all duration-300 hover:scale-105 animate-glow"
+                    >
+                      Launch App & Connect Wallet
+                      <ArrowRight className="w-5 h-5 ml-2" />
+                    </Button>
+                  </Link>
+
+                  <Link href="/about">
+                    <Button
+                      size="lg"
+                      variant="outline"
+                      className="border-[#333] hover:border-[#E99500] text-white hover:text-[#E99500] bg-transparent rounded-lg px-8 py-6 text-lg transition-all duration-300"
+                    >
+                      Learn More
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="grid grid-cols-3 gap-6 pt-8 border-t border-[#333]"
+              >
+                <div>
+                  <div className="text-3xl font-bold text-[#E99500]">100%</div>
+                  <div className="text-sm text-gray-400">Provably Fair</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-[#E99500]">
+                    Instant
+                  </div>
+                  <div className="text-sm text-gray-400">Liquidity</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-[#E99500]">Real</div>
+                  <div className="text-sm text-gray-400">Inventory Backed</div>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            {/* Right Column - 3D Box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.8, delay: 0.2 }}
+              className="relative"
+            >
+              <Suspense
+                fallback={
+                  <div className="aspect-square bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-2xl border border-[#333] flex items-center justify-center">
+                    <Loader2 className="w-12 h-12 animate-spin text-[#E99500]" />
+                  </div>
+                }
+              >
+                <FloatingBox />
+              </Suspense>
+            </motion.div>
           </div>
         </div>
       </section>
 
-      <section>
-        <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-bold text-white">Recent Pulls</h2>
-          <Link href="/packs">
-            <Button variant="ghost" className="text-[#999] hover:text-white hover:bg-[#1a1a1a] border-0">
-              Open Now
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </Link>
-        </div>
+      {/* How It Works Section */}
+      <section id="how-it-works" className="py-20 px-8 bg-[#0a0a0a]">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">
+              How It Works
+            </h2>
+            <p className="text-gray-400 text-lg">
+              Open. Reveal. Trade. Or cash out instantly.
+            </p>
+          </motion.div>
 
-        {loadingActivity ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-white" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {recentActivity.slice(0, 4).map((activity, index) => {
-              const skinName = activity.skin ? `${activity.skin.weapon} | ${activity.skin.skinName}` : 
-                              activity.lootBox ? activity.lootBox.name : 'Unknown'
-              const rarity = activity.skin?.rarity || 'Common'
-              const value = activity.valueUsd ? parseFloat(activity.valueUsd) : 0
-              
-              return (
-                <Card
-                  key={activity.id}
-                  className="bg-[#111] border-[#333] hover:border-[#555] transition-all duration-200 rounded-xl overflow-hidden"
-                >
-                  <CardContent className="p-0">
-                    <div className="aspect-square bg-[#1a1a1a] flex items-center justify-center border-b border-[#333]">
-                      <div className="text-4xl">🔫</div>
-                    </div>
-                    <div className="p-4">
-                      <h3 className="font-semibold text-white text-sm mb-1 truncate">{skinName}</h3>
-                      <p className="text-[#666] text-xs mb-3">{rarity}</p>
-                      <div className="flex justify-between items-center">
-                        <span className="font-bold text-white text-sm">{formatCurrency(value)}</span>
-                        <span className="text-[#666] text-xs">{getTimeAgo(activity.timestamp)}</span>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            {[
+              {
+                step: "1",
+                icon: Zap,
+                title: "Buy a Loot Box",
+                description:
+                  "Purchase with USDC or SOL. Fast, secure, on-chain.",
+              },
+              {
+                step: "2",
+                icon: Shield,
+                title: "Open & Verify",
+                description: "Randomness is verified on-chain. Provably fair.",
+              },
+              {
+                step: "3",
+                icon: CheckCircle2,
+                title: "Get Your Skin",
+                description:
+                  "Backed by real CS:GO inventory. Merkle proofs guarantee authenticity.",
+              },
+              {
+                step: "4",
+                icon: TrendingUp,
+                title: "Keep or Sell",
+                description: "Sell it back instantly at fair market value.",
+              },
+            ].map((item, index) => (
+              <motion.div
+                key={item.step}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                whileHover={{ scale: 1.05 }}
+                className="relative"
+              >
+                <Card className="bg-[#111] border-[#333] hover:border-[#E99500] transition-all duration-300 rounded-xl overflow-hidden h-full">
+                  <CardContent className="p-6">
+                    <div className="mb-4">
+                      <div className="w-12 h-12 bg-[#E99500]/10 rounded-lg flex items-center justify-center mb-4">
+                        <item.icon className="w-6 h-6 text-[#E99500]" />
+                      </div>
+                      <div className="text-5xl font-bold text-[#E99500]/20 absolute top-4 right-4">
+                        {item.step}
                       </div>
                     </div>
+                    <h3 className="text-xl font-bold text-white mb-2">
+                      {item.title}
+                    </h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      {item.description}
+                    </p>
                   </CardContent>
                 </Card>
-              )
-            })}
+              </motion.div>
+            ))}
           </div>
-        )}
+        </div>
       </section>
 
-      <div className="grid lg:grid-cols-2 gap-12 mt-16">
-        {/* Leaderboard Section */}
-        <section>
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-bold text-white">Leaderboard</h2>
-            <Link href="/leaderboard">
-              <Button variant="ghost" className="text-[#999] hover:text-white hover:bg-[#1a1a1a] border-0">
-                View All
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </Link>
-          </div>
+      {/* Trust Section */}
+      <section
+        id="trust"
+        className="py-20 px-8 bg-black relative overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-[#E99500]/5 via-transparent to-transparent" />
 
-          <Card className="bg-[#111] border-[#333] rounded-xl overflow-hidden">
-            <CardContent className="p-0">
-              {loadingLeaderboard ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-white" />
-                </div>
-              ) : leaderboard.length > 0 ? (
-                leaderboard.map((player, index) => (
-                  <div
-                    key={player.user?.id || index}
-                    className="flex items-center justify-between p-4 border-b border-[#333] last:border-b-0 hover:bg-[#1a1a1a] transition-colors"
+        <div className="max-w-7xl mx-auto relative">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <h2 className="text-4xl lg:text-5xl font-bold text-white mb-6">
+                Backed by Reality
+              </h2>
+              <p className="text-gray-400 text-lg leading-relaxed mb-8">
+                Every skin is secured by a real CS:GO inventory. Our on-chain
+                Merkle proofs ensure authenticity.
+              </p>
+              <div className="space-y-4">
+                {[
+                  "No hidden odds. Every drop is transparent.",
+                  "Provably fair randomness, verified on-chain.",
+                  "Real inventory backing every single skin.",
+                ].map((text, index) => (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    whileInView={{ opacity: 1, x: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex items-start gap-3"
                   >
-                    <div className="flex items-center space-x-4">
-                      <div className="w-8 h-8 bg-[#333] rounded-full flex items-center justify-center text-white text-sm font-bold">
-                        {player.rank || index + 1}
-                      </div>
-                      <div>
-                        <p className="text-white font-medium">
-                          {player.user?.username || player.user?.walletAddress?.slice(0, 8) + '...'}
-                        </p>
-                        <p className="text-[#666] text-sm">{player.casesOpened} cases opened</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-white font-bold">
-                        {formatCurrency(typeof player.inventoryValue === 'number' 
-                          ? player.inventoryValue 
-                          : parseFloat(player.inventoryValue || '0'))}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="p-8 text-center text-[#666]">
-                  No leaderboard data yet
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </section>
+                    <CheckCircle2 className="w-6 h-6 text-[#E99500] flex-shrink-0 mt-1" />
+                    <span className="text-white text-lg">{text}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
 
-        {/* Recent Activity Section */}
-        <section>
-          <div className="flex justify-between items-center mb-8">
-            <h2 className="text-2xl font-bold text-white">Recent Activity</h2>
-            <Link href="/activity">
-              <Button variant="ghost" className="text-[#999] hover:text-white hover:bg-[#1a1a1a] border-0">
-                View All
-                <ArrowRight className="w-4 h-4 ml-2" />
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+              className="relative"
+            >
+              <div className="bg-[#111] border border-[#333] rounded-2xl p-8">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between py-4 border-b border-[#333]">
+                    <span className="text-gray-400">Merkle Root</span>
+                    <span className="text-[#E99500] font-mono text-sm">
+                      2Wvs...9c2d
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-4 border-b border-[#333]">
+                    <span className="text-gray-400">Inventory Value</span>
+                    <span className="text-white font-bold text-lg">
+                      $2,847,392
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-4">
+                    <span className="text-gray-400">Verification Status</span>
+                    <span className="text-[#4ade80] flex items-center gap-2">
+                      <div className="w-2 h-2 bg-[#4ade80] rounded-full animate-pulse-scale" />
+                      Verified
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Instant Liquidity Section */}
+      <section id="liquidity" className="py-20 px-8 bg-[#0a0a0a]">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">
+              Instant Liquidity
+            </h2>
+            <p className="text-gray-400 text-lg">
+              Don't want your drop? Dust3 buys it back instantly at fair market
+              value.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-3 gap-8">
+            {[
+              {
+                title: "No Waiting",
+                description:
+                  "Instant payouts. No listing. No waiting for buyers.",
+                stat: "<1s",
+              },
+              {
+                title: "Fair Pricing",
+                description: "85% market value buyback guaranteed.",
+                stat: "85%",
+              },
+              {
+                title: "Zero Fees",
+                description: "Powered by Solana for speed and low fees.",
+                stat: "$0.00",
+              },
+            ].map((item, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+              >
+                <Card className="bg-[#111] border-[#333] hover:border-[#E99500] transition-all duration-300 rounded-xl overflow-hidden">
+                  <CardContent className="p-8 text-center">
+                    <div className="text-5xl font-bold text-[#E99500] mb-4">
+                      {item.stat}
+                    </div>
+                    <h3 className="text-xl font-bold text-white mb-2">
+                      {item.title}
+                    </h3>
+                    <p className="text-gray-400">{item.description}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Footer CTA */}
+      <section className="py-20 px-8 bg-gradient-to-br from-[#E99500]/20 via-black to-black relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(233,149,0,0.15),transparent_70%)]" />
+
+        <div className="max-w-4xl mx-auto text-center relative">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+          >
+            <h2 className="text-5xl lg:text-6xl font-bold text-white mb-6">
+              Ready to start?
+            </h2>
+            <p className="text-gray-400 text-xl mb-8">
+              Fair. Fast. Backed by reality.
+            </p>
+            <Link href="/app-dashboard/packs">
+              <Button
+                size="lg"
+                className="bg-[#E99500] hover:bg-[#c77f00] text-black font-bold border-0 rounded-lg px-12 py-7 text-xl transition-all duration-300 hover:scale-105 animate-glow"
+              >
+                Launch App
+                <ArrowRight className="w-6 h-6 ml-2" />
               </Button>
             </Link>
-          </div>
+          </motion.div>
+        </div>
+      </section>
 
-          <Card className="bg-[#111] border-[#333] rounded-xl overflow-hidden">
-            <CardContent className="p-0">
-              {loadingActivity ? (
-                <div className="flex justify-center py-12">
-                  <Loader2 className="w-8 h-8 animate-spin text-white" />
-                </div>
-              ) : recentActivity.length > 0 ? (
-                recentActivity.slice(0, 5).map((activity) => {
-                  const itemName = activity.skin 
-                    ? `${activity.skin.weapon} | ${activity.skin.skinName}`
-                    : activity.lootBox?.name || 'Unknown'
-                  const value = activity.valueUsd ? parseFloat(activity.valueUsd) : 0
-                  
-                  return (
-                    <div
-                      key={activity.id}
-                      className="flex items-center justify-between p-4 border-b border-[#333] last:border-b-0 hover:bg-[#1a1a1a] transition-colors"
-                    >
-                      <div className="flex-1">
-                        <p className="text-white text-sm">
-                          <span className="font-medium">
-                            {activity.user.username || activity.user.walletAddress.slice(0, 8) + '...'}
-                          </span>
-                          <span className="text-[#666] mx-1">{getActionText(activity.type)}</span>
-                          <span className="font-medium truncate">{itemName}</span>
-                        </p>
-                        <p className="text-[#666] text-xs mt-1">{getTimeAgo(activity.timestamp)}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-white font-bold text-sm">{formatCurrency(value)}</p>
-                      </div>
-                    </div>
-                  )
-                })
-              ) : (
-                <div className="p-8 text-center text-[#666]">
-                  No recent activity
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </section>
-      </div>
+      {/* Footer */}
+      <footer className="bg-black border-t border-[#333] py-12 px-8">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <div className="h-8 w-auto mb-4">
+                <img
+                  src="/assets/DUST3-SVG.svg"
+                  alt="Dust3 logo"
+                  className="h-8 w-auto"
+                />
+              </div>
+              <p className="text-gray-400 text-sm">
+                Fair. Fast. Backed by reality.
+              </p>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-4">Product</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>
+                  <a
+                    href="#how-it-works"
+                    className="hover:text-white transition-colors"
+                  >
+                    How It Works
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#trust"
+                    className="hover:text-white transition-colors"
+                  >
+                    Trust
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#liquidity"
+                    className="hover:text-white transition-colors"
+                  >
+                    Liquidity
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-4">Resources</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>
+                  <Link
+                    href="/about"
+                    className="hover:text-white transition-colors"
+                  >
+                    About
+                  </Link>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Docs
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    FAQ
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h4 className="text-white font-bold mb-4">Community</h4>
+              <ul className="space-y-2 text-sm text-gray-400">
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Discord
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Twitter
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    GitHub
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div className="border-t border-[#333] pt-8 text-center text-sm text-gray-400">
+            <p>© 2025 Dust3. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
     </div>
-  )
+  );
 }
