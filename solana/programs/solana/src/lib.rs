@@ -63,6 +63,11 @@ pub mod skinvault {
         instructions::vrf_callback::vrf_callback_handler(ctx, request_id, randomness)
     }
 
+    /// Reveal and claim NFT from Candy Machine after VRF fulfillment
+    pub fn reveal_and_claim(ctx: Context<RevealAndClaim>) -> Result<()> {
+        instructions::reveal_and_claim::reveal_and_claim_handler(ctx)
+    }
+
     /// Assign an inventory item to an opened box
     /// Optionally updates NFT metadata to show the actual skin
     pub fn assign(
@@ -71,12 +76,7 @@ pub mod skinvault {
         merkle_proof: Vec<[u8; 32]>,
         new_metadata: Option<SkinMetadata>,
     ) -> Result<()> {
-        instructions::assign::assign_handler(
-            ctx,
-            inventory_id_hash,
-            merkle_proof,
-            new_metadata,
-        )
+        instructions::assign::assign_handler(ctx, inventory_id_hash, merkle_proof, new_metadata)
     }
 
     /// Set price for an inventory item (oracle signed)

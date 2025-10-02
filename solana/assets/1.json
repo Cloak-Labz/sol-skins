@@ -1,0 +1,46 @@
+{
+  "name": "AWP | Dragon Lore",
+  "symbol": "SKIN",
+  "description": "Covert Sniper Rifle Skin from Cobblestone Collection",
+  "image": "1.png",
+  "attributes": [
+    {
+      "trait_type": "Weapon",
+      "value": "AWP"
+    },
+    {
+      "trait_type": "Skin",
+      "value": "Dragon Lore"
+    },
+    {
+      "trait_type": "Rarity",
+      "value": "Covert"
+    },
+    {
+      "trait_type": "Collection",
+      "value": "Cobblestone"
+    },
+    {
+      "trait_type": "Exterior",
+      "value": "Factory New"
+    },
+    {
+      "trait_type": "Float",
+      "value": "0.03"
+    },
+    {
+      "trait_type": "Weight",
+      "value": "1"
+    }
+  ],
+  "properties": {
+    "category": "image",
+    "files": [
+      {
+        "uri": "1.png",
+        "type": "image/png"
+      }
+    ]
+  }
+}
+

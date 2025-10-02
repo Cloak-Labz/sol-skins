@@ -6,6 +6,8 @@ use crate::states::*;
 use crate::utils::*;
 use crate::vrf::*;
 
+// Switchboard VRF integration will be added when dependencies are resolved
+
 #[derive(Accounts)]
 pub struct VrfCallback<'info> {
     #[account(
@@ -38,14 +40,14 @@ pub struct VrfCallback<'info> {
     )]
     pub vrf_pending: Account<'info, VrfPending>,
 
-    /// Only oracle or authority can provide VRF results
+    /// Only oracle can provide VRF results (Switchboard)
     #[account(
-        constraint = vrf_authority.key() == global.oracle_pubkey 
-                  || vrf_authority.key() == global.authority
+        constraint = vrf_authority.key() == global.oracle_pubkey
         @ SkinVaultError::Unauthorized
     )]
     pub vrf_authority: Signer<'info>,
 
+    // Switchboard VRF account will be added when dependencies are resolved
     /// CHECK: Box owner who will receive the refunded rent
     #[account(
         mut,
@@ -61,22 +63,34 @@ pub fn vrf_callback_handler(
 ) -> Result<()> {
     let current_time = Clock::get()?.unix_timestamp;
 
-    // Verify this is the correct VRF request
-    require!(
-        ctx.accounts.vrf_pending.request_id == request_id,
-        SkinVaultError::VrfNotFulfilled
-    );
+    // Get randomness from provided parameter (Switchboard integration will be added later)
+    let final_randomness = randomness;
 
     // Validate randomness
-    validate_vrf_randomness(&randomness)?;
+    validate_vrf_randomness(&final_randomness)?;
 
     let box_state = &mut ctx.accounts.box_state;
     let batch = &mut ctx.accounts.batch;
-    let vrf_pending = &ctx.accounts.vrf_pending;
+    let vrf_pending = &mut ctx.accounts.vrf_pending;
+
+    // Convert randomness bytes to u64 for storage
+    let randomness_u64 = u64::from_le_bytes([
+        final_randomness[0],
+        final_randomness[1],
+        final_randomness[2],
+        final_randomness[3],
+        final_randomness[4],
+        final_randomness[5],
+        final_randomness[6],
+        final_randomness[7],
+    ]);
+
+    // Store randomness in VRF pending for later claim
+    vrf_pending.randomness = randomness_u64;
 
     // Generate deterministic index from randomness
     let random_index = generate_random_index(
-        &randomness,
+        &final_randomness,
         &box_state.nft_mint,
         box_state.batch_id,
         vrf_pending.pool_size,
@@ -95,7 +109,7 @@ pub fn vrf_callback_handler(
 
     emit!(BoxOpened {
         nft_mint: box_state.nft_mint,
-        randomness,
+        randomness: final_randomness,
         random_index,
         pool_size: vrf_pending.pool_size,
     });

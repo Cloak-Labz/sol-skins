@@ -58,4 +58,10 @@ pub enum SkinVaultError {
 
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
+
+    #[msg("Invalid Candy Machine program ID")]
+    InvalidCandyMachineProgram,
+
+    #[msg("Invalid Token Metadata program ID")]
+    InvalidMetadataProgram,
 }

@@ -81,24 +81,20 @@ pub struct MintBox<'info> {
     /// CHECK: Metaplex Token Metadata Program
     #[account(address = mpl_token_metadata::ID)]
     pub metadata_program: UncheckedAccount<'info>,
-    
+
     /// CHECK: Sysvar instructions
     #[account(address = anchor_lang::solana_program::sysvar::instructions::ID)]
     pub sysvar_instructions: UncheckedAccount<'info>,
-    
+
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
 }
 
-pub fn mint_box_handler(
-    ctx: Context<MintBox>,
-    batch_id: u64,
-    metadata_uri: String,
-) -> Result<()> {
+pub fn mint_box_handler(ctx: Context<MintBox>, batch_id: u64, metadata_uri: String) -> Result<()> {
     // Check if program is paused
     require!(!ctx.accounts.global.paused, SkinVaultError::BuybackDisabled);
-    
+
     let current_time = Clock::get()?.unix_timestamp;
 
     // Validate metadata URI
@@ -123,18 +119,20 @@ pub fn mint_box_handler(
     box_state.bump = ctx.bumps.box_state;
 
     // Update counters
-    batch.boxes_minted = batch.boxes_minted
+    batch.boxes_minted = batch
+        .boxes_minted
         .checked_add(1)
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
-    
-    global.total_boxes_minted = global.total_boxes_minted
+
+    global.total_boxes_minted = global
+        .total_boxes_minted
         .checked_add(1)
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
     // Create NFT metadata using Metaplex
     let box_name = format!("SkinVault Box #{}", global.total_boxes_minted);
     let box_symbol = "SVBOX".to_string();
-    
+
     // Create metadata with creator (the program authority)
     let creators = vec![metaplex::Creator {
         address: global.authority,
@@ -157,7 +155,7 @@ pub fn mint_box_handler(
         box_symbol,
         metadata_uri.clone(),
         Some(creators),
-        500, // 5% seller fee basis points
+        500,  // 5% seller fee basis points
         None, // collection (can add later)
         true, // is_mutable (so metadata can be updated after opening)
         None, // no PDA signer needed - user is authority

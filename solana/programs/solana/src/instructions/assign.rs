@@ -61,7 +61,7 @@ pub struct Assign<'info> {
     /// Only box owner or authority can assign inventory
     #[account(mut)]
     pub signer: Signer<'info>,
-    
+
     pub system_program: Program<'info, System>,
 }
 
@@ -73,7 +73,7 @@ pub fn assign_handler(
 ) -> Result<()> {
     // Check if program is paused
     require!(!ctx.accounts.global.paused, SkinVaultError::BuybackDisabled);
-    
+
     // Validate inventory hash
     validate_inventory_hash(&inventory_id_hash)?;
 
@@ -106,7 +106,7 @@ pub fn assign_handler(
     // Update NFT metadata if new metadata provided (transforms mystery box → actual skin)
     if let Some(metadata) = new_metadata {
         msg!("Updating NFT metadata to: {}", metadata.name);
-        
+
         metaplex::update_nft_metadata(
             &ctx.accounts.metadata_program.to_account_info(),
             &ctx.accounts.metadata.to_account_info(),
@@ -119,7 +119,11 @@ pub fn assign_handler(
             None, // User signs, not PDA
         )?;
 
-        msg!("NFT metadata updated: {} -> {}", box_state.nft_mint, metadata.uri);
+        msg!(
+            "NFT metadata updated: {} -> {}",
+            box_state.nft_mint,
+            metadata.uri
+        );
     } else {
         msg!("NFT metadata not updated (no new metadata provided)");
     }
@@ -144,13 +148,13 @@ pub fn assign_handler(
 pub struct SkinMetadata {
     /// New name (e.g., "AK-47 | Redline")
     pub name: String,
-    
+
     /// New symbol (optional, defaults to "SVBOX")
     pub symbol: Option<String>,
-    
+
     /// New metadata URI (e.g., "https://arweave.net/ak47-redline.json")
     pub uri: String,
-    
+
     /// Seller fee basis points (optional, defaults to existing)
     pub seller_fee_basis_points: Option<u16>,
 }
@@ -158,7 +162,8 @@ pub struct SkinMetadata {
 /// Helper function to convert bytes to hex string for logging
 mod hex {
     pub fn encode(bytes: [u8; 32]) -> String {
-        bytes.iter()
+        bytes
+            .iter()
             .map(|b| format!("{:02x}", b))
             .collect::<Vec<String>>()
             .join("")

@@ -1,5 +1,5 @@
-pub mod spl;
 pub mod metaplex;
+pub mod spl;
 
-pub use spl::*;
 pub use metaplex::*;
+pub use spl::*;

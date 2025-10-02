@@ -1,8 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::program::invoke_signed;
 use mpl_token_metadata::instructions::{
-    CreateV1, CreateV1InstructionArgs, UpdateV1, UpdateV1InstructionArgs,
-    VerifyCollectionV1,
+    CreateV1, CreateV1InstructionArgs, UpdateV1, UpdateV1InstructionArgs, VerifyCollectionV1,
 };
 use mpl_token_metadata::types::{
     Collection as MplCollection, Creator as MplCreator, PrintSupply, TokenStandard,
@@ -82,7 +81,9 @@ pub fn create_nft_metadata<'info>(
     // Execute CPI call
     let account_infos = vec![
         metadata_account.clone(),
-        master_edition.map(|me| me.clone()).unwrap_or(metadata_account.clone()),
+        master_edition
+            .map(|me| me.clone())
+            .unwrap_or(metadata_account.clone()),
         mint.clone(),
         mint_authority.clone(),
         payer.clone(),

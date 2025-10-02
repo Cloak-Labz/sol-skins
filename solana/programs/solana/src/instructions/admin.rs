@@ -48,7 +48,7 @@ pub struct SetOracle<'info> {
         has_one = authority @ SkinVaultError::Unauthorized
     )]
     pub global: Account<'info, Global>,
-    
+
     pub authority: Signer<'info>,
 }
 
@@ -61,7 +61,7 @@ pub struct ToggleBuyback<'info> {
         has_one = authority @ SkinVaultError::Unauthorized
     )]
     pub global: Account<'info, Global>,
-    
+
     pub authority: Signer<'info>,
 }
 
@@ -74,7 +74,7 @@ pub struct SetMinTreasuryBalance<'info> {
         has_one = authority @ SkinVaultError::Unauthorized
     )]
     pub global: Account<'info, Global>,
-    
+
     pub authority: Signer<'info>,
 }
 
@@ -108,10 +108,7 @@ pub struct DepositTreasury<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn initialize_handler(
-    ctx: Context<Initialize>,
-    oracle_pubkey: Pubkey,
-) -> Result<()> {
+pub fn initialize_handler(ctx: Context<Initialize>, oracle_pubkey: Pubkey) -> Result<()> {
     let global = &mut ctx.accounts.global;
     global.authority = ctx.accounts.authority.key();
     global.oracle_pubkey = oracle_pubkey;
@@ -133,10 +130,7 @@ pub fn initialize_handler(
     Ok(())
 }
 
-pub fn set_oracle_handler(
-    ctx: Context<SetOracle>,
-    new_oracle_pubkey: Pubkey,
-) -> Result<()> {
+pub fn set_oracle_handler(ctx: Context<SetOracle>, new_oracle_pubkey: Pubkey) -> Result<()> {
     let global = &mut ctx.accounts.global;
     let old_oracle = global.oracle_pubkey;
     global.oracle_pubkey = new_oracle_pubkey;
@@ -147,15 +141,16 @@ pub fn set_oracle_handler(
         authority: ctx.accounts.authority.key(),
     });
 
-    msg!("Oracle updated from {} to {}", old_oracle, new_oracle_pubkey);
+    msg!(
+        "Oracle updated from {} to {}",
+        old_oracle,
+        new_oracle_pubkey
+    );
 
     Ok(())
 }
 
-pub fn toggle_buyback_handler(
-    ctx: Context<ToggleBuyback>,
-    enabled: bool,
-) -> Result<()> {
+pub fn toggle_buyback_handler(ctx: Context<ToggleBuyback>, enabled: bool) -> Result<()> {
     let global = &mut ctx.accounts.global;
     global.buyback_enabled = enabled;
 
@@ -181,10 +176,7 @@ pub fn set_min_treasury_balance_handler(
     Ok(())
 }
 
-pub fn deposit_treasury_handler(
-    ctx: Context<DepositTreasury>,
-    amount: u64,
-) -> Result<()> {
+pub fn deposit_treasury_handler(ctx: Context<DepositTreasury>, amount: u64) -> Result<()> {
     // Transfer USDC from depositor to treasury
     crate::cpi::spl::transfer_tokens(
         &ctx.accounts.token_program,
@@ -195,7 +187,10 @@ pub fn deposit_treasury_handler(
         None,
     )?;
 
-    let new_balance = ctx.accounts.treasury_ata.amount
+    let new_balance = ctx
+        .accounts
+        .treasury_ata
+        .amount
         .checked_add(amount)
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
@@ -205,7 +200,11 @@ pub fn deposit_treasury_handler(
         new_balance,
     });
 
-    msg!("Treasury deposit: {} USDC from {}", amount, ctx.accounts.depositor.key());
+    msg!(
+        "Treasury deposit: {} USDC from {}",
+        amount,
+        ctx.accounts.depositor.key()
+    );
 
     Ok(())
 }
@@ -239,30 +238,24 @@ pub struct WithdrawTreasury<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn withdraw_treasury_handler(
-    ctx: Context<WithdrawTreasury>,
-    amount: u64,
-) -> Result<()> {
+pub fn withdraw_treasury_handler(ctx: Context<WithdrawTreasury>, amount: u64) -> Result<()> {
     let global = &ctx.accounts.global;
     let treasury_balance = ctx.accounts.treasury_ata.amount;
-    
+
     // Ensure minimum balance remains
     let remaining_balance = treasury_balance
         .checked_sub(amount)
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
-    
+
     require!(
         remaining_balance >= global.min_treasury_balance,
         SkinVaultError::TreasuryInsufficient
     );
-    
+
     // Transfer from treasury using PDA signer
-    let global_seeds: &[&[u8]] = &[
-        b"global",
-        &[global.bump],
-    ];
+    let global_seeds: &[&[u8]] = &[b"global", &[global.bump]];
     let signer_seeds: &[&[&[u8]]] = &[global_seeds];
-    
+
     crate::cpi::spl::transfer_tokens(
         &ctx.accounts.token_program,
         &ctx.accounts.treasury_ata,
@@ -271,9 +264,13 @@ pub fn withdraw_treasury_handler(
         amount,
         Some(signer_seeds),
     )?;
-    
-    msg!("Treasury withdrawal: {} USDC to {}", amount, ctx.accounts.authority.key());
-    
+
+    msg!(
+        "Treasury withdrawal: {} USDC to {}",
+        amount,
+        ctx.accounts.authority.key()
+    );
+
     Ok(())
 }
 
@@ -288,18 +285,15 @@ pub struct EmergencyPause<'info> {
         has_one = authority @ SkinVaultError::Unauthorized
     )]
     pub global: Account<'info, Global>,
-    
+
     pub authority: Signer<'info>,
 }
 
-pub fn emergency_pause_handler(
-    ctx: Context<EmergencyPause>,
-    paused: bool,
-) -> Result<()> {
+pub fn emergency_pause_handler(ctx: Context<EmergencyPause>, paused: bool) -> Result<()> {
     ctx.accounts.global.paused = paused;
-    
+
     msg!("Emergency pause set to: {}", paused);
-    
+
     Ok(())
 }
 
@@ -311,13 +305,13 @@ pub fn initiate_authority_transfer_handler(
 ) -> Result<()> {
     let global = &mut ctx.accounts.global;
     global.pending_authority = Some(new_authority);
-    
+
     msg!(
         "Authority transfer initiated from {} to {}",
         global.authority,
         new_authority
     );
-    
+
     Ok(())
 }
 
@@ -331,24 +325,22 @@ pub struct AcceptAuthority<'info> {
             @ SkinVaultError::Unauthorized
     )]
     pub global: Account<'info, Global>,
-    
+
     pub new_authority: Signer<'info>,
 }
 
-pub fn accept_authority_handler(
-    ctx: Context<AcceptAuthority>,
-) -> Result<()> {
+pub fn accept_authority_handler(ctx: Context<AcceptAuthority>) -> Result<()> {
     let global = &mut ctx.accounts.global;
     let old_authority = global.authority;
-    
+
     global.authority = ctx.accounts.new_authority.key();
     global.pending_authority = None;
-    
+
     msg!(
         "Authority transferred from {} to {}",
         old_authority,
         global.authority
     );
-    
+
     Ok(())
 }

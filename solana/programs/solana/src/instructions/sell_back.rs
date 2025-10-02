@@ -72,10 +72,7 @@ pub struct SellBack<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn sell_back_handler(
-    ctx: Context<SellBack>,
-    min_price: u64,
-) -> Result<()> {
+pub fn sell_back_handler(ctx: Context<SellBack>, min_price: u64) -> Result<()> {
     let global = &mut ctx.accounts.global;
     let current_time = Clock::get()?.unix_timestamp;
 
@@ -106,17 +103,14 @@ pub fn sell_back_handler(
     let required_balance = payout
         .checked_add(global.min_treasury_balance)
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
-    
+
     require!(
         treasury_balance >= required_balance,
         SkinVaultError::TreasuryInsufficient
     );
 
     // Transfer USDC from treasury to user
-    let global_seeds: &[&[u8]] = &[
-        b"global",
-        &[global.bump],
-    ];
+    let global_seeds: &[&[u8]] = &[b"global", &[global.bump]];
     let signer_seeds: &[&[&[u8]]] = &[global_seeds];
 
     crate::cpi::spl::transfer_tokens(
@@ -129,11 +123,13 @@ pub fn sell_back_handler(
     )?;
 
     // Update global statistics
-    global.total_buybacks = global.total_buybacks
+    global.total_buybacks = global
+        .total_buybacks
         .checked_add(1)
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
-    
-    global.total_buyback_volume = global.total_buyback_volume
+
+    global.total_buyback_volume = global
+        .total_buyback_volume
         .checked_add(payout)
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
@@ -151,16 +147,14 @@ pub fn sell_back_handler(
     )?;
 
     // Close the NFT token account and reclaim rent
-    close_account(
-        CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            CloseAccount {
-                account: ctx.accounts.seller_nft_ata.to_account_info(),
-                destination: ctx.accounts.seller.to_account_info(),
-                authority: ctx.accounts.seller.to_account_info(),
-            },
-        ),
-    )?;
+    close_account(CpiContext::new(
+        ctx.accounts.token_program.to_account_info(),
+        CloseAccount {
+            account: ctx.accounts.seller_nft_ata.to_account_info(),
+            destination: ctx.accounts.seller.to_account_info(),
+            authority: ctx.accounts.seller.to_account_info(),
+        },
+    ))?;
 
     // Mark box as redeemed
     let box_state = &mut ctx.accounts.box_state;
