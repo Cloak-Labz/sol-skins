@@ -2,10 +2,9 @@ import type React from "react";
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import { Sidebar } from "@/components/sidebar";
-import { Header } from "@/components/header";
-import Footer from "@/components/footer";
 import { SolanaProvider } from "@/components/solana-provider";
+import { UserProvider } from "@/lib/contexts/UserContext";
+import { Toaster } from "react-hot-toast";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -18,9 +17,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "SolSkins - CS:GO Skins on Solana",
+  title: "Dust3 - Where CS skins meet Web3 fairness",
   description:
-    "Open loot boxes, collect CS:GO skins as NFTs, and trade on Solana blockchain",
+    "Unbox CS:GO skins on-chain. Provably fair, backed by real inventory, instant liquidity.",
   generator: "v0.app",
 };
 
@@ -34,14 +33,24 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} dark`}
     >
-      <body className="antialiased min-h-screen bg-[#0a0a0a]">
+      <body
+        suppressHydrationWarning
+        className="antialiased min-h-screen bg-black"
+      >
         <SolanaProvider>
-          <Sidebar />
-          <Header />
-          <main className="ml-64 pt-16 min-h-screen flex flex-col">
-            <div className="flex-1">{children}</div>
-            <Footer />
-          </main>
+          <UserProvider>
+            {children}
+            <Toaster
+              position="top-right"
+              toastOptions={{
+                style: {
+                  background: "#1a1a1a",
+                  color: "#fff",
+                  border: "1px solid #333",
+                },
+              }}
+            />
+          </UserProvider>
         </SolanaProvider>
       </body>
     </html>
