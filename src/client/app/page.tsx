@@ -4,7 +4,14 @@ import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowRight, Loader2, Shield, Zap, TrendingUp, CheckCircle2 } from "lucide-react";
+import {
+  ArrowRight,
+  Loader2,
+  Shield,
+  Zap,
+  TrendingUp,
+  CheckCircle2,
+} from "lucide-react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 
@@ -25,22 +32,34 @@ export default function LandingPage() {
       <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-lg border-b border-[#333]">
         <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="text-2xl font-bold">
-              <span className="text-white">Dust</span>
-              <span className="text-[#E99500]">3</span>
+            <div className="h-8 w-auto">
+              <img
+                src="/assets/DUST3-SVG.svg"
+                alt="Dust3 logo"
+                className="h-8 w-auto"
+              />
             </div>
           </div>
           <nav className="hidden md:flex items-center gap-8">
-            <a href="#how-it-works" className="text-gray-400 hover:text-white transition-colors">
+            <a
+              href="#how-it-works"
+              className="text-gray-400 hover:text-white transition-colors"
+            >
               How It Works
             </a>
-            <a href="#trust" className="text-gray-400 hover:text-white transition-colors">
+            <a
+              href="#trust"
+              className="text-gray-400 hover:text-white transition-colors"
+            >
               Trust
             </a>
-            <a href="#liquidity" className="text-gray-400 hover:text-white transition-colors">
+            <a
+              href="#liquidity"
+              className="text-gray-400 hover:text-white transition-colors"
+            >
               Liquidity
             </a>
-            <Link href="/app-dashboard">
+            <Link href="/app-dashboard/packs">
               <Button className="bg-[#E99500] hover:bg-[#c77f00] text-black font-bold">
                 Launch App
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -94,7 +113,7 @@ export default function LandingPage() {
                 </p>
 
                 <div className="flex flex-wrap gap-4">
-                  <Link href="/app-dashboard">
+                  <Link href="/app-dashboard/packs">
                     <Button
                       size="lg"
                       className="bg-[#E99500] hover:bg-[#c77f00] text-black font-bold border-0 rounded-lg px-8 py-6 text-lg transition-all duration-300 hover:scale-105 animate-glow"
@@ -128,7 +147,9 @@ export default function LandingPage() {
                   <div className="text-sm text-gray-400">Provably Fair</div>
                 </div>
                 <div>
-                  <div className="text-3xl font-bold text-[#E99500]">Instant</div>
+                  <div className="text-3xl font-bold text-[#E99500]">
+                    Instant
+                  </div>
                   <div className="text-sm text-gray-400">Liquidity</div>
                 </div>
                 <div>
@@ -183,7 +204,8 @@ export default function LandingPage() {
                 step: "1",
                 icon: Zap,
                 title: "Buy a Loot Box",
-                description: "Purchase with USDC or SOL. Fast, secure, on-chain.",
+                description:
+                  "Purchase with USDC or SOL. Fast, secure, on-chain.",
               },
               {
                 step: "2",
@@ -195,7 +217,8 @@ export default function LandingPage() {
                 step: "3",
                 icon: CheckCircle2,
                 title: "Get Your Skin",
-                description: "Backed by real CS:GO inventory. Merkle proofs guarantee authenticity.",
+                description:
+                  "Backed by real CS:GO inventory. Merkle proofs guarantee authenticity.",
               },
               {
                 step: "4",
@@ -238,7 +261,10 @@ export default function LandingPage() {
       </section>
 
       {/* Trust Section */}
-      <section id="trust" className="py-20 px-8 bg-black relative overflow-hidden">
+      <section
+        id="trust"
+        className="py-20 px-8 bg-black relative overflow-hidden"
+      >
         <div className="absolute inset-0 bg-gradient-to-br from-[#E99500]/5 via-transparent to-transparent" />
 
         <div className="max-w-7xl mx-auto relative">
@@ -326,7 +352,8 @@ export default function LandingPage() {
               Instant Liquidity
             </h2>
             <p className="text-gray-400 text-lg">
-              Don't want your drop? Dust3 buys it back instantly at fair market value.
+              Don't want your drop? Dust3 buys it back instantly at fair market
+              value.
             </p>
           </motion.div>
 
@@ -334,7 +361,8 @@ export default function LandingPage() {
             {[
               {
                 title: "No Waiting",
-                description: "Instant payouts. No listing. No waiting for buyers.",
+                description:
+                  "Instant payouts. No listing. No waiting for buyers.",
                 stat: "<1s",
               },
               {
@@ -389,7 +417,7 @@ export default function LandingPage() {
             <p className="text-gray-400 text-xl mb-8">
               Fair. Fast. Backed by reality.
             </p>
-            <Link href="/app-dashboard">
+            <Link href="/app-dashboard/packs">
               <Button
                 size="lg"
                 className="bg-[#E99500] hover:bg-[#c77f00] text-black font-bold border-0 rounded-lg px-12 py-7 text-xl transition-all duration-300 hover:scale-105 animate-glow"
@@ -407,9 +435,12 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="text-2xl font-bold mb-4">
-                <span className="text-white">Dust</span>
-                <span className="text-[#E99500]">3</span>
+              <div className="h-8 w-auto mb-4">
+                <img
+                  src="/assets/DUST3-SVG.svg"
+                  alt="Dust3 logo"
+                  className="h-8 w-auto"
+                />
               </div>
               <p className="text-gray-400 text-sm">
                 Fair. Fast. Backed by reality.
@@ -418,25 +449,73 @@ export default function LandingPage() {
             <div>
               <h4 className="text-white font-bold mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#how-it-works" className="hover:text-white transition-colors">How It Works</a></li>
-                <li><a href="#trust" className="hover:text-white transition-colors">Trust</a></li>
-                <li><a href="#liquidity" className="hover:text-white transition-colors">Liquidity</a></li>
+                <li>
+                  <a
+                    href="#how-it-works"
+                    className="hover:text-white transition-colors"
+                  >
+                    How It Works
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#trust"
+                    className="hover:text-white transition-colors"
+                  >
+                    Trust
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#liquidity"
+                    className="hover:text-white transition-colors"
+                  >
+                    Liquidity
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
               <h4 className="text-white font-bold mb-4">Resources</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><Link href="/about" className="hover:text-white transition-colors">About</Link></li>
-                <li><a href="#" className="hover:text-white transition-colors">Docs</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">FAQ</a></li>
+                <li>
+                  <Link
+                    href="/about"
+                    className="hover:text-white transition-colors"
+                  >
+                    About
+                  </Link>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Docs
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    FAQ
+                  </a>
+                </li>
               </ul>
             </div>
             <div>
               <h4 className="text-white font-bold mb-4">Community</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Discord</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Twitter</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">GitHub</a></li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Discord
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    Twitter
+                  </a>
+                </li>
+                <li>
+                  <a href="#" className="hover:text-white transition-colors">
+                    GitHub
+                  </a>
+                </li>
               </ul>
             </div>
           </div>

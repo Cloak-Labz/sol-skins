@@ -21,13 +21,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-8">
           <div className="mb-8">
-            <div className="text-4xl font-bold mb-4">
-              <span className="text-white">Dust</span>
-              <span className="text-[#E99500]">3</span>
+            <div className="mb-4 h-10 w-auto flex justify-center">
+              <img
+                src="/assets/DUST3-SVG.svg"
+                alt="Dust3 logo"
+                className="h-10 w-auto"
+              />
             </div>
-            <p className="text-gray-400 text-lg mb-8">
-              Loading...
-            </p>
+            <p className="text-gray-400 text-lg mb-8">Loading...</p>
           </div>
         </div>
       </div>
@@ -40,9 +41,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-8">
           <div className="mb-8">
-            <div className="text-4xl font-bold mb-4">
-              <span className="text-white">Dust</span>
-              <span className="text-[#E99500]">3</span>
+            <div className="mb-4 h-10 w-auto flex justify-center">
+              <img
+                src="/assets/DUST3-SVG.svg"
+                alt="Dust3 logo"
+                className="h-10 w-auto"
+              />
             </div>
             <p className="text-gray-400 text-lg mb-8">
               Connect your Solana wallet to access the app

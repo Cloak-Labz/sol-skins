@@ -1,400 +1,620 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   ArrowLeft,
-  Plus,
-  Minus,
-  Info,
   Zap,
   Loader2,
-  Wallet,
-  Box,
+  Sparkles,
+  TrendingUp,
+  Lock,
+  Unlock,
+  Package,
+  Gem,
+  Crown,
 } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { casesService, marketplaceService } from "@/lib/services";
-import { apiClient } from "@/lib/services/api";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useWallet } from "@solana/wallet-adapter-react";
+import { motion, AnimatePresence } from "framer-motion";
+// import { casesService } from "@/lib/services"; // Uncomment when ready to integrate
+
+interface CSGOSkin {
+  id: string;
+  name: string;
+  rarity: string;
+  value: number;
+  image: string;
+}
+
+const PACKS = [
+  {
+    id: "starter",
+    name: "Starter Pack",
+    price: 5.99,
+    priceSol: 0.05,
+    color: "from-gray-600 to-gray-800",
+    glowColor: "shadow-gray-500/50",
+    icon: Package,
+  },
+  {
+    id: "premium",
+    name: "Premium Pack",
+    price: 19.99,
+    priceSol: 0.15,
+    color: "from-blue-600 to-purple-600",
+    glowColor: "shadow-blue-500/50",
+    icon: Gem,
+  },
+  {
+    id: "legendary",
+    name: "Legendary Pack",
+    price: 49.99,
+    priceSol: 0.4,
+    color: "from-yellow-500 to-orange-600",
+    glowColor: "shadow-yellow-500/50",
+    icon: Crown,
+  },
+];
+
+// Mock skins using local assets
+const MOCK_SKINS: CSGOSkin[] = [
+  {
+    id: "1",
+    name: "AK-47 | Neon Rider",
+    rarity: "legendary",
+    value: 850.0,
+    image: "/assets/skins/img1.jpeg",
+  },
+  {
+    id: "2",
+    name: "AWP | Dragon Lore",
+    rarity: "legendary",
+    value: 1200.0,
+    image: "/assets/skins/img2.png",
+  },
+  {
+    id: "3",
+    name: "M4A4 | Howl",
+    rarity: "epic",
+    value: 450.0,
+    image: "/assets/skins/img3.png",
+  },
+  {
+    id: "4",
+    name: "Glock-18 | Fade",
+    rarity: "rare",
+    value: 125.5,
+    image: "/assets/skins/img1.jpeg",
+  },
+  {
+    id: "5",
+    name: "USP-S | Kill Confirmed",
+    rarity: "rare",
+    value: 89.99,
+    image: "/assets/skins/img2.png",
+  },
+  {
+    id: "6",
+    name: "Desert Eagle | Blaze",
+    rarity: "uncommon",
+    value: 45.0,
+    image: "/assets/skins/img3.png",
+  },
+  {
+    id: "7",
+    name: "P90 | Asiimov",
+    rarity: "uncommon",
+    value: 32.5,
+    image: "/assets/skins/img1.jpeg",
+  },
+  {
+    id: "8",
+    name: "MAC-10 | Neon Rider",
+    rarity: "common",
+    value: 12.0,
+    image: "/assets/skins/img2.png",
+  },
+  {
+    id: "9",
+    name: "Karambit | Fade",
+    rarity: "legendary",
+    value: 1850.0,
+    image: "/assets/skins/img3.png",
+  },
+  {
+    id: "10",
+    name: "M4A1-S | Hyper Beast",
+    rarity: "epic",
+    value: 380.0,
+    image: "/assets/skins/img1.jpeg",
+  },
+  {
+    id: "11",
+    name: "Butterfly Knife | Doppler",
+    rarity: "legendary",
+    value: 1450.0,
+    image: "/assets/skins/img2.png",
+  },
+  {
+    id: "12",
+    name: "AK-47 | Fire Serpent",
+    rarity: "epic",
+    value: 520.0,
+    image: "/assets/skins/img3.png",
+  },
+];
 
 export default function PacksPage() {
-  const { connected, publicKey, connect } = useWallet();
-  const [quantity, setQuantity] = useState(1);
-  const [superchargeMode, setSuperchargeMode] = useState(false);
-  const [isOpening, setIsOpening] = useState(false);
-  const [lootBoxes, setLootBoxes] = useState<any[]>([]);
-  const [selectedLootBox, setSelectedLootBox] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
+  const { connected } = useWallet();
+  const [selectedPack, setSelectedPack] = useState(PACKS[1]);
+  const [isSpinning, setIsSpinning] = useState(false);
+  const [isWaitingResponse, setIsWaitingResponse] = useState(false);
+  const [wonSkin, setWonSkin] = useState<CSGOSkin | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const [spinItems, setSpinItems] = useState<CSGOSkin[]>([]);
+  const rouletteRef = useRef<HTMLDivElement>(null);
+  const animationRef = useRef<any>(null);
 
-  // Load available loot boxes from backend
+  // Generate initial roulette items
   useEffect(() => {
-    loadLootBoxes();
+    generateSpinItems();
   }, []);
 
-  // Update API client with wallet address when wallet connects
-  useEffect(() => {
-    if (connected && publicKey) {
-      apiClient.setWalletAddress(publicKey.toString());
-      console.log("Wallet connected:", publicKey.toString());
-    } else {
-      apiClient.setWalletAddress(null);
+  const generateSpinItems = () => {
+    const items: CSGOSkin[] = [];
+    for (let i = 0; i < 50; i++) {
+      items.push(MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)]);
     }
-  }, [connected, publicKey]);
+    setSpinItems(items);
+  };
 
-  const loadLootBoxes = async () => {
-    try {
-      setLoading(true);
-      console.log("Loading loot boxes...");
-      const response = await marketplaceService.getLootBoxes({ limit: 10 });
-      console.log("Loot boxes response:", response);
+  // Continuous spinning animation while waiting for response
+  const startContinuousSpin = () => {
+    if (!rouletteRef.current) return;
 
-      if (response.success && response.data) {
-        setLootBoxes(response.data);
-        // Select the first loot box as default
-        if (response.data.length > 0) {
-          setSelectedLootBox(response.data[0]);
+    const animate = () => {
+      if (rouletteRef.current && isWaitingResponse) {
+        const currentTransform = rouletteRef.current.style.transform;
+        const currentX = parseFloat(currentTransform.replace(/[^-\d.]/g, "")) || 0;
+        const newX = currentX - 2; // Speed of continuous scroll
+
+        // Reset position when reaching end to create infinite loop effect
+        if (newX < -8000) {
+          rouletteRef.current.style.transform = "translateX(0px)";
+        } else {
+          rouletteRef.current.style.transform = `translateX(${newX}px)`;
         }
       }
-    } catch (error) {
-      console.error("Error loading loot boxes:", error);
-      toast.error("Failed to load loot boxes");
-    } finally {
-      setLoading(false);
-    }
+      animationRef.current = requestAnimationFrame(animate);
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
   };
 
-  const probabilityData = [
-    { range: "$12-$30", percentage: "88.47%", color: "text-gray-400" },
-    { range: "$30-$100", percentage: "9%", color: "text-green-400" },
-    { range: "$100-$200", percentage: "2%", color: "text-blue-400" },
-    { range: "$200-$500", percentage: "0.5%", color: "text-purple-400" },
-    { range: "$500-$1,000", percentage: "0.02%", color: "text-red-400" },
-    { range: "$1,000-$2,000+", percentage: "0.01%", color: "text-yellow-400" },
-  ];
+  // Stop continuous spin and animate to final position
+  const stopAndShowResult = (winnerSkin: CSGOSkin) => {
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
 
-  const otherPacks = [
-    {
-      id: 1,
-      name: "Rookie Pack",
-      image: "/cs-go-rookie-pack.jpg",
-      active: true,
-    },
-    { id: 2, name: "Pro Pack", image: "/cs-go-pro-pack.jpg", active: false },
-    {
-      id: 3,
-      name: "Elite Pack",
-      image: "/cs-go-elite-pack.jpg",
-      active: false,
-    },
-    {
-      id: 4,
-      name: "Legend Pack",
-      image: "/cs-go-legend-pack.jpg",
-      active: false,
-    },
-    {
-      id: 5,
-      name: "Coming Soon",
-      image: "/coming-soon-pack.jpg",
-      active: false,
-      comingSoon: true,
-    },
-    {
-      id: 6,
-      name: "Coming Soon",
-      image: "/coming-soon-pack.jpg",
-      active: false,
-      comingSoon: true,
-    },
-    {
-      id: 7,
-      name: "Coming Soon",
-      image: "/coming-soon-pack.jpg",
-      active: false,
-      comingSoon: true,
-    },
-  ];
+    // Regenerate items with winner at specific position
+    const items: CSGOSkin[] = [];
+    for (let i = 0; i < 50; i++) {
+      items.push(MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)]);
+    }
+
+    const winningIndex = 42;
+    items[winningIndex] = winnerSkin;
+    setSpinItems(items);
+
+    // Animate to final position
+    setTimeout(() => {
+      if (rouletteRef.current) {
+        const itemWidth = 160;
+        const finalPosition = -(winningIndex * itemWidth - window.innerWidth / 2 + itemWidth / 2);
+
+        rouletteRef.current.style.transition = "transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99)";
+        rouletteRef.current.style.transform = `translateX(${finalPosition}px)`;
+      }
+
+      // Show result modal after animation
+      setTimeout(() => {
+        setWonSkin(winnerSkin);
+        setShowResult(true);
+        setIsSpinning(false);
+        setIsWaitingResponse(false);
+        toast.success(`You won ${winnerSkin.name}!`, {
+          icon: "🎉",
+          duration: 4000,
+        });
+      }, 3200);
+    }, 100);
+  };
 
   const handleOpenPack = async () => {
-    if (isOpening) return;
-
-    // Check wallet connection
-    if (!connected || !publicKey) {
-      toast.error("Please connect your wallet first");
+    if (!connected) {
+      toast.error("Connect your wallet first!");
       return;
     }
 
-    if (!selectedLootBox) {
-      toast.error("No loot box selected");
-      return;
+    if (isSpinning || isWaitingResponse) return;
+
+    setIsSpinning(true);
+    setIsWaitingResponse(true);
+    setShowResult(false);
+    setWonSkin(null);
+
+    // Reset and start continuous animation
+    generateSpinItems();
+    if (rouletteRef.current) {
+      rouletteRef.current.style.transition = "none";
+      rouletteRef.current.style.transform = "translateX(0px)";
     }
 
-    // Redirect directly to the opening page with the loot box ID
-    window.location.href = `/open/${selectedLootBox.id}`;
+    setTimeout(() => {
+      startContinuousSpin();
+    }, 100);
+
+    // ============================================
+    // ACTUAL API INTEGRATION - Uncomment when ready
+    // ============================================
+    /*
+    try {
+      const response = await casesService.openCase({
+        lootBoxTypeId: selectedPack.id,
+        quantity: 1,
+      });
+
+      // When response arrives, stop spinning and show result
+      // Map the response skin to CSGOSkin format
+      const wonSkin: CSGOSkin = {
+        id: response.data.skin.id,
+        name: response.data.skin.name,
+        rarity: response.data.skin.rarity,
+        value: response.data.skin.value,
+        image: response.data.skin.image,
+      };
+
+      stopAndShowResult(wonSkin);
+
+    } catch (error) {
+      console.error("Failed to open pack:", error);
+      toast.error("Failed to open pack");
+      setIsSpinning(false);
+      setIsWaitingResponse(false);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    }
+    */
+
+    // ============================================
+    // MOCK DELAY FOR TESTING - Remove when using real API
+    // ============================================
+    setTimeout(() => {
+      // Simulate receiving response from blockchain
+      const mockWinner = MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)];
+      stopAndShowResult(mockWinner);
+    }, 5000); // Simulating 5 second response time
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] p-6 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-4" />
-          <p className="text-white">Loading loot boxes...</p>
-        </div>
-      </div>
-    );
-  }
+  const getRarityColor = (rarity: string) => {
+    switch (rarity) {
+      case "legendary":
+        return "from-yellow-500 to-orange-500";
+      case "epic":
+        return "from-purple-500 to-pink-500";
+      case "rare":
+        return "from-blue-500 to-cyan-500";
+      case "uncommon":
+        return "from-green-500 to-emerald-500";
+      default:
+        return "from-gray-500 to-slate-500";
+    }
+  };
+
+  const getRarityBorderColor = (rarity: string) => {
+    switch (rarity) {
+      case "legendary":
+        return "border-yellow-400";
+      case "epic":
+        return "border-purple-400";
+      case "rare":
+        return "border-blue-400";
+      case "uncommon":
+        return "border-green-400";
+      default:
+        return "border-gray-400";
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-6 relative z-50">
-      <div className="mb-6 relative z-50">
+    <div className="min-h-screen bg-black p-4 md:p-6 overflow-hidden">
+      {/* Header */}
+      <div className="mb-6">
         <Link
-          href="/marketplace"
+          href="/app-dashboard"
           className="inline-flex items-center text-gray-400 hover:text-white transition-colors"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Marketplace
+          Back to Dashboard
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl mx-auto relative z-50">
-        <div className="relative z-50">
-          <Card className="bg-[#1a1a1a] border-[#333] rounded-2xl overflow-hidden">
-            <CardContent className="p-0 relative">
-              {/* Status badges */}
-              <div className="absolute top-4 left-4 z-10">
-                <Badge className="bg-green-500/20 text-green-400 border-green-500/30">
-                  <div className="w-2 h-2 bg-green-400 rounded-full mr-2"></div>
-                  In Stock
-                </Badge>
-              </div>
-              <div className="absolute top-4 right-4 z-10">
-                <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">
-                  +2,500 pts
-                </Badge>
-              </div>
-
-              {/* Main pack image */}
-              <div className="aspect-square bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] flex items-center justify-center">
-                {selectedLootBox?.imageUrl ? (
-                  <img
-                    src={selectedLootBox.imageUrl}
-                    alt={selectedLootBox.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <Box className="w-20 h-20 mx-auto text-muted-foreground" />
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="space-y-6 relative z-50">
-          <div>
-            <h1 className="text-4xl font-bold text-white mb-4">
-              {selectedLootBox?.name || "Select a Loot Box"}
-            </h1>
-            <p className="text-gray-400 text-lg leading-relaxed">
-              Open a pack to instantly reveal your card and choose to hold,
-              trade, redeem, or accept a{" "}
-              <span className="text-white font-semibold">
-                85% instant buyback offer
-              </span>{" "}
-              based on your card's fair market value. Each pack contains one
-              professionally graded and authenticated trading card, securely
-              vaulted and fully insured.
-            </p>
-            <div className="flex items-center gap-4 mt-4">
-              <Link
-                href="#"
-                className="text-gray-400 hover:text-white text-sm underline"
-              >
-                Read disclaimer
-              </Link>
-              <span className="text-gray-600">|</span>
-              <span className="text-gray-400 text-sm">
-                Professionally graded & insured
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto space-y-8">
+        {/* Title Section */}
+        <div className="text-center space-y-2">
+          <motion.h1
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-4xl md:text-6xl font-bold"
+          >
+            <span className="text-white">Open </span>
+            <span className="text-[#E99500]">Packs</span>
+          </motion.h1>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className="text-gray-400 text-lg"
+          >
+            {isWaitingResponse ? (
+              <span className="text-[#E99500] font-semibold animate-pulse">
+                Processing on blockchain...
               </span>
-            </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <h3 className="text-xl font-bold text-white">
-                  Odds & Probabilities
-                </h3>
-                <Info className="w-4 h-4 text-gray-400" />
-              </div>
-              <div className="text-right">
-                <p className="text-gray-400 text-sm">Expected Value</p>
-                <p className="text-green-400 text-xl font-bold">$25.81</p>
-              </div>
-            </div>
-            <p className="text-gray-400 text-sm mb-4">
-              Real-time probability data
-            </p>
-
-            <div className="grid grid-cols-3 gap-3">
-              {selectedLootBox?.chances
-                ? Object.entries(selectedLootBox.chances).map(
-                    ([rarity, chance], index) => (
-                      <Card
-                        key={index}
-                        className="bg-[#111] border-[#333] rounded-lg"
-                      >
-                        <CardContent className="p-3">
-                          <p className="text-gray-400 text-xs mb-1 capitalize">
-                            {rarity}
-                          </p>
-                          <p className="font-bold text-sm text-white">
-                            {chance}%
-                          </p>
-                        </CardContent>
-                      </Card>
-                    )
-                  )
-                : probabilityData.map((item, index) => (
-                    <Card
-                      key={index}
-                      className="bg-[#111] border-[#333] rounded-lg"
-                    >
-                      <CardContent className="p-3">
-                        <p className="text-gray-400 text-xs mb-1">
-                          {item.range}
-                        </p>
-                        <p className={`font-bold text-sm ${item.color}`}>
-                          {item.percentage}
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ))}
-            </div>
-          </div>
-
-          <div className="space-y-4 relative z-50">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-white text-3xl font-bold">
-                  {selectedLootBox
-                    ? `${parseFloat(selectedLootBox.priceSol)} SOL`
-                    : "$25.00"}
-                </span>
-                <span className="text-gray-400 ml-2">per pack</span>
-                <span className="text-blue-400 ml-2">• +2,500 pts</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-[#1a1a1a] border-[#333] text-white hover:bg-[#333] w-8 h-8 p-0 relative z-50"
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  disabled={isOpening}
-                >
-                  <Minus className="w-4 h-4" />
-                </Button>
-                <span className="text-white font-bold text-xl w-8 text-center">
-                  {quantity}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="bg-[#1a1a1a] border-[#333] text-white hover:bg-[#333] w-8 h-8 p-0 relative z-50"
-                  onClick={() => setQuantity(quantity + 1)}
-                  disabled={isOpening}
-                >
-                  <Plus className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-[#111] rounded-lg border border-[#333] relative z-50">
-              <div className="flex items-center gap-3">
-                <Zap className="w-5 h-5 text-yellow-400" />
-                <div>
-                  <p className="text-white font-semibold">Supercharge Mode</p>
-                  <p className="text-gray-400 text-sm">
-                    Auto-sell low value cards
-                  </p>
-                </div>
-                <Info className="w-4 h-4 text-gray-400" />
-              </div>
-              <button
-                onClick={() => setSuperchargeMode(!superchargeMode)}
-                disabled={isOpening}
-                className={`relative w-12 h-6 rounded-full transition-colors z-50 ${
-                  superchargeMode ? "bg-blue-500" : "bg-[#333]"
-                } ${isOpening ? "opacity-50 cursor-not-allowed" : ""}`}
-              >
-                <div
-                  className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${
-                    superchargeMode ? "translate-x-7" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
-
-            {!connected ? (
-              <Button
-                onClick={() => connect()}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 text-lg rounded-lg relative z-50"
-              >
-                <Wallet className="w-5 h-5 mr-2" />
-                Connect Wallet to Open Pack
-              </Button>
             ) : (
-              <Button
-                onClick={handleOpenPack}
-                disabled={isOpening}
-                className="w-full bg-white text-black hover:bg-gray-200 font-bold py-4 text-lg rounded-lg disabled:opacity-50 disabled:cursor-not-allowed relative z-50"
-              >
-                {isOpening ? (
-                  <>
-                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                    Opening Pack...
-                  </>
-                ) : (
-                  `Open Pack${quantity > 1 ? "s" : ""}`
-                )}
-              </Button>
+              "Test your luck and win legendary skins"
             )}
+          </motion.p>
+        </div>
+
+        {/* Pack Selection */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          {PACKS.map((pack, index) => {
+            const IconComponent = pack.icon;
+            return (
+              <motion.div
+                key={pack.id}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: index * 0.1 }}
+              >
+                <Card
+                  onClick={() => !isSpinning && !isWaitingResponse && setSelectedPack(pack)}
+                  className={`cursor-pointer transition-all duration-300 bg-gradient-to-br ${pack.color} p-6 border-2 ${
+                    selectedPack.id === pack.id
+                      ? `border-[#E99500] ${pack.glowColor} shadow-2xl scale-105`
+                      : "border-transparent hover:border-gray-600 hover:scale-102"
+                  } ${isSpinning || isWaitingResponse ? "pointer-events-none opacity-50" : ""}`}
+                >
+                  <div className="text-center space-y-4">
+                    <IconComponent className="w-16 h-16 mx-auto text-white" />
+                    <h3 className="text-xl font-bold text-white">{pack.name}</h3>
+                    <div className="space-y-1">
+                      <p className="text-3xl font-bold text-white">
+                        {pack.priceSol} SOL
+                      </p>
+                      <p className="text-sm text-gray-200">${pack.price} USD</p>
+                    </div>
+                    {selectedPack.id === pack.id && (
+                      <Badge className="bg-[#E99500] text-black border-none">
+                        Selected
+                      </Badge>
+                    )}
+                  </div>
+                </Card>
+              </motion.div>
+            );
+          })}
+        </div>
+
+        {/* Roulette Section */}
+        <div className="relative">
+          {/* Center Line Indicator */}
+          <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-[#E99500] z-20 transform -translate-x-1/2 shadow-[0_0_20px_rgba(233,149,0,0.8)]">
+            <div className="absolute -top-4 left-1/2 transform -translate-x-1/2">
+              <div className="w-0 h-0 border-l-8 border-r-8 border-t-8 border-l-transparent border-r-transparent border-t-[#E99500]"></div>
+            </div>
+          </div>
+
+          {/* Roulette Container */}
+          <div className="relative bg-gradient-to-b from-[#1a1a1a] to-black rounded-2xl p-8 overflow-hidden border border-[#333]">
+            {/* Status Indicator */}
+            {isWaitingResponse && (
+              <div className="absolute top-4 right-4 z-30 flex items-center gap-2 bg-[#E99500]/20 px-4 py-2 rounded-lg border border-[#E99500]">
+                <Loader2 className="w-4 h-4 text-[#E99500] animate-spin" />
+                <span className="text-[#E99500] font-semibold text-sm">Waiting for result...</span>
+              </div>
+            )}
+
+            {/* Fade edges */}
+            <div className="absolute left-0 top-0 bottom-0 w-32 bg-gradient-to-r from-black to-transparent z-10"></div>
+            <div className="absolute right-0 top-0 bottom-0 w-32 bg-gradient-to-l from-black to-transparent z-10"></div>
+
+            {/* Items Container */}
+            <div className="overflow-hidden py-4">
+              <div
+                ref={rouletteRef}
+                className="flex gap-4"
+                style={{ transform: "translateX(0px)", transition: "none" }}
+              >
+                {spinItems.map((item, index) => (
+                  <div
+                    key={index}
+                    className="flex-shrink-0 w-36 h-48 relative"
+                  >
+                    <Card className={`w-full h-full bg-gradient-to-br ${getRarityColor(item.rarity)} p-3 border-2 ${getRarityBorderColor(item.rarity)} flex flex-col items-center justify-center space-y-2 shadow-xl`}>
+                      <div className="w-full h-24 flex items-center justify-center bg-black/20 rounded">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="max-w-full max-h-full object-contain"
+                        />
+                      </div>
+                      <p className="text-white text-xs font-bold text-center line-clamp-2 px-1">
+                        {item.name}
+                      </p>
+                      <p className="text-white text-sm font-bold">
+                        ${item.value.toFixed(2)}
+                      </p>
+                    </Card>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="mt-12 max-w-7xl mx-auto relative z-50">
-        <h3 className="text-xl font-bold text-white mb-4">
-          Available Loot Boxes
-        </h3>
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {lootBoxes.map((lootBox) => (
-            <Card
-              key={lootBox.id}
-              className={`flex-shrink-0 w-24 h-24 rounded-lg overflow-hidden border-2 transition-all relative z-50 cursor-pointer ${
-                selectedLootBox?.id === lootBox.id
-                  ? "border-purple-500 bg-purple-500/20"
-                  : "border-[#333] bg-[#1a1a1a] hover:border-[#555]"
-              }`}
-              onClick={() => setSelectedLootBox(lootBox)}
+        {/* Action Button */}
+        <div className="flex justify-center">
+          <Button
+            onClick={handleOpenPack}
+            disabled={isSpinning || isWaitingResponse || !connected}
+            size="lg"
+            className={`relative px-12 py-8 text-2xl font-bold rounded-xl transition-all duration-300 ${
+              isSpinning || isWaitingResponse
+                ? "bg-gray-600 cursor-not-allowed"
+                : "bg-gradient-to-r from-[#E99500] to-[#ff6b00] hover:shadow-[0_0_30px_rgba(233,149,0,0.6)] hover:scale-105"
+            } text-black disabled:opacity-50`}
+          >
+            {!connected ? (
+              <>
+                <Lock className="w-6 h-6 mr-3" />
+                Connect Wallet
+              </>
+            ) : isWaitingResponse ? (
+              <>
+                <Loader2 className="w-6 h-6 mr-3 animate-spin" />
+                Processing...
+              </>
+            ) : isSpinning ? (
+              <>
+                <Loader2 className="w-6 h-6 mr-3 animate-spin" />
+                Opening...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-6 h-6 mr-3" />
+                Open {selectedPack.name}
+              </>
+            )}
+          </Button>
+        </div>
+
+        {/* Result Modal */}
+        <AnimatePresence>
+          {showResult && wonSkin && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+              onClick={() => setShowResult(false)}
             >
-              <CardContent className="p-0 w-full h-full">
-                {lootBox.imageUrl ? (
-                  <img
-                    src={lootBox.imageUrl}
-                    alt={lootBox.name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-[#1a1a1a]">
-                    <Box className="w-8 h-8 text-muted-foreground" />
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0, rotateY: -90 }}
+                animate={{ scale: 1, opacity: 1, rotateY: 0 }}
+                exit={{ scale: 0.8, opacity: 0 }}
+                transition={{ type: "spring", duration: 0.6 }}
+                className="relative max-w-2xl w-full"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Card className={`bg-gradient-to-br ${getRarityColor(wonSkin.rarity)} p-8 border-4 border-white/30 shadow-2xl`}>
+                  <div className="text-center space-y-6">
+                    {/* Skin Image */}
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: [0, 1.2, 1] }}
+                      transition={{ duration: 0.6 }}
+                      className="w-64 h-64 mx-auto flex items-center justify-center bg-black/30 rounded-lg"
+                    >
+                      <img
+                        src={wonSkin.image}
+                        alt={wonSkin.name}
+                        className="max-w-full max-h-full object-contain drop-shadow-2xl p-4"
+                      />
+                    </motion.div>
+
+                    <div className="space-y-2">
+                      <Badge className="bg-black/30 text-white border-white/20 text-lg px-4 py-1 uppercase">
+                        {wonSkin.rarity}
+                      </Badge>
+                      <h2 className="text-3xl font-bold text-white px-4">
+                        {wonSkin.name}
+                      </h2>
+                      <p className="text-5xl font-bold text-white">
+                        ${wonSkin.value.toFixed(2)}
+                      </p>
+                    </div>
+
+                    <div className="flex gap-4 justify-center pt-4">
+                      <Button
+                        onClick={() => {
+                          setShowResult(false);
+                          toast.success("Skin claimed to inventory!");
+                        }}
+                        size="lg"
+                        className="bg-white text-black hover:bg-gray-200 font-bold px-8"
+                      >
+                        <Unlock className="w-5 h-5 mr-2" />
+                        Claim Skin
+                      </Button>
+                      <Button
+                        onClick={() => {
+                          setShowResult(false);
+                          toast.success(`Sold for $${(wonSkin.value * 0.85).toFixed(2)}`);
+                        }}
+                        size="lg"
+                        variant="outline"
+                        className="bg-transparent border-2 border-white text-white hover:bg-white/20 font-bold px-8"
+                      >
+                        <TrendingUp className="w-5 h-5 mr-2" />
+                        Sell (85%)
+                      </Button>
+                    </div>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                </Card>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Info Cards */}
+        <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+          <Card className="bg-[#1a1a1a] border-[#333] p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Sparkles className="w-6 h-6 text-[#E99500]" />
+              <h3 className="text-white font-bold">On-Chain Fair</h3>
+            </div>
+            <p className="text-gray-400 text-sm">
+              Provably fair system running on Solana blockchain
+            </p>
+          </Card>
+
+          <Card className="bg-[#1a1a1a] border-[#333] p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <Zap className="w-6 h-6 text-[#E99500]" />
+              <h3 className="text-white font-bold">Instant Delivery</h3>
+            </div>
+            <p className="text-gray-400 text-sm">
+              Get your skins instantly in your inventory
+            </p>
+          </Card>
+
+          <Card className="bg-[#1a1a1a] border-[#333] p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <TrendingUp className="w-6 h-6 text-[#E99500]" />
+              <h3 className="text-white font-bold">85% Buyback</h3>
+            </div>
+            <p className="text-gray-400 text-sm">
+              Instant 85% buyback offer on all skins
+            </p>
+          </Card>
         </div>
       </div>
     </div>
