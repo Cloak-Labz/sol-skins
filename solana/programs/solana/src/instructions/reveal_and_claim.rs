@@ -1,20 +1,14 @@
-use crate::errors::SkinVaultError;
+use crate::cpi::core::create_core_asset;
+use crate::errors::ProgramError;
 use crate::states::{Global, VrfPending};
 use anchor_lang::prelude::*;
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token::{mint_to, Mint, MintTo, Token, TokenAccount},
-};
-use mpl_token_metadata::{
-    accounts::Metadata as MetadataAccount,
-    instructions::{CreateV1CpiBuilder, MintV1CpiBuilder},
-    types::{Creator, PrintSupply, TokenStandard},
-};
 
-/// Reveal and Claim NFT - Direct Minting
+/// Reveal and Claim NFT - Metaplex Core Minting
 ///
-/// After VRF randomness is fulfilled, user calls this to mint their NFT
-/// directly using the VRF-determined skin metadata.
+/// After VRF randomness is fulfilled, user calls this to mint their Metaplex Core NFT
+/// with the VRF-determined skin metadata. The NFT is minted with:
+/// - PERMANENT Freeze Delegate (locked until platform unlocks, can't be removed)
+/// - REGULAR Transfer Delegate (for future marketplace, can be removed if needed)
 #[derive(Accounts)]
 pub struct RevealAndClaim<'info> {
     #[account(mut)]
@@ -28,63 +22,36 @@ pub struct RevealAndClaim<'info> {
 
     #[account(
         mut,
-        seeds = [b"vrf_pending", user.key().as_ref(), vrf_pending.request_id.to_le_bytes().as_ref()],
+        seeds = [b"vrf_pending", user.key().as_ref()],
         bump,
         close = user, // Close and refund rent after claiming
     )]
     pub vrf_pending: Account<'info, VrfPending>,
 
-    /// Collection mint
-    #[account(mut)]
-    pub collection_mint: Account<'info, Mint>,
-
-    /// Collection metadata
-    /// CHECK: Derived from collection mint via Metaplex PDA
-    #[account(mut)]
-    pub collection_metadata: UncheckedAccount<'info>,
-
-    /// NFT mint to create
-    #[account(mut)]
-    pub nft_mint: Signer<'info>,
-
-    /// NFT metadata PDA
-    /// CHECK: Derived and created by Token Metadata program
-    #[account(mut)]
-    pub nft_metadata: UncheckedAccount<'info>,
-
-    /// NFT master edition PDA (for NFTs)
-    /// CHECK: Derived and created by Token Metadata program
-    #[account(mut)]
-    pub nft_edition: UncheckedAccount<'info>,
-
-    /// User's token account to receive the NFT
     #[account(
-        init_if_needed,
+        init,
         payer = user,
-        associated_token::mint = nft_mint,
-        associated_token::authority = user,
+        seeds = [b"box", asset.key().as_ref()],
+        bump,
+        space = crate::states::BoxState::LEN
     )]
-    pub nft_token_account: Account<'info, TokenAccount>,
+    pub box_state: Account<'info, crate::states::BoxState>,
 
-    /// Token Metadata program
-    /// CHECK: Metaplex Token Metadata Program ID
-    pub token_metadata_program: UncheckedAccount<'info>,
+    /// Collection asset (Metaplex Core collection) - optional
+    /// CHECK: Validated by Core program during CPI
+    pub collection: Option<UncheckedAccount<'info>>,
 
-    /// SPL Token program
-    pub token_program: Program<'info, Token>,
+    /// Core NFT asset to be created (signer for new asset)
+    /// CHECK: New account, will be initialized by Core program
+    #[account(mut)]
+    pub asset: Signer<'info>,
 
-    /// Associated Token program
-    pub associated_token_program: Program<'info, AssociatedToken>,
+    /// Metaplex Core program
+    /// CHECK: Validated in create_core_asset helper
+    pub core_program: UncheckedAccount<'info>,
 
     /// System program
     pub system_program: Program<'info, System>,
-
-    /// Sysvar Instructions
-    /// CHECK: Solana Sysvar Instructions account
-    pub sysvar_instructions: UncheckedAccount<'info>,
-
-    /// Rent sysvar
-    pub rent: Sysvar<'info, Rent>,
 }
 
 /// Skin metadata URIs from Candy Machine upload
@@ -95,104 +62,79 @@ const SKIN_METADATA: [&str; 3] = [
     "https://gateway.irys.xyz/Abk2aS4x3uwPtXjskHq3DxfaF5rLMHC4cCTkK6aQEagL", // M4A4 | Howl
 ];
 
-const SKIN_NAMES: [&str; 3] = [
-    "AK-47 | Fire Serpent",
-    "AWP | Dragon Lore",
-    "M4A4 | Howl",
-];
+const SKIN_NAMES: [&str; 3] = ["AK-47 | Fire Serpent", "AWP | Dragon Lore", "M4A4 | Howl"];
 
 /// Handler for reveal_and_claim instruction
 ///
 /// Flow:
 /// 1. Validate VRF pending account has randomness
 /// 2. Calculate skin index from randomness (randomness % num_skins)
-/// 3. Mint NFT directly with Token Metadata CPI
-/// 4. Mint 1 token to user's account
-/// 5. Close VRF pending account (refund rent)
+/// 3. Create Metaplex Core NFT asset with freeze & transfer delegate plugins
+/// 4. Close VRF pending account (refund rent)
+///
+/// Key Benefits of Core:
+/// - Single asset account (no mint, token account, metadata, edition)
+/// - ~40% cheaper in rent costs
+/// - Built-in plugin system for freezing and transfer delegation
+/// - Owner field directly on asset (no token account needed)
 pub fn reveal_and_claim_handler(ctx: Context<RevealAndClaim>) -> Result<()> {
     let vrf_pending = &ctx.accounts.vrf_pending;
     let user = &ctx.accounts.user;
+    let global_state = &ctx.accounts.global_state;
+    let current_time = Clock::get()?.unix_timestamp;
 
     // Validate randomness is fulfilled
-    require!(vrf_pending.randomness != 0, SkinVaultError::VrfNotFulfilled);
+    require!(vrf_pending.randomness != 0, ProgramError::VrfNotFulfilled);
 
     // Calculate deterministic skin index from VRF randomness
     let num_skins = SKIN_METADATA.len() as u64;
     let skin_index = (vrf_pending.randomness % num_skins) as usize;
 
-    msg!("🎲 Revealing skin from VRF randomness: {}", vrf_pending.randomness);
-    msg!("🎯 Determined skin index: {}", skin_index);
-    msg!("🎨 Minting: {}", SKIN_NAMES[skin_index]);
-
-    // Validate Token Metadata program ID
-    let metadata_program_id = *ctx.accounts.token_metadata_program.key;
-    require!(
-        metadata_program_id == mpl_token_metadata::ID,
-        SkinVaultError::InvalidMetadataProgram
-    );
-
     // Get skin metadata
     let name = SKIN_NAMES[skin_index].to_string();
     let uri = SKIN_METADATA[skin_index].to_string();
 
-    // Create NFT Metadata using Metaplex Token Metadata Program
-    // Using CreateV1 instruction (latest Metaplex standard)
-    msg!("📝 Creating NFT metadata...");
+    // Create inventory hash (using skin index for now)
+    let mut inventory_hash = [0u8; 32];
+    inventory_hash[0] = skin_index as u8;
 
-    CreateV1CpiBuilder::new(&ctx.accounts.token_metadata_program.to_account_info())
-        .metadata(&ctx.accounts.nft_metadata.to_account_info())
-        .master_edition(Some(&ctx.accounts.nft_edition.to_account_info()))
-        .mint(&ctx.accounts.nft_mint.to_account_info(), true)
-        .authority(&ctx.accounts.user.to_account_info())
-        .payer(&ctx.accounts.user.to_account_info())
-        .update_authority(&ctx.accounts.user.to_account_info(), true)
-        .system_program(&ctx.accounts.system_program.to_account_info())
-        .sysvar_instructions(&ctx.accounts.sysvar_instructions.to_account_info())
-        .spl_token_program(Some(&ctx.accounts.token_program.to_account_info()))
-        .name(name.clone())
-        .symbol("SKIN".to_string())
-        .uri(uri.clone())
-        .seller_fee_basis_points(500) // 5% royalty
-        .token_standard(TokenStandard::NonFungible)
-        .is_mutable(true)
-        .primary_sale_happened(false)
-        .print_supply(PrintSupply::Zero)
-        .creators(vec![Creator {
-            address: user.key(),
-            verified: true,
-            share: 100,
-        }])
-        .invoke()?;
+    // Create Core NFT with plugins (skip collection if default pubkey)
+    let collection_ref = ctx
+        .accounts
+        .collection
+        .as_ref()
+        .filter(|c| c.key() != Pubkey::default())
+        .map(|c| c.to_account_info());
 
-    msg!("✅ Metadata created successfully");
+    create_core_asset(
+        &ctx.accounts.core_program.to_account_info(),
+        &ctx.accounts.asset.to_account_info(),
+        collection_ref.as_ref(),
+        &ctx.accounts.user.to_account_info(),
+        Some(&ctx.accounts.user.to_account_info()),
+        &ctx.accounts.system_program.to_account_info(),
+        name.clone(),
+        uri.clone(),
+        global_state.key(),
+        global_state.key(),
+        None,
+    )?;
 
-    // Mint 1 token to user's account
-    msg!("🪙 Minting NFT to user's token account...");
+    // Initialize BoxState
+    let box_state = &mut ctx.accounts.box_state;
+    box_state.owner = user.key();
+    box_state.batch_id = 0;
+    box_state.opened = true;
+    box_state.assigned_inventory = inventory_hash;
+    box_state.asset = ctx.accounts.asset.key();
+    box_state.mint_time = current_time;
+    box_state.open_time = current_time;
+    box_state.random_index = skin_index as u64;
+    box_state.redeemed = false;
+    box_state.redeem_time = 0;
+    box_state.bump = ctx.bumps.box_state;
 
-    MintV1CpiBuilder::new(&ctx.accounts.token_metadata_program.to_account_info())
-        .token(&ctx.accounts.nft_token_account.to_account_info())
-        .token_owner(Some(&ctx.accounts.user.to_account_info()))
-        .metadata(&ctx.accounts.nft_metadata.to_account_info())
-        .master_edition(Some(&ctx.accounts.nft_edition.to_account_info()))
-        .mint(&ctx.accounts.nft_mint.to_account_info())
-        .authority(&ctx.accounts.user.to_account_info())
-        .payer(&ctx.accounts.user.to_account_info())
-        .system_program(&ctx.accounts.system_program.to_account_info())
-        .sysvar_instructions(&ctx.accounts.sysvar_instructions.to_account_info())
-        .spl_token_program(&ctx.accounts.token_program.to_account_info())
-        .spl_ata_program(&ctx.accounts.associated_token_program.to_account_info())
-        .amount(1)
-        .invoke()?;
-
-    msg!("✅ NFT minted successfully");
-
-    msg!("🎉 Skin '{}' revealed!", name);
-    msg!("💎 NFT mint: {}", ctx.accounts.nft_mint.key());
-    msg!("📦 NFT in wallet: {}", ctx.accounts.nft_token_account.key());
-    msg!("🔗 Metadata: {}", uri);
-
-    // VrfPending account will be automatically closed (refunding rent to user)
-    // due to the `close = user` constraint
+    msg!("✅ {} revealed and minted", name);
 
     Ok(())
 }

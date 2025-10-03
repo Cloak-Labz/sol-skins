@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 
 #[error_code]
-pub enum SkinVaultError {
+pub enum ProgramError {
     #[msg("Unauthorized access")]
     Unauthorized,
 
@@ -64,4 +64,19 @@ pub enum SkinVaultError {
 
     #[msg("Invalid Token Metadata program ID")]
     InvalidMetadataProgram,
+
+    #[msg("Invalid Metaplex Core program ID")]
+    InvalidCoreProgram,
+
+    #[msg("Plugin not found on asset")]
+    PluginNotFound,
+
+    #[msg("Asset is frozen and cannot be transferred")]
+    AssetFrozen,
+
+    #[msg("Invalid plugin authority")]
+    InvalidPluginAuthority,
+
+    #[msg("Asset is not frozen")]
+    AssetNotFrozen,
 }

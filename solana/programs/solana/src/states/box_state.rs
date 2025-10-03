@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-/// State of an individual loot box NFT
+/// State of an individual loot box NFT (Metaplex Core)
 #[account]
 pub struct BoxState {
     /// Owner of the box NFT
@@ -15,8 +15,9 @@ pub struct BoxState {
     /// Hash of the assigned inventory item (zero if not assigned)
     pub assigned_inventory: [u8; 32],
 
-    /// NFT mint address
-    pub nft_mint: Pubkey,
+    /// Core NFT asset address (single account for Core NFTs)
+    /// Replaces the old mint + token account pattern
+    pub asset: Pubkey,
 
     /// Timestamp when box was minted
     pub mint_time: i64,
@@ -43,7 +44,7 @@ impl BoxState {
         8 +  // batch_id
         1 +  // opened
         32 + // assigned_inventory
-        32 + // nft_mint
+        32 + // asset (Core NFT address)
         8 +  // mint_time
         8 +  // open_time
         8 +  // random_index
