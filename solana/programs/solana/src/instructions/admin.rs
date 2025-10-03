@@ -4,7 +4,7 @@ use anchor_spl::{
     token::{Mint, Token, TokenAccount},
 };
 
-use crate::errors::SkinVaultError;
+use crate::errors::ProgramError;
 use crate::events::*;
 use crate::states::*;
 
@@ -45,7 +45,7 @@ pub struct SetOracle<'info> {
         mut,
         seeds = [b"global"],
         bump = global.bump,
-        has_one = authority @ SkinVaultError::Unauthorized
+        has_one = authority @ ProgramError::Unauthorized
     )]
     pub global: Account<'info, Global>,
 
@@ -58,7 +58,7 @@ pub struct ToggleBuyback<'info> {
         mut,
         seeds = [b"global"],
         bump = global.bump,
-        has_one = authority @ SkinVaultError::Unauthorized
+        has_one = authority @ ProgramError::Unauthorized
     )]
     pub global: Account<'info, Global>,
 
@@ -71,7 +71,7 @@ pub struct SetMinTreasuryBalance<'info> {
         mut,
         seeds = [b"global"],
         bump = global.bump,
-        has_one = authority @ SkinVaultError::Unauthorized
+        has_one = authority @ ProgramError::Unauthorized
     )]
     pub global: Account<'info, Global>,
 
@@ -95,7 +95,7 @@ pub struct DepositTreasury<'info> {
 
     #[account(
         mut,
-        constraint = depositor_ata.mint == usdc_mint.key() @ SkinVaultError::Unauthorized
+        constraint = depositor_ata.mint == usdc_mint.key() @ ProgramError::Unauthorized
     )]
     pub depositor_ata: Account<'info, TokenAccount>,
 
@@ -192,7 +192,7 @@ pub fn deposit_treasury_handler(ctx: Context<DepositTreasury>, amount: u64) -> R
         .treasury_ata
         .amount
         .checked_add(amount)
-        .ok_or(SkinVaultError::ArithmeticOverflow)?;
+        .ok_or(ProgramError::ArithmeticOverflow)?;
 
     emit!(TreasuryDeposit {
         amount,
@@ -214,7 +214,7 @@ pub struct WithdrawTreasury<'info> {
     #[account(
         seeds = [b"global"],
         bump = global.bump,
-        has_one = authority @ SkinVaultError::Unauthorized
+        has_one = authority @ ProgramError::Unauthorized
     )]
     pub global: Account<'info, Global>,
 
@@ -227,7 +227,7 @@ pub struct WithdrawTreasury<'info> {
 
     #[account(
         mut,
-        constraint = recipient_ata.mint == usdc_mint.key() @ SkinVaultError::Unauthorized
+        constraint = recipient_ata.mint == usdc_mint.key() @ ProgramError::Unauthorized
     )]
     pub recipient_ata: Account<'info, TokenAccount>,
 
@@ -245,11 +245,11 @@ pub fn withdraw_treasury_handler(ctx: Context<WithdrawTreasury>, amount: u64) ->
     // Ensure minimum balance remains
     let remaining_balance = treasury_balance
         .checked_sub(amount)
-        .ok_or(SkinVaultError::ArithmeticOverflow)?;
+        .ok_or(ProgramError::ArithmeticOverflow)?;
 
     require!(
         remaining_balance >= global.min_treasury_balance,
-        SkinVaultError::TreasuryInsufficient
+        ProgramError::TreasuryInsufficient
     );
 
     // Transfer from treasury using PDA signer
@@ -282,7 +282,7 @@ pub struct EmergencyPause<'info> {
         mut,
         seeds = [b"global"],
         bump = global.bump,
-        has_one = authority @ SkinVaultError::Unauthorized
+        has_one = authority @ ProgramError::Unauthorized
     )]
     pub global: Account<'info, Global>,
 
@@ -322,7 +322,7 @@ pub struct AcceptAuthority<'info> {
         seeds = [b"global"],
         bump = global.bump,
         constraint = global.pending_authority == Some(new_authority.key())
-            @ SkinVaultError::Unauthorized
+            @ ProgramError::Unauthorized
     )]
     pub global: Account<'info, Global>,
 

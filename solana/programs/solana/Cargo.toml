@@ -19,15 +19,6 @@ idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
 [dependencies]
 anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
 anchor-spl = "0.31.1"
+mpl-core = { version = "0.11.1-beta.2", features = ["anchor"] }
 
-# Metaplex Token Metadata (current)
 mpl-token-metadata = { version = "5.0.0", features = ["serde"] }
-
-# Note: Candy Machine V3 integration via raw CPI
-# We use invoke_signed() directly to avoid dependency conflicts
-# Sugar CLI handles deployment
-# Our program calls CM via manual CPI in reveal_and_claim()
-#
-# Candy Machine Program IDs:
-# - V3: CndyV3LdqHUfDLmE5naZjVN8rBZz4tqhdefbAnjHG3JR
-# - Candy Guard: CMAGAKJ67e9hRZgfC5SFTbZH8MgEmtqazKXjmkaJjWTJ

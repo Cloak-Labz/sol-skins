@@ -1,5 +1,5 @@
 use crate::constants::*;
-use crate::errors::SkinVaultError;
+use crate::errors::ProgramError;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::keccak;
 
@@ -7,13 +7,13 @@ use anchor_lang::solana_program::keccak;
 pub fn calculate_buyback_payout(price: u64) -> Result<u64> {
     let spread_fee = price
         .checked_mul(BUYBACK_SPREAD_BPS)
-        .ok_or(SkinVaultError::ArithmeticOverflow)?
+        .ok_or(ProgramError::ArithmeticOverflow)?
         .checked_div(10000)
-        .ok_or(SkinVaultError::ArithmeticOverflow)?;
+        .ok_or(ProgramError::ArithmeticOverflow)?;
 
     price
         .checked_sub(spread_fee)
-        .ok_or(SkinVaultError::ArithmeticOverflow.into())
+        .ok_or(ProgramError::ArithmeticOverflow.into())
 }
 
 /// Check if price data is stale
@@ -37,7 +37,7 @@ pub fn generate_random_index(
     batch_id: u64,
     pool_size: u64,
 ) -> Result<u64> {
-    require!(pool_size > 0, SkinVaultError::InvalidPoolSize);
+    require!(pool_size > 0, ProgramError::InvalidPoolSize);
 
     let mut data = Vec::with_capacity(32 + 32 + 8);
     data.extend_from_slice(randomness);
@@ -61,7 +61,7 @@ pub fn derive_price_store_key(inventory_id_hash: &[u8; 32]) -> Pubkey {
 pub fn validate_inventory_hash(hash: &[u8; 32]) -> Result<()> {
     // Check that it's not all zeros (invalid inventory)
     if hash.iter().all(|&b| b == 0) {
-        return Err(SkinVaultError::InvalidBatchId.into());
+        return Err(ProgramError::InvalidBatchId.into());
     }
     Ok(())
 }

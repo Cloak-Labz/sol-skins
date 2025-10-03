@@ -174,10 +174,10 @@ pub fn update_nft_metadata<'info>(
 
 /// Verify NFT as part of a collection
 pub fn verify_collection<'info>(
-    metadata_program: &AccountInfo<'info>,
+    _metadata_program: &AccountInfo<'info>,
     metadata: &AccountInfo<'info>,
     collection_authority: &AccountInfo<'info>,
-    payer: &AccountInfo<'info>,
+    _payer: &AccountInfo<'info>,
     collection_mint: &AccountInfo<'info>,
     collection_metadata: &AccountInfo<'info>,
     collection_master_edition: &AccountInfo<'info>,

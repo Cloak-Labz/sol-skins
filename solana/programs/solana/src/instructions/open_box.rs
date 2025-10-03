@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::errors::SkinVaultError;
+use crate::errors::ProgramError;
 use crate::events::*;
 use crate::states::*;
 use crate::vrf::*;
@@ -14,24 +14,9 @@ pub struct OpenBox<'info> {
     pub global: Account<'info, Global>,
 
     #[account(
-        mut,
-        seeds = [b"box", box_state.nft_mint.as_ref()],
-        bump = box_state.bump,
-        constraint = box_state.owner == owner.key() @ SkinVaultError::NotBoxOwner,
-        constraint = !box_state.opened @ SkinVaultError::AlreadyOpened
-    )]
-    pub box_state: Account<'info, BoxState>,
-
-    #[account(
-        seeds = [b"batch", &box_state.batch_id.to_le_bytes()],
-        bump = batch.bump
-    )]
-    pub batch: Account<'info, Batch>,
-
-    #[account(
         init,
         payer = owner,
-        seeds = [b"vrf_pending", box_state.nft_mint.as_ref()],
+        seeds = [b"vrf_pending", owner.key().as_ref()],
         bump,
         space = VrfPending::LEN
     )]
@@ -45,49 +30,44 @@ pub struct OpenBox<'info> {
 
 pub fn open_box_handler(ctx: Context<OpenBox>, pool_size: u64) -> Result<()> {
     // Check if program is paused
-    require!(!ctx.accounts.global.paused, SkinVaultError::BuybackDisabled);
+    require!(!ctx.accounts.global.paused, ProgramError::BuybackDisabled);
 
-    require!(pool_size > 0, SkinVaultError::InvalidPoolSize);
-    require!(
-        pool_size <= ctx.accounts.batch.total_items,
-        SkinVaultError::InvalidPoolSize
-    );
+    require!(pool_size > 0, ProgramError::InvalidPoolSize);
+    require!(pool_size <= 100, ProgramError::InvalidPoolSize); // Max 100 skins in pool
 
     let current_time = Clock::get()?.unix_timestamp;
-    let box_mint = ctx.accounts.box_state.nft_mint;
+    let user_pubkey = ctx.accounts.owner.key();
 
-    // Create VRF seed
-    let vrf_seed = create_vrf_seed(&box_mint, current_time);
+    // Create VRF seed from user + timestamp
+    let vrf_seed = create_vrf_seed(&user_pubkey, current_time);
 
     // Request VRF randomness
-    // We use a simple request ID pattern here. The actual randomness
-    // will be provided by the oracle via vrf_callback()
     let vrf_provider = MockVrf;
     let request_id = vrf_provider.request_randomness(&vrf_seed)?;
 
     // Store VRF request details
     ctx.accounts.vrf_pending.set_inner(VrfPending {
-        box_mint,
+        box_mint: user_pubkey, // Use user pubkey as identifier
         request_id,
         request_time: current_time,
         pool_size,
         randomness: 0, // Will be set by oracle in vrf_callback()
-        user: ctx.accounts.owner.key(),
+        user: user_pubkey,
         bump: ctx.bumps.vrf_pending,
     });
 
     emit!(BoxOpenRequested {
-        nft_mint: box_mint,
-        owner: ctx.accounts.owner.key(),
+        nft_mint: user_pubkey,
+        owner: user_pubkey,
         vrf_request_id: Some(request_id),
     });
 
     msg!(
-        "Box open requested: {} by {} with VRF request ID: {}",
-        box_mint,
-        ctx.accounts.owner.key(),
+        "🎰 Mystery box opened by {} - VRF request ID: {}",
+        user_pubkey,
         request_id
     );
+    msg!("⏳ Waiting for oracle to provide randomness...");
 
     Ok(())
 }

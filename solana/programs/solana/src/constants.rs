@@ -4,6 +4,8 @@ pub const BATCH_SEED: &[u8] = b"batch";
 pub const BOX_SEED: &[u8] = b"box";
 pub const PRICE_SEED: &[u8] = b"price";
 pub const VRF_PENDING_SEED: &[u8] = b"vrf_pending";
+pub const ASSET_SEED: &[u8] = b"asset";
+pub const COLLECTION_SEED: &[u8] = b"collection";
 
 // USDC has 6 decimal places
 pub const USDC_DECIMALS: u8 = 6;

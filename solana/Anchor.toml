@@ -2,14 +2,14 @@
 anchor_version = "0.31.1"
 
 [features]
-seeds = true
+resolution = true
 skip-lint = false
 
-[programs.localnet]
-skinvault = "7QqkF39AGbTDP88NFHPDVfBQWxFL8mNSUZh6J2cy5HWA"
-
 [programs.devnet]
-skinvault = "FuXM6BsXE54CAXaJLYRL91io2bgUMBFMWVDxTHkbaP9F"
+skinvault = "9dWnmCfGW6BjpN8nRRQzQrEhhRNgFhcvzpmHpihBGNb9"
+
+[programs.localnet]
+skinvault = "4zbVYaEgUHfAb4ojYXYs2T7US9qkiDLaG1uzEWy2cDjZ"
 
 [registry]
 url = "https://anchor.projectserum.com"
@@ -18,10 +18,5 @@ url = "https://anchor.projectserum.com"
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
-[workspace]
-types = "types"
-
 [scripts]
-test = "./node_modules/.bin/mocha -t 300000 tests/vrf-security.test.ts"
-test-simple = "./node_modules/.bin/mocha -t 300000 tests/vrf-simple.test.ts"
-test-mainnet = "./node_modules/.bin/mocha -t 300000 tests/vrf-mainnet.test.ts"
+test = "./node_modules/.bin/mocha -t 300000 tests/e2e.test.ts"
