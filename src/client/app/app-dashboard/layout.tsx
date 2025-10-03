@@ -21,14 +21,48 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center max-w-md mx-auto px-8">
           <div className="mb-8">
-            <div className="mb-4 h-10 w-auto flex justify-center">
-              <img
-                src="/assets/DUST3-SVG.svg"
-                alt="Dust3 logo"
-                className="h-10 w-auto"
-              />
+            {/* Animated Logo */}
+            <div className="mb-6 h-16 w-auto flex justify-center relative">
+              <div className="relative">
+                <img
+                  src="/assets/DUST3-SVG.svg"
+                  alt="Dust3 logo"
+                  className="h-16 w-auto animate-pulse"
+                />
+                <div className="absolute inset-0 h-16 w-auto animate-ping">
+                  <div className="h-full w-full rounded-full bg-[#E99500]/20"></div>
+                </div>
+              </div>
             </div>
-            <p className="text-gray-400 text-lg mb-8">Loading...</p>
+
+            {/* Animated Loading Text */}
+            <div className="space-y-4">
+              <h2 className="text-2xl font-bold text-white animate-pulse">
+                Loading Dashboard
+              </h2>
+
+              {/* Animated Dots */}
+              <div className="flex items-center justify-center space-x-1">
+                <div className="w-2 h-2 bg-[#E99500] rounded-full animate-bounce"></div>
+                <div
+                  className="w-2 h-2 bg-[#E99500] rounded-full animate-bounce"
+                  style={{ animationDelay: "0.1s" }}
+                ></div>
+                <div
+                  className="w-2 h-2 bg-[#E99500] rounded-full animate-bounce"
+                  style={{ animationDelay: "0.2s" }}
+                ></div>
+              </div>
+
+              <p className="text-gray-400 text-sm">
+                Preparing your CS:GO skin collection...
+              </p>
+            </div>
+
+            {/* Animated Progress Bar */}
+            <div className="mt-8 w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-[#E99500] to-[#ff6b00] rounded-full animate-pulse"></div>
+            </div>
           </div>
         </div>
       </div>

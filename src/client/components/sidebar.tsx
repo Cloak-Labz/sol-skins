@@ -23,7 +23,6 @@ export function Sidebar() {
 
   const mainNavItems = [
     { href: "/app-dashboard/packs", label: "Packs", icon: Package },
-    { href: "/app-dashboard", label: "Dashboard", icon: Home },
     {
       href: "/app-dashboard/marketplace",
       label: "Marketplace",

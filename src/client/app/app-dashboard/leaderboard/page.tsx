@@ -158,6 +158,32 @@ export default function LeaderboardPage() {
     return <span className="text-sm font-bold text-gray-400">#{rank}</span>;
   };
 
+  const getPodiumColor = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return "bg-gradient-to-br from-yellow-500 to-orange-500";
+      case 2:
+        return "bg-gradient-to-br from-gray-400 to-gray-600";
+      case 3:
+        return "bg-gradient-to-br from-amber-600 to-yellow-600";
+      default:
+        return "bg-gradient-to-br from-gray-500 to-gray-700";
+    }
+  };
+
+  const getPodiumBorderColor = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return "border-yellow-400";
+      case 2:
+        return "border-gray-400";
+      case 3:
+        return "border-amber-400";
+      default:
+        return "border-gray-400";
+    }
+  };
+
   const getDisplayName = (entry: LeaderboardEntry) =>
     entry.user.username ||
     `${entry.user.walletAddress.slice(0, 4)}...${entry.user.walletAddress.slice(
@@ -248,9 +274,13 @@ export default function LeaderboardPage() {
                   </p>
                   <p className="text-[#666] text-[11px] mb-1">points</p>
                   <div
-                    className={`bg-[#151515] border border-[#333] ${height} ${width} rounded-lg origin-bottom transition-transform duration-500 ease-out ${
+                    className={`${getPodiumColor(
+                      p.rank
+                    )} border-2 ${getPodiumBorderColor(
+                      p.rank
+                    )} ${height} ${width} rounded-lg origin-bottom transition-transform duration-500 ease-out ${
                       mounted ? "scale-y-100" : "scale-y-0"
-                    }`}
+                    } shadow-xl`}
                     style={{ transitionDelay: `${delayMs}ms` }}
                   />
                 </div>

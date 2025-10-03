@@ -29,6 +29,7 @@ import {
   Box,
 } from "lucide-react";
 import { inventoryService } from "@/lib/services";
+import { MOCK_CONFIG } from "@/lib/config/mock";
 import { UserSkin } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -49,7 +50,7 @@ export default function InventoryPage() {
 
   // Load inventory from backend
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected || MOCK_CONFIG.ENABLE_MOCK) {
       loadInventory();
     } else {
       // Not connected - clear data and stop loading
@@ -66,10 +67,15 @@ export default function InventoryPage() {
         sortBy: sortBy as any,
         filterBy: filterBy === "all" ? undefined : (filterBy as any),
       });
-
-      if (response.success) {
-        setInventorySkins(response.data.skins);
-        setTotalValue(response.data.summary.totalValue);
+      const payload: any = (response as any).skins
+        ? response
+        : (response as any).data ?? response;
+      if (payload && payload.skins) {
+        setInventorySkins(payload.skins);
+        setTotalValue(Number(payload.summary?.totalValue ?? 0));
+      } else {
+        setInventorySkins([]);
+        setTotalValue(0);
       }
     } catch (err) {
       console.error("Failed to load inventory:", err);
@@ -276,12 +282,12 @@ export default function InventoryPage() {
                       </Badge>
                     )}
                   </div>
-                  <div className="aspect-square bg-muted rounded-lg flex items-center justify-center mb-4 animate-float">
+                  <div className="aspect-square rounded-lg flex items-center justify-center mb-4 animate-float">
                     {skin.skinTemplate.imageUrl ? (
                       <img
                         src={skin.skinTemplate.imageUrl}
                         alt={skin.skinTemplate.skinName}
-                        className="w-full h-full object-cover rounded-lg"
+                        className="w-full h-full object-contain rounded-lg"
                       />
                     ) : (
                       <Package className="w-16 h-16 text-muted-foreground" />

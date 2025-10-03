@@ -207,12 +207,12 @@ export default function MarketplacePage() {
                     {listing.rarity}
                   </Badge>
                 </div>
-                <div className="aspect-square bg-[#1a1a1a] rounded-lg flex items-center justify-center mb-4 border border-[#333]">
+                <div className="aspect-square rounded-lg flex items-center justify-center mb-4 border border-[#333] overflow-hidden">
                   {listing.imageUrl ? (
                     <img
                       src={listing.imageUrl}
                       alt={listing.skinName}
-                      className="w-full h-full object-cover rounded-lg"
+                      className="w-full h-full object-contain"
                     />
                   ) : (
                     <div className="text-6xl">🔫</div>

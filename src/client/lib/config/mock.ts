@@ -5,7 +5,7 @@
 
 export const MOCK_CONFIG = {
   // Toggle mock mode on/off
-  ENABLE_MOCK: false, // Change to false to use real API
+  ENABLE_MOCK: true, // Change to false to use real API
 
   // Delays to simulate network latency (in ms)
   DELAYS: {
