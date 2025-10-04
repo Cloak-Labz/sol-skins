@@ -122,13 +122,13 @@ export default function LeaderboardPage() {
   const getPodiumColor = (rank: number) => {
     switch (rank) {
       case 1:
-        return "bg-gradient-to-br from-yellow-500 to-orange-500";
+        return "bg-gradient-to-br from-yellow-400 via-yellow-500 to-orange-500";
       case 2:
-        return "bg-gradient-to-br from-gray-400 to-gray-600";
+        return "bg-gradient-to-br from-blue-400 via-blue-500 to-purple-500";
       case 3:
-        return "bg-gradient-to-br from-amber-600 to-yellow-600";
+        return "bg-gradient-to-br from-pink-400 via-pink-500 to-purple-500";
       default:
-        return "bg-gradient-to-br from-gray-500 to-gray-700";
+        return "bg-gradient-to-br from-cyan-500 to-blue-600";
     }
   };
 
@@ -137,11 +137,24 @@ export default function LeaderboardPage() {
       case 1:
         return "border-yellow-400";
       case 2:
-        return "border-gray-400";
+        return "border-blue-400";
       case 3:
-        return "border-amber-400";
+        return "border-pink-400";
       default:
-        return "border-gray-400";
+        return "border-cyan-400";
+    }
+  };
+
+  const getAvatarBorderColor = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return "ring-2 ring-yellow-400";
+      case 2:
+        return "ring-2 ring-blue-400";
+      case 3:
+        return "ring-2 ring-pink-400";
+      default:
+        return "ring-1 ring-gray-600";
     }
   };
 
@@ -206,9 +219,15 @@ export default function LeaderboardPage() {
                   style={{ transitionDelay: `${delayMs}ms` }}
                 >
                   <Avatar
-                    className={`${avatarSize} mb-2 bg-[#141414] border border-[#333]`}
+                    className={`${avatarSize} mb-2 ${getAvatarBorderColor(p.rank)}`}
                   >
-                    <AvatarFallback className="bg-gradient-to-br from-[#222] to-[#111] text-[#aaa] text-xs">
+                    <AvatarImage
+                      alt={getDisplayName(p)}
+                      src={`https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(
+                        getDisplayName(p)
+                      )}`}
+                    />
+                    <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-xs">
                       {`#${p.rank}`}
                     </AvatarFallback>
                   </Avatar>
@@ -226,7 +245,13 @@ export default function LeaderboardPage() {
                       p.rank
                     )} ${height} ${width} rounded-lg origin-bottom transition-transform duration-500 ease-out ${
                       mounted ? "scale-y-100" : "scale-y-0"
-                    } shadow-xl`}
+                    } shadow-2xl ${
+                      p.rank === 1
+                        ? "shadow-yellow-500/50"
+                        : p.rank === 2
+                        ? "shadow-blue-500/50"
+                        : "shadow-pink-500/50"
+                    }`}
                     style={{ transitionDelay: `${delayMs}ms` }}
                   />
                 </div>
