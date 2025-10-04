@@ -205,6 +205,11 @@ export const apiVersioning = (req: Request, res: Response, next: NextFunction) =
 // Request timeout middleware
 export const requestTimeout = (timeout: number = 30000) => {
   return (req: Request, res: Response, next: NextFunction) => {
+    // Skip timeout for Steam import endpoint (can take several minutes)
+    if (req.path.includes('/inventory/steam/import')) {
+      return next();
+    }
+
     const timer = setTimeout(() => {
       if (!res.headersSent) {
         res.status(408).json({

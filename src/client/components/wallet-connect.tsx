@@ -22,25 +22,47 @@ export function WalletConnect() {
   useEffect(() => {
     if (connected && publicKey && !user && !isLoading && !connectingRef.current) {
       const walletAddress = publicKey.toString();
-      console.log('Wallet connected, connecting to backend:', walletAddress);
-      
+      const now = Date.now();
+
+      // Prevent rapid reconnection attempts (debounce)
+      if (now - lastAttemptRef.current < 2000) {
+        console.log('Skipping connection attempt - too soon after last attempt');
+        return;
+      }
+
+      lastAttemptRef.current = now;
       connectingRef.current = true;
-      
-      // Connect immediately without delay
+
+      console.log('Wallet connected, connecting to backend:', walletAddress);
+
+      // Connect to backend with timeout
+      const timeout = setTimeout(() => {
+        console.warn('Backend connection timeout');
+        connectingRef.current = false;
+      }, 10000); // 10s timeout
+
       connectWallet(walletAddress)
         .then(() => {
+          clearTimeout(timeout);
           console.log('Wallet connected successfully to backend');
           toast.success('Wallet connected!');
         })
         .catch((error) => {
+          clearTimeout(timeout);
           console.error('Failed to connect wallet to backend:', error);
-          toast.error('Failed to connect wallet');
+
+          // Don't show error if it's just a network issue on devnet
+          if (error.message?.includes('Network') || error.message?.includes('timeout')) {
+            toast.error('Network issue - some features may be limited');
+          } else {
+            toast.error('Failed to connect to backend');
+          }
         })
         .finally(() => {
           connectingRef.current = false;
         });
     }
-  }, [connected, publicKey, user]);
+  }, [connected, publicKey, user, isLoading]);
 
   // Handle wallet disconnection
   const handleDisconnect = async () => {

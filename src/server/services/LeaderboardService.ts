@@ -42,9 +42,9 @@ export class LeaderboardService {
           },
           inventoryValue,
           casesOpened: user.casesOpened,
-          totalSpent: user.totalSpent,
-          totalEarned: user.totalEarned,
-          netProfit: user.totalEarned - user.totalSpent,
+          totalSpent: parseFloat(user.totalSpent.toString()),
+          totalEarned: parseFloat(user.totalEarned.toString()),
+          netProfit: parseFloat(user.totalEarned.toString()) - parseFloat(user.totalSpent.toString()),
         };
       })
     );
@@ -83,18 +83,36 @@ export class LeaderboardService {
 
     if (!userEntry) {
       return {
-        rank: null,
-        total: leaderboard.length,
-        percentile: null,
+        rank: 0,
+        totalUsers: leaderboard.length,
+        percentile: 0,
+        metric,
+        value: 0,
       };
     }
 
     const percentile = Math.round((1 - (userEntry.rank - 1) / leaderboard.length) * 100);
 
+    // Get the value based on the metric
+    let value = 0;
+    switch (metric) {
+      case 'inventory-value':
+        value = userEntry.inventoryValue;
+        break;
+      case 'cases-opened':
+        value = userEntry.casesOpened;
+        break;
+      case 'profit':
+        value = userEntry.netProfit;
+        break;
+    }
+
     return {
-      total: leaderboard.length,
+      rank: userEntry.rank,
+      totalUsers: leaderboard.length,
       percentile,
-      ...userEntry,
+      metric,
+      value,
     };
   }
 } 

@@ -2,7 +2,6 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -10,21 +9,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { leaderboardService } from "@/lib/services";
 import { LeaderboardEntry, UserRank } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
-import { formatCurrency, formatSOL } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import {
   Loader2,
-  Trophy,
   TrendingUp,
-  Users,
   Info,
-  Timer,
-  Gift,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { apiClient } from "@/lib/services/api";
@@ -40,7 +35,6 @@ export default function LeaderboardPage() {
   const [period, setPeriod] = useState<"all-time" | "monthly" | "weekly">(
     "all-time"
   );
-  const [countdown, setCountdown] = useState<string>("");
   const [mounted, setMounted] = useState(false);
 
   // Load leaderboard data whenever metric or period changes
@@ -66,36 +60,6 @@ export default function LeaderboardPage() {
       return () => clearTimeout(timer);
     }
   }, [isConnected, user, metric]);
-
-  // Simple local countdown to mimic "Winners picked in" UI for design testing
-  useEffect(() => {
-    const target = new Date(
-      Date.now() +
-        4 * 24 * 60 * 60 * 1000 +
-        4 * 60 * 60 * 1000 +
-        10 * 60 * 1000 +
-        50 * 1000
-    );
-    const interval = setInterval(() => {
-      const diff = target.getTime() - Date.now();
-      if (diff <= 0) {
-        setCountdown("0d 00h 00m 00s");
-        clearInterval(interval);
-        return;
-      }
-      const d = Math.floor(diff / (24 * 60 * 60 * 1000));
-      const h = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-      const m = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
-      const s = Math.floor((diff % (60 * 1000)) / 1000);
-      setCountdown(
-        `${d}d ${String(h).padStart(2, "0")}h ${String(m).padStart(
-          2,
-          "0"
-        )}m ${String(s).padStart(2, "0")}s`
-      );
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Trigger entrance animations after mount
   useEffect(() => {
@@ -152,10 +116,46 @@ export default function LeaderboardPage() {
   };
 
   const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Trophy className="w-5 h-5 text-yellow-500" />;
-    if (rank === 2) return <Trophy className="w-5 h-5 text-gray-400" />;
-    if (rank === 3) return <Trophy className="w-5 h-5 text-amber-600" />;
     return <span className="text-sm font-bold text-gray-400">#{rank}</span>;
+  };
+
+  const getPodiumColor = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return "bg-gradient-to-br from-yellow-400 via-yellow-500 to-orange-500";
+      case 2:
+        return "bg-gradient-to-br from-blue-400 via-blue-500 to-purple-500";
+      case 3:
+        return "bg-gradient-to-br from-pink-400 via-pink-500 to-purple-500";
+      default:
+        return "bg-gradient-to-br from-cyan-500 to-blue-600";
+    }
+  };
+
+  const getPodiumBorderColor = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return "border-yellow-400";
+      case 2:
+        return "border-blue-400";
+      case 3:
+        return "border-pink-400";
+      default:
+        return "border-cyan-400";
+    }
+  };
+
+  const getAvatarBorderColor = (rank: number) => {
+    switch (rank) {
+      case 1:
+        return "ring-2 ring-yellow-400";
+      case 2:
+        return "ring-2 ring-blue-400";
+      case 3:
+        return "ring-2 ring-pink-400";
+      default:
+        return "ring-1 ring-gray-600";
+    }
   };
 
   const getDisplayName = (entry: LeaderboardEntry) =>
@@ -186,24 +186,9 @@ export default function LeaderboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-white mb-2">Leaderboard</h1>
-          <p className="text-[#999]">Top collectors and their achievements</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-[#111] border border-[#333] text-[#bbb] px-3 py-1.5 rounded-lg inline-flex items-center gap-2">
-            <Timer className="w-4 h-4" />
-            <span className="text-sm">Winners picked in:</span>
-            <span className="text-white font-medium text-sm">{countdown}</span>
-          </div>
-          <Button
-            className="bg-[#1f1f1f] hover:bg-[#2a2a2a] border border-[#333] text-white"
-            size="sm"
-          >
-            <Gift className="w-4 h-4 mr-2" /> Win prizes!
-          </Button>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-4xl font-bold text-white mb-2">Leaderboard</h1>
+        <p className="text-[#999]">Top collectors and their achievements</p>
       </div>
 
       {/* Podium */}
@@ -234,9 +219,15 @@ export default function LeaderboardPage() {
                   style={{ transitionDelay: `${delayMs}ms` }}
                 >
                   <Avatar
-                    className={`${avatarSize} mb-2 bg-[#141414] border border-[#333]`}
+                    className={`${avatarSize} mb-2 ${getAvatarBorderColor(p.rank)}`}
                   >
-                    <AvatarFallback className="bg-gradient-to-br from-[#222] to-[#111] text-[#aaa] text-xs">
+                    <AvatarImage
+                      alt={getDisplayName(p)}
+                      src={`https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(
+                        getDisplayName(p)
+                      )}`}
+                    />
+                    <AvatarFallback className="bg-gradient-to-br from-purple-500 to-pink-500 text-white text-xs">
                       {`#${p.rank}`}
                     </AvatarFallback>
                   </Avatar>
@@ -248,8 +239,18 @@ export default function LeaderboardPage() {
                   </p>
                   <p className="text-[#666] text-[11px] mb-1">points</p>
                   <div
-                    className={`bg-[#151515] border border-[#333] ${height} ${width} rounded-lg origin-bottom transition-transform duration-500 ease-out ${
+                    className={`${getPodiumColor(
+                      p.rank
+                    )} border-2 ${getPodiumBorderColor(
+                      p.rank
+                    )} ${height} ${width} rounded-lg origin-bottom transition-transform duration-500 ease-out ${
                       mounted ? "scale-y-100" : "scale-y-0"
+                    } shadow-2xl ${
+                      p.rank === 1
+                        ? "shadow-yellow-500/50"
+                        : p.rank === 2
+                        ? "shadow-blue-500/50"
+                        : "shadow-pink-500/50"
                     }`}
                     style={{ transitionDelay: `${delayMs}ms` }}
                   />
@@ -258,14 +259,6 @@ export default function LeaderboardPage() {
             })}
         </div>
       )}
-
-      {/* Helper badges */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="bg-[#111] border border-[#333] text-[#bbb] px-3 py-1.5 rounded-lg inline-flex items-center gap-2">
-          <Info className="w-4 h-4" />
-          <span className="text-sm">$0.01 = 1 point</span>
-        </div>
-      </div>
 
       {/* Tabs */}
       <Tabs
@@ -276,15 +269,7 @@ export default function LeaderboardPage() {
         <TabsList>
           <TabsTrigger value="weekly">Weekly</TabsTrigger>
           <TabsTrigger value="all-time">All Time</TabsTrigger>
-          <TabsTrigger value="prizes">Prizes</TabsTrigger>
         </TabsList>
-        <TabsContent value="prizes">
-          <Card className="bg-[#111] border-[#333] rounded-xl mb-4">
-            <CardContent className="p-6 text-[#bbb]">
-              Design placeholder for prizes breakdown.
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* Filters */}
@@ -319,7 +304,9 @@ export default function LeaderboardPage() {
               </div>
               <div className="text-right">
                 <p className="text-white font-bold text-xl">
-                  {formatCurrency(userRank.value)}
+                  {userRank.metric === 'cases-opened' 
+                    ? userRank.value 
+                    : formatCurrency(userRank.value)}
                 </p>
                 <p className="text-gray-400 text-sm">
                   {getMetricLabel(userRank.metric)}
@@ -333,9 +320,10 @@ export default function LeaderboardPage() {
       {/* Leaderboard Table */}
       <Card className="bg-[#111] border-[#333] rounded-xl overflow-hidden">
         <CardContent className="p-0">
-          <div className="grid grid-cols-6 gap-4 p-4 border-b border-[#333] bg-[#1a1a1a]">
+          <div className="grid p-4 border-b border-[#333] bg-[#1a1a1a]" style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
             <div className="text-[#666] text-sm font-medium">#</div>
             <div className="text-[#666] text-sm font-medium">Name</div>
+            <div className="text-[#666] text-sm font-medium">Inventory Value</div>
             <div className="text-[#666] text-sm font-medium">Volume</div>
             <div className="text-[#666] text-sm font-medium">Claw Pulls</div>
             <div className="text-[#666] text-sm font-medium">Points</div>
@@ -346,17 +334,16 @@ export default function LeaderboardPage() {
               <p className="text-gray-400">No leaderboard data available</p>
             </div>
           ) : (
-            leaderboard
-              .filter((entry) => entry.rank > 3)
-              .map((entry) => (
+            leaderboard.map((entry) => (
                 <div
                   key={entry.user.id}
-                  className="grid grid-cols-6 gap-4 p-4 border-b border-[#333] last:border-b-0 hover:bg-[#1a1a1a] transition-colors"
+                  className={`grid p-4 border-b border-[#333] last:border-b-0 hover:bg-[#1a1a1a] transition-colors ${
+                    entry.rank <= 3 ? 'bg-[#1a1a1a]/50' : ''
+                  }`}
+                  style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}
                 >
                   <div className="flex items-center">
-                    <div className="flex items-center gap-2">
-                      {getRankIcon(entry.rank)}
-                    </div>
+                    {getRankIcon(entry.rank)}
                   </div>
                   <div className="flex items-center gap-3">
                     <Avatar>
@@ -372,6 +359,11 @@ export default function LeaderboardPage() {
                     </Avatar>
                     <p className="text-white font-medium">
                       {getDisplayName(entry)}
+                    </p>
+                  </div>
+                  <div className="flex items-center">
+                    <p className="text-white font-bold">
+                      {formatCurrency(entry.inventoryValue)}
                     </p>
                   </div>
                   <div className="flex items-center">

@@ -10,6 +10,7 @@ import { CaseOpening } from '../entities/CaseOpening';
 import { PriceHistory } from '../entities/PriceHistory';
 import { UserSession } from '../entities/UserSession';
 import { SkinListing } from '../entities/SkinListing';
+import { SteamInventory } from '../entities/SteamInventory';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -31,6 +32,7 @@ export const AppDataSource = new DataSource({
     PriceHistory,
     UserSession,
     SkinListing,
+    SteamInventory,
   ],
   migrations: ['src/database/migrations/*.ts'],
   subscribers: ['src/database/subscribers/*.ts'],

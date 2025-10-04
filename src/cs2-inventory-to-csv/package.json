@@ -1,0 +1,49 @@
+{
+  "name": "@vict0rcarvalh0/cs2-inventory-to-csv",
+  "description": "Export CS:GO/CS2 inventory to CSV with live Steam Community Market prices. Free, no API key needed.",
+  "license": "MIT",
+  "version": "2.0.1",
+  "type": "module",
+  "keywords": [
+    "csgo",
+    "cs2",
+    "counter strike",
+    "steam",
+    "steam inventory",
+    "steam market",
+    "inventory export",
+    "csv"
+  ],
+  "contributors": [
+    "Victor Carvalho"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "pnpm build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/vict0rcarvalh0/cs2-inventory-to-csv.git"
+  },
+  "main": "build/index.js",
+  "bin": {
+    "cs2-inventory-to-csv": "build/index.js"
+  },
+  "files": [
+    "build",
+    "README.md"
+  ],
+  "dependencies": {
+    "axios": "^1.7.7",
+    "csv-stringify": "^6.5.1",
+    "fast-xml-parser": "^4.5.0",
+    "inquirer": "^9.3.7",
+    "node-cache": "^5.1.2",
+    "winston": "^3.14.2"
+  },
+  "devDependencies": {
+    "@types/inquirer": "^9.0.3",
+    "@types/node": "^18.15.12",
+    "typescript": "^5.0.4"
+  }
+}

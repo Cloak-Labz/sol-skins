@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ import {
   Box,
 } from "lucide-react";
 import { inventoryService } from "@/lib/services";
+import { MOCK_CONFIG } from "@/lib/config/mock";
 import { UserSkin } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -49,7 +50,7 @@ export default function InventoryPage() {
 
   // Load inventory from backend
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected || MOCK_CONFIG.ENABLE_MOCK) {
       loadInventory();
     } else {
       // Not connected - clear data and stop loading
@@ -66,10 +67,15 @@ export default function InventoryPage() {
         sortBy: sortBy as any,
         filterBy: filterBy === "all" ? undefined : (filterBy as any),
       });
-
-      if (response.success) {
-        setInventorySkins(response.data.skins);
-        setTotalValue(response.data.summary.totalValue);
+      const payload: any = (response as any).skins
+        ? response
+        : (response as any).data ?? response;
+      if (payload && payload.skins) {
+        setInventorySkins(payload.skins);
+        setTotalValue(Number(payload.summary?.totalValue ?? 0));
+      } else {
+        setInventorySkins([]);
+        setTotalValue(0);
       }
     } catch (err) {
       console.error("Failed to load inventory:", err);
@@ -98,31 +104,16 @@ export default function InventoryPage() {
     }
   };
 
-  const getRarityGlow = (rarity: string) => {
-    switch (rarity.toLowerCase()) {
-      case "common":
-        return "shadow-gray-500/30";
-      case "uncommon":
-        return "shadow-green-500/30";
-      case "rare":
-        return "shadow-blue-500/30";
-      case "epic":
-        return "shadow-purple-500/30";
-      case "legendary":
-        return "shadow-yellow-500/30";
-      default:
-        return "";
-    }
-  };
-
-  const filteredSkins = inventorySkins.filter((skin) => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      skin.skinTemplate.skinName.toLowerCase().includes(searchLower) ||
-      skin.skinTemplate.weapon.toLowerCase().includes(searchLower)
-    );
-  });
+  const filteredSkins = useMemo(() => {
+    return inventorySkins.filter((skin) => {
+      if (!searchTerm) return true;
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        skin.skinTemplate.skinName.toLowerCase().includes(searchLower) ||
+        skin.skinTemplate.weapon.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [inventorySkins, searchTerm]);
 
   const handleSellSkin = (skin: UserSkin) => {
     setSelectedSkin(skin);
@@ -259,11 +250,7 @@ export default function InventoryPage() {
             {filteredSkins.map((skin) => (
               <Card
                 key={skin.id}
-                className={`bg-card border-2 ${getRarityColor(
-                  skin.skinTemplate.rarity
-                )} ${getRarityGlow(
-                  skin.skinTemplate.rarity
-                )} hover:scale-105 transition-all duration-200`}
+                className="bg-card border-2 border-border hover:scale-105 transition-all duration-200"
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between mb-2">
@@ -276,12 +263,12 @@ export default function InventoryPage() {
                       </Badge>
                     )}
                   </div>
-                  <div className="aspect-square bg-muted rounded-lg flex items-center justify-center mb-4 animate-float">
+                  <div className="aspect-square rounded-lg flex items-center justify-center mb-4 animate-float">
                     {skin.skinTemplate.imageUrl ? (
                       <img
                         src={skin.skinTemplate.imageUrl}
                         alt={skin.skinTemplate.skinName}
-                        className="w-full h-full object-cover rounded-lg"
+                        className="w-full h-full object-contain rounded-lg"
                       />
                     ) : (
                       <Package className="w-16 h-16 text-muted-foreground" />

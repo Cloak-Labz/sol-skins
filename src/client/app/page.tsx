@@ -159,22 +159,20 @@ export default function LandingPage() {
               </motion.div>
             </motion.div>
 
-            {/* Right Column - 3D Box */}
+            {/* Right Column - Hero Image */}
             <motion.div
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.8, delay: 0.2 }}
               className="relative"
             >
-              <Suspense
-                fallback={
-                  <div className="aspect-square bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-2xl border border-[#333] flex items-center justify-center">
-                    <Loader2 className="w-12 h-12 animate-spin text-[#E99500]" />
-                  </div>
-                }
-              >
-                <FloatingBox />
-              </Suspense>
+              <div className="aspect-square rounded-2xl overflow-hidden border border-[#333]">
+                <img
+                  src="/image.jpg"
+                  alt="CS:GO Skin Showcase"
+                  className="w-full h-full object-cover"
+                />
+              </div>
             </motion.div>
           </div>
         </div>
