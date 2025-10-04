@@ -71,7 +71,7 @@ export function WalletConnect() {
           )}
           {user?.username || `${publicKey.toString().slice(0, 4)}...${publicKey.toString().slice(-4)}`}
         </Button>
-        <Link href="/profile">
+        <Link href="/app-dashboard/profile">
           <Button
             variant="ghost"
             size="icon"
