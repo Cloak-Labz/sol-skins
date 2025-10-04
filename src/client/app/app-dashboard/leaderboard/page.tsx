@@ -235,14 +235,6 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {/* Helper badges */}
-      <div className="flex items-center gap-3 mb-4">
-        <div className="bg-[#111] border border-[#333] text-[#bbb] px-3 py-1.5 rounded-lg inline-flex items-center gap-2">
-          <Info className="w-4 h-4" />
-          <span className="text-sm">$0.01 = 1 point</span>
-        </div>
-      </div>
-
       {/* Tabs */}
       <Tabs
         value={period}
