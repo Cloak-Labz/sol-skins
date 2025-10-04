@@ -2,7 +2,6 @@
 
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -10,20 +9,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { leaderboardService } from "@/lib/services";
 import { LeaderboardEntry, UserRank } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
-import { formatCurrency, formatSOL } from "@/lib/utils";
+import { formatCurrency } from "@/lib/utils";
 import {
   Loader2,
   TrendingUp,
-  Users,
   Info,
-  Timer,
-  Gift,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { apiClient } from "@/lib/services/api";
@@ -39,7 +35,6 @@ export default function LeaderboardPage() {
   const [period, setPeriod] = useState<"all-time" | "monthly" | "weekly">(
     "all-time"
   );
-  const [countdown, setCountdown] = useState<string>("");
   const [mounted, setMounted] = useState(false);
 
   // Load leaderboard data whenever metric or period changes
@@ -65,36 +60,6 @@ export default function LeaderboardPage() {
       return () => clearTimeout(timer);
     }
   }, [isConnected, user, metric]);
-
-  // Simple local countdown to mimic "Winners picked in" UI for design testing
-  useEffect(() => {
-    const target = new Date(
-      Date.now() +
-        4 * 24 * 60 * 60 * 1000 +
-        4 * 60 * 60 * 1000 +
-        10 * 60 * 1000 +
-        50 * 1000
-    );
-    const interval = setInterval(() => {
-      const diff = target.getTime() - Date.now();
-      if (diff <= 0) {
-        setCountdown("0d 00h 00m 00s");
-        clearInterval(interval);
-        return;
-      }
-      const d = Math.floor(diff / (24 * 60 * 60 * 1000));
-      const h = Math.floor((diff % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
-      const m = Math.floor((diff % (60 * 60 * 1000)) / (60 * 1000));
-      const s = Math.floor((diff % (60 * 1000)) / 1000);
-      setCountdown(
-        `${d}d ${String(h).padStart(2, "0")}h ${String(m).padStart(
-          2,
-          "0"
-        )}m ${String(s).padStart(2, "0")}s`
-      );
-    }, 1000);
-    return () => clearInterval(interval);
-  }, []);
 
   // Trigger entrance animations after mount
   useEffect(() => {
@@ -208,24 +173,9 @@ export default function LeaderboardPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-8">
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-4xl font-bold text-white mb-2">Leaderboard</h1>
-          <p className="text-[#999]">Top collectors and their achievements</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-[#111] border border-[#333] text-[#bbb] px-3 py-1.5 rounded-lg inline-flex items-center gap-2">
-            <Timer className="w-4 h-4" />
-            <span className="text-sm">Winners picked in:</span>
-            <span className="text-white font-medium text-sm">{countdown}</span>
-          </div>
-          <Button
-            className="bg-[#1f1f1f] hover:bg-[#2a2a2a] border border-[#333] text-white"
-            size="sm"
-          >
-            <Gift className="w-4 h-4 mr-2" /> Win prizes!
-          </Button>
-        </div>
+      <div className="mb-6">
+        <h1 className="text-4xl font-bold text-white mb-2">Leaderboard</h1>
+        <p className="text-[#999]">Top collectors and their achievements</p>
       </div>
 
       {/* Podium */}
@@ -302,15 +252,7 @@ export default function LeaderboardPage() {
         <TabsList>
           <TabsTrigger value="weekly">Weekly</TabsTrigger>
           <TabsTrigger value="all-time">All Time</TabsTrigger>
-          <TabsTrigger value="prizes">Prizes</TabsTrigger>
         </TabsList>
-        <TabsContent value="prizes">
-          <Card className="bg-[#111] border-[#333] rounded-xl mb-4">
-            <CardContent className="p-6 text-[#bbb]">
-              Design placeholder for prizes breakdown.
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
 
       {/* Filters */}
