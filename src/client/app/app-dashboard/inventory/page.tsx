@@ -104,23 +104,6 @@ export default function InventoryPage() {
     }
   };
 
-  const getRarityGlow = (rarity: string) => {
-    switch (rarity.toLowerCase()) {
-      case "common":
-        return "shadow-gray-500/30";
-      case "uncommon":
-        return "shadow-green-500/30";
-      case "rare":
-        return "shadow-blue-500/30";
-      case "epic":
-        return "shadow-purple-500/30";
-      case "legendary":
-        return "shadow-yellow-500/30";
-      default:
-        return "";
-    }
-  };
-
   const filteredSkins = inventorySkins.filter((skin) => {
     if (!searchTerm) return true;
     const searchLower = searchTerm.toLowerCase();
@@ -265,11 +248,7 @@ export default function InventoryPage() {
             {filteredSkins.map((skin) => (
               <Card
                 key={skin.id}
-                className={`bg-card border-2 ${getRarityColor(
-                  skin.skinTemplate.rarity
-                )} ${getRarityGlow(
-                  skin.skinTemplate.rarity
-                )} hover:scale-105 transition-all duration-200`}
+                className="bg-card border-2 border-border hover:scale-105 transition-all duration-200"
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between mb-2">
