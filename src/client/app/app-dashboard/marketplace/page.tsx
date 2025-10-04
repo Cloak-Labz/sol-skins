@@ -2,32 +2,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
-import {
-  Search,
-  Filter,
-  ShoppingCart,
-  Loader2,
-  ExternalLink,
-  Rocket,
-} from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { ShoppingBag, Rocket, Clock } from "lucide-react";
 import Link from "next/link";
-import { formatCurrency } from "@/lib/utils";
-import {
-  skinMarketplaceService,
-  SkinListing,
-} from "@/lib/services/skinMarketplace";
-import { useUser } from "@/lib/contexts/UserContext";
-import { toast } from "react-hot-toast";
 
 export default function MarketplacePage() {
   const { isConnected } = useUser();
@@ -121,166 +98,49 @@ export default function MarketplacePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white mb-2">Skin Marketplace</h1>
-        <p className="text-[#999] text-lg">
-          Buy and sell CS:GO skins with other players
-        </p>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-col md:flex-row gap-4 mb-8">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#666] w-4 h-4" />
-          <Input
-            placeholder="Search skins..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 bg-[#1a1a1a] border-[#333] text-white placeholder:text-[#666]"
-          />
-        </div>
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-full md:w-48 bg-[#1a1a1a] border-[#333] text-white">
-            <SelectValue placeholder="Sort by" />
-          </SelectTrigger>
-          <SelectContent className="bg-[#1a1a1a] border-[#333]">
-            <SelectItem value="price-low">Price: Low to High</SelectItem>
-            <SelectItem value="price-high">Price: High to Low</SelectItem>
-            <SelectItem value="newest">Newest First</SelectItem>
-            <SelectItem value="name">Name</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={filterBy} onValueChange={setFilterBy}>
-          <SelectTrigger className="w-full md:w-48 bg-[#1a1a1a] border-[#333] text-white">
-            <Filter className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Filter by rarity" />
-          </SelectTrigger>
-          <SelectContent className="bg-[#1a1a1a] border-[#333]">
-            <SelectItem value="all">All Rarities</SelectItem>
-            <SelectItem value="common">Common</SelectItem>
-            <SelectItem value="uncommon">Uncommon</SelectItem>
-            <SelectItem value="rare">Rare</SelectItem>
-            <SelectItem value="epic">Epic</SelectItem>
-            <SelectItem value="legendary">Legendary</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Info Banner */}
-      <div className="mb-8 p-6 bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 rounded-lg">
-        <div className="flex items-start gap-4">
-          <Rocket className="w-12 h-12 mx-auto text-muted-foreground" />
-          <div className="flex-1">
-            <h3 className="text-xl font-bold text-white mb-2">
-              Peer-to-Peer Marketplace
-            </h3>
-            <p className="text-[#999] mb-4">
-              Buy and sell CS:GO skins directly with other players. All
-              transactions are secured on the Solana blockchain.
-            </p>
-            <div className="flex gap-3">
-              <Link href="/inventory">
-                <Button className="bg-blue-500 hover:bg-blue-600 text-white">
-                  List Your Skins
-                </Button>
-              </Link>
-              <Link href="/packs">
-                <Button
-                  variant="outline"
-                  className="border-[#333] text-white hover:bg-[#1a1a1a]"
-                >
-                  Browse Loot Boxes
-                </Button>
-              </Link>
+    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-8">
+      <Card className="bg-[#111] border-[#333] max-w-2xl w-full">
+        <CardContent className="p-12 text-center">
+          <div className="flex justify-center mb-6">
+            <div className="relative">
+              <ShoppingBag className="w-20 h-20 text-[#666]" />
+              <div className="absolute -top-2 -right-2 bg-[#E99500] rounded-full p-2">
+                <Clock className="w-6 h-6 text-white" />
+              </div>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Listings Grid */}
-      {loading ? (
-        <div className="flex justify-center py-12">
-          <Loader2 className="w-8 h-8 animate-spin text-white" />
-        </div>
-      ) : listings.length > 0 ? (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {listings.map((listing) => (
-            <Card
-              key={listing.id}
-              className="bg-[#111] border-[#333] hover:border-[#555] transition-all duration-200 hover:scale-105"
-            >
-              <CardHeader className="pb-4">
-                <div className="flex items-center justify-between mb-2">
-                  <Badge className={getRarityColor(listing.rarity)}>
-                    {listing.rarity}
-                  </Badge>
-                </div>
-                <div className="aspect-square rounded-lg flex items-center justify-center mb-4 border border-[#333] overflow-hidden">
-                  {listing.imageUrl ? (
-                    <img
-                      src={listing.imageUrl}
-                      alt={listing.skinName}
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <div className="text-6xl">🔫</div>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <h3 className="text-white font-bold mb-1">
-                  {listing.skinName}
-                </h3>
-                <p className="text-[#999] text-sm mb-4">{listing.condition}</p>
-
-                <div className="flex items-center justify-between text-xs text-[#666] mb-4">
-                  <span>Seller:</span>
-                  <span className="font-medium text-white">
-                    {getSellerDisplay((listing as any).seller)}
-                  </span>
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="text-2xl font-bold text-white">
-                    {formatCurrency(listing.price)}
-                  </div>
-                  <Button
-                    onClick={() => handleBuy(listing.id)}
-                    disabled={buying === listing.id}
-                    className="bg-[#333] hover:bg-[#444] text-white border-0"
-                    size="sm"
-                  >
-                    {buying === listing.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <ShoppingCart className="w-4 h-4 mr-2" />
-                        Buy
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-12">
-          <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-          <h3 className="text-xl font-semibold text-white mb-2">
-            No listings available
-          </h3>
-          <p className="text-[#999] mb-6">
-            Be the first to list a skin for sale!
+          <h1 className="text-4xl font-bold text-white mb-4">
+            Marketplace Coming Soon
+          </h1>
+          
+          <p className="text-[#999] text-lg mb-8 leading-relaxed">
+            We're building an amazing peer-to-peer marketplace where you can buy and sell 
+            CS:GO skins directly with other players. All transactions will be secured on 
+            the Solana blockchain.
           </p>
-          <Link href="/inventory">
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
-              List Your Skins
-            </Button>
-          </Link>
-        </div>
-      )}
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
+            <Link href="/app-dashboard/packs">
+              <Button className="bg-[#E99500] hover:bg-[#E99500]/90 text-white px-8">
+                <Rocket className="w-4 h-4 mr-2" />
+                Open Packs
+              </Button>
+            </Link>
+            <Link href="/app-dashboard/inventory">
+              <Button variant="outline" className="border-[#333] text-white hover:bg-[#1a1a1a] px-8">
+                View Inventory
+              </Button>
+            </Link>
+          </div>
+
+          <div className="pt-8 border-t border-[#333]">
+            <p className="text-[#666] text-sm">
+              Want to be notified when the marketplace launches? Connect your wallet and start collecting skins!
+            </p>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

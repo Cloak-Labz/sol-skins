@@ -116,7 +116,12 @@ export class UserSkinRepository {
   }> {
     const [userSkins] = await this.findByUser(userId, { inInventoryOnly: true });
     
-    const totalValue = userSkins.reduce((sum, skin) => sum + (skin.currentPriceUsd || 0), 0);
+    const totalValue = userSkins.reduce((sum, skin) => {
+      const price = typeof skin.currentPriceUsd === 'string' 
+        ? parseFloat(skin.currentPriceUsd) 
+        : skin.currentPriceUsd;
+      return sum + (price || 0);
+    }, 0);
     const totalItems = userSkins.length;
     
     const rarityBreakdown = userSkins.reduce((acc, skin) => {
