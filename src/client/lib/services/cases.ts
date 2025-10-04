@@ -28,18 +28,16 @@ export class CasesService {
       };
     }
 
-    const response = await apiClient.post('/cases/open', request)
-    console.log('CasesService: Received response:', response);
-    console.log('CasesService: Response type:', typeof response);
-    console.log('CasesService: Full response structure:', JSON.stringify(response, null, 2));
-    
-    // Check if response is already the data object (from interceptor) or if it's the full response
-    if (response && !response.success && !response.data) {
-      console.log('CasesService: Response is already the data object, wrapping it');
-      return { success: true, data: response };
-    }
-    
-    return response.data
+    const data = await apiClient.post<{
+      caseOpeningId: string
+      nftMintAddress: string
+      vrfRequestId: string
+      transactionId: string
+      estimatedCompletionTime: string
+    }>('/cases/open', request)
+
+    // apiClient.post returns the inner data directly, so wrap it in the expected format
+    return { success: true, data }
   }
 
   async getOpeningStatus(id: string): Promise<CaseOpening> {
@@ -56,15 +54,14 @@ export class CasesService {
       addedToInventory: boolean
     }
   }> {
-    const response = await apiClient.post(`/cases/opening/${id}/decision`, decision)
-    
-    // Check if response is already the data object (from interceptor) or if it's the full response
-    if (response && !response.success && !response.data) {
-      console.log('CasesService: Response is already the data object, wrapping it');
-      return { success: true, data: response };
-    }
-    
-    return response.data
+    const data = await apiClient.post<{
+      decision: string
+      nftMintAddress: string
+      addedToInventory: boolean
+    }>(`/cases/opening/${id}/decision`, decision)
+
+    // apiClient.post returns the inner data directly, so wrap it in the expected format
+    return { success: true, data }
   }
 
   async getUserCaseOpenings(): Promise<{
@@ -72,7 +69,8 @@ export class CasesService {
     data: CaseOpening[]
   }> {
     // The API interceptor will add walletAddress automatically for GET requests
-    return apiClient.get('/cases/openings');
+    const data = await apiClient.get<CaseOpening[]>('/cases/openings');
+    return { success: true, data };
   }
 }
 

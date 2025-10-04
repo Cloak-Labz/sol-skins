@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -32,21 +32,26 @@ import { toast } from "react-hot-toast";
 export default function MarketplacePage() {
   const { isConnected } = useUser();
   const [searchTerm, setSearchTerm] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [filterBy, setFilterBy] = useState("all");
   const [listings, setListings] = useState<SkinListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState<string | null>(null);
 
+  // Debounce search term
   useEffect(() => {
-    loadListings();
-  }, [searchTerm, sortBy, filterBy]);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
-  const loadListings = async () => {
+  const loadListings = useCallback(async () => {
     try {
       setLoading(true);
       const data = await skinMarketplaceService.getListings({
-        search: searchTerm || undefined,
+        search: debouncedSearch || undefined,
         sortBy: sortBy as any,
         filterBy: filterBy === "all" ? undefined : filterBy,
         limit: 50,
@@ -58,7 +63,11 @@ export default function MarketplacePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [debouncedSearch, sortBy, filterBy]);
+
+  useEffect(() => {
+    loadListings();
+  }, [loadListings]);
 
   const getSellerDisplay = (seller: any): string => {
     if (!seller) return "Unknown";

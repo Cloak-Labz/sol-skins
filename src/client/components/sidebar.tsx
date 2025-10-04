@@ -17,8 +17,9 @@ import {
   Gift,
   User,
 } from "lucide-react";
+import { memo } from "react";
 
-export function Sidebar() {
+function SidebarComponent() {
   const pathname = usePathname();
 
   const mainNavItems = [
@@ -148,3 +149,5 @@ export function Sidebar() {
     </aside>
   );
 }
+
+export const Sidebar = memo(SidebarComponent);
