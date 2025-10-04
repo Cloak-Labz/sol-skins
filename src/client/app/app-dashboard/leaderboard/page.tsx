@@ -279,7 +279,9 @@ export default function LeaderboardPage() {
               </div>
               <div className="text-right">
                 <p className="text-white font-bold text-xl">
-                  {formatCurrency(userRank.value)}
+                  {userRank.metric === 'cases-opened' 
+                    ? userRank.value 
+                    : formatCurrency(userRank.value)}
                 </p>
                 <p className="text-gray-400 text-sm">
                   {getMetricLabel(userRank.metric)}
