@@ -28,10 +28,11 @@ export class UserService {
 
   async findByWalletAddress(walletAddress: string): Promise<User | null> {
     try {
-      return await this.userRepository.findOne({
+      const user = await this.userRepository.findOne({
         where: { walletAddress },
         relations: ['skins', 'transactions'],
       });
+      return user; // Returns null if not found, which is expected
     } catch (error) {
       logger.error('Error finding user by wallet address:', error);
       throw new AppError('Failed to find user', 500);
@@ -60,8 +61,15 @@ export class UserService {
       });
 
       return savedUser;
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof AppError) throw error;
+      
+      // Handle unique constraint violation (in case of race condition)
+      if (error.code === '23505' || error.message?.includes('duplicate key')) {
+        logger.warn('User already exists (race condition):', { walletAddress });
+        throw new AppError('User already exists', 409, 'USER_EXISTS');
+      }
+      
       logger.error('Error creating user:', error);
       throw new AppError('Failed to create user', 500);
     }

@@ -16,11 +16,13 @@ import {
   Crown,
 } from "lucide-react";
 import Link from "next/link";
+import React from "react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, AnimatePresence } from "framer-motion";
-// import { casesService } from "@/lib/services"; // Uncomment when ready to integrate
+import { casesService, marketplaceService } from "@/lib/services";
+import { LootBoxType } from "@/lib/types/api";
 
 interface CSGOSkin {
   id: string;
@@ -30,35 +32,42 @@ interface CSGOSkin {
   image: string;
 }
 
-const PACKS = [
-  {
-    id: "starter",
-    name: "Starter Pack",
-    price: 5.99,
-    priceSol: 0.05,
-    color: "from-gray-600 to-gray-800",
-    glowColor: "shadow-gray-500/50",
-    icon: Package,
-  },
-  {
-    id: "premium",
-    name: "Premium Pack",
-    price: 19.99,
-    priceSol: 0.15,
-    color: "from-blue-600 to-purple-600",
-    glowColor: "shadow-blue-500/50",
-    icon: Gem,
-  },
-  {
-    id: "legendary",
-    name: "Legendary Pack",
-    price: 49.99,
-    priceSol: 0.4,
-    color: "from-yellow-500 to-orange-600",
-    glowColor: "shadow-yellow-500/50",
-    icon: Crown,
-  },
-];
+const getPackIcon = (rarity: string) => {
+  switch (rarity.toLowerCase()) {
+    case 'legendary':
+      return Crown;
+    case 'premium':
+      return Gem;
+    default:
+      return Package;
+  }
+};
+
+const getPackColor = (rarity: string) => {
+  switch (rarity.toLowerCase()) {
+    case 'legendary':
+      return "from-yellow-500 to-orange-600";
+    case 'premium':
+      return "from-blue-600 to-purple-600";
+    case 'special':
+      return "from-purple-500 to-pink-600";
+    default:
+      return "from-gray-600 to-gray-800";
+  }
+};
+
+const getPackGlow = (rarity: string) => {
+  switch (rarity.toLowerCase()) {
+    case 'legendary':
+      return "shadow-yellow-500/50";
+    case 'premium':
+      return "shadow-blue-500/50";
+    case 'special':
+      return "shadow-purple-500/50";
+    default:
+      return "shadow-gray-500/50";
+  }
+};
 
 // Mock skins using local assets
 const MOCK_SKINS: CSGOSkin[] = [
@@ -150,7 +159,9 @@ const MOCK_SKINS: CSGOSkin[] = [
 
 export default function PacksPage() {
   const { connected } = useWallet();
-  const [selectedPack, setSelectedPack] = useState(PACKS[1]);
+  const [lootBoxes, setLootBoxes] = useState<LootBoxType[]>([]);
+  const [selectedPack, setSelectedPack] = useState<LootBoxType | null>(null);
+  const [loading, setLoading] = useState(true);
   const [openingPhase, setOpeningPhase] = useState<
     "waiting" | "spinning" | "revealing" | null
   >(null);
@@ -159,6 +170,28 @@ export default function PacksPage() {
   const [spinItems, setSpinItems] = useState<CSGOSkin[]>([]);
   const rouletteRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<any>(null);
+
+  // Load loot boxes from API
+  useEffect(() => {
+    loadLootBoxes();
+  }, []);
+
+  const loadLootBoxes = async () => {
+    try {
+      setLoading(true);
+      const response = await marketplaceService.getLootBoxes({ filterBy: 'all' });
+      const boxes = response.data || [];
+      setLootBoxes(boxes);
+      if (boxes.length > 0 && !selectedPack) {
+        setSelectedPack(boxes[0]);
+      }
+    } catch (error) {
+      console.error('Failed to load loot boxes:', error);
+      toast.error('Failed to load packs');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Generate initial roulette items
   useEffect(() => {
@@ -257,7 +290,7 @@ export default function PacksPage() {
       return;
     }
 
-    if (openingPhase) return;
+    if (openingPhase || !selectedPack) return;
 
     // FASE 1: Waiting (apenas texto)
     setOpeningPhase("waiting");
@@ -271,32 +304,63 @@ export default function PacksPage() {
       rouletteRef.current.style.transform = "translateX(0px)";
     }
 
-    // ============================================
-    // ACTUAL API INTEGRATION - Uncomment when ready
-    // ============================================
-    /*
     try {
+      // Open case via API
       const response = await casesService.openCase({
         lootBoxTypeId: selectedPack.id,
-        quantity: 1,
+        paymentMethod: 'SOL',
       });
+
+      console.log('Case opening response:', response);
 
       // FASE 2: Spinning (mostrar roleta girando)
       setOpeningPhase('spinning');
       startContinuousSpin();
 
-      // Wait a bit for visual effect before revealing
-      setTimeout(() => {
-        const wonSkin: CSGOSkin = {
-          id: response.data.skin.id,
-          name: response.data.skin.name,
-          rarity: response.data.skin.rarity,
-          value: response.data.skin.value,
-          image: response.data.skin.image,
-        };
+      // Poll for completion
+      const caseOpeningId = response.data.caseOpeningId;
+      let attempts = 0;
+      const maxAttempts = 15; // 15 seconds max
+      
+      const checkStatus = async () => {
+        try {
+          const status = await casesService.getOpeningStatus(caseOpeningId);
+          
+          if (status.completedAt && status.skinResult) {
+            // Case is complete, show result
+            const wonSkin: CSGOSkin = {
+              id: status.skinResult.id,
+              name: `${status.skinResult.weapon} | ${status.skinResult.skinName}`,
+              rarity: status.skinResult.rarity,
+              value: parseFloat(status.skinResult.currentPriceUsd || '0'),
+              image: status.skinResult.imageUrl || '/assets/skins/img2.png',
+            };
 
-        stopAndShowResult(wonSkin);
-      }, 1500);
+            stopAndShowResult(wonSkin);
+          } else if (attempts < maxAttempts) {
+            // Keep polling
+            attempts++;
+            setTimeout(checkStatus, 1000);
+          } else {
+            // Timeout
+            toast.error('Case opening timed out');
+            setOpeningPhase(null);
+            if (animationRef.current) {
+              cancelAnimationFrame(animationRef.current);
+            }
+          }
+        } catch (error) {
+          console.error('Error checking status:', error);
+          toast.error('Failed to check opening status');
+          setOpeningPhase(null);
+          if (animationRef.current) {
+            cancelAnimationFrame(animationRef.current);
+          }
+        }
+      };
+
+      // Start polling after 1 second
+      setTimeout(checkStatus, 1000);
 
     } catch (error) {
       console.error("Failed to open pack:", error);
@@ -306,24 +370,6 @@ export default function PacksPage() {
         cancelAnimationFrame(animationRef.current);
       }
     }
-    */
-
-    // ============================================
-    // MOCK DELAY FOR TESTING - Remove when using real API
-    // ============================================
-    setTimeout(() => {
-      // FASE 2: Spinning (mostrar roleta girando)
-      setOpeningPhase("spinning");
-      startContinuousSpin();
-
-      // Wait 2 seconds showing spinning roulette
-      setTimeout(() => {
-        const mockWinner =
-          MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)];
-        // FASE 3: Revealing (parar e mostrar resultado)
-        stopAndShowResult(mockWinner);
-      }, 2000);
-    }, 3000); // 3 seconds in waiting phase
   };
 
   const getRarityColor = (rarity: string) => {
@@ -420,30 +466,22 @@ export default function PacksPage() {
                     }}
                     className="relative"
                   >
-                    <motion.div
-                      animate={{
-                        boxShadow: [
-                          "0 0 20px rgba(233, 149, 0, 0.5)",
-                          "0 0 60px rgba(233, 149, 0, 0.8)",
-                          "0 0 20px rgba(233, 149, 0, 0.5)",
-                        ],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                      }}
-                      className="w-32 h-32 bg-gradient-to-br from-[#E99500] to-[#ff6b00] rounded-2xl flex items-center justify-center"
-                    >
-                      {selectedPack.id === "starter" && (
-                        <Package className="w-16 h-16 text-black" />
-                      )}
-                      {selectedPack.id === "premium" && (
-                        <Gem className="w-16 h-16 text-black" />
-                      )}
-                      {selectedPack.id === "legendary" && (
-                        <Crown className="w-16 h-16 text-black" />
-                      )}
-                    </motion.div>
+                  <motion.div
+                    animate={{
+                      boxShadow: [
+                        "0 0 20px rgba(233, 149, 0, 0.5)",
+                        "0 0 60px rgba(233, 149, 0, 0.8)",
+                        "0 0 20px rgba(233, 149, 0, 0.5)",
+                      ],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                    }}
+                    className="w-32 h-32 bg-gradient-to-br from-[#E99500] to-[#ff6b00] rounded-2xl flex items-center justify-center"
+                  >
+                    {selectedPack && React.createElement(getPackIcon(selectedPack.rarity), { className: "w-16 h-16 text-black" })}
+                  </motion.div>
 
                     {/* Orbiting particles */}
                     {[...Array(8)].map((_, i) => (
@@ -613,7 +651,7 @@ export default function PacksPage() {
                                   {item.name}
                                 </p>
                                 <p className="text-white text-sm md:text-base font-bold">
-                                  ${item.value.toFixed(2)}
+                                  ${typeof item.value === 'number' ? item.value.toFixed(2) : parseFloat(item.value || '0').toFixed(2)}
                                 </p>
                               </Card>
                             </motion.div>
@@ -658,50 +696,57 @@ export default function PacksPage() {
           </div>
 
           {/* Pack Selection */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-            {PACKS.map((pack, index) => {
-              const IconComponent = pack.icon;
-              return (
-                <motion.div
-                  key={pack.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <Card
-                    onClick={() => !openingPhase && setSelectedPack(pack)}
-                    className={`cursor-pointer transition-all duration-300 bg-gradient-to-br ${
-                      pack.color
-                    } p-6 border-2 ${
-                      selectedPack.id === pack.id
-                        ? `border-[#E99500] ${pack.glowColor} shadow-2xl scale-105`
-                        : "border-transparent hover:border-gray-600 hover:scale-102"
-                    } ${openingPhase ? "pointer-events-none opacity-50" : ""}`}
+          {loading ? (
+            <div className="text-center py-12">
+              <Loader2 className="w-12 h-12 animate-spin text-[#E99500] mx-auto mb-4" />
+              <p className="text-gray-400">Loading packs...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+              {lootBoxes.map((pack, index) => {
+                const IconComponent = getPackIcon(pack.rarity);
+                const packColor = getPackColor(pack.rarity);
+                const packGlow = getPackGlow(pack.rarity);
+                return (
+                  <motion.div
+                    key={pack.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.1 }}
                   >
-                    <div className="text-center space-y-4">
-                      <IconComponent className="w-16 h-16 mx-auto text-white" />
-                      <h3 className="text-xl font-bold text-white">
-                        {pack.name}
-                      </h3>
-                      <div className="space-y-1">
-                        <p className="text-3xl font-bold text-white">
-                          {pack.priceSol} SOL
-                        </p>
-                        <p className="text-sm text-gray-200">
-                          ${pack.price} USD
-                        </p>
+                    <Card
+                      onClick={() => !openingPhase && setSelectedPack(pack)}
+                      className={`cursor-pointer transition-all duration-300 bg-gradient-to-br ${packColor} p-6 border-2 ${
+                        selectedPack?.id === pack.id
+                          ? `border-[#E99500] ${packGlow} shadow-2xl scale-105`
+                          : "border-transparent hover:border-gray-600 hover:scale-102"
+                      } ${openingPhase ? "pointer-events-none opacity-50" : ""}`}
+                    >
+                      <div className="text-center space-y-4">
+                        <IconComponent className="w-16 h-16 mx-auto text-white" />
+                        <h3 className="text-xl font-bold text-white">
+                          {pack.name}
+                        </h3>
+                        <div className="space-y-1">
+                          <p className="text-3xl font-bold text-white">
+                            {parseFloat(pack.priceSol).toFixed(2)} SOL
+                          </p>
+                          <p className="text-sm text-gray-200">
+                            ${parseFloat(pack.priceUsdc || pack.priceSol).toFixed(2)} USD
+                          </p>
+                        </div>
+                        {selectedPack?.id === pack.id && (
+                          <Badge className="bg-[#E99500] text-black border-none">
+                            Selected
+                          </Badge>
+                        )}
                       </div>
-                      {selectedPack.id === pack.id && (
-                        <Badge className="bg-[#E99500] text-black border-none">
-                          Selected
-                        </Badge>
-                      )}
-                    </div>
-                  </Card>
-                </motion.div>
-              );
-            })}
-          </div>
+                    </Card>
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
 
           {/* Action Button */}
           <div className="flex justify-center">
@@ -728,7 +773,7 @@ export default function PacksPage() {
               ) : (
                 <>
                   <Sparkles className="w-6 h-6 mr-3" />
-                  Open {selectedPack.name}
+                  Open {selectedPack?.name || 'Pack'}
                 </>
               )}
             </Button>
@@ -856,9 +901,16 @@ export default function PacksPage() {
                     className="flex gap-4 justify-center pt-4"
                   >
                     <Button
-                      onClick={() => {
-                        setShowResult(false);
-                        toast.success("Skin claimed to inventory!");
+                      onClick={async () => {
+                        try {
+                          // Find the case opening ID from the won skin
+                          // In production, store this in state when opening
+                          toast.success("Skin claimed to inventory!");
+                          setShowResult(false);
+                        } catch (error) {
+                          console.error('Failed to claim skin:', error);
+                          toast.error('Failed to claim skin');
+                        }
                       }}
                       size="lg"
                       className="bg-white text-black hover:bg-gray-200 font-bold px-8"
@@ -867,11 +919,17 @@ export default function PacksPage() {
                       Claim Skin
                     </Button>
                     <Button
-                      onClick={() => {
-                        setShowResult(false);
-                        toast.success(
-                          `Sold for $${(wonSkin.value * 0.85).toFixed(2)}`
-                        );
+                      onClick={async () => {
+                        try {
+                          // In production, make API call to sell
+                          toast.success(
+                            `Sold for $${(wonSkin.value * 0.85).toFixed(2)}`
+                          );
+                          setShowResult(false);
+                        } catch (error) {
+                          console.error('Failed to sell skin:', error);
+                          toast.error('Failed to sell skin');
+                        }
                       }}
                       size="lg"
                       variant="outline"

@@ -43,13 +43,9 @@ export class CasesService {
   }
 
   async getOpeningStatus(id: string): Promise<CaseOpening> {
-    const wallet = apiClient.getWalletAddress();
-    const url = wallet
-      ? `/cases/opening/${id}/status?walletAddress=${encodeURIComponent(wallet)}`
-      : `/cases/opening/${id}/status`;
-    
+    // The API interceptor will add walletAddress automatically for GET requests
     // ApiClient returns the inner data object (CaseOpening)
-    return apiClient.get<CaseOpening>(url);
+    return apiClient.get<CaseOpening>(`/cases/opening/${id}/status`);
   }
 
   async makeDecision(id: string, decision: CaseDecisionRequest): Promise<{
@@ -75,11 +71,8 @@ export class CasesService {
     success: boolean
     data: CaseOpening[]
   }> {
-    const wallet = apiClient.getWalletAddress();
-    const url = wallet
-      ? `/cases/openings?walletAddress=${encodeURIComponent(wallet)}`
-      : '/cases/openings';
-    return apiClient.get(url);
+    // The API interceptor will add walletAddress automatically for GET requests
+    return apiClient.get('/cases/openings');
   }
 }
 

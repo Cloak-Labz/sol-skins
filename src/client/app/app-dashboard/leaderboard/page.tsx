@@ -19,7 +19,6 @@ import { useUser } from "@/lib/contexts/UserContext";
 import { formatCurrency, formatSOL } from "@/lib/utils";
 import {
   Loader2,
-  Trophy,
   TrendingUp,
   Users,
   Info,
@@ -152,9 +151,6 @@ export default function LeaderboardPage() {
   };
 
   const getRankIcon = (rank: number) => {
-    if (rank === 1) return <Trophy className="w-5 h-5 text-yellow-500" />;
-    if (rank === 2) return <Trophy className="w-5 h-5 text-gray-400" />;
-    if (rank === 3) return <Trophy className="w-5 h-5 text-amber-600" />;
     return <span className="text-sm font-bold text-gray-400">#{rank}</span>;
   };
 
@@ -363,9 +359,10 @@ export default function LeaderboardPage() {
       {/* Leaderboard Table */}
       <Card className="bg-[#111] border-[#333] rounded-xl overflow-hidden">
         <CardContent className="p-0">
-          <div className="grid grid-cols-6 gap-4 p-4 border-b border-[#333] bg-[#1a1a1a]">
+          <div className="grid p-4 border-b border-[#333] bg-[#1a1a1a]" style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
             <div className="text-[#666] text-sm font-medium">#</div>
             <div className="text-[#666] text-sm font-medium">Name</div>
+            <div className="text-[#666] text-sm font-medium">Inventory Value</div>
             <div className="text-[#666] text-sm font-medium">Volume</div>
             <div className="text-[#666] text-sm font-medium">Claw Pulls</div>
             <div className="text-[#666] text-sm font-medium">Points</div>
@@ -376,17 +373,16 @@ export default function LeaderboardPage() {
               <p className="text-gray-400">No leaderboard data available</p>
             </div>
           ) : (
-            leaderboard
-              .filter((entry) => entry.rank > 3)
-              .map((entry) => (
+            leaderboard.map((entry) => (
                 <div
                   key={entry.user.id}
-                  className="grid grid-cols-6 gap-4 p-4 border-b border-[#333] last:border-b-0 hover:bg-[#1a1a1a] transition-colors"
+                  className={`grid p-4 border-b border-[#333] last:border-b-0 hover:bg-[#1a1a1a] transition-colors ${
+                    entry.rank <= 3 ? 'bg-[#1a1a1a]/50' : ''
+                  }`}
+                  style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}
                 >
                   <div className="flex items-center">
-                    <div className="flex items-center gap-2">
-                      {getRankIcon(entry.rank)}
-                    </div>
+                    {getRankIcon(entry.rank)}
                   </div>
                   <div className="flex items-center gap-3">
                     <Avatar>
@@ -402,6 +398,11 @@ export default function LeaderboardPage() {
                     </Avatar>
                     <p className="text-white font-medium">
                       {getDisplayName(entry)}
+                    </p>
+                  </div>
+                  <div className="flex items-center">
+                    <p className="text-white font-bold">
+                      {formatCurrency(entry.inventoryValue)}
                     </p>
                   </div>
                   <div className="flex items-center">

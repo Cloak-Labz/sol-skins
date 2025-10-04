@@ -34,15 +34,22 @@ export class InventoryService {
 
     const skins = userSkins.map(userSkin => ({
       id: userSkin.id,
-      weapon: userSkin.skinTemplate?.weapon,
-      skinName: userSkin.skinTemplate?.skinName,
-      rarity: userSkin.skinTemplate?.rarity,
-      condition: userSkin.skinTemplate?.condition,
-      currentPriceUsd: userSkin.currentPriceUsd,
-      imageUrl: userSkin.skinTemplate?.imageUrl,
+      skinTemplate: {
+        weapon: userSkin.skinTemplate?.weapon || '',
+        skinName: userSkin.skinTemplate?.skinName || '',
+        rarity: userSkin.skinTemplate?.rarity || '',
+        condition: userSkin.skinTemplate?.condition || '',
+        imageUrl: userSkin.skinTemplate?.imageUrl || '',
+      },
+      currentPriceUsd: userSkin.currentPriceUsd || 0,
+      currentPrice: userSkin.currentPriceUsd || 0, // Alias for frontend
       nftMintAddress: userSkin.nftMintAddress,
+      mintAddress: userSkin.nftMintAddress, // Alias for frontend
       openedAt: userSkin.openedAt,
+      acquiredAt: userSkin.openedAt, // Alias for frontend
       canSell: userSkin.isInInventory && !userSkin.soldViaBuyback,
+      condition: userSkin.skinTemplate?.condition || '',
+      status: userSkin.isInInventory ? 'owned' : 'sold',
     }));
 
     const summary = await this.userSkinRepository.getUserInventoryStats(userId);

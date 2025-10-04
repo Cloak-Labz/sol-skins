@@ -70,8 +70,20 @@ export class WalletAuthMiddleware {
       let user = await this.userService.findByWalletAddress(walletAddress);
       
       if (!user) {
-        // Create new user for this wallet
-        user = await this.userService.createUser(walletAddress);
+        try {
+          // Create new user for this wallet
+          user = await this.userService.createUser(walletAddress);
+        } catch (error: any) {
+          // If user was created between our check and create (race condition), fetch again
+          if (error.code === 'USER_EXISTS') {
+            user = await this.userService.findByWalletAddress(walletAddress);
+            if (!user) {
+              return next(new AppError('Failed to create or find user', 500));
+            }
+          } else {
+            throw error;
+          }
+        }
       }
 
       // Check if user is active

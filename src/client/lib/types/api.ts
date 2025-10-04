@@ -70,15 +70,22 @@ export interface LootBoxFilters {
 // Skin types
 export interface UserSkin {
   id: string
-  weapon: string
-  skinName: string
-  rarity: string
-  condition: string
+  skinTemplate: {
+    weapon: string
+    skinName: string
+    rarity: string
+    condition: string
+    imageUrl?: string
+  }
   currentPriceUsd: number
-  imageUrl?: string
+  currentPrice: number // Alias
   nftMintAddress: string
+  mintAddress: string // Alias
   openedAt: string
+  acquiredAt: string // Alias
   canSell: boolean
+  condition: string
+  status: 'owned' | 'sold' | 'listed'
 }
 
 export interface InventorySummary {

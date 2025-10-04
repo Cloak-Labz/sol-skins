@@ -29,30 +29,11 @@ class LeaderboardService {
     const url = queryString ? `/leaderboard?${queryString}` : "/leaderboard";
 
     console.log("LeaderboardService: Making request to:", url);
-    const response = await apiClient.get(url);
+    const response = await apiClient.get<LeaderboardEntry[]>(url);
     console.log("LeaderboardService: Received response:", response);
-    console.log("LeaderboardService: Response type:", typeof response);
-    console.log(
-      "LeaderboardService: Response success:",
-      response?.data?.success
-    );
-    console.log("LeaderboardService: Response data:", response?.data?.data);
-    console.log(
-      "LeaderboardService: Full response structure:",
-      JSON.stringify(response, null, 2)
-    );
-
-    // Check if response is already the data array (from interceptor) or if it's the full response
-    if (Array.isArray(response)) {
-      console.log(
-        "LeaderboardService: Response is already an array, returning directly"
-      );
-      return { success: true, data: response };
-    }
-
-    // The API client returns the full Axios response, so we need to access response.data
-    // which contains the {success: true, data: [...]} structure
-    return response.data;
+    
+    // apiClient.get already unwraps the response and returns just the data array
+    return { success: true, data: response };
   }
 
   // Get user's current rank
