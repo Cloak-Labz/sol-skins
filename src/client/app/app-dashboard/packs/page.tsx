@@ -413,39 +413,10 @@ export default function PacksPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black"
           >
-            {/* Animated Background */}
+            {/* Simplified Background - reduced animations */}
             <div className="absolute inset-0 overflow-hidden">
-              {/* Pulsing gradient overlay */}
-              <motion.div
-                animate={{
-                  background: [
-                    "radial-gradient(circle at 50% 50%, rgba(233, 149, 0, 0.1) 0%, rgba(0, 0, 0, 1) 70%)",
-                    "radial-gradient(circle at 50% 50%, rgba(233, 149, 0, 0.3) 0%, rgba(0, 0, 0, 1) 70%)",
-                    "radial-gradient(circle at 50% 50%, rgba(233, 149, 0, 0.1) 0%, rgba(0, 0, 0, 1) 70%)",
-                  ],
-                }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="absolute inset-0"
-              />
-
-              {/* Rotating rays */}
-              <motion.div
-                animate={{ rotate: 360 }}
-                transition={{
-                  duration: 20,
-                  repeat: Infinity,
-                  ease: "linear",
-                }}
-                className="absolute inset-0"
-                style={{
-                  background:
-                    "conic-gradient(from 0deg, transparent 0%, rgba(233, 149, 0, 0.1) 10%, transparent 20%, transparent 40%, rgba(233, 149, 0, 0.1) 50%, transparent 60%, transparent 80%, rgba(233, 149, 0, 0.1) 90%, transparent 100%)",
-                }}
-              />
+              {/* Static gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-radial from-[#E99500]/20 to-black" />
             </div>
 
             {/* Center Content */}
@@ -466,51 +437,9 @@ export default function PacksPage() {
                     }}
                     className="relative"
                   >
-                  <motion.div
-                    animate={{
-                      boxShadow: [
-                        "0 0 20px rgba(233, 149, 0, 0.5)",
-                        "0 0 60px rgba(233, 149, 0, 0.8)",
-                        "0 0 20px rgba(233, 149, 0, 0.5)",
-                      ],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                    }}
-                    className="w-32 h-32 bg-gradient-to-br from-[#E99500] to-[#ff6b00] rounded-2xl flex items-center justify-center"
-                  >
+                  <div className="w-32 h-32 bg-gradient-to-br from-[#E99500] to-[#ff6b00] rounded-2xl flex items-center justify-center shadow-lg shadow-[#E99500]/50">
                     {selectedPack && React.createElement(getPackIcon(selectedPack.rarity), { className: "w-16 h-16 text-black" })}
-                  </motion.div>
-
-                    {/* Orbiting particles */}
-                    {[...Array(8)].map((_, i) => (
-                      <motion.div
-                        key={i}
-                        animate={{
-                          rotate: 360,
-                        }}
-                        transition={{
-                          duration: 3,
-                          repeat: Infinity,
-                          ease: "linear",
-                          delay: i * 0.2,
-                        }}
-                        className="absolute inset-0"
-                        style={{
-                          transformOrigin: "center",
-                        }}
-                      >
-                        <div
-                          className="absolute w-2 h-2 bg-[#E99500] rounded-full"
-                          style={{
-                            top: "50%",
-                            left: "50%",
-                            transform: `translate(-50%, -50%) translateY(-80px)`,
-                          }}
-                        />
-                      </motion.div>
-                    ))}
+                  </div>
                   </motion.div>
 
                   {/* Status Text */}
@@ -607,55 +536,32 @@ export default function PacksPage() {
                         }}
                       >
                         {spinItems.map((item, index) => (
-                          <motion.div
+                          <div
                             key={index}
                             className="flex-shrink-0 w-32 md:w-40 h-44 md:h-56 relative"
-                            animate={{
-                              y: [0, -4, 0],
-                            }}
-                            transition={{
-                              duration: 0.8,
-                              repeat: Infinity,
-                              delay: index * 0.05,
-                            }}
                           >
-                            <motion.div
-                              animate={{
-                                boxShadow: [
-                                  "0 0 15px rgba(233, 149, 0, 0.4)",
-                                  "0 0 30px rgba(233, 149, 0, 0.8)",
-                                  "0 0 15px rgba(233, 149, 0, 0.4)",
-                                ],
-                              }}
-                              transition={{
-                                duration: 1.2,
-                                repeat: Infinity,
-                              }}
-                              className="w-full h-full"
+                            <Card
+                              className={`w-full h-full bg-gradient-to-br ${getRarityColor(
+                                item.rarity
+                              )} p-3 md:p-4 border-2 ${getRarityBorderColor(
+                                item.rarity
+                              )} flex flex-col items-center justify-center space-y-2 shadow-lg`}
                             >
-                              <Card
-                                className={`w-full h-full bg-gradient-to-br ${getRarityColor(
-                                  item.rarity
-                                )} p-3 md:p-4 border-2 ${getRarityBorderColor(
-                                  item.rarity
-                                )} flex flex-col items-center justify-center space-y-2 shadow-2xl`}
-                              >
-                                <div className="w-full h-20 md:h-28 flex items-center justify-center bg-black/30 rounded-lg">
-                                  <img
-                                    src={item.image}
-                                    alt={item.name}
-                                    className="max-w-full max-h-full object-contain"
-                                  />
-                                </div>
-                                <p className="text-white text-xs font-bold text-center line-clamp-2 px-1">
-                                  {item.name}
-                                </p>
-                                <p className="text-white text-sm md:text-base font-bold">
-                                  ${typeof item.value === 'number' ? item.value.toFixed(2) : parseFloat(item.value || '0').toFixed(2)}
-                                </p>
-                              </Card>
-                            </motion.div>
-                          </motion.div>
+                              <div className="w-full h-20 md:h-28 flex items-center justify-center bg-black/30 rounded-lg">
+                                <img
+                                  src={item.image}
+                                  alt={item.name}
+                                  className="max-w-full max-h-full object-contain"
+                                />
+                              </div>
+                              <p className="text-white text-xs font-bold text-center line-clamp-2 px-1">
+                                {item.name}
+                              </p>
+                              <p className="text-white text-sm md:text-base font-bold">
+                                ${typeof item.value === 'number' ? item.value.toFixed(2) : parseFloat(item.value || '0').toFixed(2)}
+                              </p>
+                            </Card>
+                          </div>
                         ))}
                       </div>
                     </div>

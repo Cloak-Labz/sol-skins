@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { User } from '../types/api';
 import { authService } from '../services';
 
@@ -96,7 +96,7 @@ export function UserProvider({ children }: UserProviderProps) {
     setError(null);
   };
 
-  const value: UserContextType = {
+  const value: UserContextType = useMemo(() => ({
     user,
     walletAddress,
     isConnected,
@@ -106,7 +106,7 @@ export function UserProvider({ children }: UserProviderProps) {
     disconnectWallet,
     refreshUser,
     clearError,
-  };
+  }), [user, walletAddress, isConnected, isLoading, error]);
 
   return (
     <UserContext.Provider value={value}>

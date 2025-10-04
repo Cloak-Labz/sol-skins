@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -104,14 +104,16 @@ export default function InventoryPage() {
     }
   };
 
-  const filteredSkins = inventorySkins.filter((skin) => {
-    if (!searchTerm) return true;
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      skin.skinTemplate.skinName.toLowerCase().includes(searchLower) ||
-      skin.skinTemplate.weapon.toLowerCase().includes(searchLower)
-    );
-  });
+  const filteredSkins = useMemo(() => {
+    return inventorySkins.filter((skin) => {
+      if (!searchTerm) return true;
+      const searchLower = searchTerm.toLowerCase();
+      return (
+        skin.skinTemplate.skinName.toLowerCase().includes(searchLower) ||
+        skin.skinTemplate.weapon.toLowerCase().includes(searchLower)
+      );
+    });
+  }, [inventorySkins, searchTerm]);
 
   const handleSellSkin = (skin: UserSkin) => {
     setSelectedSkin(skin);
