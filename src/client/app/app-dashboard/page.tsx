@@ -1,6 +1,25 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { marketplaceService } from "@/lib/services/marketplace";
+import { activityService } from "@/lib/services/activity";
+import type { LootBoxType, ActivityItem } from "@/lib/types/api";
+// Using keyboard emoticon instead of an icon
+
 export default function DashboardPage() {
+  const [pulls, setPulls] = useState<ActivityItem[]>([]);
+  const [packs, setPacks] = useState<LootBoxType[]>([]);
+
+  useEffect(() => {
+    activityService
+      .getRecent(12)
+      .then(setPulls)
+      .catch(() => setPulls([]));
+    marketplaceService
+      .getLootBoxes({ filterBy: "all", limit: 6 })
+      .then((r) => setPacks(r.data))
+      .catch(() => setPacks([]));
+  }, []);
   return (
     <div className="min-h-screen bg-black p-6 md:p-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
@@ -47,27 +66,45 @@ export default function DashboardPage() {
             </a>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
+            {pulls.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 p-10 text-zinc-400 gap-3">
+                <div className="font-mono text-3xl">{":("}</div>
+                <div>Nothing here yet</div>
+                <a
+                  href="/app-dashboard/packs"
+                  className="mt-1 inline-flex items-center px-3 py-1.5 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] text-sm"
+                >
+                  Explore Packs
+                </a>
+              </div>
+            )}
+            {pulls.map((p) => (
               <div
-                key={i}
+                key={p.id}
                 className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden"
               >
                 <div className="aspect-[3/4] bg-zinc-900/50 flex items-center justify-center">
-                  <img
-                    src="/assets/pack-card.png"
-                    alt="pull"
-                    className="w-full h-full object-cover"
-                  />
+                  {p.skin?.imageUrl ? (
+                    <img
+                      src={p.skin.imageUrl}
+                      alt={p.skin.skinName}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src="/assets/pack-card.png"
+                      alt="pull"
+                      className="w-full h-full object-cover"
+                    />
+                  )}
                 </div>
                 <div className="p-3 space-y-1">
-                  <div className="text-[11px] text-zinc-400">
-                    Just revealed • 1m ago
-                  </div>
+                  <div className="text-[11px] text-zinc-400">Just revealed</div>
                   <div className="text-xs text-white truncate">
-                    2025 Pokemon SV Black Bolt Poke
+                    {p.skin?.skinName || "Unknown"}
                   </div>
                   <div className="text-[11px] text-zinc-500">
-                    Claw Machine • Elite Pack
+                    Claw Machine • {p.lootBox?.name || "Pack"}
                   </div>
                 </div>
               </div>
@@ -75,29 +112,42 @@ export default function DashboardPage() {
           </div>
         </section>
 
-        {/* Digital Packs, Physical Cards */}
+        {/* Your Skins */}
         <section className="space-y-3">
-          <h3 className="text-white font-semibold">
-            Digital Packs, Physical Cards
-          </h3>
+          <h3 className="text-white font-semibold">Your Packs</h3>
           <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-4">
-            {[
-              { name: "Rookie Pack", price: "$25" },
-              { name: "Starter Hoops Pack", price: "$25" },
-              { name: "Elite Pack", price: "$50" },
-              { name: "East Blue Pack", price: "$80" },
-              { name: "Legend Pack", price: "$250" },
-              { name: "Platinum Hoops Pack", price: "$500" },
-            ].map((p) => (
+            {packs.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 p-10 text-zinc-400 gap-3">
+                <div className="font-mono text-3xl">{":("}</div>
+                <div>Nothing here yet</div>
+                <a
+                  href="/app-dashboard/packs"
+                  className="mt-1 inline-flex items-center px-3 py-1.5 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] text-sm"
+                >
+                  Browse Packs
+                </a>
+              </div>
+            )}
+            {packs.map((p) => (
               <div
-                key={p.name}
+                key={p.id}
                 className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-4"
               >
-                <div className="aspect-[3/4] rounded-lg bg-zinc-800/40 mb-3"></div>
+                <div className="aspect-[3/4] rounded-lg bg-zinc-800/40 mb-3 overflow-hidden">
+                  {p.imageUrl && (
+                    <img
+                      src={p.imageUrl}
+                      alt={p.name}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
                 <div className="text-white font-semibold leading-tight">
                   {p.name}
                 </div>
-                <div className="text-zinc-400 text-sm">{p.price}</div>
+                <div className="text-zinc-400 text-sm">
+                  ${p.priceUsdc || p.priceSol}
+                </div>
                 <div className="mt-3 flex items-center gap-2">
                   <button className="h-8 w-8 rounded bg-zinc-900 border border-zinc-700 text-white">
                     −
@@ -109,7 +159,7 @@ export default function DashboardPage() {
                     +
                   </button>
                   <a
-                    href="/app-dashboard/packs"
+                    href={`/app-dashboard/packs?id=${p.id}`}
                     className="ml-auto inline-flex items-center px-3 py-1.5 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] text-sm"
                   >
                     Buy
@@ -119,41 +169,6 @@ export default function DashboardPage() {
             ))}
           </div>
         </section>
-
-        {/* Quick Actions */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            {
-              title: "Open Packs",
-              href: "/app-dashboard/packs",
-              desc: "Try your luck",
-            },
-            {
-              title: "Inventory",
-              href: "/app-dashboard/inventory",
-              desc: "Manage winnings",
-            },
-            {
-              title: "Leaderboard",
-              href: "/app-dashboard/leaderboard",
-              desc: "Top collectors",
-            },
-            {
-              title: "About",
-              href: "/app-dashboard/about",
-              desc: "How Dust3 works",
-            },
-          ].map((item) => (
-            <a
-              key={item.href}
-              href={item.href}
-              className="group rounded-xl border border-zinc-800 hover:border-zinc-700 bg-gradient-to-b from-zinc-950 to-zinc-900 p-5 transition-transform duration-150 hover:scale-[1.01]"
-            >
-              <div className="text-white font-semibold">{item.title}</div>
-              <div className="text-sm text-zinc-400">{item.desc}</div>
-            </a>
-          ))}
-        </div>
 
         {/* Stats */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -178,7 +193,7 @@ export default function DashboardPage() {
           <div className="p-5 border-b border-zinc-800 text-white font-semibold">
             Recent Activity
           </div>
-          <div className="p-5 text-zinc-400 text-sm">
+          <div className="p-12 text-center text-zinc-300 text-xl">
             Coming soon: live drops, buybacks, and leaderboard highlights.
           </div>
         </div>
