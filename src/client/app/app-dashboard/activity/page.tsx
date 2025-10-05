@@ -63,7 +63,7 @@ export default function ActivityPage() {
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-foreground mb-2">Activity Feed</h1>
             <p className="text-muted-foreground text-lg">
-              Real-time activity from the SolSkins community
+              Real-time activity from the Dust3 community
             </p>
           </div>
 
@@ -118,7 +118,6 @@ export default function ActivityPage() {
             ))
           ) : (
             <div className="p-12 text-center">
-              <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-xl font-semibold text-foreground mb-2">
                 No recent activity
               </h3>

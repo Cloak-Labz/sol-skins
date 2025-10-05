@@ -332,7 +332,6 @@ export default function InventoryPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-xl font-semibold text-foreground mb-2">
               No skins found
             </h3>

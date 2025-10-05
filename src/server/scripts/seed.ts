@@ -328,7 +328,7 @@ async function createUserSkins(users: User[], skinTemplates: SkinTemplate[], loo
       userSkin.soldViaBuyback = !userSkin.isInInventory;
       userSkin.buybackAmount = userSkin.soldViaBuyback ? randomSkin.basePriceUsd * 0.85 : null;
       userSkin.buybackAt = userSkin.soldViaBuyback ? new Date() : null;
-      userSkin.metadataUri = `https://api.solskins.com/metadata/${userSkin.nftMintAddress}`;
+      userSkin.metadataUri = `https://api.dust3.com/metadata/${userSkin.nftMintAddress}`;
       userSkin.name = `${randomSkin.weapon} | ${randomSkin.skinName}`;
       userSkin.symbol = 'SKIN';
       userSkin.currentPriceUsd = randomSkin.basePriceUsd * (0.8 + Math.random() * 0.4); // ±20% price variation

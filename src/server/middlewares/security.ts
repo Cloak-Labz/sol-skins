@@ -12,8 +12,8 @@ export const corsOptions = {
     const allowedOrigins = [
       'http://localhost:3000',
       'http://localhost:3001',
-      'https://sol-skins.vercel.app',
-      'https://solskins.com',
+      'https://dust3.vercel.app',
+      'https://dust3.com',
     ];
 
     // Allow requests with no origin (mobile apps, etc.)

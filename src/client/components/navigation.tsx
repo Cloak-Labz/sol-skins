@@ -22,7 +22,7 @@ export function Navigation() {
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-8">
             <Link href="/" className="text-2xl font-bold text-foreground">
-              SolSkins
+              Dust3
             </Link>
             <div className="hidden md:flex items-center gap-6">
               {navItems.map((item) => {
