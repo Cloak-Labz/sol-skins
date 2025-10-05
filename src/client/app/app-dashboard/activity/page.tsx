@@ -48,8 +48,8 @@ export default function ActivityPage() {
     return (
       <div className="min-h-screen bg-[#0a0a0a] p-8 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-4" />
-          <p className="text-white">Loading activity feed...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-zinc-200 mx-auto mb-4" />
+          <p className="text-zinc-200">Loading activity feed...</p>
         </div>
       </div>
     );
@@ -58,28 +58,22 @@ export default function ActivityPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-8">
       <div className="mb-8">
-        <h1 className="text-4xl font-bold text-white mb-4">Activity Feed</h1>
-        <p className="text-[#999] text-lg">
+        <h1 className="text-4xl font-bold text-foreground mb-2">Activity Feed</h1>
+        <p className="text-muted-foreground text-lg">
           Real-time activity from the SolSkins community
         </p>
       </div>
 
-      <Card className="bg-[#111] border-[#333] rounded-xl overflow-hidden">
-        <CardContent className="p-0">
+      <Card className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+        <CardContent className="p-4">
           {activities.length > 0 ? (
             activities.map((activity) => (
               <div
                 key={activity.id}
-                className="flex items-center justify-between p-6 border-b border-[#333] last:border-b-0 hover:bg-[#1a1a1a] transition-colors"
+                className="flex items-center justify-between p-4 mb-2 last:mb-0 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 transition-transform duration-150 hover:scale-[1.01] hover:border-zinc-700"
               >
                 <div className="flex items-center space-x-4">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center text-sm ${
-                      activity.type === "case_opened"
-                        ? "bg-blue-500/20 text-blue-400"
-                        : "bg-green-500/20 text-green-400"
-                    }`}
-                  >
+                  <div className="w-10 h-10 rounded-md flex items-center justify-center text-sm bg-zinc-800 text-zinc-400">
                     {activity.type === "case_opened" ? (
                       <Box className="w-4 h-4" />
                     ) : (
@@ -87,15 +81,12 @@ export default function ActivityPage() {
                     )}
                   </div>
                   <div>
-                    <p className="text-white">
+                    <p className="text-foreground">
                       <span className="font-medium">
                         {activity.user.username ||
-                          `${activity.user.walletAddress.slice(
-                            0,
-                            4
-                          )}...${activity.user.walletAddress.slice(-4)}`}
+                          `${activity.user.walletAddress.slice(0, 4)}...${activity.user.walletAddress.slice(-4)}`}
                       </span>
-                      <span className="text-[#666] mx-2">
+                      <span className="text-muted-foreground mx-2">
                         {activity.type === "case_opened" ? "opened" : "sold"}
                       </span>
                       <span className="font-medium">
@@ -104,22 +95,18 @@ export default function ActivityPage() {
                           : activity.lootBox?.name}
                       </span>
                     </p>
-                    <p className="text-[#666] text-sm">
+                    <p className="text-muted-foreground text-sm">
                       {getTimeAgo(activity.timestamp)}
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-white font-bold">
+                  <p className="text-foreground font-bold">
                     {formatCurrency(parseFloat(activity.skin?.valueUsd || "0"))}
                   </p>
                   <Badge
                     variant="secondary"
-                    className={`text-xs ${
-                      activity.type === "case_opened"
-                        ? "bg-blue-500/20 text-blue-400"
-                        : "bg-green-500/20 text-green-400"
-                    } border-0`}
+                    className="text-xs bg-zinc-900 text-zinc-300 border border-zinc-800"
                   >
                     {activity.type === "case_opened" ? "open" : "buyback"}
                   </Badge>
@@ -129,10 +116,10 @@ export default function ActivityPage() {
           ) : (
             <div className="p-12 text-center">
               <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
-              <h3 className="text-xl font-semibold text-white mb-2">
+              <h3 className="text-xl font-semibold text-foreground mb-2">
                 No recent activity
               </h3>
-              <p className="text-[#999]">Be the first to open a case!</p>
+              <p className="text-muted-foreground">Be the first to open a case!</p>
             </div>
           )}
         </CardContent>
