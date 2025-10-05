@@ -613,39 +613,45 @@ export default function PacksPage() {
             </div>
           </div>
 
-          {/* Title Section */}
-          <div className="text-center space-y-2">
-            <motion.h1
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-4xl md:text-6xl font-bold"
-            >
-              <span className="text-white">Open </span>
-              <span className="text-[#E99500]">Packs</span>
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.2 }}
-              className="text-gray-400 text-lg"
-            >
-              Test your luck and win legendary skins
-            </motion.p>
-          </div>
-
           {/* Odds Section */}
           <div className="grid lg:grid-cols-3 gap-6 items-stretch">
-            {/* Left: Pack Preview */}
-            <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 aspect-[16/9] lg:aspect-auto lg:h-full">
-              <img src="/dust3.jpeg" alt="Dust3 Pack Preview" className="w-full h-full object-cover" />
+            {/* Left: Pack Preview + Compact Packs (LG+) */}
+            <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 flex flex-col">
+              <div className="w-full h-[260px] md:h-[320px] lg:h-[360px]">
+                <img src="/dust3.jpeg" alt="Dust3 Pack Preview" className="w-full h-full object-cover" />
+              </div>
+              <div className="hidden lg:block border-t border-zinc-800 p-3">
+                <div className="grid grid-cols-2 gap-3">
+                  {lootBoxes.slice(0, 4).map((pack) => (
+                    <button
+                      key={pack.id}
+                      onClick={() => !openingPhase && setSelectedPack(pack)}
+                      className={`group text-left rounded-lg border px-3 py-3 bg-gradient-to-b from-zinc-950 to-zinc-900 transition-colors ${
+                        selectedPack?.id === pack.id ? 'border-[#E99500]' : 'border-zinc-800 hover:border-zinc-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <img src={(pack as any).imageUrl || '/dust3.jpeg'} alt={pack.name} className="w-10 h-10 rounded object-cover border border-zinc-800" />
+                        <div className="min-w-0">
+                          <p className="text-xs text-foreground font-semibold truncate">{pack.name}</p>
+                          <p className="text-[10px] text-zinc-400">{parseFloat(pack.priceSol).toFixed(2)} SOL</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
 
             {/* Right: Details and Odds (span 2) */}
-            <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6">
+            <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6 md:sticky md:top-6">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-2xl font-bold text-foreground">{selectedPack?.name || 'Promo Pack'}</h3>
                   <p className="text-muted-foreground">Provably fair opening. Instant delivery.</p>
+                  {(selectedPack as any)?.description && (
+                    <p className="text-zinc-400 text-sm mt-1 line-clamp-2">{(selectedPack as any).description}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
@@ -656,10 +662,11 @@ export default function PacksPage() {
                     onClick={handleOpenPack}
                     disabled={openingPhase !== null || !connected}
                     className={`px-6 py-6 font-semibold rounded-lg transition-transform duration-150 ${
-                      openingPhase ? 'bg-zinc-700 cursor-not-allowed' : 'bg-zinc-100 text-black hover:bg-white hover:scale-[1.02]'
+                      openingPhase ? 'bg-zinc-700 cursor-not-allowed' : 'bg-zinc-100 text-black hover:bg-white hover:scale-[1.02] active:scale-[0.99]'
                     }`}
                   >
-                    Open Pack
+                    <span className="mr-2">Open Pack</span>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </Button>
                 </div>
               </div>
@@ -679,7 +686,7 @@ export default function PacksPage() {
                         <span className="text-xs text-zinc-400 mr-2">{denom > 0 ? `~1 in ${denom}` : "—"}</span>
                         <span className="px-2 py-0.5 text-xs rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800">{pctNum.toFixed(1)}%</span>
                       </div>
-                      <div className="mt-2 h-1 w-full rounded-full bg-zinc-800 overflow-hidden border border-zinc-700">
+                      <div className="mt-2 h-2 w-full rounded-full bg-zinc-800 overflow-hidden border border-zinc-700">
                         <div
                           className={`h-full bg-gradient-to-r ${getRarityColor(rarityKey)}`}
                           style={{ width: `${Math.min(100, Math.max(0, pctNum))}%` }}
@@ -688,7 +695,10 @@ export default function PacksPage() {
                     </div>
                   );
                 })}
-                <p className="text-[11px] text-zinc-500 pt-1">Probabilities are estimates and may vary per pack. Totals approximate 100%.</p>
+                <div className="flex items-center justify-between pt-2">
+                  <p className="text-[11px] text-zinc-500">Probabilities are estimates and may vary per pack.</p>
+                  <div className="text-[11px] text-zinc-500">Powered by Solana</div>
+                </div>
               </div>
             </div>
           </div>
@@ -699,97 +709,7 @@ export default function PacksPage() {
               <Loader2 className="w-12 h-12 animate-spin text-[#E99500] mx-auto mb-4" />
               <p className="text-gray-400">Loading packs...</p>
             </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-w-6xl mx-auto">
-              {lootBoxes.map((pack, index) => {
-                const IconComponent = getPackIcon(pack.rarity);
-                const packColor = getPackColor(pack.rarity);
-                const packGlow = getPackGlow(pack.rarity);
-                const imageUrl = (pack as any).imageUrl || "/dust3.jpeg";
-                return (
-                  <motion.div
-                    key={pack.id}
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <Card
-                      onClick={() => !openingPhase && setSelectedPack(pack)}
-                      className={`group cursor-pointer overflow-hidden border transition-transform duration-150 hover:scale-[1.02] ${
-                        selectedPack?.id === pack.id
-                          ? `border-[#E99500] shadow-[0_0_40px_rgba(233,149,0,0.35)] ${packGlow}`
-                          : "border-zinc-800 hover:border-zinc-700"
-                      } ${openingPhase ? "pointer-events-none opacity-50" : ""}`}
-                    >
-                      {/* Image */}
-                      <div className="relative h-28">
-                        <img src={imageUrl} alt={pack.name} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-                        <div className="absolute top-3 right-3">
-                          <Badge className={`bg-black/60 text-white border-white/20 backdrop-blur-sm`}>{pack.rarity}</Badge>
-                        </div>
-                      </div>
-
-                      {/* Body */}
-                      <div className="p-3 bg-gradient-to-b from-zinc-950 to-zinc-900">
-                        <div className="flex items-start justify-between gap-2">
-                          <div>
-                            <h3 className="text-sm font-semibold text-foreground leading-snug line-clamp-2">{pack.name}</h3>
-                            <div className="flex items-center gap-1 mt-1 text-[10px] text-zinc-400">
-                              <IconComponent className="w-3 h-3" />
-                              <span>Pack</span>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm font-bold text-foreground">{parseFloat(pack.priceSol).toFixed(2)} SOL</p>
-                            <p className="text-[10px] text-muted-foreground">${parseFloat(String((pack as any).priceUsdc ?? pack.priceSol)).toFixed(2)}</p>
-                          </div>
-                        </div>
-
-                        {/* Footer state */}
-                        {selectedPack?.id === pack.id ? (
-                          <div className="mt-2">
-                            <Badge className="bg-[#E99500] text-black border-none">Selected</Badge>
-                          </div>
-                        ) : null}
-                      </div>
-                    </Card>
-                  </motion.div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Action Button */}
-          <div className="flex justify-center">
-            <Button
-              onClick={handleOpenPack}
-              disabled={openingPhase !== null || !connected}
-              size="lg"
-              className={`relative px-12 py-8 text-2xl font-bold rounded-xl transition-all duration-300 ${
-                openingPhase
-                  ? "bg-gray-600 cursor-not-allowed"
-                  : "bg-gradient-to-r from-[#E99500] to-[#ff6b00] hover:shadow-[0_0_30px_rgba(233,149,0,0.6)] hover:scale-105"
-              } text-black disabled:opacity-50`}
-            >
-              {!connected ? (
-                <>
-                  <Lock className="w-6 h-6 mr-3" />
-                  Connect Wallet
-                </>
-              ) : openingPhase ? (
-                <>
-                  <Loader2 className="w-6 h-6 mr-3 animate-spin" />
-                  Opening...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-6 h-6 mr-3" />
-                  Open {selectedPack?.name || 'Pack'}
-                </>
-              )}
-            </Button>
-          </div>
+          ) : null}
         </div>
       </div>
 
