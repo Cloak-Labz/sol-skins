@@ -92,30 +92,24 @@ export function WalletConnect() {
   if (connected && publicKey) {
     return (
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          className="bg-card border-border text-foreground hover:bg-muted"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Wallet className="w-4 h-4 mr-2" />
-          )}
-          {user?.username ||
-            `${publicKey.toString().slice(0, 4)}...${publicKey
-              .toString()
-              .slice(-4)}`}
-        </Button>
-        <Link href="/app-dashboard/settings">
+        <Link href="/app-dashboard/profile">
           <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground"
+            variant="outline"
+            className="bg-card border-border text-foreground hover:bg-muted hover:text-foreground"
+            disabled={isLoading}
           >
-            <Settings className="w-4 h-4" />
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Wallet className="w-4 h-4 mr-2" />
+            )}
+            {user?.username ||
+              `${publicKey.toString().slice(0, 4)}...${publicKey
+                .toString()
+                .slice(-4)}`}
           </Button>
         </Link>
+        {/* Settings button removed */}
         <Button
           variant="destructive"
           size="sm"

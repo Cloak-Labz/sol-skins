@@ -59,6 +59,7 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState({
     username: "",
     email: "",
+    tradeUrl: "",
   });
 
   // Dashboard data state
@@ -73,6 +74,7 @@ export default function ProfilePage() {
       setFormData({
         username: user.username || "",
         email: user.email || "",
+        tradeUrl: (user as any).tradeUrl || "",
       });
     }
   }, [user]);
@@ -163,6 +165,7 @@ export default function ProfilePage() {
       if (formData.username !== user?.username)
         updates.username = formData.username;
       if (formData.email !== user?.email) updates.email = formData.email;
+      if ((formData as any).tradeUrl !== (user as any)?.tradeUrl) (updates as any).tradeUrl = (formData as any).tradeUrl;
 
       if (Object.keys(updates).length === 0) {
         toast.error("No changes to save");
@@ -382,9 +385,31 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="tradeUrl">Steam Trade Offer URL</Label>
+                      <Link
+                        href="https://steamcommunity.com/id/me/tradeoffers/privacy#trade_offer_access_url"
+                        target="_blank"
+                        className="text-xs text-zinc-400 hover:text-zinc-200"
+                      >
+                        Find Trade URL
+                      </Link>
+                    </div>
+                    <Input
+                      id="tradeUrl"
+                      value={(formData as any).tradeUrl}
+                      onChange={(e) =>
+                        setFormData({ ...formData, tradeUrl: e.target.value } as any)
+                      }
+                      disabled={!isEditing}
+                      placeholder="https://steamcommunity.com/tradeoffer/new/?partner=...&token=..."
+                      className="bg-zinc-950 border-zinc-800"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="wallet">Wallet Address</Label>
                     <div className="flex items-center gap-2">
-                      <Wallet className="w-4 h-4 text-zinc-400" />
                       <Input
                         id="wallet"
                         value={currentUser.walletAddress}
