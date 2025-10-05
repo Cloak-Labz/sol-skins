@@ -37,19 +37,12 @@ export default function DashboardPage() {
                 Introducing
               </h2>
               <div className="text-4xl md:text-5xl font-extrabold text-white leading-tight">
-                Basketball Packs
+                Dust3 Promo Pack
               </div>
               <p className="text-zinc-300 max-w-2xl mt-2">
                 Open a digital pack to instantly reveal a real card. Choose to
                 hold, trade, redeem, or sell it back to us at 85% value!
               </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <a href="/app-dashboard/packs" className="inline-block">
-                <span className="inline-flex items-center px-4 py-2 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] transition-colors">
-                  View Drop
-                </span>
-              </a>
             </div>
           </div>
         </div>
@@ -58,12 +51,6 @@ export default function DashboardPage() {
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-white font-semibold">Recent Pulls</h3>
-            <a
-              href="/app-dashboard/packs"
-              className="text-[#E99500] text-sm hover:underline"
-            >
-              Open Now
-            </a>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {pulls.length === 0 && (
