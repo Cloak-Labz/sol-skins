@@ -1,174 +1,451 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, Zap, Lock, TrendingUp, Globe, CheckCircle2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
+  Shield,
+  Zap,
+  Lock,
+  Globe,
+  CheckCircle2,
+  ShieldCheck,
+  Fingerprint,
+  Coins,
+  Rocket,
+} from "lucide-react";
 import { motion } from "framer-motion";
+// metadata is provided in app/about/layout.tsx (server component)
 
 export default function AboutPage() {
   return (
-    <div className="min-h-screen bg-black p-8">
-      <div className="max-w-4xl mx-auto">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="mb-12"
-        >
-          <h1 className="text-5xl font-bold text-white mb-4">About Dust3</h1>
-          <p className="text-gray-400 text-xl">
-            Where CS skins meet Web3 fairness
-          </p>
-        </motion.div>
-
-        <div className="space-y-8">
+    <div className="min-h-screen bg-black">
+      {/* Hero */}
+      <section className="px-6 md:px-10 lg:px-16 py-20 border-b border-[#1a1a1a]">
+        <div className="max-w-6xl mx-auto text-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
+            transition={{ duration: 0.5 }}
           >
-            <Card className="bg-[#111] border-[#333] hover:border-[#E99500] transition-all duration-300 rounded-xl">
-              <CardContent className="p-8">
-                <h2 className="text-3xl font-bold text-white mb-4">
-                  What is Dust3?
-                </h2>
-                <p className="text-gray-400 leading-relaxed text-lg">
-                  Dust3 makes opening CS:GO loot boxes transparent, provably fair, and instantly liquid.
-                  Every skin you unbox is backed by real CS:GO inventory, verified on-chain through Merkle proofs.
-                  No more shady markets. Just trust, speed, and real ownership.
-                </p>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-          >
-            <Card className="bg-[#111] border-[#333] hover:border-[#E99500] transition-all duration-300 rounded-xl">
-              <CardContent className="p-8">
-                <h2 className="text-3xl font-bold text-white mb-6">
-                  How It Works
-                </h2>
-                <div className="space-y-6">
-                  <div className="flex items-start space-x-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-[#E99500] to-[#c77f00] rounded-full flex items-center justify-center text-black font-bold">
-                      1
-                    </div>
-                    <div>
-                      <h3 className="text-white font-bold mb-2 text-lg">
-                        Buy a Dust3 loot box with USDC/SOL
-                      </h3>
-                      <p className="text-gray-400">
-                        Purchase boxes directly with your Solana wallet. Fast, secure, on-chain.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-[#E99500] to-[#c77f00] rounded-full flex items-center justify-center text-black font-bold">
-                      2
-                    </div>
-                    <div>
-                      <h3 className="text-white font-bold mb-2 text-lg">
-                        Open it — randomness is verified on-chain
-                      </h3>
-                      <p className="text-gray-400">
-                        Provably fair drops. Every outcome is transparent and verifiable.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-[#E99500] to-[#c77f00] rounded-full flex items-center justify-center text-black font-bold">
-                      3
-                    </div>
-                    <div>
-                      <h3 className="text-white font-bold mb-2 text-lg">
-                        Get your skin, backed by real inventory
-                      </h3>
-                      <p className="text-gray-400">
-                        Every skin is secured by our verified CS:GO inventory with Merkle proofs.
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-start space-x-4">
-                    <div className="w-10 h-10 bg-gradient-to-br from-[#E99500] to-[#c77f00] rounded-full flex items-center justify-center text-black font-bold">
-                      4
-                    </div>
-                    <div>
-                      <h3 className="text-white font-bold mb-2 text-lg">
-                        Keep it or sell it back instantly
-                      </h3>
-                      <p className="text-gray-400">
-                        Dust3 buys back at 85% market value. No waiting, no scams.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-          >
-            <Card className="bg-[#111] border-[#333] hover:border-[#E99500] transition-all duration-300 rounded-xl">
-              <CardContent className="p-8">
-                <h2 className="text-3xl font-bold text-white mb-6">
-                  Why Choose Dust3?
-                </h2>
-                <div className="grid md:grid-cols-2 gap-8">
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 bg-[#E99500]/10 rounded-lg flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-[#E99500]" />
-                    </div>
-                    <h3 className="text-white font-bold text-xl">
-                      Fairness
-                    </h3>
-                    <p className="text-gray-400">
-                      Provably fair randomness, verified on-chain. No hidden odds. Every drop is transparent.
-                    </p>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 bg-[#E99500]/10 rounded-lg flex items-center justify-center">
-                      <Lock className="w-6 h-6 text-[#E99500]" />
-                    </div>
-                    <h3 className="text-white font-bold text-xl">
-                      Trust & Backing
-                    </h3>
-                    <p className="text-gray-400">
-                      Every skin is backed by a real CS:GO inventory. Merkle proofs guarantee your drop is authentic.
-                    </p>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 bg-[#E99500]/10 rounded-lg flex items-center justify-center">
-                      <Zap className="w-6 h-6 text-[#E99500]" />
-                    </div>
-                    <h3 className="text-white font-bold text-xl">
-                      Instant Liquidity
-                    </h3>
-                    <p className="text-gray-400">
-                      Keep your skin, or sell it back instantly at market price. No waiting. No scams.
-                    </p>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="w-12 h-12 bg-[#E99500]/10 rounded-lg flex items-center justify-center">
-                      <Globe className="w-6 h-6 text-[#E99500]" />
-                    </div>
-                    <h3 className="text-white font-bold text-xl">
-                      Web3 Power
-                    </h3>
-                    <p className="text-gray-400">
-                      Powered by Solana for speed and low fees. Your loot box, your wallet, your rules.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <Badge className="bg-[#E99500] text-black">On-chain VRF</Badge>
+              <Badge
+                variant="outline"
+                className="border-[#E99500] text-[#E99500]"
+              >
+                Backed by Real Inventory
+              </Badge>
+              <Badge
+                variant="outline"
+                className="border-[#E99500] text-[#E99500]"
+              >
+                Instant Buyback
+              </Badge>
+            </div>
+            <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-4">
+              The Fair Future of CS Skins
+            </h1>
+            <p className="text-gray-300 text-lg md:text-xl max-w-3xl mx-auto mb-8">
+              Experience the thrill of opening — now with provably fair
+              randomness, real inventory backing, and instant liquidity on
+              Solana.
+            </p>
+            <div className="flex items-center justify-center gap-3">
+              <Button className="bg-[#E99500] text-black hover:bg-[#d88500]">
+                Open Packs
+              </Button>
+              <Button
+                variant="outline"
+                className="border-[#333] text-white hover:bg-[#111]"
+              >
+                Learn More
+              </Button>
+            </div>
           </motion.div>
         </div>
-      </div>
+      </section>
+
+      {/* Core Benefits */}
+      <section className="px-6 md:px-10 lg:px-16 py-16">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-8">
+            Core Benefits
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              {
+                title: "Track Your Wins",
+                desc: "See every pack, drop, and payout in a transparent on-chain history.",
+                Icon: CheckCircle2,
+              },
+              {
+                title: "Provably Fair",
+                desc: "VRF randomness you can audit. No hidden odds. No shady math.",
+                Icon: ShieldCheck,
+              },
+              {
+                title: "Backed by Reality",
+                desc: "Each skin mapped to a custodial inventory, verified by Merkle proofs.",
+                Icon: Fingerprint,
+              },
+              {
+                title: "Instant Liquidity",
+                desc: "Keep your prize — or sell it back instantly at 85% of market price.",
+                Icon: Coins,
+              },
+              {
+                title: "Low Fees, High Speed",
+                desc: "Powered by Solana for lightning-fast transactions.",
+                Icon: Zap,
+              },
+            ].map(({ title, desc, Icon }, idx) => (
+              <Card
+                key={idx}
+                className="bg-[#0d0d0d] border-[#1f1f1f] hover:border-[#E99500] transition-colors"
+              >
+                <CardContent className="p-6">
+                  <div className="w-10 h-10 rounded-md bg-[#E99500]/10 flex items-center justify-center mb-4">
+                    <Icon className="w-5 h-5 text-[#E99500]" />
+                  </div>
+                  <h3 className="text-white font-semibold mb-2">{title}</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">
+                    {desc}
+                  </p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Digital Packs */}
+      <section className="px-6 md:px-10 lg:px-16 py-16 bg-[#0b0b0b] border-y border-[#141414]">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 items-center">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
+              Digital Packs
+            </h2>
+            <p className="text-gray-300 mb-6">
+              Open packs in a premium, game-like experience — without the pain
+              of traditional marketplaces.
+            </p>
+            <ul className="space-y-2 text-gray-400">
+              <li>• Authenticated prizes with on-chain provenance.</li>
+              <li>• Real-time market pricing for fair buyback.</li>
+              <li>• Redeem or sell instantly, no shipping delays.</li>
+              <li>• Transparent drop tables and odds.</li>
+            </ul>
+            <div className="mt-6">
+              <Button className="bg-[#E99500] text-black hover:bg-[#d88500]">
+                Open Packs Now
+              </Button>
+            </div>
+          </div>
+          <div>
+            <Card className="bg-[#0f0f0f] border-[#1f1f1f]">
+              <CardContent className="p-10 text-center">
+                <div className="mx-auto w-full h-48 bg-gradient-to-br from-[#1a1a1a] to-[#0d0d0d] rounded-xl flex items-center justify-center">
+                  <span className="text-gray-500">Promo Image / 3D Visual</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Dust Claw */}
+      <section className="px-6 md:px-10 lg:px-16 py-16">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 items-center">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+              Interactive Claw Machine
+            </h2>
+            <p className="text-gray-300 mb-4">
+              Level up the experience with Dust Claw — a 3D, physics-based claw
+              machine built with Three.js. Start with an empty chamber, watch
+              orbs rain in, then pull the claw to grab your prize. No labels.
+              Pure suspense. On-chain verification.
+            </p>
+            <Button
+              variant="outline"
+              className="border-[#333] text-white hover:bg-[#111]"
+            >
+              Try Dust Claw
+            </Button>
+          </div>
+          <div>
+            <Card className="bg-[#0f0f0f] border-[#1f1f1f]">
+              <CardContent className="p-10 text-center">
+                <div className="mx-auto w-full h-48 bg-gradient-to-br from-[#1a1a1a] to-[#0d0d0d] rounded-xl flex items-center justify-center">
+                  <span className="text-gray-500">Dust Claw Preview</span>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Achievement System */}
+      <section className="px-6 md:px-10 lg:px-16 py-16 bg-[#0b0b0b] border-y border-[#141414]">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-white">
+            Achievement System
+          </h2>
+          <p className="text-gray-300 mt-2 mb-6">
+            Track your progression, unlock rewards, and showcase your
+            milestones.
+          </p>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              "Case Opener I — Open 10 packs",
+              "Portfolio Starter — Keep 3 unique skins",
+              "Hot Streak — 3 successful pulls in a row",
+              "Collector Rank Up — Reach 1,000 total value opened",
+              "Diamond Hands — Hold a rare for 30 days",
+            ].map((badge, i) => (
+              <Card key={i} className="bg-[#0f0f0f] border-[#1f1f1f]">
+                <CardContent className="p-5 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded bg-[#E99500]/15 flex items-center justify-center">
+                    <CheckCircle2 className="w-4 h-4 text-[#E99500]" />
+                  </div>
+                  <p className="text-gray-300 text-sm">{badge}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Key Features */}
+      <section className="px-6 md:px-10 lg:px-16 py-16">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-8">
+            Key Features
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                t: "On-Chain Fairness",
+                d: "Verifiable randomness (VRF) — fully auditable.",
+                Icon: Shield,
+              },
+              {
+                t: "Inventory Proofs",
+                d: "Merkle-rooted snapshots for real backing.",
+                Icon: Fingerprint,
+              },
+              {
+                t: "85% Buyback",
+                d: "Sell instantly at market — keep playing with confidence.",
+                Icon: Coins,
+              },
+              {
+                t: "P2P Marketplace (Phase 2)",
+                d: "Peer-to-peer skin trading with low fees.",
+                Icon: Globe,
+              },
+              {
+                t: "Creator & Esports Drops",
+                d: "Limited-edition themed packs and partner collections.",
+                Icon: Rocket,
+              },
+              {
+                t: "Social & Leaderboards",
+                d: "Track ranks, streaks, and seasonal events.",
+                Icon: CheckCircle2,
+              },
+              {
+                t: "Speed & Cost",
+                d: "Solana performance — fast finality, low fees.",
+                Icon: Zap,
+              },
+              {
+                t: "Secure Custody",
+                d: "Operational safeguards and transparent reporting.",
+                Icon: Lock,
+              },
+            ].map(({ t, d, Icon }, i) => (
+              <Card key={i} className="bg-[#0d0d0d] border-[#1f1f1f]">
+                <CardContent className="p-6">
+                  <div className="w-10 h-10 rounded-md bg-[#E99500]/10 flex items-center justify-center mb-4">
+                    <Icon className="w-5 h-5 text-[#E99500]" />
+                  </div>
+                  <h3 className="text-white font-semibold mb-2">{t}</h3>
+                  <p className="text-gray-400 text-sm leading-relaxed">{d}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How it Works */}
+      <section className="px-6 md:px-10 lg:px-16 py-16 bg-[#0b0b0b] border-y border-[#141414]">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">
+            How It Works
+          </h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                n: 1,
+                t: "Connect Wallet",
+                d: "Phantom, Backpack, or Solflare.",
+              },
+              { n: 2, t: "Open", d: "Choose a pack or play Dust Claw." },
+              { n: 3, t: "Reveal", d: "Odds and results on-chain, instantly." },
+              { n: 4, t: "Decide", d: "Keep the skin or sell at 85%." },
+            ].map(({ n, t, d }) => (
+              <Card key={n} className="bg-[#0f0f0f] border-[#1f1f1f]">
+                <CardContent className="p-6">
+                  <div className="w-8 h-8 rounded-full bg-[#E99500] text-black font-bold flex items-center justify-center mb-3">
+                    {n}
+                  </div>
+                  <h3 className="text-white font-semibold">{t}</h3>
+                  <p className="text-gray-400 text-sm mt-1">{d}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* GTM + Revenue */}
+      <section className="px-6 md:px-10 lg:px-16 py-16">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10">
+          <div>
+            <h3 className="text-xl font-semibold text-white mb-3">
+              GTM Highlights
+            </h3>
+            <ul className="text-gray-400 space-y-2">
+              <li>• MVP: Packs + Buyback + Claim</li>
+              <li>• Phase 2: P2P marketplace with trading fees</li>
+              <li>
+                • Phase 3: Influencers, esports partners, multi-game expansion
+              </li>
+            </ul>
+          </div>
+          <div>
+            <h3 className="text-xl font-semibold text-white mb-3">
+              Revenue Streams
+            </h3>
+            <ul className="text-gray-400 space-y-2">
+              <li>• Pack Fee: Small markup per pack.</li>
+              <li>• Buyback Spread: 15% margin on instant sell-back.</li>
+              <li>• Marketplace Fees: 2–5% on P2P trades.</li>
+              <li>• Branded Drops: Partnerships & limited collections.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Trust Strip */}
+      <section className="px-6 md:px-10 lg:px-16 py-10 bg-[#0b0b0b] border-y border-[#141414]">
+        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+          {[
+            { label: "VRF Verified", Icon: ShieldCheck },
+            { label: "Merkle Proofs", Icon: Fingerprint },
+            { label: "Solana Speed", Icon: Zap },
+            { label: "Secure Custody", Icon: Lock },
+            { label: "Instant USDC Payouts", Icon: Coins },
+          ].map(({ label, Icon }, i) => (
+            <div
+              key={i}
+              className="flex items-center justify-center gap-2 text-gray-300"
+            >
+              <Icon className="w-4 h-4 text-[#E99500]" />
+              <span className="text-sm">{label}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* CTA Block */}
+      <section className="px-6 md:px-10 lg:px-16 py-16">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-bold text-white mb-2">
+            Ready to Unbox Fairly?
+          </h2>
+          <p className="text-gray-300 mb-6">
+            Join thousands of players opening packs with real value and instant
+            liquidity.
+          </p>
+          <div className="flex items-center justify-center gap-3">
+            <Button className="bg-[#E99500] text-black hover:bg-[#d88500]">
+              Start Collecting
+            </Button>
+            <Button
+              variant="outline"
+              className="border-[#333] text-white hover:bg-[#111]"
+            >
+              Contact Us
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section className="px-6 md:px-10 lg:px-16 pb-24">
+        <div className="max-w-3xl mx-auto">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-6">
+            FAQ
+          </h2>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="q1">
+              <AccordionTrigger className="text-white">
+                How is Dust3 fair?
+              </AccordionTrigger>
+              <AccordionContent className="text-gray-300">
+                We use verifiable randomness (VRF). Every result is auditable
+                on-chain.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q2">
+              <AccordionTrigger className="text-white">
+                Are the prizes real?
+              </AccordionTrigger>
+              <AccordionContent className="text-gray-300">
+                Yes. Each skin is mapped to a custodial inventory and validated
+                via Merkle proofs.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q3">
+              <AccordionTrigger className="text-white">
+                How does instant buyback work?
+              </AccordionTrigger>
+              <AccordionContent className="text-gray-300">
+                After you reveal, you can sell back at 85% of market price and
+                receive USDC instantly.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q4">
+              <AccordionTrigger className="text-white">
+                What wallets are supported?
+              </AccordionTrigger>
+              <AccordionContent className="text-gray-300">
+                Phantom, Backpack, and Solflare — with Solana speed and low
+                fees.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="q5">
+              <AccordionTrigger className="text-white">
+                When is P2P trading coming?
+              </AccordionTrigger>
+              <AccordionContent className="text-gray-300">
+                Phase 2: peer-to-peer marketplace with low trading fees and
+                curated listings.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      </section>
     </div>
   );
 }

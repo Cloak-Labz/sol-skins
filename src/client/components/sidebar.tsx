@@ -32,16 +32,28 @@ function SidebarComponent() {
     },
     { href: "/app-dashboard/inventory", label: "Inventory", icon: Package },
     { href: "/app-dashboard/leaderboard", label: "Leaderboard", icon: Trophy },
+    { href: "/app-dashboard/settings", label: "Settings", icon: Info },
   ];
 
   const socialItems = [
-    { href: "/app-dashboard/activity", label: "Activity", icon: Activity },
-    { href: "/app-dashboard/profile", label: "Profile", icon: User },
+    {
+      href: "/app-dashboard/activity",
+      label: "Activity",
+      icon: Activity,
+      soon: false,
+    },
+    {
+      href: "/app-dashboard/profile",
+      label: "Profile",
+      icon: User,
+      soon: false,
+    },
   ];
 
   const exploreItems = [
     { href: "/csgo", label: "CS:GO", icon: Star },
     { href: "/refer", label: "Refer and Earn", icon: Gift },
+    { href: "/app-dashboard/about", label: "About", icon: Info },
   ];
 
   return (

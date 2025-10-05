@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { WalletConnect } from "./wallet-connect"
-import { ChevronLeft } from "lucide-react"
-import { memo } from "react"
+import { WalletConnect } from "./wallet-connect";
+import { ChevronLeft } from "lucide-react";
+import { memo } from "react";
 
 function HeaderComponent() {
   return (
@@ -11,9 +11,11 @@ function HeaderComponent() {
         <ChevronLeft className="w-5 h-5" />
       </button>
 
-      <WalletConnect />
+      <div className="flex items-center gap-3">
+        <WalletConnect />
+      </div>
     </header>
-  )
+  );
 }
 
 export const Header = memo(HeaderComponent);
