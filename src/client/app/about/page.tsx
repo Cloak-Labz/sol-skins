@@ -24,6 +24,23 @@ import { motion } from "framer-motion";
 // metadata is provided in app/about/layout.tsx (server component)
 
 export default function AboutPage() {
+  const fadeIn = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.6 } },
+  };
+  const stagger = {
+    hidden: {},
+    show: {
+      transition: {
+        staggerChildren: 0.08,
+        delayChildren: 0.15,
+      },
+    },
+  };
+  const hoverTilt = {
+    rest: { rotateX: 0, rotateY: 0, scale: 1, transition: { type: "spring", stiffness: 200, damping: 15 } },
+    hover: { rotateX: -2, rotateY: 3, scale: 1.02, transition: { type: "spring", stiffness: 200, damping: 15 } },
+  } as const;
   return (
     <div className="min-h-screen bg-black">
       {/* Hero */}
@@ -32,7 +49,18 @@ export default function AboutPage() {
           <img src="/dust3.jpeg" alt="Dust3" className="w-full h-full object-cover opacity-30" />
           <div className="absolute inset-0 bg-gradient-to-b from-black via-black/70 to-black" />
         </div>
-        <div className="relative px-6 md:px-10 lg:px-16 py-20">
+        <div className="relative px-6 md:px-10 lg:px-16 py-24">
+          {/* Floating orbs */}
+          <motion.div
+            className="pointer-events-none absolute -top-10 -right-10 size-60 rounded-full blur-3xl bg-[#E99500]/15"
+            animate={{ y: [0, 10, 0], opacity: [0.6, 0.9, 0.6] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="pointer-events-none absolute bottom-0 -left-10 size-72 rounded-full blur-3xl bg-[#ffaa33]/10"
+            animate={{ y: [0, -12, 0], opacity: [0.4, 0.7, 0.4] }}
+            transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+          />
           <div className="max-w-6xl mx-auto text-center">
             <motion.div
               initial={{ opacity: 0, y: 12 }}
@@ -51,6 +79,15 @@ export default function AboutPage() {
                 <Button className="bg-[#E99500] text-black hover:bg-[#d88500]">View Marketplace</Button>
                 <Button variant="outline" className="border-[#333] text-white hover:bg-[#111]">Learn More</Button>
               </div>
+            </motion.div>
+            {/* Scroll cue */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="mt-10 flex justify-center"
+            >
+              <div className="h-10 w-[2px] bg-gradient-to-b from-transparent via-zinc-600 to-transparent animate-pulse" />
             </motion.div>
           </div>
         </div>
@@ -81,8 +118,8 @@ export default function AboutPage() {
       {/* Core Benefits */}
       <section className="px-6 md:px-10 lg:px-16 py-16">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-8">Core Benefits</h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <motion.h2 variants={fadeIn} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-2xl md:text-3xl font-bold text-white mb-8">Core Benefits</motion.h2>
+          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }} className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 title: "Track Your Wins",
@@ -105,8 +142,10 @@ export default function AboutPage() {
                 Icon: Coins,
               },
             ].map(({ title, desc, Icon }, idx) => (
-              <Card key={idx} className="bg-[#0d0d0d] border-[#1f1f1f] hover:border-[#E99500] transition-colors">
-                <CardContent className="p-6">
+              <motion.div key={idx} variants={fadeIn} whileHover="hover" initial="rest" animate="rest">
+                <motion.div variants={hoverTilt} className="[transform-style:preserve-3d]">
+                  <Card className="bg-[#0d0d0d] border-[#1f1f1f] hover:border-[#E99500] transition-colors">
+                    <CardContent className="p-6">
                   <div className="w-10 h-10 rounded-md bg-[#E99500]/10 flex items-center justify-center mb-4">
                     <Icon className="w-5 h-5 text-[#E99500]" />
                   </div>
@@ -114,10 +153,12 @@ export default function AboutPage() {
                   <p className="text-gray-400 text-sm leading-relaxed">
                     {desc}
                   </p>
-                </CardContent>
-              </Card>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
@@ -145,11 +186,19 @@ export default function AboutPage() {
             </div>
           </div>
           <div>
-            <Card className="bg-[#0f0f0f] border-[#1f1f1f] overflow-hidden">
-              <CardContent className="p-0">
-                <img src="/dust3.jpeg" alt="Dust3" className="w-full h-64 object-cover" />
-              </CardContent>
-            </Card>
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+              <Card className="bg-[#0f0f0f] border-[#1f1f1f] overflow-hidden">
+                <CardContent className="p-0">
+                  <motion.img
+                    src="/dust3.jpeg"
+                    alt="Dust3"
+                    className="w-full h-64 object-cover"
+                    whileHover={{ scale: 1.03 }}
+                    transition={{ type: "spring", stiffness: 200, damping: 20 }}
+                  />
+                </CardContent>
+              </Card>
+            </motion.div>
           </div>
         </div>
       </section>
@@ -157,10 +206,8 @@ export default function AboutPage() {
       {/* Key Features */}
       <section className="px-6 md:px-10 lg:px-16 py-16">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-8">
-            Key Features
-          </h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <motion.h2 variants={fadeIn} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-2xl md:text-3xl font-bold text-white mb-8">Key Benefits</motion.h2>
+          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }} className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 t: "On-Chain Fairness",
@@ -203,17 +250,21 @@ export default function AboutPage() {
                 Icon: Lock,
               },
             ].map(({ t, d, Icon }, i) => (
-              <Card key={i} className="bg-[#0d0d0d] border-[#1f1f1f]">
-                <CardContent className="p-6">
-                  <div className="w-10 h-10 rounded-md bg-[#E99500]/10 flex items-center justify-center mb-4">
-                    <Icon className="w-5 h-5 text-[#E99500]" />
-                  </div>
-                  <h3 className="text-white font-semibold mb-2">{t}</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">{d}</p>
-                </CardContent>
-              </Card>
+              <motion.div key={i} variants={fadeIn} whileHover="hover" initial="rest" animate="rest">
+                <motion.div variants={hoverTilt} className="[transform-style:preserve-3d]">
+                  <Card className="bg-[#0d0d0d] border-[#1f1f1f]">
+                    <CardContent className="p-6">
+                      <div className="w-10 h-10 rounded-md bg-[#E99500]/10 flex items-center justify-center mb-4">
+                        <Icon className="w-5 h-5 text-[#E99500]" />
+                      </div>
+                      <h3 className="text-white font-semibold mb-2">{t}</h3>
+                      <p className="text-gray-400 text-sm leading-relaxed">{d}</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         </div>
       </section>
 
