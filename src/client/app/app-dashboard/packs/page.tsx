@@ -180,10 +180,25 @@ export default function PacksPage() {
   const rouletteRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<any>(null);
 
-  // Odds to display (fallback to defaults if API doesn't provide)
-  const oddsToUse = (Array.isArray((selectedPack as any)?.odds)
-    ? ((selectedPack as any).odds as Array<{ label?: string; rarity?: string; pct?: number; odds?: number }>)
-    : DEFAULT_ODDS);
+  // Odds to display (prefer API chances → map to labeled rows)
+  const oddsToUse = (() => {
+    const chances = (selectedPack as any)?.chances as
+      | { common?: string | number; uncommon?: string | number; rare?: string | number; epic?: string | number; legendary?: string | number }
+      | undefined;
+    const toNum = (v: any) => (typeof v === 'number' ? v : parseFloat(String(v ?? 0)));
+    if (chances) {
+      return [
+        { label: 'Legendary', rarity: 'legendary', pct: toNum(chances.legendary) },
+        { label: 'Epic', rarity: 'epic', pct: toNum(chances.epic) },
+        { label: 'Rare', rarity: 'rare', pct: toNum(chances.rare) },
+        { label: 'Uncommon', rarity: 'uncommon', pct: toNum(chances.uncommon) },
+        { label: 'Common', rarity: 'common', pct: toNum(chances.common) },
+      ];
+    }
+    const apiOdds = (selectedPack as any)?.odds as Array<{ label?: string; rarity?: string; pct?: number; odds?: number }> | undefined;
+    if (Array.isArray(apiOdds)) return apiOdds;
+    return DEFAULT_ODDS;
+  })();
 
   // Load loot boxes from API
   useEffect(() => {
