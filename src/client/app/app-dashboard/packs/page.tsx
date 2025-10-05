@@ -619,12 +619,6 @@ export default function PacksPage() {
                 <h2 className="text-3xl md:text-4xl font-bold text-white">Dust3 Promo Pack</h2>
                 <p className="text-zinc-300">Open packs inspired by CS classics. Provably fair, instant delivery.</p>
               </div>
-              <div className="flex items-center gap-3">
-                <Badge className="bg-zinc-900 text-zinc-200 border border-zinc-700">Limited</Badge>
-                {selectedPack && (
-                  <Badge className="bg-[#E99500] text-black border-none">{parseFloat(selectedPack.priceSol).toFixed(2)} SOL</Badge>
-                )}
-              </div>
             </div>
           </div>
 
@@ -632,8 +626,25 @@ export default function PacksPage() {
           <div className="grid lg:grid-cols-3 gap-6 items-stretch">
             {/* Left: Pack Preview + Compact Packs (LG+) */}
             <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 flex flex-col">
-              <div className="w-full h-[260px] md:h-[320px] lg:h-[360px]">
+              <div className="relative w-full h-[260px] md:h-[320px] lg:h-[360px]">
                 <img src="/dust3.jpeg" alt="Dust3 Pack Preview" className="w-full h-full object-cover" />
+                {/* Supply Status Overlay */}
+                {selectedPack?.supply?.maxSupply && (
+                  <div className="absolute top-4 right-4">
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-sm border ${
+                      selectedPack.supply.isSoldOut 
+                        ? 'bg-red-500/20 border-red-500/30' 
+                        : 'bg-green-500/20 border-green-500/30'
+                    }`}>
+                      <div className={`w-2 h-2 rounded-full ${
+                        selectedPack.supply.isSoldOut ? 'bg-red-400' : 'bg-green-400'
+                      }`} />
+                      <span className="text-xs font-medium text-white">
+                        {selectedPack.supply.isSoldOut ? 'Out of Stock' : 'In Stock'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="hidden lg:block border-t border-zinc-800 p-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -646,7 +657,15 @@ export default function PacksPage() {
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <img src={(pack as any).imageUrl || '/dust3.jpeg'} alt={pack.name} className="w-10 h-10 rounded object-cover border border-zinc-800" />
+                        <div className="relative">
+                          <img src={(pack as any).imageUrl || '/dust3.jpeg'} alt={pack.name} className="w-10 h-10 rounded object-cover border border-zinc-800" />
+                          {/* Supply Status Dot */}
+                          {pack.supply?.maxSupply && (
+                            <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 ${
+                              pack.supply.isSoldOut ? 'bg-red-400' : 'bg-green-400'
+                            }`} />
+                          )}
+                        </div>
                         <div className="min-w-0">
                           <p className="text-xs text-foreground font-semibold truncate">{pack.name}</p>
                           <p className="text-[10px] text-zinc-400">{parseFloat(pack.priceSol).toFixed(2)} SOL</p>
@@ -666,18 +685,6 @@ export default function PacksPage() {
                   <p className="text-muted-foreground">Provably fair opening. Instant delivery.</p>
                   {(selectedPack as any)?.description && (
                     <p className="text-zinc-400 text-sm mt-1 line-clamp-2">{(selectedPack as any).description}</p>
-                  )}
-                  {selectedPack?.supply?.maxSupply && (
-                    <div className="mt-2 flex items-center gap-2">
-                      <div className="text-xs text-muted-foreground">
-                        Supply: {selectedPack.supply.remainingSupply} / {selectedPack.supply.maxSupply}
-                      </div>
-                      {selectedPack.supply.isSoldOut && (
-                        <div className="rounded bg-red-500/20 px-2 py-1 text-xs text-red-400">
-                          SOLD OUT
-                        </div>
-                      )}
-                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-3">

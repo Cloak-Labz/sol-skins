@@ -133,7 +133,9 @@ async function createLootBoxTypes(): Promise<LootBoxType[]> {
       chanceUncommon: 15.98,
       chanceRare: 3.2,
       chanceEpic: 0.64,
-      chanceLegendary: 0.26
+      chanceLegendary: 0.26,
+      maxSupply: 1000,
+      remainingSupply: 1000
     },
     {
       name: 'Phoenix Case',
@@ -147,7 +149,9 @@ async function createLootBoxTypes(): Promise<LootBoxType[]> {
       chanceUncommon: 25.0,
       chanceRare: 8.0,
       chanceEpic: 1.8,
-      chanceLegendary: 0.2
+      chanceLegendary: 0.2,
+      maxSupply: 500,
+      remainingSupply: 500
     },
     {
       name: 'Cobblestone Case',
@@ -161,7 +165,9 @@ async function createLootBoxTypes(): Promise<LootBoxType[]> {
       chanceUncommon: 35.0,
       chanceRare: 20.0,
       chanceEpic: 4.5,
-      chanceLegendary: 0.5
+      chanceLegendary: 0.5,
+      maxSupply: 100,
+      remainingSupply: 100
     },
     {
       name: 'Dust Collection Case',
@@ -175,7 +181,9 @@ async function createLootBoxTypes(): Promise<LootBoxType[]> {
       chanceUncommon: 12.0,
       chanceRare: 2.5,
       chanceEpic: 0.4,
-      chanceLegendary: 0.1
+      chanceLegendary: 0.1,
+      maxSupply: null, // Unlimited supply
+      remainingSupply: 0
     }
   ];
 
@@ -195,6 +203,8 @@ async function createLootBoxTypes(): Promise<LootBoxType[]> {
     lootBox.chanceRare = box.chanceRare;
     lootBox.chanceEpic = box.chanceEpic;
     lootBox.chanceLegendary = box.chanceLegendary;
+    lootBox.maxSupply = box.maxSupply;
+    lootBox.remainingSupply = box.remainingSupply;
     lootBox.imageUrl = `https://steamcommunity-a.akamaihd.net/economy/image/class/730/${Math.random().toString(36).substr(2, 9)}`;
     
     lootBoxTypes.push(lootBox);
