@@ -27,58 +27,62 @@ export default function AboutPage() {
   return (
     <div className="min-h-screen bg-black">
       {/* Hero */}
-      <section className="px-6 md:px-10 lg:px-16 py-20 border-b border-[#1a1a1a]">
-        <div className="max-w-6xl mx-auto text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-          >
-            <div className="flex items-center justify-center gap-2 mb-6">
-              <Badge className="bg-[#E99500] text-black">On-chain VRF</Badge>
-              <Badge
-                variant="outline"
-                className="border-[#E99500] text-[#E99500]"
-              >
-                Backed by Real Inventory
-              </Badge>
-              <Badge
-                variant="outline"
-                className="border-[#E99500] text-[#E99500]"
-              >
-                Instant Buyback
-              </Badge>
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0">
+          <img src="/dust3.jpeg" alt="Dust3" className="w-full h-full object-cover opacity-30" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black via-black/70 to-black" />
+        </div>
+        <div className="relative px-6 md:px-10 lg:px-16 py-20">
+          <div className="max-w-6xl mx-auto text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight mb-4">
+                The Future of
+                <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E99500] to-[#ffad33]">Collecting</span>
+              </h1>
+              <p className="text-gray-300 text-lg md:text-xl max-w-3xl mx-auto mb-8">
+                Experience the seamless bridge between premium pack opening and verifiable ownership — fair, fast, and liquid on Solana.
+              </p>
+              <div className="flex items-center justify-center gap-3">
+                <Button className="bg-[#E99500] text-black hover:bg-[#d88500]">View Marketplace</Button>
+                <Button variant="outline" className="border-[#333] text-white hover:bg-[#111]">Learn More</Button>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+
+      {/* Benefits Strip */}
+      <section className="px-6 md:px-10 lg:px-16 py-10 bg-[#0b0b0b] border-y border-[#141414]">
+        <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+          {[
+            { label: "Track Collection\nProgression", Icon: CheckCircle2 },
+            { label: "Instant Verifiable\nOwnership", Icon: Fingerprint },
+            { label: "Vaulted & Insured\nwith Dust3", Icon: Shield },
+            { label: "Rank on\nGlobal Leaderboard", Icon: Zap },
+            { label: "Redeem Anytime,\nAnywhere", Icon: Globe },
+          ].map(({ label, Icon }, i) => (
+            <div key={i} className="flex flex-col items-center justify-center gap-2">
+              <div className="size-8 rounded-md bg-[#E99500]/15 flex items-center justify-center">
+                <Icon className="w-4 h-4 text-[#E99500]" />
+              </div>
+              <span className="text-sm text-gray-300 whitespace-pre-line leading-tight">
+                {label}
+              </span>
             </div>
-            <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight mb-4">
-              The Fair Future of CS Skins
-            </h1>
-            <p className="text-gray-300 text-lg md:text-xl max-w-3xl mx-auto mb-8">
-              Experience the thrill of opening — now with provably fair
-              randomness, real inventory backing, and instant liquidity on
-              Solana.
-            </p>
-            <div className="flex items-center justify-center gap-3">
-              <Button className="bg-[#E99500] text-black hover:bg-[#d88500]">
-                Open Packs
-              </Button>
-              <Button
-                variant="outline"
-                className="border-[#333] text-white hover:bg-[#111]"
-              >
-                Learn More
-              </Button>
-            </div>
-          </motion.div>
+          ))}
         </div>
       </section>
 
       {/* Core Benefits */}
       <section className="px-6 md:px-10 lg:px-16 py-16">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-white mb-8">
-            Core Benefits
-          </h2>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <h2 className="text-2xl md:text-3xl font-bold text-white mb-8">Core Benefits</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 title: "Track Your Wins",
@@ -100,16 +104,8 @@ export default function AboutPage() {
                 desc: "Keep your prize — or sell it back instantly at 85% of market price.",
                 Icon: Coins,
               },
-              {
-                title: "Low Fees, High Speed",
-                desc: "Powered by Solana for lightning-fast transactions.",
-                Icon: Zap,
-              },
             ].map(({ title, desc, Icon }, idx) => (
-              <Card
-                key={idx}
-                className="bg-[#0d0d0d] border-[#1f1f1f] hover:border-[#E99500] transition-colors"
-              >
+              <Card key={idx} className="bg-[#0d0d0d] border-[#1f1f1f] hover:border-[#E99500] transition-colors">
                 <CardContent className="p-6">
                   <div className="w-10 h-10 rounded-md bg-[#E99500]/10 flex items-center justify-center mb-4">
                     <Icon className="w-5 h-5 text-[#E99500]" />
@@ -149,76 +145,11 @@ export default function AboutPage() {
             </div>
           </div>
           <div>
-            <Card className="bg-[#0f0f0f] border-[#1f1f1f]">
-              <CardContent className="p-10 text-center">
-                <div className="mx-auto w-full h-48 bg-gradient-to-br from-[#1a1a1a] to-[#0d0d0d] rounded-xl flex items-center justify-center">
-                  <span className="text-gray-500">Promo Image / 3D Visual</span>
-                </div>
+            <Card className="bg-[#0f0f0f] border-[#1f1f1f] overflow-hidden">
+              <CardContent className="p-0">
+                <img src="/dust3.jpeg" alt="Dust3" className="w-full h-64 object-cover" />
               </CardContent>
             </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Dust Claw */}
-      <section className="px-6 md:px-10 lg:px-16 py-16">
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 items-center">
-          <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
-              Interactive Claw Machine
-            </h2>
-            <p className="text-gray-300 mb-4">
-              Level up the experience with Dust Claw — a 3D, physics-based claw
-              machine built with Three.js. Start with an empty chamber, watch
-              orbs rain in, then pull the claw to grab your prize. No labels.
-              Pure suspense. On-chain verification.
-            </p>
-            <Button
-              variant="outline"
-              className="border-[#333] text-white hover:bg-[#111]"
-            >
-              Try Dust Claw
-            </Button>
-          </div>
-          <div>
-            <Card className="bg-[#0f0f0f] border-[#1f1f1f]">
-              <CardContent className="p-10 text-center">
-                <div className="mx-auto w-full h-48 bg-gradient-to-br from-[#1a1a1a] to-[#0d0d0d] rounded-xl flex items-center justify-center">
-                  <span className="text-gray-500">Dust Claw Preview</span>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Achievement System */}
-      <section className="px-6 md:px-10 lg:px-16 py-16 bg-[#0b0b0b] border-y border-[#141414]">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-white">
-            Achievement System
-          </h2>
-          <p className="text-gray-300 mt-2 mb-6">
-            Track your progression, unlock rewards, and showcase your
-            milestones.
-          </p>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              "Case Opener I — Open 10 packs",
-              "Portfolio Starter — Keep 3 unique skins",
-              "Hot Streak — 3 successful pulls in a row",
-              "Collector Rank Up — Reach 1,000 total value opened",
-              "Diamond Hands — Hold a rare for 30 days",
-            ].map((badge, i) => (
-              <Card key={i} className="bg-[#0f0f0f] border-[#1f1f1f]">
-                <CardContent className="p-5 flex items-center gap-3">
-                  <div className="w-8 h-8 rounded bg-[#E99500]/15 flex items-center justify-center">
-                    <CheckCircle2 className="w-4 h-4 text-[#E99500]" />
-                  </div>
-                  <p className="text-gray-300 text-sm">{badge}</p>
-                </CardContent>
-              </Card>
-            ))}
           </div>
         </div>
       </section>
