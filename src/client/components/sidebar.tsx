@@ -16,6 +16,7 @@ import {
   Star,
   Gift,
   User,
+  ChartBarIncreasing,
 } from "lucide-react";
 import { memo } from "react";
 
@@ -31,9 +32,14 @@ function SidebarComponent() {
       icon: ShoppingBag,
       soon: true,
     },
+    {
+      href: "/app-dashboard/prediction",
+      label: "Prediction",
+      icon: ChartBarIncreasing,
+      soon: true,
+    },
     { href: "/app-dashboard/inventory", label: "Inventory", icon: Package },
     { href: "/app-dashboard/leaderboard", label: "Leaderboard", icon: Trophy },
-    { href: "/app-dashboard/settings", label: "Settings", icon: Info },
   ];
 
   const socialItems = [
