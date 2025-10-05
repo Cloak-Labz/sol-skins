@@ -23,6 +23,7 @@ function SidebarComponent() {
   const pathname = usePathname();
 
   const mainNavItems = [
+    { href: "/app-dashboard", label: "Home", icon: Home },
     { href: "/app-dashboard/packs", label: "Packs", icon: Package },
     {
       href: "/app-dashboard/marketplace",

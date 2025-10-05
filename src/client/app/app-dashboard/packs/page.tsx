@@ -157,6 +157,15 @@ const MOCK_SKINS: CSGOSkin[] = [
   },
 ];
 
+// Default odds when API doesn't provide per-rarity probabilities
+const DEFAULT_ODDS: { label: string; rarity: string; pct: number }[] = [
+  { label: "Legendary", rarity: "legendary", pct: 0.5 },
+  { label: "Epic", rarity: "epic", pct: 2.0 },
+  { label: "Rare", rarity: "rare", pct: 8.5 },
+  { label: "Uncommon", rarity: "uncommon", pct: 24.0 },
+  { label: "Common", rarity: "common", pct: 65.0 },
+];
+
 export default function PacksPage() {
   const { connected } = useWallet();
   const [lootBoxes, setLootBoxes] = useState<LootBoxType[]>([]);
@@ -170,6 +179,11 @@ export default function PacksPage() {
   const [spinItems, setSpinItems] = useState<CSGOSkin[]>([]);
   const rouletteRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<any>(null);
+
+  // Odds to display (fallback to defaults if API doesn't provide)
+  const oddsToUse = (Array.isArray((selectedPack as any)?.odds)
+    ? ((selectedPack as any).odds as Array<{ label?: string; rarity?: string; pct?: number; odds?: number }>)
+    : DEFAULT_ODDS);
 
   // Load loot boxes from API
   useEffect(() => {
@@ -332,7 +346,7 @@ export default function PacksPage() {
               id: status.skinResult.id,
               name: `${status.skinResult.weapon} | ${status.skinResult.skinName}`,
               rarity: status.skinResult.rarity,
-              value: parseFloat(status.skinResult.currentPriceUsd || '0'),
+              value: parseFloat(String(status.skinResult.currentPriceUsd ?? '0')),
               image: status.skinResult.imageUrl || '/assets/skins/img2.png',
             };
 
@@ -581,6 +595,24 @@ export default function PacksPage() {
       >
         {/* Main Content */}
         <div className="max-w-7xl mx-auto space-y-8">
+          {/* Hero */}
+          <div className="relative rounded-2xl overflow-hidden border border-zinc-800">
+            <img src="/dust3.jpeg" alt="Dust3 Pack" className="w-full h-[220px] md:h-[320px] object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+              <div>
+                <h2 className="text-3xl md:text-4xl font-bold text-white">Dust3 Promo Pack</h2>
+                <p className="text-zinc-300">Open packs inspired by CS classics. Provably fair, instant delivery.</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <Badge className="bg-zinc-900 text-zinc-200 border border-zinc-700">Limited</Badge>
+                {selectedPack && (
+                  <Badge className="bg-[#E99500] text-black border-none">{parseFloat(selectedPack.priceSol).toFixed(2)} SOL</Badge>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Title Section */}
           <div className="text-center space-y-2">
             <motion.h1
@@ -601,6 +633,66 @@ export default function PacksPage() {
             </motion.p>
           </div>
 
+          {/* Odds Section */}
+          <div className="grid lg:grid-cols-3 gap-6 items-stretch">
+            {/* Left: Pack Preview */}
+            <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 aspect-[16/9] lg:aspect-auto lg:h-full">
+              <img src="/dust3.jpeg" alt="Dust3 Pack Preview" className="w-full h-full object-cover" />
+            </div>
+
+            {/* Right: Details and Odds (span 2) */}
+            <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6">
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                <div>
+                  <h3 className="text-2xl font-bold text-foreground">{selectedPack?.name || 'Promo Pack'}</h3>
+                  <p className="text-muted-foreground">Provably fair opening. Instant delivery.</p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-3xl font-bold text-foreground">{selectedPack ? parseFloat(selectedPack.priceSol).toFixed(2) : '—'} SOL</p>
+                    <p className="text-xs text-muted-foreground">{selectedPack ? `$${parseFloat(String(selectedPack.priceUsdc ?? selectedPack.priceSol)).toFixed(2)}` : ''}</p>
+                  </div>
+                  <Button
+                    onClick={handleOpenPack}
+                    disabled={openingPhase !== null || !connected}
+                    className={`px-6 py-6 font-semibold rounded-lg transition-transform duration-150 ${
+                      openingPhase ? 'bg-zinc-700 cursor-not-allowed' : 'bg-zinc-100 text-black hover:bg-white hover:scale-[1.02]'
+                    }`}
+                  >
+                    Open Pack
+                  </Button>
+                </div>
+              </div>
+
+              {/* Odds List */}
+              <div className="space-y-2">
+                {oddsToUse.map((o: { label?: string; rarity?: string; pct?: number; odds?: number }, idx: number) => {
+                  const label = (o.label || o.rarity || '').toString();
+                  const rarityKey = (o.rarity || label).toLowerCase();
+                  const pctNum = typeof o.pct === 'number' ? o.pct : Number((o as any).odds ?? 0);
+                  const denom = pctNum > 0 ? Math.round(100 / pctNum) : 0;
+                  return (
+                    <div key={idx} className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
+                      <div className="flex items-center gap-3">
+                        <span className={`inline-block size-2 rounded-full bg-gradient-to-r ${getRarityColor(rarityKey)}`} />
+                        <span className="text-sm text-foreground font-medium uppercase flex-1">{label}</span>
+                        <span className="text-xs text-zinc-400 mr-2">{denom > 0 ? `~1 in ${denom}` : "—"}</span>
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800">{pctNum.toFixed(1)}%</span>
+                      </div>
+                      <div className="mt-2 h-1 w-full rounded-full bg-zinc-800 overflow-hidden border border-zinc-700">
+                        <div
+                          className={`h-full bg-gradient-to-r ${getRarityColor(rarityKey)}`}
+                          style={{ width: `${Math.min(100, Math.max(0, pctNum))}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                <p className="text-[11px] text-zinc-500 pt-1">Probabilities are estimates and may vary per pack. Totals approximate 100%.</p>
+              </div>
+            </div>
+          </div>
+
           {/* Pack Selection */}
           {loading ? (
             <div className="text-center py-12">
@@ -608,11 +700,12 @@ export default function PacksPage() {
               <p className="text-gray-400">Loading packs...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 max-w-6xl mx-auto">
               {lootBoxes.map((pack, index) => {
                 const IconComponent = getPackIcon(pack.rarity);
                 const packColor = getPackColor(pack.rarity);
                 const packGlow = getPackGlow(pack.rarity);
+                const imageUrl = (pack as any).imageUrl || "/dust3.jpeg";
                 return (
                   <motion.div
                     key={pack.id}
@@ -622,30 +715,43 @@ export default function PacksPage() {
                   >
                     <Card
                       onClick={() => !openingPhase && setSelectedPack(pack)}
-                      className={`cursor-pointer transition-all duration-300 bg-gradient-to-br ${packColor} p-6 border-2 ${
+                      className={`group cursor-pointer overflow-hidden border transition-transform duration-150 hover:scale-[1.02] ${
                         selectedPack?.id === pack.id
-                          ? `border-[#E99500] ${packGlow} shadow-2xl scale-105`
-                          : "border-transparent hover:border-gray-600 hover:scale-102"
+                          ? `border-[#E99500] shadow-[0_0_40px_rgba(233,149,0,0.35)] ${packGlow}`
+                          : "border-zinc-800 hover:border-zinc-700"
                       } ${openingPhase ? "pointer-events-none opacity-50" : ""}`}
                     >
-                      <div className="text-center space-y-4">
-                        <IconComponent className="w-16 h-16 mx-auto text-white" />
-                        <h3 className="text-xl font-bold text-white">
-                          {pack.name}
-                        </h3>
-                        <div className="space-y-1">
-                          <p className="text-3xl font-bold text-white">
-                            {parseFloat(pack.priceSol).toFixed(2)} SOL
-                          </p>
-                          <p className="text-sm text-gray-200">
-                            ${parseFloat(pack.priceUsdc || pack.priceSol).toFixed(2)} USD
-                          </p>
+                      {/* Image */}
+                      <div className="relative h-28">
+                        <img src={imageUrl} alt={pack.name} className="w-full h-full object-cover" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
+                        <div className="absolute top-3 right-3">
+                          <Badge className={`bg-black/60 text-white border-white/20 backdrop-blur-sm`}>{pack.rarity}</Badge>
                         </div>
-                        {selectedPack?.id === pack.id && (
-                          <Badge className="bg-[#E99500] text-black border-none">
-                            Selected
-                          </Badge>
-                        )}
+                      </div>
+
+                      {/* Body */}
+                      <div className="p-3 bg-gradient-to-b from-zinc-950 to-zinc-900">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h3 className="text-sm font-semibold text-foreground leading-snug line-clamp-2">{pack.name}</h3>
+                            <div className="flex items-center gap-1 mt-1 text-[10px] text-zinc-400">
+                              <IconComponent className="w-3 h-3" />
+                              <span>Pack</span>
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-sm font-bold text-foreground">{parseFloat(pack.priceSol).toFixed(2)} SOL</p>
+                            <p className="text-[10px] text-muted-foreground">${parseFloat(String((pack as any).priceUsdc ?? pack.priceSol)).toFixed(2)}</p>
+                          </div>
+                        </div>
+
+                        {/* Footer state */}
+                        {selectedPack?.id === pack.id ? (
+                          <div className="mt-2">
+                            <Badge className="bg-[#E99500] text-black border-none">Selected</Badge>
+                          </div>
+                        ) : null}
                       </div>
                     </Card>
                   </motion.div>
@@ -683,39 +789,6 @@ export default function PacksPage() {
                 </>
               )}
             </Button>
-          </div>
-
-          {/* Info Cards */}
-          <div className="grid md:grid-cols-3 gap-4 max-w-4xl mx-auto">
-            <Card className="bg-[#1a1a1a] border-[#333] p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Sparkles className="w-6 h-6 text-[#E99500]" />
-                <h3 className="text-white font-bold">On-Chain Fair</h3>
-              </div>
-              <p className="text-gray-400 text-sm">
-                Provably fair system running on Solana blockchain
-              </p>
-            </Card>
-
-            <Card className="bg-[#1a1a1a] border-[#333] p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <Zap className="w-6 h-6 text-[#E99500]" />
-                <h3 className="text-white font-bold">Instant Delivery</h3>
-              </div>
-              <p className="text-gray-400 text-sm">
-                Get your skins instantly in your inventory
-              </p>
-            </Card>
-
-            <Card className="bg-[#1a1a1a] border-[#333] p-6">
-              <div className="flex items-center gap-3 mb-2">
-                <TrendingUp className="w-6 h-6 text-[#E99500]" />
-                <h3 className="text-white font-bold">85% Buyback</h3>
-              </div>
-              <p className="text-gray-400 text-sm">
-                Instant 85% buyback offer on all skins
-              </p>
-            </Card>
           </div>
         </div>
       </div>
