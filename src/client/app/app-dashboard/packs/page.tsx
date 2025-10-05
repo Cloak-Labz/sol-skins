@@ -682,7 +682,6 @@ export default function PacksPage() {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-2xl font-bold text-foreground">{selectedPack?.name || 'Promo Pack'}</h3>
-                  <p className="text-muted-foreground">Provably fair opening. Instant delivery.</p>
                   {(selectedPack as any)?.description && (
                     <p className="text-zinc-400 text-sm mt-1 line-clamp-2">{(selectedPack as any).description}</p>
                   )}
@@ -695,13 +694,13 @@ export default function PacksPage() {
                   <Button
                     onClick={handleOpenPack}
                     disabled={openingPhase !== null || !connected || selectedPack?.supply?.isSoldOut}
-                    className={`px-6 py-6 font-semibold rounded-lg transition-transform duration-150 ${
+                    className={`px-6 py-6 ml-4 font-semibold rounded-lg transition-transform duration-150 ${
                       openingPhase ? 'bg-zinc-700 cursor-not-allowed' : 
                       selectedPack?.supply?.isSoldOut ? 'bg-red-500/20 text-red-400 cursor-not-allowed' :
                       'bg-zinc-100 text-black hover:bg-white hover:scale-[1.02] active:scale-[0.99]'
                     }`}
                   >
-                    <span className="mr-2">
+                    <span className="mr-2 ml-2">
                       {selectedPack?.supply?.isSoldOut ? 'Sold Out' : 'Open Pack'}
                     </span>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
@@ -735,7 +734,6 @@ export default function PacksPage() {
                 })}
                 <div className="flex items-center justify-between pt-2">
                   <p className="text-[11px] text-zinc-500">Probabilities are estimates and may vary per pack.</p>
-                  <div className="text-[11px] text-zinc-500">Powered by Solana</div>
                 </div>
               </div>
             </div>
