@@ -174,8 +174,8 @@ export default function LeaderboardPage() {
     return (
       <div className="min-h-screen bg-[#0a0a0a] p-8 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-4" />
-          <p className="text-white">Loading leaderboard...</p>
+          <Loader2 className="w-8 h-8 animate-spin text-zinc-200 mx-auto mb-4" />
+          <p className="text-zinc-200">Loading leaderboard...</p>
         </div>
       </div>
     );
@@ -187,8 +187,8 @@ export default function LeaderboardPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-8">
       <div className="mb-6">
-        <h1 className="text-4xl font-bold text-white mb-2">Leaderboard</h1>
-        <p className="text-[#999]">Top collectors and their achievements</p>
+        <h1 className="text-4xl font-bold text-foreground mb-2">Leaderboard</h1>
+        <p className="text-muted-foreground">Top collectors and their achievements</p>
       </div>
 
       {/* Podium */}
@@ -275,10 +275,10 @@ export default function LeaderboardPage() {
       {/* Filters */}
       <div className="flex gap-4 mb-6">
         <Select value={metric} onValueChange={(value: any) => setMetric(value)}>
-          <SelectTrigger className="w-48 bg-[#111] border-[#333] text-white">
+          <SelectTrigger className="w-48 bg-zinc-950 border-zinc-800 text-foreground">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-[#111] border-[#333]">
+          <SelectContent className="bg-zinc-950 border border-zinc-800">
             <SelectItem value="inventory-value">Inventory Value</SelectItem>
             <SelectItem value="cases-opened">Cases Opened</SelectItem>
             <SelectItem value="profit">Net Profit</SelectItem>
@@ -288,27 +288,27 @@ export default function LeaderboardPage() {
 
       {/* User Rank Card */}
       {userRank && (
-        <Card className="bg-[#111] border-[#333] rounded-xl mb-6">
+        <Card className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 rounded-xl mb-6">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className="p-3 bg-blue-500/20 rounded-lg">
-                  <TrendingUp className="w-6 h-6 text-blue-400" />
+                <div className="p-3 bg-zinc-800 rounded-lg">
+                  <TrendingUp className="w-6 h-6 text-zinc-400" />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold text-lg">Your Rank</h3>
-                  <p className="text-gray-400">
+                  <h3 className="text-foreground font-bold text-lg">Your Rank</h3>
+                  <p className="text-muted-foreground">
                     #{userRank.rank} of {userRank.totalUsers} users
                   </p>
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-white font-bold text-xl">
+                <p className="text-foreground font-bold text-xl">
                   {userRank.metric === 'cases-opened' 
                     ? userRank.value 
                     : formatCurrency(userRank.value)}
                 </p>
-                <p className="text-gray-400 text-sm">
+                <p className="text-muted-foreground text-sm">
                   {getMetricLabel(userRank.metric)}
                 </p>
               </div>
@@ -318,27 +318,27 @@ export default function LeaderboardPage() {
       )}
 
       {/* Leaderboard Table */}
-      <Card className="bg-[#111] border-[#333] rounded-xl overflow-hidden">
+      <Card className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         <CardContent className="p-0">
-          <div className="grid p-4 border-b border-[#333] bg-[#1a1a1a]" style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
-            <div className="text-[#666] text-sm font-medium">#</div>
-            <div className="text-[#666] text-sm font-medium">Name</div>
-            <div className="text-[#666] text-sm font-medium">Inventory Value</div>
-            <div className="text-[#666] text-sm font-medium">Volume</div>
-            <div className="text-[#666] text-sm font-medium">Claw Pulls</div>
-            <div className="text-[#666] text-sm font-medium">Points</div>
-            <div className="text-[#666] text-sm font-medium">Net Profit</div>
+          <div className="grid p-4 border-b border-zinc-800 bg-zinc-900" style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
+            <div className="text-muted-foreground text-sm font-medium">#</div>
+            <div className="text-muted-foreground text-sm font-medium">Name</div>
+            <div className="text-muted-foreground text-sm font-medium">Inventory Value</div>
+            <div className="text-muted-foreground text-sm font-medium">Volume</div>
+            <div className="text-muted-foreground text-sm font-medium">Claw Pulls</div>
+            <div className="text-muted-foreground text-sm font-medium">Points</div>
+            <div className="text-muted-foreground text-sm font-medium">Net Profit</div>
           </div>
           {leaderboard.length === 0 ? (
             <div className="p-8 text-center">
-              <p className="text-gray-400">No leaderboard data available</p>
+              <p className="text-muted-foreground">No leaderboard data available</p>
             </div>
           ) : (
             leaderboard.map((entry) => (
                 <div
                   key={entry.user.id}
-                  className={`grid p-4 border-b border-[#333] last:border-b-0 hover:bg-[#1a1a1a] transition-colors ${
-                    entry.rank <= 3 ? 'bg-[#1a1a1a]/50' : ''
+                  className={`grid p-4 border-b border-zinc-800 last:border-b-0 transition-all duration-150 hover:bg-zinc-900 hover:scale-[1.005] ${
+                    entry.rank <= 3 ? 'bg-zinc-900/50' : ''
                   }`}
                   style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}
                 >
@@ -353,21 +353,21 @@ export default function LeaderboardPage() {
                           getDisplayName(entry)
                         )}`}
                       />
-                      <AvatarFallback>
+                      <AvatarFallback className="bg-zinc-800 text-zinc-300">
                         {getDisplayName(entry).slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <p className="text-white font-medium">
+                    <p className="text-foreground font-medium">
                       {getDisplayName(entry)}
                     </p>
                   </div>
                   <div className="flex items-center">
-                    <p className="text-white font-bold">
+                    <p className="text-foreground font-bold">
                       {formatCurrency(entry.inventoryValue)}
                     </p>
                   </div>
                   <div className="flex items-center">
-                    <p className="text-white font-bold">
+                    <p className="text-foreground font-bold">
                       {formatCurrency(
                         typeof entry.totalEarned === "string"
                           ? parseFloat(entry.totalEarned)
@@ -376,21 +376,17 @@ export default function LeaderboardPage() {
                     </p>
                   </div>
                   <div className="flex items-center">
-                    <p className="text-[#999]">{entry.casesOpened}</p>
+                    <p className="text-muted-foreground">{entry.casesOpened}</p>
                   </div>
                   <div className="flex items-center">
-                    <p className="text-white font-bold">
+                    <p className="text-foreground font-bold">
                       {getPoints(entry).toLocaleString()}
                     </p>
                   </div>
                   <div className="flex items-center">
                     <Badge
                       variant="secondary"
-                      className={`${
-                        entry.netProfit >= 0
-                          ? "bg-green-500/20 text-green-400 border-green-500/30"
-                          : "bg-red-500/20 text-red-400 border-red-500/30"
-                      }`}
+                      className={`bg-zinc-900 text-zinc-300 border border-zinc-800`}
                     >
                       {entry.netProfit >= 0 ? "+" : ""}
                       {formatCurrency(entry.netProfit)}

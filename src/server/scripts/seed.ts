@@ -133,7 +133,9 @@ async function createLootBoxTypes(): Promise<LootBoxType[]> {
       chanceUncommon: 15.98,
       chanceRare: 3.2,
       chanceEpic: 0.64,
-      chanceLegendary: 0.26
+      chanceLegendary: 0.26,
+      maxSupply: 1000,
+      remainingSupply: 1000
     },
     {
       name: 'Phoenix Case',
@@ -147,7 +149,9 @@ async function createLootBoxTypes(): Promise<LootBoxType[]> {
       chanceUncommon: 25.0,
       chanceRare: 8.0,
       chanceEpic: 1.8,
-      chanceLegendary: 0.2
+      chanceLegendary: 0.2,
+      maxSupply: 500,
+      remainingSupply: 500
     },
     {
       name: 'Cobblestone Case',
@@ -161,7 +165,9 @@ async function createLootBoxTypes(): Promise<LootBoxType[]> {
       chanceUncommon: 35.0,
       chanceRare: 20.0,
       chanceEpic: 4.5,
-      chanceLegendary: 0.5
+      chanceLegendary: 0.5,
+      maxSupply: 100,
+      remainingSupply: 100
     },
     {
       name: 'Dust Collection Case',
@@ -175,7 +181,9 @@ async function createLootBoxTypes(): Promise<LootBoxType[]> {
       chanceUncommon: 12.0,
       chanceRare: 2.5,
       chanceEpic: 0.4,
-      chanceLegendary: 0.1
+      chanceLegendary: 0.1,
+      maxSupply: null, // Unlimited supply
+      remainingSupply: 0
     }
   ];
 
@@ -195,6 +203,8 @@ async function createLootBoxTypes(): Promise<LootBoxType[]> {
     lootBox.chanceRare = box.chanceRare;
     lootBox.chanceEpic = box.chanceEpic;
     lootBox.chanceLegendary = box.chanceLegendary;
+    lootBox.maxSupply = box.maxSupply;
+    lootBox.remainingSupply = box.remainingSupply;
     lootBox.imageUrl = `https://steamcommunity-a.akamaihd.net/economy/image/class/730/${Math.random().toString(36).substr(2, 9)}`;
     
     lootBoxTypes.push(lootBox);
@@ -252,6 +262,7 @@ async function createTestUsers(): Promise<User[]> {
       walletAddress: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
       username: 'CryptoGamer',
       email: 'crypto@example.com',
+      tradeUrl: 'https://steamcommunity.com/tradeoffer/new/?partner=123456789&token=abcdefgh',
       totalSpent: 1250.50,
       totalEarned: 2890.75,
       casesOpened: 45
@@ -260,6 +271,7 @@ async function createTestUsers(): Promise<User[]> {
       walletAddress: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
       username: 'SkinCollector',
       email: 'collector@example.com',
+      tradeUrl: 'https://steamcommunity.com/tradeoffer/new/?partner=987654321&token=ijklmnop',
       totalSpent: 850.25,
       totalEarned: 1200.30,
       casesOpened: 28
@@ -268,6 +280,7 @@ async function createTestUsers(): Promise<User[]> {
       walletAddress: '5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5ThZn4NHP',
       username: 'LuckyTrader',
       email: 'lucky@example.com',
+      tradeUrl: null,
       totalSpent: 2100.00,
       totalEarned: 4500.00,
       casesOpened: 78
@@ -281,6 +294,7 @@ async function createTestUsers(): Promise<User[]> {
     user.walletAddress = userData.walletAddress;
     user.username = userData.username;
     user.email = userData.email;
+    user.tradeUrl = userData.tradeUrl;
     user.totalSpent = userData.totalSpent;
     user.totalEarned = userData.totalEarned;
     user.casesOpened = userData.casesOpened;

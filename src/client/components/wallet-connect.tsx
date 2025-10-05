@@ -20,42 +20,53 @@ export function WalletConnect() {
 
   // Auto-connect to backend when wallet connects
   useEffect(() => {
-    if (connected && publicKey && !user && !isLoading && !connectingRef.current) {
+    if (
+      connected &&
+      publicKey &&
+      !user &&
+      !isLoading &&
+      !connectingRef.current
+    ) {
       const walletAddress = publicKey.toString();
       const now = Date.now();
 
       // Prevent rapid reconnection attempts (debounce)
       if (now - lastAttemptRef.current < 2000) {
-        console.log('Skipping connection attempt - too soon after last attempt');
+        console.log(
+          "Skipping connection attempt - too soon after last attempt"
+        );
         return;
       }
 
       lastAttemptRef.current = now;
       connectingRef.current = true;
 
-      console.log('Wallet connected, connecting to backend:', walletAddress);
+      console.log("Wallet connected, connecting to backend:", walletAddress);
 
       // Connect to backend with timeout
       const timeout = setTimeout(() => {
-        console.warn('Backend connection timeout');
+        console.warn("Backend connection timeout");
         connectingRef.current = false;
       }, 10000); // 10s timeout
 
       connectWallet(walletAddress)
         .then(() => {
           clearTimeout(timeout);
-          console.log('Wallet connected successfully to backend');
-          toast.success('Wallet connected!');
+          console.log("Wallet connected successfully to backend");
+          toast.success("Wallet connected!");
         })
         .catch((error) => {
           clearTimeout(timeout);
-          console.error('Failed to connect wallet to backend:', error);
+          console.error("Failed to connect wallet to backend:", error);
 
           // Don't show error if it's just a network issue on devnet
-          if (error.message?.includes('Network') || error.message?.includes('timeout')) {
-            toast.error('Network issue - some features may be limited');
+          if (
+            error.message?.includes("Network") ||
+            error.message?.includes("timeout")
+          ) {
+            toast.error("Network issue - some features may be limited");
           } else {
-            toast.error('Failed to connect to backend');
+            toast.error("Failed to connect to backend");
           }
         })
         .finally(() => {
@@ -71,37 +82,34 @@ export function WalletConnect() {
       await walletDisconnect();
       // Then disconnect from backend session
       await disconnectWallet();
-      toast.success('Wallet disconnected');
+      toast.success("Wallet disconnected");
     } catch (error) {
-      console.error('Failed to disconnect wallet:', error);
-      toast.error('Failed to disconnect wallet');
+      console.error("Failed to disconnect wallet:", error);
+      toast.error("Failed to disconnect wallet");
     }
   };
 
   if (connected && publicKey) {
     return (
       <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          className="bg-card border-border text-foreground hover:bg-muted"
-          disabled={isLoading}
-        >
-          {isLoading ? (
-            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-          ) : (
-            <Wallet className="w-4 h-4 mr-2" />
-          )}
-          {user?.username || `${publicKey.toString().slice(0, 4)}...${publicKey.toString().slice(-4)}`}
-        </Button>
-        <Link href="/profile">
+        <Link href="/app-dashboard/profile">
           <Button
-            variant="ghost"
-            size="icon"
-            className="text-muted-foreground hover:text-foreground"
+            variant="outline"
+            className="bg-card border-border text-foreground hover:bg-muted hover:text-foreground"
+            disabled={isLoading}
           >
-            <Settings className="w-4 h-4" />
+            {isLoading ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Wallet className="w-4 h-4 mr-2" />
+            )}
+            {user?.username ||
+              `${publicKey.toString().slice(0, 4)}...${publicKey
+                .toString()
+                .slice(-4)}`}
           </Button>
         </Link>
+        {/* Settings button removed */}
         <Button
           variant="destructive"
           size="sm"
@@ -115,6 +123,6 @@ export function WalletConnect() {
   }
 
   return (
-    <WalletMultiButton className="!bg-primary hover:!bg-primary/90 !text-primary-foreground wallet-button"/>
+    <WalletMultiButton className="!bg-primary hover:!bg-primary/90 !text-primary-foreground wallet-button" />
   );
 }

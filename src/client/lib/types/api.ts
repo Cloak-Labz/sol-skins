@@ -17,6 +17,7 @@ export interface User {
   walletAddress: string
   username?: string
   email?: string
+  tradeUrl?: string
   totalSpent: number | string
   totalEarned: number | string
   casesOpened: number
@@ -41,6 +42,11 @@ export interface LootBoxType {
     rare: string
     epic: string
     legendary: string
+  }
+  supply: {
+    maxSupply?: number
+    remainingSupply: number
+    isSoldOut: boolean
   }
   createdAt: string
   updatedAt: string
@@ -254,6 +260,7 @@ export interface ConnectWalletResponse {
 export interface UpdateProfileRequest {
   username?: string
   email?: string
+  tradeUrl?: string
 }
 
 // Buyback types

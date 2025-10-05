@@ -29,7 +29,7 @@ export class LootBoxService {
       isActive: true,
     });
 
-    // Transform to include chance breakdown
+    // Transform to include chance breakdown and supply info
     const transformedLootBoxes = lootBoxes.map(lootBox => ({
       id: lootBox.id,
       name: lootBox.name,
@@ -46,6 +46,11 @@ export class LootBoxService {
         rare: lootBox.chanceRare,
         epic: lootBox.chanceEpic,
         legendary: lootBox.chanceLegendary,
+      },
+      supply: {
+        maxSupply: lootBox.maxSupply,
+        remainingSupply: lootBox.remainingSupply,
+        isSoldOut: lootBox.maxSupply ? lootBox.remainingSupply <= 0 : false,
       },
       createdAt: lootBox.createdAt,
       updatedAt: lootBox.updatedAt,
@@ -100,6 +105,11 @@ export class LootBoxService {
         epic: lootBox.chanceEpic,
         legendary: lootBox.chanceLegendary,
       },
+      supply: {
+        maxSupply: lootBox.maxSupply,
+        remainingSupply: lootBox.remainingSupply,
+        isSoldOut: lootBox.maxSupply ? lootBox.remainingSupply <= 0 : false,
+      },
       possibleSkins,
       createdAt: lootBox.createdAt,
       updatedAt: lootBox.updatedAt,
@@ -119,6 +129,7 @@ export class LootBoxService {
     chanceRare?: number;
     chanceEpic?: number;
     chanceLegendary?: number;
+    maxSupply?: number;
   }): Promise<LootBoxType> {
     // Validate that chances add up to 100%
     const totalChances = (data.chanceCommon || 0) + 
@@ -140,6 +151,8 @@ export class LootBoxService {
       chanceRare: data.chanceRare || 0,
       chanceEpic: data.chanceEpic || 0,
       chanceLegendary: data.chanceLegendary || 0,
+      maxSupply: data.maxSupply,
+      remainingSupply: data.maxSupply || 0,
     });
   }
 

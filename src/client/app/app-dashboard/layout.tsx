@@ -41,19 +41,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 Loading Dashboard
               </h2>
 
-              {/* Animated Dots */}
-              <div className="flex items-center justify-center space-x-1">
-                <div className="w-2 h-2 bg-[#E99500] rounded-full animate-bounce"></div>
-                <div
-                  className="w-2 h-2 bg-[#E99500] rounded-full animate-bounce"
-                  style={{ animationDelay: "0.1s" }}
-                ></div>
-                <div
-                  className="w-2 h-2 bg-[#E99500] rounded-full animate-bounce"
-                  style={{ animationDelay: "0.2s" }}
-                ></div>
-              </div>
-
               <p className="text-gray-400 text-sm">
                 Preparing your CS:GO skin collection...
               </p>

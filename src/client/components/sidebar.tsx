@@ -16,6 +16,7 @@ import {
   Star,
   Gift,
   User,
+  ChartBarIncreasing,
 } from "lucide-react";
 import { memo } from "react";
 
@@ -23,6 +24,7 @@ function SidebarComponent() {
   const pathname = usePathname();
 
   const mainNavItems = [
+    { href: "/app-dashboard", label: "Home", icon: Home },
     { href: "/app-dashboard/packs", label: "Packs", icon: Package },
     {
       href: "/app-dashboard/marketplace",
@@ -30,18 +32,34 @@ function SidebarComponent() {
       icon: ShoppingBag,
       soon: true,
     },
+    {
+      href: "/app-dashboard/prediction",
+      label: "Prediction",
+      icon: ChartBarIncreasing,
+      soon: true,
+    },
     { href: "/app-dashboard/inventory", label: "Inventory", icon: Package },
     { href: "/app-dashboard/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
 
   const socialItems = [
-    { href: "/app-dashboard/activity", label: "Activity", icon: Activity },
-    { href: "/app-dashboard/profile", label: "Profile", icon: User },
+    {
+      href: "/app-dashboard/activity",
+      label: "Activity",
+      icon: Activity,
+      soon: false,
+    },
+    {
+      href: "/app-dashboard/profile",
+      label: "Profile",
+      icon: User,
+      soon: false,
+    },
   ];
 
   const exploreItems = [
-    { href: "/csgo", label: "CS:GO", icon: Star },
-    { href: "/refer", label: "Refer and Earn", icon: Gift },
+    { href: "/refer", label: "Refer and Earn", icon: Gift, soon: true },
+    { href: "/app-dashboard/about", label: "About", icon: Info },
   ];
 
   return (
@@ -150,6 +168,27 @@ function SidebarComponent() {
           <nav className="space-y-1">
             {exploreItems.map((item) => {
               const Icon = item.icon;
+              const itemContent = (
+                <>
+                  <Icon className="w-4 h-4" />
+                  {item.label}
+                  {item.soon && (
+                    <span className="ml-auto text-[#666] text-xs bg-[#1a1a1a] px-2 py-0.5 rounded">SOON</span>
+                  )}
+                </>
+              );
+
+              if ((item as any).soon) {
+                return (
+                  <div
+                    key={item.href}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[#666] cursor-not-allowed opacity-60"
+                  >
+                    {itemContent}
+                  </div>
+                );
+              }
+
               return (
                 <Link
                   key={item.href}
@@ -161,8 +200,7 @@ function SidebarComponent() {
                       : "text-[#999] hover:text-white hover:bg-[#151515]"
                   )}
                 >
-                  <Icon className="w-4 h-4" />
-                  {item.label}
+                  {itemContent}
                 </Link>
               );
             })}

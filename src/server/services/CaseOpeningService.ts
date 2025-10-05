@@ -37,6 +37,11 @@ export class CaseOpeningService {
       throw new AppError('Loot box is not available', 400, 'LOOT_BOX_NOT_AVAILABLE');
     }
 
+    // Check supply before opening
+    if (lootBox.maxSupply && lootBox.remainingSupply <= 0) {
+      throw new AppError('Pack is sold out', 400, 'PACK_SOLD_OUT');
+    }
+
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new AppError('User not found', 404, 'USER_NOT_FOUND');
@@ -55,13 +60,15 @@ export class CaseOpeningService {
     });
 
     // Create transaction record
-    const amount = data.paymentMethod === 'SOL' ? lootBox.priceSol : (lootBox.priceUsdc || 0);
+    const solAmount = lootBox.priceSol;
+    const usdcAmount = lootBox.priceUsdc || 0;
+    
     const transaction = await this.transactionRepository.create({
       userId,
       transactionType: TransactionType.OPEN_CASE,
-      amountSol: data.paymentMethod === 'SOL' ? -amount : undefined,
-      amountUsdc: data.paymentMethod === 'USDC' ? -amount : undefined,
-      amountUsd: data.paymentMethod === 'SOL' ? -amount * 100 : -amount, // Mock SOL price
+      amountSol: data.paymentMethod === 'SOL' ? -solAmount : undefined,
+      amountUsdc: data.paymentMethod === 'USDC' ? -usdcAmount : undefined,
+      amountUsd: data.paymentMethod === 'SOL' ? -usdcAmount : -usdcAmount, // Use USDC price for USD amount
       lootBoxTypeId: data.lootBoxTypeId,
       status: TransactionStatus.PENDING,
     });
@@ -249,6 +256,11 @@ export class CaseOpeningService {
             casesOpened: user.casesOpened + 1,
           });
         }
+      }
+
+      // Decrement supply after successful opening
+      if (lootBox.maxSupply) {
+        await this.lootBoxRepository.decrementSupply(lootBoxTypeId);
       }
     } catch (error) {
       console.error('Error in VRF simulation:', error);
