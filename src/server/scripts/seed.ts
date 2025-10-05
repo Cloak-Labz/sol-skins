@@ -262,6 +262,7 @@ async function createTestUsers(): Promise<User[]> {
       walletAddress: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
       username: 'CryptoGamer',
       email: 'crypto@example.com',
+      tradeUrl: 'https://steamcommunity.com/tradeoffer/new/?partner=123456789&token=abcdefgh',
       totalSpent: 1250.50,
       totalEarned: 2890.75,
       casesOpened: 45
@@ -270,6 +271,7 @@ async function createTestUsers(): Promise<User[]> {
       walletAddress: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
       username: 'SkinCollector',
       email: 'collector@example.com',
+      tradeUrl: 'https://steamcommunity.com/tradeoffer/new/?partner=987654321&token=ijklmnop',
       totalSpent: 850.25,
       totalEarned: 1200.30,
       casesOpened: 28
@@ -278,6 +280,7 @@ async function createTestUsers(): Promise<User[]> {
       walletAddress: '5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5ThZn4NHP',
       username: 'LuckyTrader',
       email: 'lucky@example.com',
+      tradeUrl: null,
       totalSpent: 2100.00,
       totalEarned: 4500.00,
       casesOpened: 78
@@ -291,6 +294,7 @@ async function createTestUsers(): Promise<User[]> {
     user.walletAddress = userData.walletAddress;
     user.username = userData.username;
     user.email = userData.email;
+    user.tradeUrl = userData.tradeUrl;
     user.totalSpent = userData.totalSpent;
     user.totalEarned = userData.totalEarned;
     user.casesOpened = userData.casesOpened;

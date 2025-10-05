@@ -17,6 +17,7 @@ export interface User {
   walletAddress: string
   username?: string
   email?: string
+  tradeUrl?: string
   totalSpent: number | string
   totalEarned: number | string
   casesOpened: number
@@ -259,6 +260,7 @@ export interface ConnectWalletResponse {
 export interface UpdateProfileRequest {
   username?: string
   email?: string
+  tradeUrl?: string
 }
 
 // Buyback types
