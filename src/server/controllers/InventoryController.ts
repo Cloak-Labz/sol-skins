@@ -64,6 +64,13 @@ export class InventoryController {
     ResponseUtil.success(res, { totalValue: value });
   });
 
+  getInventoryStats = catchAsync(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const stats = await this.inventoryService.getInventoryStats(userId);
+
+    ResponseUtil.success(res, stats);
+  });
+
   importSteamInventory = catchAsync(async (req: Request, res: Response) => {
     const userId = req.user!.id;
     const { steamUserId, currency = 'USD', includePrices = true } = req.body;

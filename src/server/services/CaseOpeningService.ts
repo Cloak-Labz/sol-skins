@@ -55,13 +55,15 @@ export class CaseOpeningService {
     });
 
     // Create transaction record
-    const amount = data.paymentMethod === 'SOL' ? lootBox.priceSol : (lootBox.priceUsdc || 0);
+    const solAmount = lootBox.priceSol;
+    const usdcAmount = lootBox.priceUsdc || 0;
+    
     const transaction = await this.transactionRepository.create({
       userId,
       transactionType: TransactionType.OPEN_CASE,
-      amountSol: data.paymentMethod === 'SOL' ? -amount : undefined,
-      amountUsdc: data.paymentMethod === 'USDC' ? -amount : undefined,
-      amountUsd: data.paymentMethod === 'SOL' ? -amount * 100 : -amount, // Mock SOL price
+      amountSol: data.paymentMethod === 'SOL' ? -solAmount : undefined,
+      amountUsdc: data.paymentMethod === 'USDC' ? -usdcAmount : undefined,
+      amountUsd: data.paymentMethod === 'SOL' ? -usdcAmount : -usdcAmount, // Use USDC price for USD amount
       lootBoxTypeId: data.lootBoxTypeId,
       status: TransactionStatus.PENDING,
     });

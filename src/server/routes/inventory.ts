@@ -15,6 +15,9 @@ inventoryRoutes.get('/', walletAuth.requireWallet, validateSchema(schemas.invent
 // GET /inventory/value - Get inventory value (requires wallet)
 inventoryRoutes.get('/value', walletAuth.requireWallet, inventoryController.getInventoryValue);
 
+// GET /inventory/stats - Get inventory statistics (requires wallet)
+inventoryRoutes.get('/stats', walletAuth.requireWallet, inventoryController.getInventoryStats);
+
 // Steam inventory routes (must come BEFORE /:skinId to avoid conflicts)
 // GET /inventory/steam/stats - Get Steam inventory stats (requires wallet)
 inventoryRoutes.get('/steam/stats', walletAuth.requireWallet, inventoryController.getSteamInventoryStats);

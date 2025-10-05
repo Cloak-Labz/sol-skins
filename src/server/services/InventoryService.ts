@@ -162,4 +162,8 @@ export class InventoryService {
   async getInventoryValue(userId: string): Promise<number> {
     return this.userSkinRepository.getUserInventoryValue(userId);
   }
+
+  async getInventoryStats(userId: string) {
+    return this.userSkinRepository.getUserInventoryStats(userId);
+  }
 } 
