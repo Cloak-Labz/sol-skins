@@ -94,4 +94,16 @@ export class LootBoxTypeRepository {
       order: { isFeatured: 'DESC', name: 'ASC' },
     });
   }
+
+  async decrementSupply(id: string): Promise<void> {
+    await this.repository
+      .createQueryBuilder()
+      .update(LootBoxType)
+      .set({ 
+        remainingSupply: () => 'GREATEST(remainingSupply - 1, 0)' 
+      })
+      .where('id = :id', { id })
+      .andWhere('remainingSupply > 0')
+      .execute();
+  }
 } 

@@ -42,6 +42,11 @@ export interface LootBoxType {
     epic: string
     legendary: string
   }
+  supply: {
+    maxSupply?: number
+    remainingSupply: number
+    isSoldOut: boolean
+  }
   createdAt: string
   updatedAt: string
 }

@@ -667,6 +667,18 @@ export default function PacksPage() {
                   {(selectedPack as any)?.description && (
                     <p className="text-zinc-400 text-sm mt-1 line-clamp-2">{(selectedPack as any).description}</p>
                   )}
+                  {selectedPack?.supply?.maxSupply && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <div className="text-xs text-muted-foreground">
+                        Supply: {selectedPack.supply.remainingSupply} / {selectedPack.supply.maxSupply}
+                      </div>
+                      {selectedPack.supply.isSoldOut && (
+                        <div className="rounded bg-red-500/20 px-2 py-1 text-xs text-red-400">
+                          SOLD OUT
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
@@ -675,12 +687,16 @@ export default function PacksPage() {
                   </div>
                   <Button
                     onClick={handleOpenPack}
-                    disabled={openingPhase !== null || !connected}
+                    disabled={openingPhase !== null || !connected || selectedPack?.supply?.isSoldOut}
                     className={`px-6 py-6 font-semibold rounded-lg transition-transform duration-150 ${
-                      openingPhase ? 'bg-zinc-700 cursor-not-allowed' : 'bg-zinc-100 text-black hover:bg-white hover:scale-[1.02] active:scale-[0.99]'
+                      openingPhase ? 'bg-zinc-700 cursor-not-allowed' : 
+                      selectedPack?.supply?.isSoldOut ? 'bg-red-500/20 text-red-400 cursor-not-allowed' :
+                      'bg-zinc-100 text-black hover:bg-white hover:scale-[1.02] active:scale-[0.99]'
                     }`}
                   >
-                    <span className="mr-2">Open Pack</span>
+                    <span className="mr-2">
+                      {selectedPack?.supply?.isSoldOut ? 'Sold Out' : 'Open Pack'}
+                    </span>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </Button>
                 </div>

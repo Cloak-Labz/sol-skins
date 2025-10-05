@@ -37,6 +37,11 @@ export class CaseOpeningService {
       throw new AppError('Loot box is not available', 400, 'LOOT_BOX_NOT_AVAILABLE');
     }
 
+    // Check supply before opening
+    if (lootBox.maxSupply && lootBox.remainingSupply <= 0) {
+      throw new AppError('Pack is sold out', 400, 'PACK_SOLD_OUT');
+    }
+
     const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new AppError('User not found', 404, 'USER_NOT_FOUND');
@@ -251,6 +256,11 @@ export class CaseOpeningService {
             casesOpened: user.casesOpened + 1,
           });
         }
+      }
+
+      // Decrement supply after successful opening
+      if (lootBox.maxSupply) {
+        await this.lootBoxRepository.decrementSupply(lootBoxTypeId);
       }
     } catch (error) {
       console.error('Error in VRF simulation:', error);
