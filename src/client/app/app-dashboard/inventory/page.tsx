@@ -88,19 +88,20 @@ export default function InventoryPage() {
   };
 
   const getRarityColor = (rarity: string) => {
+    // Colorful tiers while rest of UI stays monochrome
     switch (rarity.toLowerCase()) {
       case "common":
-        return "bg-gray-500/20 text-gray-400 border-gray-500/30";
+        return "bg-gray-500/20 text-gray-300 border border-gray-500/30";
       case "uncommon":
-        return "bg-green-500/20 text-green-400 border-green-500/30";
+        return "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
       case "rare":
-        return "bg-blue-500/20 text-blue-400 border-blue-500/30";
+        return "bg-sky-500/20 text-sky-300 border border-sky-500/30";
       case "epic":
-        return "bg-purple-500/20 text-purple-400 border-purple-500/30";
+        return "bg-purple-500/20 text-purple-300 border border-purple-500/30";
       case "legendary":
-        return "bg-yellow-500/20 text-yellow-400 border-yellow-500/30";
+        return "bg-amber-500/20 text-amber-300 border border-amber-500/30";
       default:
-        return "bg-muted text-muted-foreground";
+        return "bg-zinc-900 text-zinc-300 border border-zinc-800";
     }
   };
 
@@ -169,8 +170,8 @@ export default function InventoryPage() {
       <div className="min-h-screen py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center">
           <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-white mx-auto mb-4" />
-            <p className="text-white">Loading inventory...</p>
+            <Loader2 className="w-8 h-8 animate-spin text-zinc-200 mx-auto mb-4" />
+            <p className="text-zinc-200">Loading inventory...</p>
           </div>
         </div>
       </div>
@@ -195,7 +196,7 @@ export default function InventoryPage() {
               <div className="text-sm text-muted-foreground">
                 Total Portfolio Value
               </div>
-              <div className="text-3xl font-bold text-accent">
+              <div className="text-3xl font-bold text-foreground">
                 ${totalValue.toFixed(2)}
               </div>
               <div className="text-sm text-muted-foreground">
@@ -213,11 +214,11 @@ export default function InventoryPage() {
               placeholder="Search skins..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-input border-border"
+              className="pl-10 bg-zinc-950 border-zinc-800"
             />
           </div>
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-full md:w-48 bg-input border-border">
+            <SelectTrigger className="w-full md:w-48 bg-zinc-950 border-zinc-800">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -229,7 +230,7 @@ export default function InventoryPage() {
             </SelectContent>
           </Select>
           <Select value={filterBy} onValueChange={setFilterBy}>
-            <SelectTrigger className="w-full md:w-48 bg-input border-border">
+            <SelectTrigger className="w-full md:w-48 bg-zinc-950 border-zinc-800">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Filter by rarity" />
             </SelectTrigger>
@@ -250,20 +251,20 @@ export default function InventoryPage() {
             {filteredSkins.map((skin) => (
               <Card
                 key={skin.id}
-                className="bg-card border-2 border-border hover:scale-105 transition-all duration-200"
+                className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.015] hover:border-zinc-700"
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <Badge className={getRarityColor(skin.skinTemplate.rarity)}>
+                    <Badge className={`${getRarityColor(skin.skinTemplate.rarity)} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}>
                       {skin.skinTemplate.rarity}
                     </Badge>
                     {skin.status !== "owned" && (
-                      <Badge variant="outline" className="text-xs">
+                      <Badge variant="outline" className="text-xs bg-zinc-900 text-zinc-300 border border-zinc-800">
                         {skin.status}
                       </Badge>
                     )}
                   </div>
-                  <div className="aspect-square rounded-lg flex items-center justify-center mb-4 animate-float">
+                  <div className="aspect-square rounded-lg flex items-center justify-center mb-4 animate-float border border-zinc-800 bg-zinc-950">
                     {skin.skinTemplate.imageUrl ? (
                       <img
                         src={skin.skinTemplate.imageUrl}
@@ -279,7 +280,7 @@ export default function InventoryPage() {
                   <CardTitle className="text-lg mb-1">
                     {skin.skinTemplate.weapon}
                   </CardTitle>
-                  <p className="text-accent font-semibold mb-1">
+                  <p className="text-foreground font-semibold mb-1">
                     {skin.skinTemplate.skinName}
                   </p>
                   <p className="text-sm text-muted-foreground mb-3">
@@ -300,7 +301,7 @@ export default function InventoryPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        className="w-full border-accent/50 text-accent hover:bg-accent/10 bg-transparent"
+                        className="w-full border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-zinc-100 bg-transparent hover:bg-zinc-900 transition-transform duration-150 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-zinc-600"
                         onClick={() =>
                           window.open(
                             `https://explorer.solana.com/address/${skin.mintAddress}`,
@@ -316,7 +317,7 @@ export default function InventoryPage() {
                     {skin.status === "owned" && (
                       <Button
                         size="sm"
-                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+                        className="w-full bg-zinc-100 text-black hover:bg-white transition-transform duration-150 hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-1 focus-visible:ring-zinc-600"
                         onClick={() => handleSellSkin(skin)}
                       >
                         <Coins className="w-4 h-4 mr-2" />
@@ -340,7 +341,7 @@ export default function InventoryPage() {
                 : "Start opening loot boxes to build your collection"}
             </p>
             {!searchTerm && filterBy === "all" && (
-              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">
+              <Button className="bg-zinc-100 text-black hover:bg-white transition-transform duration-150 hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-1 focus-visible:ring-zinc-600">
                 <Package className="w-4 h-4 mr-2" />
                 Open Loot Boxes
               </Button>
@@ -353,7 +354,7 @@ export default function InventoryPage() {
           open={isSellingDialogOpen}
           onOpenChange={setIsSellingDialogOpen}
         >
-          <DialogContent className="bg-card border-border">
+          <DialogContent className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800">
             <DialogHeader>
               <DialogTitle className="text-foreground">
                 Confirm Buyback Sale
@@ -361,7 +362,7 @@ export default function InventoryPage() {
             </DialogHeader>
             {selectedSkin && (
               <div className="space-y-4">
-                <div className="flex items-center gap-4 p-4 bg-muted rounded-lg">
+                <div className="flex items-center gap-4 p-4 rounded-lg border border-zinc-800 bg-zinc-950">
                   <div className="w-16 h-16 flex items-center justify-center">
                     {selectedSkin.skinTemplate.imageUrl ? (
                       <img
@@ -382,19 +383,19 @@ export default function InventoryPage() {
                       {selectedSkin.condition}
                     </p>
                     <Badge
-                      className={getRarityColor(
+                      className={`${getRarityColor(
                         selectedSkin.skinTemplate.rarity
-                      )}
+                      )} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}
                     >
                       {selectedSkin.skinTemplate.rarity}
                     </Badge>
                   </div>
                 </div>
 
-                <div className="bg-accent/10 p-4 rounded-lg">
+                <div className="p-4 rounded-lg border border-zinc-800 bg-zinc-950">
                   <div className="flex justify-between items-center">
                     <span className="text-foreground">Buyback Price:</span>
-                    <span className="text-2xl font-bold text-accent">
+                    <span className="text-2xl font-bold text-foreground">
                       {formatCurrency(selectedSkin.currentPrice * 0.85)}
                     </span>
                   </div>
@@ -408,14 +409,14 @@ export default function InventoryPage() {
                   <Button
                     variant="outline"
                     onClick={() => setIsSellingDialogOpen(false)}
-                    className="flex-1"
+                    className="flex-1 border-zinc-800 hover:bg-zinc-900 transition-transform duration-150 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-zinc-600"
                     disabled={selling}
                   >
                     Cancel
                   </Button>
                   <Button
                     onClick={confirmSell}
-                    className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    className="flex-1 bg-zinc-100 text-black hover:bg-white transition-transform duration-150 hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-1 focus-visible:ring-zinc-600"
                     disabled={selling}
                   >
                     {selling ? (
