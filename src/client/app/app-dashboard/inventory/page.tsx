@@ -149,7 +149,7 @@ export default function InventoryPage() {
   // Show not connected state
   if (!isConnected) {
     return (
-      <div className="min-h-screen py-8">
+      <div className="min-h-screen bg-[#0a0a0a] py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-12">
             <Lock className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
@@ -168,7 +168,7 @@ export default function InventoryPage() {
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen py-8">
+      <div className="min-h-screen bg-[#0a0a0a] py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="w-8 h-8 animate-spin text-zinc-200 mx-auto mb-4" />
@@ -180,7 +180,7 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="min-h-screen py-8">
+    <div className="min-h-screen bg-[#0a0a0a] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">

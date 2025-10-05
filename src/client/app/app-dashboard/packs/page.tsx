@@ -432,7 +432,7 @@ export default function PacksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black p-4 md:p-6 overflow-hidden relative">
+    <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6 overflow-hidden relative">
       {/* Fullscreen Opening Animation */}
       <AnimatePresence>
         {openingPhase && (

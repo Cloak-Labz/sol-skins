@@ -21,7 +21,7 @@ export default function DashboardPage() {
       .catch(() => setPacks([]));
   }, []);
   return (
-    <div className="min-h-screen bg-black p-6 md:p-8 font-sans">
+    <div className="min-h-screen bg-[#0a0a0a] p-6 md:p-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden border border-[#1a1a1a]">
