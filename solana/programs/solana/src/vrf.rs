@@ -1,4 +1,4 @@
-use crate::errors::ProgramError;
+use crate::errors::SkinVaultError;
 use anchor_lang::prelude::*;
 
 /// VRF trait for different randomness providers
@@ -42,7 +42,7 @@ impl SwitchboardVrf {
     ) -> Result<()> {
         // TODO: Implement actual Switchboard VRF integration
         // This would involve creating a VRF request account and calling the Switchboard program
-        Err(ProgramError::VrfNotFulfilled.into())
+        Err(SkinVaultError::VrfNotFulfilled.into())
     }
 
     /// Set callback for VRF fulfillment
@@ -51,7 +51,7 @@ impl SwitchboardVrf {
         _params: VrfSetCallbackParams,
     ) -> Result<()> {
         // TODO: Implement actual Switchboard callback setting
-        Err(ProgramError::VrfNotFulfilled.into())
+        Err(SkinVaultError::VrfNotFulfilled.into())
     }
 
     /// Verify VRF proof and consume randomness
@@ -60,13 +60,13 @@ impl SwitchboardVrf {
         _params: VrfProveAndVerifyParams,
     ) -> Result<()> {
         // TODO: Implement actual Switchboard VRF verification
-        Err(ProgramError::VrfNotFulfilled.into())
+        Err(SkinVaultError::VrfNotFulfilled.into())
     }
 
     /// Extract randomness from VRF account
     pub fn get_randomness(_vrf_account: &AccountInfo) -> Result<[u8; 32]> {
         // TODO: Implement actual Switchboard randomness extraction
-        Err(ProgramError::VrfNotFulfilled.into())
+        Err(SkinVaultError::VrfNotFulfilled.into())
     }
 }
 
@@ -97,12 +97,12 @@ pub fn create_vrf_seed(box_mint: &Pubkey, timestamp: i64) -> Vec<u8> {
 pub fn validate_vrf_randomness(randomness: &[u8; 32]) -> Result<()> {
     // Check that randomness is not all zeros (invalid)
     if randomness.iter().all(|&b| b == 0) {
-        return Err(ProgramError::VrfNotFulfilled.into());
+        return Err(SkinVaultError::VrfNotFulfilled.into());
     }
 
     // Check that randomness is not all 0xFF (suspicious)
     if randomness.iter().all(|&b| b == 0xFF) {
-        return Err(ProgramError::VrfNotFulfilled.into());
+        return Err(SkinVaultError::VrfNotFulfilled.into());
     }
 
     Ok(())

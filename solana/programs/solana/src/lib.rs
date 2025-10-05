@@ -16,23 +16,47 @@ pub use events::*;
 pub use instructions::*;
 pub use states::*;
 
-declare_id!("4zbVYaEgUHfAb4ojYXYs2T7US9qkiDLaG1uzEWy2cDjZ");
+declare_id!("6cSLcQ5RCyzPKeFWux2UMjm3SWf3tD41vHK5qsuphzKZ");
 
 #[program]
 pub mod skinvault {
     use super::*;
 
-    /// Initialize the SkinVault claw machine
+    /// Initialize the SkinVault program
     pub fn initialize(ctx: Context<Initialize>, oracle_pubkey: Pubkey) -> Result<()> {
         instructions::admin::initialize_handler(ctx, oracle_pubkey)
     }
 
-    /// Step 1: Open a mystery box (request VRF randomness)
+    /// Publish a Merkle root for a new batch of inventory
+    pub fn publish_merkle_root(
+        ctx: Context<PublishMerkleRoot>,
+        batch_id: u64,
+        candy_machine: Pubkey,
+        metadata_uris: Vec<String>,
+        merkle_root: [u8; 32],
+        snapshot_time: i64,
+    ) -> Result<()> {
+        instructions::publish_root::publish_merkle_root_handler(
+            ctx,
+            batch_id,
+            candy_machine,
+            metadata_uris,
+            merkle_root,
+            snapshot_time,
+        )
+    }
+
+    /// Create a new box state
+    pub fn create_box(ctx: Context<CreateBox>, batch_id: u64) -> Result<()> {
+        instructions::create_box::create_box_handler(ctx, batch_id)
+    }
+
+    /// Open a loot box and request VRF
     pub fn open_box(ctx: Context<OpenBox>, pool_size: u64) -> Result<()> {
         instructions::open_box::open_box_handler(ctx, pool_size)
     }
 
-    /// Step 2: VRF oracle provides randomness (oracle-only)
+    /// VRF callback to provide randomness for box opening
     pub fn vrf_callback(
         ctx: Context<VrfCallback>,
         request_id: u64,
@@ -41,17 +65,12 @@ pub mod skinvault {
         instructions::vrf_callback::vrf_callback_handler(ctx, request_id, randomness)
     }
 
-    /// Step 3: Reveal and mint Core NFT with determined skin
+    /// Reveal and claim NFT from Candy Machine after VRF fulfillment
     pub fn reveal_and_claim(ctx: Context<RevealAndClaim>) -> Result<()> {
         instructions::reveal_and_claim::reveal_and_claim_handler(ctx)
     }
 
-    /// Step 4: Sell back NFT for USDC (Steam redemption)
-    pub fn sell_back(ctx: Context<SellBack>, min_price: u64) -> Result<()> {
-        instructions::sell_back::sell_back_handler(ctx, min_price)
-    }
-
-    /// Set price for a skin (oracle-signed, for buyback calculation)
+    /// Set price for an inventory item (oracle signed)
     pub fn set_price_signed(
         ctx: Context<SetPriceSigned>,
         inventory_id_hash: [u8; 32],
@@ -66,6 +85,11 @@ pub mod skinvault {
             timestamp,
             signature,
         )
+    }
+
+    /// Sell back an assigned item for USDC
+    pub fn sell_back(ctx: Context<SellBack>, min_price: u64) -> Result<()> {
+        instructions::sell_back::sell_back_handler(ctx, min_price)
     }
 
     // --------------------

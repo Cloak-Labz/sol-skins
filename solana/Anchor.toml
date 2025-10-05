@@ -6,17 +6,30 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-skinvault = "9dWnmCfGW6BjpN8nRRQzQrEhhRNgFhcvzpmHpihBGNb9"
+skinvault = "6cSLcQ5RCyzPKeFWux2UMjm3SWf3tD41vHK5qsuphzKZ"
 
 [programs.localnet]
-skinvault = "4zbVYaEgUHfAb4ojYXYs2T7US9qkiDLaG1uzEWy2cDjZ"
+skinvault = "6cSLcQ5RCyzPKeFWux2UMjm3SWf3tD41vHK5qsuphzKZ"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "./node_modules/.bin/mocha -t 300000 tests/e2e.test.ts"
+test = "./node_modules/.bin/mocha -t 300000 tests/integration-flow.test.ts"
+test-candy-machine = "./node_modules/.bin/mocha -t 300000 tests/candy-machine.test.ts"
+test-mainnet = "./node_modules/.bin/mocha -t 300000 tests/vrf-mainnet.test.ts"
+test-simple = "./node_modules/.bin/mocha -t 300000 tests/vrf-simple.test.ts"
+test-vrf-security = "./node_modules/.bin/mocha -t 300000 tests/vrf-security.test.ts"
+
+[test]
+startup_wait = 5000
+
+[test.validator]
+url = "https://api.devnet.solana.com"
+
+[[test.validator.clone]]
+address = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"

@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 
 use crate::cpi::core::{burn_core_asset, update_freeze_delegate};
-use crate::errors::ProgramError;
+use crate::errors::SkinVaultError;
 use crate::events::*;
 use crate::states::*;
 use crate::utils::*;
@@ -25,8 +25,8 @@ pub struct SellBack<'info> {
 
     #[account(
         mut,
-        constraint = user_ata.mint == usdc_mint.key() @ ProgramError::Unauthorized,
-        constraint = user_ata.owner == seller.key() @ ProgramError::Unauthorized
+        constraint = user_ata.mint == usdc_mint.key() @ SkinVaultError::Unauthorized,
+        constraint = user_ata.owner == seller.key() @ SkinVaultError::Unauthorized
     )]
     pub user_ata: Account<'info, TokenAccount>,
 
@@ -36,7 +36,7 @@ pub struct SellBack<'info> {
     #[account(
         seeds = [b"price", box_state.assigned_inventory.as_ref()],
         bump = price_store.bump,
-        constraint = price_store.inventory_id_hash == box_state.assigned_inventory @ ProgramError::InvalidBatchId
+        constraint = price_store.inventory_id_hash == box_state.assigned_inventory @ SkinVaultError::InvalidBatchId
     )]
     pub price_store: Account<'info, PriceStore>,
 
@@ -44,10 +44,10 @@ pub struct SellBack<'info> {
         mut,
         seeds = [b"box", box_state.asset.as_ref()],
         bump = box_state.bump,
-        constraint = box_state.owner == seller.key() @ ProgramError::NotBoxOwner,
-        constraint = box_state.opened @ ProgramError::NotOpenedYet,
-        constraint = box_state.assigned_inventory != [0u8; 32] @ ProgramError::InventoryAlreadyAssigned,
-        constraint = !box_state.redeemed @ ProgramError::AlreadyOpened
+        constraint = box_state.owner == seller.key() @ SkinVaultError::NotBoxOwner,
+        constraint = box_state.opened @ SkinVaultError::NotOpenedYet,
+        constraint = box_state.assigned_inventory != [0u8; 32] @ SkinVaultError::InventoryAlreadyAssigned,
+        constraint = !box_state.redeemed @ SkinVaultError::AlreadyOpened
     )]
     pub box_state: Account<'info, BoxState>,
 
@@ -55,7 +55,7 @@ pub struct SellBack<'info> {
     /// CHECK: Validated by Core program during burn
     #[account(
         mut,
-        constraint = asset.key() == box_state.asset @ ProgramError::Unauthorized
+        constraint = asset.key() == box_state.asset @ SkinVaultError::Unauthorized
     )]
     pub asset: UncheckedAccount<'info>,
 
@@ -80,15 +80,15 @@ pub fn sell_back_handler(ctx: Context<SellBack>, min_price: u64) -> Result<()> {
     let current_time = Clock::get()?.unix_timestamp;
 
     // Check if program is paused
-    require!(!global.paused, ProgramError::BuybackDisabled);
+    require!(!global.paused, SkinVaultError::BuybackDisabled);
 
     // Check buyback is enabled
-    require!(global.buyback_enabled, ProgramError::BuybackDisabled);
+    require!(global.buyback_enabled, SkinVaultError::BuybackDisabled);
 
     // Check price is not stale
     require!(
         !is_price_stale(ctx.accounts.price_store.timestamp, current_time),
-        ProgramError::PriceStale
+        SkinVaultError::PriceStale
     );
 
     // Calculate payout with spread fee
@@ -96,20 +96,20 @@ pub fn sell_back_handler(ctx: Context<SellBack>, min_price: u64) -> Result<()> {
     let payout = calculate_buyback_payout(market_price)?;
     let spread_fee = market_price
         .checked_sub(payout)
-        .ok_or(ProgramError::ArithmeticOverflow)?;
+        .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
     // Check minimum price tolerance
-    require!(payout >= min_price, ProgramError::SlippageExceeded);
+    require!(payout >= min_price, SkinVaultError::SlippageExceeded);
 
     // Check treasury has sufficient funds
     let treasury_balance = ctx.accounts.treasury_ata.amount;
     let required_balance = payout
         .checked_add(global.min_treasury_balance)
-        .ok_or(ProgramError::ArithmeticOverflow)?;
+        .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
     require!(
         treasury_balance >= required_balance,
-        ProgramError::TreasuryInsufficient
+        SkinVaultError::TreasuryInsufficient
     );
 
     // Transfer USDC from treasury to user
@@ -129,12 +129,12 @@ pub fn sell_back_handler(ctx: Context<SellBack>, min_price: u64) -> Result<()> {
     global.total_buybacks = global
         .total_buybacks
         .checked_add(1)
-        .ok_or(ProgramError::ArithmeticOverflow)?;
+        .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
     global.total_buyback_volume = global
         .total_buyback_volume
         .checked_add(payout)
-        .ok_or(ProgramError::ArithmeticOverflow)?;
+        .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
     // Filter out default pubkey for collection
     let collection_ref = ctx

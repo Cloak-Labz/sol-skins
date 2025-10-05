@@ -10,7 +10,7 @@ use mpl_core::{
     ID as MPL_CORE_ID,
 };
 
-use crate::errors::ProgramError;
+use crate::errors::SkinVaultError;
 
 /// Create a new Metaplex Core NFT asset with plugins
 ///
@@ -46,7 +46,7 @@ pub fn create_core_asset<'info>(
     // Validate Core program ID
     require!(
         core_program.key() == MPL_CORE_ID,
-        ProgramError::InvalidCoreProgram
+        SkinVaultError::InvalidCandyMachineProgram
     );
 
     // Build plugins for the asset
@@ -134,7 +134,7 @@ pub fn burn_core_asset<'info>(
     // Validate Core program ID
     require!(
         core_program.key() == MPL_CORE_ID,
-        ProgramError::InvalidCoreProgram
+        SkinVaultError::InvalidCandyMachineProgram
     );
 
     // Build the burn instruction
@@ -189,7 +189,7 @@ pub fn update_freeze_delegate<'info>(
     // Validate Core program ID
     require!(
         core_program.key() == MPL_CORE_ID,
-        ProgramError::InvalidCoreProgram
+        SkinVaultError::InvalidCandyMachineProgram
     );
 
     // Build the update plugin instruction
@@ -255,7 +255,7 @@ pub fn add_plugin_to_asset<'info>(
     // Validate Core program ID
     require!(
         core_program.key() == MPL_CORE_ID,
-        ProgramError::InvalidCoreProgram
+        SkinVaultError::InvalidCandyMachineProgram
     );
 
     // Build the add plugin instruction
@@ -317,7 +317,7 @@ pub fn remove_plugin_from_asset<'info>(
     // Validate Core program ID
     require!(
         core_program.key() == MPL_CORE_ID,
-        ProgramError::InvalidCoreProgram
+        SkinVaultError::InvalidCandyMachineProgram
     );
 
     // Build the remove plugin instruction

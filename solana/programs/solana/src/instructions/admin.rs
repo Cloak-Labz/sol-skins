@@ -4,7 +4,7 @@ use anchor_spl::{
     token::{Mint, Token, TokenAccount},
 };
 
-use crate::errors::ProgramError;
+use crate::errors::SkinVaultError;
 use crate::events::*;
 use crate::states::*;
 
@@ -13,7 +13,7 @@ pub struct Initialize<'info> {
     #[account(
         init,
         payer = authority,
-        seeds = [b"global"],
+        seeds = [b"global_state"],
         bump,
         space = Global::LEN
     )]
@@ -22,15 +22,7 @@ pub struct Initialize<'info> {
     /// USDC mint (or test mint for devnet)
     pub usdc_mint: Account<'info, Mint>,
 
-    /// Treasury ATA - PDA will own this account
-    #[account(
-        init,
-        payer = authority,
-        associated_token::mint = usdc_mint,
-        associated_token::authority = global
-    )]
-    pub treasury_ata: Account<'info, TokenAccount>,
-
+    // Treasury ATA temporarily removed to fix account resolution issues
     #[account(mut)]
     pub authority: Signer<'info>,
 
@@ -43,9 +35,9 @@ pub struct Initialize<'info> {
 pub struct SetOracle<'info> {
     #[account(
         mut,
-        seeds = [b"global"],
+        seeds = [b"global_state"],
         bump = global.bump,
-        has_one = authority @ ProgramError::Unauthorized
+        has_one = authority @ SkinVaultError::Unauthorized
     )]
     pub global: Account<'info, Global>,
 
@@ -56,9 +48,9 @@ pub struct SetOracle<'info> {
 pub struct ToggleBuyback<'info> {
     #[account(
         mut,
-        seeds = [b"global"],
+        seeds = [b"global_state"],
         bump = global.bump,
-        has_one = authority @ ProgramError::Unauthorized
+        has_one = authority @ SkinVaultError::Unauthorized
     )]
     pub global: Account<'info, Global>,
 
@@ -69,9 +61,9 @@ pub struct ToggleBuyback<'info> {
 pub struct SetMinTreasuryBalance<'info> {
     #[account(
         mut,
-        seeds = [b"global"],
+        seeds = [b"global_state"],
         bump = global.bump,
-        has_one = authority @ ProgramError::Unauthorized
+        has_one = authority @ SkinVaultError::Unauthorized
     )]
     pub global: Account<'info, Global>,
 
@@ -81,7 +73,7 @@ pub struct SetMinTreasuryBalance<'info> {
 #[derive(Accounts)]
 pub struct DepositTreasury<'info> {
     #[account(
-        seeds = [b"global"],
+        seeds = [b"global_state"],
         bump = global.bump
     )]
     pub global: Account<'info, Global>,
@@ -95,7 +87,7 @@ pub struct DepositTreasury<'info> {
 
     #[account(
         mut,
-        constraint = depositor_ata.mint == usdc_mint.key() @ ProgramError::Unauthorized
+        constraint = depositor_ata.mint == usdc_mint.key() @ SkinVaultError::Unauthorized
     )]
     pub depositor_ata: Account<'info, TokenAccount>,
 
@@ -192,7 +184,7 @@ pub fn deposit_treasury_handler(ctx: Context<DepositTreasury>, amount: u64) -> R
         .treasury_ata
         .amount
         .checked_add(amount)
-        .ok_or(ProgramError::ArithmeticOverflow)?;
+        .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
     emit!(TreasuryDeposit {
         amount,
@@ -212,9 +204,9 @@ pub fn deposit_treasury_handler(ctx: Context<DepositTreasury>, amount: u64) -> R
 #[derive(Accounts)]
 pub struct WithdrawTreasury<'info> {
     #[account(
-        seeds = [b"global"],
+        seeds = [b"global_state"],
         bump = global.bump,
-        has_one = authority @ ProgramError::Unauthorized
+        has_one = authority @ SkinVaultError::Unauthorized
     )]
     pub global: Account<'info, Global>,
 
@@ -227,7 +219,7 @@ pub struct WithdrawTreasury<'info> {
 
     #[account(
         mut,
-        constraint = recipient_ata.mint == usdc_mint.key() @ ProgramError::Unauthorized
+        constraint = recipient_ata.mint == usdc_mint.key() @ SkinVaultError::Unauthorized
     )]
     pub recipient_ata: Account<'info, TokenAccount>,
 
@@ -245,15 +237,15 @@ pub fn withdraw_treasury_handler(ctx: Context<WithdrawTreasury>, amount: u64) ->
     // Ensure minimum balance remains
     let remaining_balance = treasury_balance
         .checked_sub(amount)
-        .ok_or(ProgramError::ArithmeticOverflow)?;
+        .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
     require!(
         remaining_balance >= global.min_treasury_balance,
-        ProgramError::TreasuryInsufficient
+        SkinVaultError::TreasuryInsufficient
     );
 
     // Transfer from treasury using PDA signer
-    let global_seeds: &[&[u8]] = &[b"global", &[global.bump]];
+    let global_seeds: &[&[u8]] = &[b"global_state", &[global.bump]];
     let signer_seeds: &[&[&[u8]]] = &[global_seeds];
 
     crate::cpi::spl::transfer_tokens(
@@ -280,9 +272,9 @@ pub fn withdraw_treasury_handler(ctx: Context<WithdrawTreasury>, amount: u64) ->
 pub struct EmergencyPause<'info> {
     #[account(
         mut,
-        seeds = [b"global"],
+        seeds = [b"global_state"],
         bump = global.bump,
-        has_one = authority @ ProgramError::Unauthorized
+        has_one = authority @ SkinVaultError::Unauthorized
     )]
     pub global: Account<'info, Global>,
 
@@ -319,10 +311,10 @@ pub fn initiate_authority_transfer_handler(
 pub struct AcceptAuthority<'info> {
     #[account(
         mut,
-        seeds = [b"global"],
+        seeds = [b"global_state"],
         bump = global.bump,
         constraint = global.pending_authority == Some(new_authority.key())
-            @ ProgramError::Unauthorized
+            @ SkinVaultError::Unauthorized
     )]
     pub global: Account<'info, Global>,
 

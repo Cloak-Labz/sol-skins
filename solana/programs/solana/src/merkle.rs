@@ -1,5 +1,5 @@
 use crate::constants::MAX_MERKLE_PROOF_DEPTH;
-use crate::errors::ProgramError;
+use crate::errors::SkinVaultError;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::keccak;
 
@@ -8,7 +8,7 @@ pub fn verify_merkle_proof(leaf: &[u8; 32], root: &[u8; 32], proof: &Vec<[u8; 32
     // Check proof depth
     require!(
         proof.len() <= MAX_MERKLE_PROOF_DEPTH,
-        ProgramError::MerkleProofTooDeep
+        SkinVaultError::MerkleProofTooDeep
     );
 
     let mut computed_hash = *leaf;
@@ -28,7 +28,7 @@ pub fn verify_merkle_proof(leaf: &[u8; 32], root: &[u8; 32], proof: &Vec<[u8; 32
         computed_hash = keccak::hash(&data).0;
     }
 
-    require!(computed_hash == *root, ProgramError::InvalidMerkleProof);
+    require!(computed_hash == *root, SkinVaultError::InvalidMerkleProof);
 
     Ok(())
 }
@@ -44,7 +44,7 @@ pub fn create_inventory_leaf(inventory_id: &str, metadata: &str) -> [u8; 32] {
 
 /// Create a simple merkle tree from a list of leaves
 pub fn build_merkle_tree(leaves: Vec<[u8; 32]>) -> Result<[u8; 32]> {
-    require!(!leaves.is_empty(), ProgramError::InvalidBatchId);
+    require!(!leaves.is_empty(), SkinVaultError::InvalidBatchId);
 
     if leaves.len() == 1 {
         return Ok(leaves[0]);
@@ -93,7 +93,7 @@ pub fn generate_merkle_proof(
     let target_index = leaves
         .iter()
         .position(|leaf| leaf == target_leaf)
-        .ok_or(ProgramError::InvalidMerkleProof)?;
+        .ok_or(SkinVaultError::InvalidMerkleProof)?;
 
     let mut proof = Vec::new();
     let mut current_level = leaves.clone();

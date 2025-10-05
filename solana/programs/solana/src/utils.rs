@@ -1,5 +1,5 @@
 use crate::constants::*;
-use crate::errors::ProgramError;
+use crate::errors::SkinVaultError;
 use anchor_lang::prelude::*;
 use anchor_lang::solana_program::keccak;
 
@@ -37,7 +37,7 @@ pub fn generate_random_index(
     batch_id: u64,
     pool_size: u64,
 ) -> Result<u64> {
-    require!(pool_size > 0, ProgramError::InvalidPoolSize);
+    require!(pool_size > 0, SkinVaultError::InvalidPoolSize);
 
     let mut data = Vec::with_capacity(32 + 32 + 8);
     data.extend_from_slice(randomness);
@@ -61,7 +61,7 @@ pub fn derive_price_store_key(inventory_id_hash: &[u8; 32]) -> Pubkey {
 pub fn validate_inventory_hash(hash: &[u8; 32]) -> Result<()> {
     // Check that it's not all zeros (invalid inventory)
     if hash.iter().all(|&b| b == 0) {
-        return Err(ProgramError::InvalidBatchId.into());
+        return Err(SkinVaultError::InvalidBatchId.into());
     }
     Ok(())
 }

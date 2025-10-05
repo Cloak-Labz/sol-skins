@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-use crate::errors::ProgramError;
+use crate::errors::SkinVaultError;
 use crate::events::*;
 use crate::states::*;
 use crate::utils::*;
@@ -44,17 +44,17 @@ pub fn set_price_signed_handler(
     // Validate timestamp (not too old, not in future)
     require!(
         timestamp > 0 && timestamp <= current_time && !is_price_stale(timestamp, current_time),
-        ProgramError::PriceStale
+        SkinVaultError::PriceStale
     );
 
     // Validate price
-    require!(price > 0, ProgramError::InvalidTimestamp);
+    require!(price > 0, SkinVaultError::InvalidTimestamp);
 
     // Validate oracle is set
     let global = &ctx.accounts.global;
     require!(
         global.oracle_pubkey != Pubkey::default(),
-        ProgramError::OracleNotSet
+        SkinVaultError::OracleNotSet
     );
 
     // Create message for signature verification
@@ -62,7 +62,7 @@ pub fn set_price_signed_handler(
 
     // TODO: Implement actual signature verification
     // For now, we'll do a basic check that signature is not all zeros
-    require!(signature != [0u8; 64], ProgramError::InvalidSignature);
+    require!(signature != [0u8; 64], SkinVaultError::InvalidSignature);
 
     // In production, verify signature using ed25519_verify syscall or similar
     // verify_oracle_signature(&message, &signature, &global.oracle_pubkey)?;
