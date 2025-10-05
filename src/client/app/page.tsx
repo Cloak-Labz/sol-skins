@@ -41,24 +41,6 @@ export default function LandingPage() {
             </div>
           </div>
           <nav className="hidden md:flex items-center gap-8">
-            <a
-              href="#how-it-works"
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              How It Works
-            </a>
-            <a
-              href="#trust"
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              Trust
-            </a>
-            <a
-              href="#liquidity"
-              className="text-gray-400 hover:text-white transition-colors"
-            >
-              Liquidity
-            </a>
             <Link href="/app-dashboard/packs">
               <Button className="bg-[#E99500] hover:bg-[#c77f00] text-black font-bold">
                 Launch App
