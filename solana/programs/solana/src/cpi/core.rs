@@ -46,7 +46,7 @@ pub fn create_core_asset<'info>(
     // Validate Core program ID
     require!(
         core_program.key() == MPL_CORE_ID,
-        SkinVaultError::InvalidCandyMachineProgram
+        SkinVaultError::InvalidCoreProgram
     );
 
     // Build plugins for the asset
@@ -96,12 +96,12 @@ pub fn create_core_asset<'info>(
     if let Some(seeds) = signer_seeds {
         create_builder.invoke_signed(seeds).map_err(|e| {
             msg!("Error creating core asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::ProgramError::from(e))
+            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
         })?;
     } else {
         create_builder.invoke().map_err(|e| {
             msg!("Error creating core asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::ProgramError::from(e))
+            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
         })?;
     }
 
@@ -134,7 +134,7 @@ pub fn burn_core_asset<'info>(
     // Validate Core program ID
     require!(
         core_program.key() == MPL_CORE_ID,
-        SkinVaultError::InvalidCandyMachineProgram
+        SkinVaultError::InvalidCoreProgram
     );
 
     // Build the burn instruction
@@ -153,12 +153,12 @@ pub fn burn_core_asset<'info>(
     if let Some(seeds) = signer_seeds {
         burn_builder.invoke_signed(seeds).map_err(|e| {
             msg!("Error burning core asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::ProgramError::from(e))
+            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
         })?;
     } else {
         burn_builder.invoke().map_err(|e| {
             msg!("Error burning core asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::ProgramError::from(e))
+            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
         })?;
     }
 
@@ -189,7 +189,7 @@ pub fn update_freeze_delegate<'info>(
     // Validate Core program ID
     require!(
         core_program.key() == MPL_CORE_ID,
-        SkinVaultError::InvalidCandyMachineProgram
+        SkinVaultError::InvalidCoreProgram
     );
 
     // Build the update plugin instruction
@@ -212,12 +212,12 @@ pub fn update_freeze_delegate<'info>(
     if let Some(seeds) = signer_seeds {
         update_builder.invoke_signed(seeds).map_err(|e| {
             msg!("Error updating freeze delegate: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::ProgramError::from(e))
+            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
         })?;
     } else {
         update_builder.invoke().map_err(|e| {
             msg!("Error updating freeze delegate: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::ProgramError::from(e))
+            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
         })?;
     }
 
@@ -255,7 +255,7 @@ pub fn add_plugin_to_asset<'info>(
     // Validate Core program ID
     require!(
         core_program.key() == MPL_CORE_ID,
-        SkinVaultError::InvalidCandyMachineProgram
+        SkinVaultError::InvalidCoreProgram
     );
 
     // Build the add plugin instruction
@@ -281,12 +281,12 @@ pub fn add_plugin_to_asset<'info>(
     if let Some(seeds) = signer_seeds {
         add_builder.invoke_signed(seeds).map_err(|e| {
             msg!("Error adding plugin to asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::ProgramError::from(e))
+            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
         })?;
     } else {
         add_builder.invoke().map_err(|e| {
             msg!("Error adding plugin to asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::ProgramError::from(e))
+            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
         })?;
     }
 
@@ -317,7 +317,7 @@ pub fn remove_plugin_from_asset<'info>(
     // Validate Core program ID
     require!(
         core_program.key() == MPL_CORE_ID,
-        SkinVaultError::InvalidCandyMachineProgram
+        SkinVaultError::InvalidCoreProgram
     );
 
     // Build the remove plugin instruction
@@ -338,12 +338,12 @@ pub fn remove_plugin_from_asset<'info>(
     if let Some(seeds) = signer_seeds {
         remove_builder.invoke_signed(seeds).map_err(|e| {
             msg!("Error removing plugin from asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::ProgramError::from(e))
+            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
         })?;
     } else {
         remove_builder.invoke().map_err(|e| {
             msg!("Error removing plugin from asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::ProgramError::from(e))
+            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
         })?;
     }
 

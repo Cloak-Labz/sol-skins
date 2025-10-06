@@ -70,4 +70,7 @@ pub enum SkinVaultError {
 
     #[msg("Invalid metadata URI or index")]
     InvalidMetadata,
+
+    #[msg("")]
+    InvalidCoreProgram,
 }

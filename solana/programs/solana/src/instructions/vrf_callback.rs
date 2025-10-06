@@ -100,7 +100,7 @@ pub fn vrf_callback_handler(
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
     emit!(BoxOpened {
-        nft_mint: box_state.asset, // Using asset as identifier
+        nft_mint: box_state.asset,
         randomness: final_randomness,
         random_index,
         pool_size: vrf_pending.pool_size,

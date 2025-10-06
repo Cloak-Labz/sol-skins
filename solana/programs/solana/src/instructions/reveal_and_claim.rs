@@ -25,7 +25,7 @@ pub struct RevealAndClaim<'info> {
     /// Box state (contains batch_id for deterministic selection)
     #[account(
         mut,
-        seeds = [b"box", box_state.asset.as_ref()],
+        seeds = [b"box", nft_mint.key().as_ref()],
         bump = box_state.bump,
         close = user, // Close and refund rent after claiming
     )]
@@ -44,7 +44,6 @@ pub struct RevealAndClaim<'info> {
         payer = user,
         mint::decimals = 0,
         mint::authority = user,
-        mint::freeze_authority = user,
     )]
     pub nft_mint: Account<'info, Mint>,
 
@@ -102,14 +101,14 @@ pub fn reveal_and_claim_handler(ctx: Context<RevealAndClaim>) -> Result<()> {
         SkinVaultError::InvalidMetadataProgram
     );
 
-    // HIDDEN SETTINGS: Use deterministic selection for large batches
-    // This follows the Metaplex Hidden Settings pattern for large drops
-    let num_items = 25u32; // We know we have 25 skins in this batch
+    // DYNAMIC: Get metadata URIs from batch (not hardcoded!)
+    let metadata_uris = &batch.metadata_uris;
+    require!(!metadata_uris.is_empty(), SkinVaultError::InvalidMetadata);
+
+    // Deterministic item index based on Box/Batch ID (no VRF needed)
+    let num_items = metadata_uris.len() as u32;
     let item_index = (batch.batch_id % num_items as u64) as u32;
-    
-    // Generate the actual URI based on the selected index
-    // In a real implementation, this would point to the actual metadata
-    let uri = format!("https://skinvault.com/skin/{}/{}", batch.batch_id, item_index);
+    let uri = metadata_uris[item_index as usize].clone();
 
     msg!("🎯 IMPLEMENTING REAL NFT MINTING!");
     msg!("📦 Batch ID: {}", batch.batch_id);
@@ -122,18 +121,8 @@ pub fn reveal_and_claim_handler(ctx: Context<RevealAndClaim>) -> Result<()> {
     // WORKING NFT CREATION using Metaplex CPI builders!
     msg!("🚀 Creating NFT via Metaplex Token Metadata CPI...");
 
-    // Get skin name based on index (using our 25 skins)
-    let skin_names = vec![
-        "AK-47 | Fire Serpent", "AWP | Dragon Lore", "M4A4 | Howl",
-        "AK-47 | Redline", "AWP | Medusa", "M4A1-S | Icarus Fell",
-        "AK-47 | Vulcan", "AWP | Lightning Strike", "M4A4 | Poseidon",
-        "AK-47 | Jaguar", "AWP | Graphite", "M4A1-S | Hyper Beast",
-        "AK-47 | Aquamarine Revenge", "AWP | Oni Taiji", "M4A4 | Asiimov",
-        "AK-47 | Bloodsport", "AWP | Redline", "M4A1-S | Golden Coil",
-        "AK-47 | Neon Revolution", "AWP | Fever Dream", "M4A4 | Desolate Space",
-        "AK-47 | The Empress", "AWP | Mortis", "M4A1-S | Mecha Industries",
-        "AK-47 | Legion of Anubis"
-    ];
+    // Get skin name based on index (simplified for now)
+    let skin_names = vec!["AK-47 | Fire Serpent", "AWP | Dragon Lore", "M4A4 | Howl"];
     let skin_name = if item_index < skin_names.len() as u32 {
         skin_names[item_index as usize].to_string()
     } else {
@@ -167,21 +156,7 @@ pub fn reveal_and_claim_handler(ctx: Context<RevealAndClaim>) -> Result<()> {
     .is_mutable(true)
     .invoke()?;
 
-    // Mint 1 token to user's ATA BEFORE creating master edition
-    // (Master Edition requires exactly 1 token in the ATA)
-    mint_to(
-        CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            anchor_spl::token::MintTo {
-                mint: ctx.accounts.nft_mint.to_account_info(),
-                to: ctx.accounts.user_ata.to_account_info(),
-                authority: ctx.accounts.user.to_account_info(),
-            },
-        ),
-        1,
-    )?;
-
-    // Create master edition for 1/1 NFT (requires exactly 1 token in ATA)
+    // Create master edition for 1/1 NFT
     mpl_token_metadata::instructions::CreateMasterEditionV3CpiBuilder::new(
         &ctx.accounts.token_metadata_program.to_account_info(),
     )
@@ -196,6 +171,19 @@ pub fn reveal_and_claim_handler(ctx: Context<RevealAndClaim>) -> Result<()> {
     .rent(Some(&ctx.accounts.rent.to_account_info()))
     .max_supply(0) // 0 = 1/1 NFT
     .invoke()?;
+
+    // Mint 1 token to user's ATA
+    mint_to(
+        CpiContext::new(
+            ctx.accounts.token_program.to_account_info(),
+            anchor_spl::token::MintTo {
+                mint: ctx.accounts.nft_mint.to_account_info(),
+                to: ctx.accounts.user_ata.to_account_info(),
+                authority: ctx.accounts.user.to_account_info(),
+            },
+        ),
+        1,
+    )?;
 
     msg!("✅ REAL NFT MINTING SUCCESS!");
     msg!(

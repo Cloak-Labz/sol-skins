@@ -21,4 +21,3 @@ anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
 anchor-spl = "0.31.1"
 mpl-core = { version = "0.11.1-beta.2", features = ["anchor"] }
 mpl-token-metadata = { version = "5.0.0", features = ["serde"] }
-# Candy Machine integration via raw CPI calls (no dependency conflicts)

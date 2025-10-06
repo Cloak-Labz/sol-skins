@@ -80,7 +80,7 @@ pub fn set_price_signed_handler(
         price_store
             .update_count
             .checked_add(1)
-            .ok_or(ProgramError::ArithmeticOverflow)?
+            .ok_or(SkinVaultError::ArithmeticOverflow)?
     };
     price_store.bump = ctx.bumps.price_store;
 

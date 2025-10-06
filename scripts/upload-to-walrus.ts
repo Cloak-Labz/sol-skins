@@ -2,7 +2,6 @@ import { WalrusClient as WalrusSDK } from '@mysten/walrus';
 import { CoinBalance, getFullnodeUrl, SuiClient } from '@mysten/sui/client';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { fromBase64, toBase64 } from '@mysten/sui/utils';
-import Arweave from 'arweave';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -41,7 +40,6 @@ export class WalrusClient {
     private epochs: number;
     private verbose: boolean;
     private aggregatorUrl: string;
-    private arweaveWallet: any; // Arweave wallet for fallback uploads
 
     private constructor(
         client: WalrusSDK,
@@ -62,15 +60,6 @@ export class WalrusClient {
         this.aggregatorUrl = network === 'mainnet'
             ? 'https://aggregator.walrus.space/v1'
             : 'https://aggregator.walrus-testnet.walrus.space/v1';
-
-        // Initialize Arweave wallet for fallback uploads
-        this.arweaveWallet = Arweave.init({
-            host: 'arweave.net',
-            port: 443,
-            protocol: 'https',
-            timeout: 20000,
-            logging: false,
-        }).wallets.generate(); // Generate a random wallet for fallback
     }
 
     /**
@@ -296,374 +285,55 @@ export class WalrusClient {
     }
 
     /**
-     * Upload a Blob to Walrus with GRANT-COMPLIANT robust retry logic for Sui testnet congestion
-     * This method MUST succeed for grant requirements - implements multiple strategies
+     * Upload JSON metadata to Walrus
+     * Converts the object to JSON and uploads it
      */
-    async uploadBlobWithRetry(data: Uint8Array, maxRetries: number = 10): Promise<WalrusUploadResult> {
-        let lastError: Error | null = null;
-        
-        // Strategy 1: Standard retry with exponential backoff
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                return await this.uploadBlob(data);
-            } catch (error: any) {
-                lastError = error;
-                
-                // Check if this is a transaction conflict or congestion error
-                const isConflictError = error.message.includes('already locked by a different transaction') ||
-                                      error.message.includes('Transaction is rejected') ||
-                                      error.message.includes('non-retriable') ||
-                                      error.message.includes('more than 1/3 of validators');
-                
-                if (this.verbose) {
-                    console.warn(`⚠️  Blob upload attempt ${attempt}/${maxRetries} failed: ${error.message.substring(0, 100)}...`);
-                }
-                
-                // If this is not the last attempt, wait before retrying with progressive delays
-                if (attempt < maxRetries) {
-                    let delay: number;
-                    
-                    if (isConflictError) {
-                        // For transaction conflicts, use longer delays with jitter
-                        delay = Math.pow(2, attempt) * 3000 + Math.random() * 3000; // 6s, 12s, 24s, 48s + jitter
-                    } else {
-                        // For other errors, shorter delays
-                        delay = attempt * 2000 + Math.random() * 1000; // 2s, 4s, 6s, 8s + jitter
-                    }
-                    
-                    if (this.verbose) {
-                        console.log(`⏳ ${isConflictError ? 'Transaction conflict' : 'Error'} detected, waiting ${Math.round(delay)}ms before retry...`);
-                    }
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-            }
-        }
-        
-        // Strategy 2: If standard retry fails, try with different transaction parameters
+    async uploadJson(metadata: object): Promise<string> {
         if (this.verbose) {
-            console.log(`🔄 Standard retry failed, trying alternative transaction strategy...`);
+            console.log(`📝 Uploading JSON metadata to Walrus...`);
         }
-        
+
         try {
-            // Try with different gas settings and priority
-            return await this.uploadBlobWithAlternativeStrategy(data);
-        } catch (altError: any) {
-            if (this.verbose) {
-                console.warn(`⚠️  Alternative strategy failed: ${altError.message.substring(0, 100)}...`);
-            }
+            // Convert metadata to JSON string
+            const jsonString = JSON.stringify(metadata, null, 2);
+
+            // Convert to Uint8Array
+            const encoder = new TextEncoder();
+            const data = encoder.encode(jsonString);
+
+            // Upload
+            const result = await this.uploadBlob(data);
+
+            return result.url;
+        } catch (error: any) {
+            throw new Error(`Failed to upload JSON: ${error.message}`);
         }
-        
-        // Strategy 3: If all else fails, try with minimal data to test connectivity
-        if (this.verbose) {
-            console.log(`🔄 Trying minimal test upload to verify connectivity...`);
-        }
-        
-        try {
-            const testData = new TextEncoder().encode("test");
-            const testResult = await this.uploadBlob(testData);
-            if (this.verbose) {
-                console.log(`✅ Connectivity verified, retrying original upload...`);
-            }
-            
-            // If test succeeds, retry original with fresh attempt
-            return await this.uploadBlob(data);
-        } catch (testError: any) {
-            if (this.verbose) {
-                console.error(`❌ Connectivity test failed: ${testError.message}`);
-            }
-        }
-        
-        throw new Error(`GRANT-CRITICAL: Failed to upload blob after ${maxRetries} attempts and alternative strategies: ${lastError?.message}`);
     }
 
     /**
-     * Alternative upload strategy with different transaction parameters
-     */
-    private async uploadBlobWithAlternativeStrategy(data: Uint8Array): Promise<WalrusUploadResult> {
-        if (this.verbose) {
-            console.log(`🔄 Attempting upload with alternative transaction strategy...`);
-        }
-        
-        // Strategy 2a: Try with different RPC endpoint
-        try {
-            if (this.verbose) {
-                console.log(`🔄 Trying alternative RPC endpoint...`);
-            }
-            // Switch to different RPC endpoint if available
-            return await this.uploadBlob(data);
-        } catch (rpcError: any) {
-            if (this.verbose) {
-                console.warn(`⚠️  Alternative RPC failed: ${rpcError.message.substring(0, 100)}...`);
-            }
-        }
-        
-        // Strategy 2b: Try with smaller data chunks
-        try {
-            if (this.verbose) {
-                console.log(`🔄 Trying with compressed data...`);
-            }
-            // Compress the data to reduce transaction size
-            const compressedData = await this.compressData(data);
-            return await this.uploadBlob(compressedData);
-        } catch (compressError: any) {
-            if (this.verbose) {
-                console.warn(`⚠️  Compression strategy failed: ${compressError.message.substring(0, 100)}...`);
-            }
-        }
-        
-        // Strategy 2c: Try with fresh client instance
-        try {
-            if (this.verbose) {
-                console.log(`🔄 Trying with fresh client instance...`);
-            }
-            // Create a fresh client instance
-            const freshClient = await WalrusClient.create({
-                useSuiCLI: true,
-                verbose: false // Reduce verbosity for retry
-            });
-            return await freshClient.uploadBlob(data);
-        } catch (freshError: any) {
-            if (this.verbose) {
-                console.warn(`⚠️  Fresh client strategy failed: ${freshError.message.substring(0, 100)}...`);
-            }
-        }
-        
-        // If all alternative strategies fail, throw the original error
-        throw new Error(`All alternative strategies failed`);
-    }
-
-    /**
-     * Compress data to reduce transaction size
-     */
-    private async compressData(data: Uint8Array): Promise<Uint8Array> {
-        // Simple compression - in production, you might use a proper compression library
-        // For now, we'll just return the original data
-        return data;
-    }
-
-    /**
-     * Upload JSON metadata to Walrus with GRANT-COMPLIANT retry logic for Sui testnet congestion
-     * This method MUST succeed for grant requirements - no fallbacks allowed
-     */
-    async uploadJson(metadata: object, maxRetries: number = 10): Promise<string> {
-        if (this.verbose) {
-            console.log(`📝 Uploading JSON metadata to Walrus (GRANT-REQUIRED)...`);
-        }
-
-        let lastError: Error | null = null;
-        
-        for (let attempt = 1; attempt <= maxRetries; attempt++) {
-            try {
-                // Convert metadata to JSON string
-                const jsonString = JSON.stringify(metadata, null, 2);
-
-                // Convert to Uint8Array
-                const encoder = new TextEncoder();
-                const data = encoder.encode(jsonString);
-
-                // Upload with enhanced retry logic (using the grant-compliant retry)
-                const result = await this.uploadBlobWithRetry(data, maxRetries);
-
-                if (this.verbose) {
-                    console.log(`✅ JSON metadata uploaded successfully on attempt ${attempt}`);
-                }
-
-                return result.url;
-            } catch (error: any) {
-                lastError = error;
-                
-                if (this.verbose) {
-                    console.warn(`⚠️  JSON upload attempt ${attempt}/${maxRetries} failed: ${error.message.substring(0, 100)}...`);
-                }
-                
-                // If this is not the last attempt, wait before retrying
-                if (attempt < maxRetries) {
-                    const delay = Math.pow(2, attempt) * 2000 + Math.random() * 2000; // Progressive delays: 4s, 8s, 16s, 32s + jitter
-                    if (this.verbose) {
-                        console.log(`⏳ Waiting ${Math.round(delay)}ms before retry...`);
-                    }
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
-            }
-        }
-        
-        throw new Error(`GRANT-CRITICAL: Failed to upload JSON after ${maxRetries} attempts: ${lastError?.message}`);
-    }
-
-    /**
-     * Upload multiple JSON objects and return their URIs - HYBRID STRATEGY
-     * Tries Walrus first (for grant compliance), falls back to Arweave if Walrus fails
+     * Upload multiple JSON objects and return their URIs
      */
     async uploadJsonBatch(metadataArray: object[]): Promise<string[]> {
         if (this.verbose) {
-            console.log(`🐋 Uploading ${metadataArray.length} metadata files (Walrus first, Arweave fallback)...`);
+            console.log(`🐋 Uploading ${metadataArray.length} metadata files to Walrus...`);
         }
 
         const uris: string[] = [];
-        let walrusFailed = false;
 
-        // Strategy 1: Try Walrus first (for grant compliance)
-        try {
-            for (let i = 0; i < metadataArray.length; i++) {
-                const metadata = metadataArray[i];
-                if (this.verbose) {
-                    console.log(`\n[${i + 1}/${metadataArray.length}] Uploading to Walrus (GRANT-ATTEMPT)...`);
-                }
-                
-                try {
-                    const uri = await this.uploadJson(metadata, 5); // Reduced retries for faster fallback
-                    uris.push(uri);
-                    
-                    if (this.verbose) {
-                        console.log(`✅ Walrus upload ${i + 1} successful: ${uri.substring(0, 50)}...`);
-                    }
-                    
-                    // Add delay between uploads to avoid transaction conflicts
-                    if (i < metadataArray.length - 1) {
-                        const delay = 5000 + Math.random() * 3000; // 5-8 seconds between uploads
-                        if (this.verbose) {
-                            console.log(`⏳ Waiting ${Math.round(delay)}ms before next upload...`);
-                        }
-                        await new Promise(resolve => setTimeout(resolve, delay));
-                    }
-                } catch (error: any) {
-                    if (this.verbose) {
-                        console.warn(`⚠️  Walrus upload ${i + 1} failed: ${error.message.substring(0, 100)}...`);
-                    }
-                    walrusFailed = true;
-                    break; // Exit Walrus loop and try Arweave
-                }
-            }
-
-            // If all Walrus uploads succeeded
-            if (!walrusFailed && uris.length === metadataArray.length) {
-                if (this.verbose) {
-                    console.log(`\n✅ GRANT SUCCESS: All ${metadataArray.length} files uploaded to Walrus!`);
-                }
-                return uris;
-            }
-        } catch (error: any) {
+        for (let i = 0; i < metadataArray.length; i++) {
+            const metadata = metadataArray[i];
             if (this.verbose) {
-                console.warn(`⚠️  Walrus batch upload failed: ${error.message.substring(0, 100)}...`);
+                console.log(`\n[${i + 1}/${metadataArray.length}] Uploading metadata...`);
             }
-            walrusFailed = true;
+            const uri = await this.uploadJson(metadata);
+            uris.push(uri);
         }
 
-        // Strategy 2: Fallback to Arweave if Walrus failed
-        if (walrusFailed) {
-            if (this.verbose) {
-                console.log(`\n🔄 Walrus failed, falling back to Arweave for remaining uploads...`);
-            }
-            
-            // Clear any partial Walrus results
-            uris.length = 0;
-            
-            // Upload all metadata to Arweave
-            for (let i = 0; i < metadataArray.length; i++) {
-                const metadata = metadataArray[i];
-                if (this.verbose) {
-                    console.log(`\n[${i + 1}/${metadataArray.length}] Uploading to Arweave (FALLBACK)...`);
-                }
-                
-                try {
-                    const uri = await this.uploadToArweave(metadata);
-                    uris.push(uri);
-                    
-                    if (this.verbose) {
-                        console.log(`✅ Arweave upload ${i + 1} successful: ${uri.substring(0, 50)}...`);
-                    }
-                } catch (error: any) {
-                    if (this.verbose) {
-                        console.error(`❌ Arweave upload ${i + 1} failed: ${error.message}`);
-                    }
-                    throw new Error(`Both Walrus and Arweave uploads failed for metadata ${i + 1}: ${error.message}`);
-                }
-            }
-
-            if (this.verbose) {
-                console.log(`\n✅ FALLBACK SUCCESS: All ${metadataArray.length} files uploaded to Arweave!`);
-            }
+        if (this.verbose) {
+            console.log(`\n✅ All ${metadataArray.length} files uploaded!`);
         }
 
         return uris;
-    }
-
-    /**
-     * Upload JSON metadata to Arweave as fallback
-     */
-    private async uploadToArweave(metadata: object): Promise<string> {
-        if (this.verbose) {
-            console.log(`📝 Uploading JSON metadata to Arweave (FALLBACK)...`);
-        }
-
-        try {
-            // Initialize Arweave client
-            const arweave = Arweave.init({
-                host: 'arweave.net',
-                port: 443,
-                protocol: 'https',
-                timeout: 20000,
-                logging: false,
-            });
-
-            // Convert metadata to JSON string
-            const jsonString = JSON.stringify(metadata, null, 2);
-            const data = Buffer.from(jsonString, 'utf8');
-
-            // Create a transaction
-            const transaction = await arweave.createTransaction({
-                data: data,
-            }, this.arweaveWallet);
-
-            // Add tags for metadata
-            transaction.addTag('Content-Type', 'application/json');
-            transaction.addTag('App-Name', 'SkinVault');
-            transaction.addTag('App-Version', '1.0.0');
-
-            // Sign the transaction
-            await arweave.transactions.sign(transaction, this.arweaveWallet);
-
-            // Submit the transaction
-            const response = await arweave.transactions.post(transaction);
-            
-            if (response.status === 200) {
-                const arweaveUri = `https://arweave.net/${transaction.id}`;
-                
-                if (this.verbose) {
-                    console.log(`✅ Arweave upload successful: ${arweaveUri}`);
-                }
-                
-                return arweaveUri;
-            } else {
-                throw new Error(`Arweave upload failed with status ${response.status}`);
-            }
-        } catch (error: any) {
-            if (this.verbose) {
-                console.warn(`⚠️  Arweave upload failed: ${error.message}`);
-                console.log(`🔄 Falling back to mock Arweave URI...`);
-            }
-            
-            // Fallback to mock URI if real Arweave fails
-            const mockArweaveUri = `https://arweave.net/${this.generateMockArweaveId()}`;
-            
-            if (this.verbose) {
-                console.log(`✅ Mock Arweave URI generated: ${mockArweaveUri}`);
-            }
-            
-            return mockArweaveUri;
-        }
-    }
-
-    /**
-     * Generate a mock Arweave transaction ID
-     */
-    private generateMockArweaveId(): string {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
-        let result = '';
-        for (let i = 0; i < 43; i++) {
-            result += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        return result;
     }
 
     /**

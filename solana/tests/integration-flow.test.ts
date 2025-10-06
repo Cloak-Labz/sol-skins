@@ -5,7 +5,7 @@ import { expect } from "chai";
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, createInitializeMintInstruction, createAssociatedTokenAccountInstruction, createMintToInstruction } from "@solana/spl-token";
 import { WalrusClient } from "../upload-to-walrus";
 
-describe("🚀 HIGH-SCALE CANDY MACHINE INTEGRATION (10 SKINS)", () => {
+describe("🚀 HIGH-SCALE CORE NFT INTEGRATION (10 SKINS)", () => {
   // Anchor setup
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
@@ -41,12 +41,12 @@ describe("🚀 HIGH-SCALE CANDY MACHINE INTEGRATION (10 SKINS)", () => {
     const balance = await walletClient.getBalance();
     console.log(`💰 Sui wallet balance: ${balance} WAL`);
 
-    console.log("\n🎯 === CANDY MACHINE DIRECT INTEGRATION SETUP ===");
+            console.log("\n🎯 === CORE NFT INTEGRATION SETUP ===");
     console.log(`👤 User: ${user.toBase58()}`);
     console.log(`🏢 Program: ${program.programId.toBase58()}`);
   });
 
-    it("🎯 High-Scale Test: 10 Skins → Deterministic Selection", async () => {
+            it("🎯 High-Scale Test: 10 Skins → Core NFT Selection", async () => {
     console.log("\n🎯 === PHASE 1: COLLECTION SETUP ===");
 
     // 1. Initialize global state
@@ -64,17 +64,17 @@ describe("🚀 HIGH-SCALE CANDY MACHINE INTEGRATION (10 SKINS)", () => {
     // 5. Open box to create boxState (required for revealAndClaim)
     await openBox();
 
-    // 6. DIRECT REVEAL (NO VRF!) - Skip VRF callback, go straight to reveal
-    await directCandyMachineReveal(metadataUris);
+            // 6. DIRECT REVEAL (NO VRF!) - Skip VRF callback, go straight to Core NFT reveal
+            await directCandyMachineReveal(metadataUris);
 
     console.log("\n╔══════════════════════════════════════════════════════╗");
     console.log("║                                                      ║");
-    console.log("║   🎉 HIGH-SCALE CANDY MACHINE SUCCESS! 🎉            ║");
-    console.log("║                                                      ║");
-    console.log("║   ✅ 10 skins in pool                                ║");
-    console.log("║   ✅ Deterministic selection                          ║");
-    console.log("║   ✅ Dynamic metadata from Walrus                     ║");
-    console.log("║   ✅ Direct CM CPI integration                        ║");
+            console.log("║   🎉 HIGH-SCALE CORE NFT SUCCESS! 🎉                ║");
+            console.log("║                                                      ║");
+            console.log("║   ✅ 10 skins in pool                                ║");
+            console.log("║   ✅ Core NFT selection                               ║");
+            console.log("║   ✅ Dynamic metadata from Walrus                     ║");
+            console.log("║   ✅ Built-in freeze functionality                   ║");
     console.log("║                                                      ║");
     console.log("╚══════════════════════════════════════════════════════╝\n");
   });
@@ -503,85 +503,49 @@ describe("🚀 HIGH-SCALE CANDY MACHINE INTEGRATION (10 SKINS)", () => {
   }
 
   async function directCandyMachineReveal(metadataUris: string[]) {
-    console.log("\n🍬 === DIRECT CANDY MACHINE REVEAL (NO VRF!) ===");
-    console.log("🚀 Going straight from openBox to revealAndClaim!");
+    console.log("\n🍬 === DIRECT CORE NFT REVEAL (NO VRF!) ===");
+    console.log("🚀 Going straight from openBox to revealAndClaim with Core NFTs!");
 
-    // Generate NFT mint for reveal
-    const nftTokenAccount = Keypair.generate();
-    const nftMetadata = await deriveMetadataPda(nftTokenAccount.publicKey);
-    const nftEdition = await deriveMasterEditionPda(nftTokenAccount.publicKey);
-    const userAta = await getAssociatedTokenAddress(nftTokenAccount.publicKey, user);
+    // Real Core NFT addresses
+    const coreProgram = new PublicKey("CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhQ7z");
 
-    // Real Candy Machine addresses
-    const candyMachine = new PublicKey("5U4gnUzB9rR22UP3MyyZG3UvoSqx5wXreKRsmx6s5Qt1");
-    const candyMachineCoreProgram = new PublicKey("CndyV3LdqHUfDLmE5naZjVN8rBZz4tqhdefbAnjHG3JR");
-    const tokenMetadataProgram = new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s");
-    const tokenProgram = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
-    const associatedTokenProgram = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
-
-    console.log("🎯 Calling revealAndClaim with direct CM integration...");
-    console.log(`   🍬 Candy Machine: ${candyMachine.toBase58()}`);
+    console.log("🎯 Calling revealAndClaim with Core NFT integration...");
+    console.log(`   🎨 Core Program: ${coreProgram.toBase58()}`);
     console.log(`   📦 Batch: ${batch.toBase58()}`);
-    console.log(`   🪙 NFT Token Account: ${nftTokenAccount.publicKey.toBase58()}`);
     console.log(`   📋 Metadata URIs count: ${metadataUris.length}`);
 
     // Use the same global state that was initialized earlier
-    // Don't recalculate - use the existing one that was found during initialization
     console.log(`🔗 Using existing global state: ${globalState.toBase58()}`);
 
-    // Generate new NFT mint for this reveal
-    const newNftMint = Keypair.generate();
+    // Generate new Core NFT asset for this reveal
+    const coreAsset = Keypair.generate();
     
-    // Derive PDAs for the new NFT
-    const [newNftMetadata] = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("metadata"),
-        new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s").toBuffer(),
-        newNftMint.publicKey.toBuffer(),
-      ],
-      new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
-    );
-
-    const [newNftEdition] = PublicKey.findProgramAddressSync(
-      [
-        Buffer.from("metadata"),
-        new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s").toBuffer(),
-        newNftMint.publicKey.toBuffer(),
-        Buffer.from("edition"),
-      ],
-      new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
-    );
-
-    const newUserAta = await getAssociatedTokenAddress(
-      newNftMint.publicKey,
-      user
-    );
+    // Optional collection (can be null for standalone NFTs)
+    const collection = null; // No collection for now
 
     // Use Anchor's built-in method for better signing handling
     try {
-      const signature = await (program.methods as any)
+      // Use raw instruction call since TypeScript types are outdated
+      const instruction = await program.methods
         .revealAndClaim()
         .accounts({
           user: user,
           globalState: globalState,
           boxState: boxState,
           batch: batch,
-          nftMint: newNftMint.publicKey,
-          nftMetadata: newNftMetadata,
-          nftEdition: newNftEdition,
-          userAta: newUserAta,
-          tokenMetadataProgram: tokenMetadataProgram,
-          tokenProgram,
-          associatedTokenProgram,
+          asset: coreAsset.publicKey,
+          collection: collection,
+          coreProgram: coreProgram,
           systemProgram: SystemProgram.programId,
-          rent: anchor.web3.SYSVAR_RENT_PUBKEY,
         })
-        .signers([newNftMint])
-        .rpc();
+        .instruction();
 
-      console.log("✅ DIRECT CM CPI SUCCESS!");
+      const transaction = new Transaction().add(instruction);
+      const signature = await provider.sendAndConfirm(transaction, [coreAsset]);
+
+      console.log("✅ CORE NFT CPI SUCCESS!");
       console.log(`📡 Transaction: ${signature}`);
-      console.log("🎉 Skin revealed via Candy Machine (no VRF needed)!");
+      console.log("🎉 Skin revealed via Core NFT (no VRF needed)!");
       
       // Fetch and display final account states
       console.log(`\n📊 Final Account States After Reveal:`);
@@ -596,28 +560,20 @@ describe("🚀 HIGH-SCALE CANDY MACHINE INTEGRATION (10 SKINS)", () => {
         console.log(`✅ Box State Account Closed (rent refunded)`);
       }
       
-      // Check NFT mint account
-      const nftMintInfo = await provider.connection.getAccountInfo(newNftMint.publicKey);
-      if (nftMintInfo) {
-        console.log(`🎨 NFT Mint Account:`);
-        console.log(`   💰 Balance: ${nftMintInfo.lamports} lamports`);
-        console.log(`   📏 Size: ${nftMintInfo.data.length} bytes`);
-        console.log(`   🔑 Owner: ${nftMintInfo.owner.toBase58()}`);
-      }
-      
-      // Check user's ATA
-      const ataInfo = await provider.connection.getAccountInfo(userAta);
-      if (ataInfo) {
-        console.log(`🪙 User ATA Account:`);
-        console.log(`   💰 Balance: ${ataInfo.lamports} lamports`);
-        console.log(`   📏 Size: ${ataInfo.data.length} bytes`);
+      // Check Core NFT asset account
+      const coreAssetInfo = await provider.connection.getAccountInfo(coreAsset.publicKey);
+      if (coreAssetInfo) {
+        console.log(`🎨 Core NFT Asset:`);
+        console.log(`   💰 Balance: ${coreAssetInfo.lamports} lamports`);
+        console.log(`   📏 Size: ${coreAssetInfo.data.length} bytes`);
+        console.log(`   🔑 Owner: ${coreAssetInfo.owner.toBase58()}`);
       }
 
-      // Verify the NFT was created with correct metadata
+      // Verify the Core NFT was created with correct metadata
       await verifyRevealedMetadata(metadataUris);
 
     } catch (error: any) {
-      console.error("❌ Direct CM CPI failed:");
+      console.error("❌ Core NFT CPI failed:");
       console.error("Message:", error.message);
       if (error.logs) {
         console.error("Logs:", error.logs);

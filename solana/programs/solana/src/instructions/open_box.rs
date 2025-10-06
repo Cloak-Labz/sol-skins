@@ -54,10 +54,10 @@ pub fn open_box_handler(ctx: Context<OpenBox>, pool_size: u64) -> Result<()> {
     );
 
     let current_time = Clock::get()?.unix_timestamp;
-    let box_asset = ctx.accounts.box_state.asset;
+    let box_mint = ctx.accounts.box_state.asset;
 
     // Create VRF seed
-    let vrf_seed = create_vrf_seed(&box_asset, current_time);
+    let vrf_seed = create_vrf_seed(&box_mint, current_time);
 
     // Request VRF randomness
     // We use a simple request ID pattern here. The actual randomness
@@ -67,7 +67,7 @@ pub fn open_box_handler(ctx: Context<OpenBox>, pool_size: u64) -> Result<()> {
 
     // Store VRF request details
     ctx.accounts.vrf_pending.set_inner(VrfPending {
-        box_mint: box_asset, // Using asset as the identifier
+        box_mint,
         request_id,
         request_time: current_time,
         pool_size,
@@ -77,14 +77,14 @@ pub fn open_box_handler(ctx: Context<OpenBox>, pool_size: u64) -> Result<()> {
     });
 
     emit!(BoxOpenRequested {
-        nft_mint: box_asset, // Using asset as the identifier
+        nft_mint: box_mint,
         owner: ctx.accounts.owner.key(),
         vrf_request_id: Some(request_id),
     });
 
     msg!(
         "Box open requested: {} by {} with VRF request ID: {}",
-        box_asset,
+        box_mint,
         ctx.accounts.owner.key(),
         request_id
     );

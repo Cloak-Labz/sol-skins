@@ -18,21 +18,26 @@ describe("SkinVault Core Tests", () => {
   let collection: Keypair, asset: Keypair, vrfPending: PublicKey, boxState: PublicKey;
 
   before(async () => {
-    authority = Keypair.generate();
+    // Use existing wallet to avoid airdrop limits
+    const wallet = provider.wallet as anchor.Wallet;
+    authority = wallet as any; // Use wallet as authority
     oracle = Keypair.generate();
-    user = Keypair.generate();
+    user = wallet as any; // Use wallet as user too
     collection = Keypair.generate();
 
-    // Airdrop
-    await connection.confirmTransaction(await connection.requestAirdrop(authority.publicKey, 5 * LAMPORTS_PER_SOL));
-    await connection.confirmTransaction(await connection.requestAirdrop(oracle.publicKey, 2 * LAMPORTS_PER_SOL));
-    await connection.confirmTransaction(await connection.requestAirdrop(user.publicKey, 2 * LAMPORTS_PER_SOL));
+    // Only airdrop to oracle (minimal)
+    try {
+      await connection.confirmTransaction(await connection.requestAirdrop(oracle.publicKey, 1 * LAMPORTS_PER_SOL));
+    } catch (e) {
+      console.log("⚠️  Oracle airdrop failed, using existing wallet");
+      oracle = wallet as any;
+    }
 
     // Create USDC mint
     usdcMint = await createMint(connection, authority, authority.publicKey, null, 6);
 
     // PDAs
-    [globalState] = PublicKey.findProgramAddressSync([Buffer.from("global")], program.programId);
+    [globalState] = PublicKey.findProgramAddressSync([Buffer.from("global_state")], program.programId);
     treasuryAta = await getAssociatedTokenAddress(usdcMint, globalState, true);
     userUsdcAta = await getAssociatedTokenAddress(usdcMint, user.publicKey);
   });
@@ -71,71 +76,128 @@ describe("SkinVault Core Tests", () => {
     });
   });
 
-  describe("Flow: Open Box → Sell Immediately", () => {
+  describe("Flow: Create Box → Open → Direct Reveal", () => {
+    let batchId: anchor.BN;
+    let batch: PublicKey;
+    let boxAsset: Keypair;
+
+    it("Create batch with metadata", async () => {
+      batchId = new anchor.BN(Date.now());
+      [batch] = PublicKey.findProgramAddressSync(
+        [Buffer.from("batch"), batchId.toArrayLike(Buffer, "le", 8)],
+        program.programId
+      );
+
+      const metadataUris = [
+        "https://example.com/fire-serpent.png",
+        "https://example.com/dragon-lore.png", 
+        "https://example.com/howl.png"
+      ];
+
+      await program.methods
+        .publishMerkleRoot(
+          batchId,
+          new PublicKey("5U4gnUzB9rR22UP3MyyZG3UvoSqx5wXreKRsmx6s5Qt1"), // CM ID
+          metadataUris,
+          Array.from({ length: 32 }, () => Math.floor(Math.random() * 256)),
+          new anchor.BN(Date.now() / 1000)
+        )
+        .accountsPartial({ 
+          authority: authority.publicKey,
+          batch
+        })
+        .signers([authority])
+        .rpc();
+
+      console.log("✅ Batch created:", batch.toString());
+    });
+
+    it("Create box state", async () => {
+      boxAsset = Keypair.generate();
+      [boxState] = PublicKey.findProgramAddressSync(
+        [Buffer.from("box"), boxAsset.publicKey.toBuffer()],
+        program.programId
+      );
+
+      await program.methods
+        .createBox(batchId)
+        .accountsPartial({
+          owner: user.publicKey,
+          boxState,
+          boxAsset: boxAsset.publicKey
+        })
+        .signers([user])
+        .rpc();
+
+      console.log("✅ Box created:", boxState.toString());
+    });
+
     it("User opens box", async () => {
       [vrfPending] = PublicKey.findProgramAddressSync(
-        [Buffer.from("vrf_pending"), user.publicKey.toBuffer()],
+        [Buffer.from("vrf_pending"), boxAsset.publicKey.toBuffer()],
         program.programId
       );
 
       await program.methods
         .openBox(new anchor.BN(3))
-        .accountsPartial({ owner: user.publicKey })
+        .accountsPartial({ 
+          owner: user.publicKey,
+          boxState,
+          batch
+        })
         .signers([user])
         .rpc();
 
       const vrf = await program.account.vrfPending.fetch(vrfPending);
       assert.equal(vrf.randomness.toString(), "0");
+      console.log("✅ Box opened, VRF pending created");
     });
 
-    it("Oracle provides randomness", async () => {
-      const vrf = await program.account.vrfPending.fetch(vrfPending);
-      const randomness = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+    it("Direct reveal and claim (no VRF needed)", async () => {
+      // Create NFT mint for the reveal
+      const nftMint = Keypair.generate();
+      const [nftMetadata] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s").toBuffer(),
+          nftMint.publicKey.toBuffer(),
+        ],
+        new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
+      );
+      const [nftEdition] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("metadata"),
+          new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s").toBuffer(),
+          nftMint.publicKey.toBuffer(),
+          Buffer.from("edition"),
+        ],
+        new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s")
+      );
+      const userNftAta = await getAssociatedTokenAddress(nftMint.publicKey, user.publicKey);
 
       await program.methods
-        .vrfCallback(vrf.requestId, randomness)
-        .accountsPartial({ global: globalState, vrfPending, vrfAuthority: oracle.publicKey })
-        .signers([oracle])
+        .revealAndClaim()
+        .accountsPartial({
+          user: user.publicKey,
+          globalState,
+          boxState,
+          batch,
+          nftMint: nftMint.publicKey,
+          nftMetadata,
+          nftEdition,
+          userAta: userNftAta,
+          tokenMetadataProgram: new PublicKey("metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"),
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"),
+          systemProgram: SystemProgram.programId,
+          rent: new PublicKey("SysvarRent111111111111111111111111111111111")
+        })
+        .signers([user, nftMint])
         .rpc();
 
-      const vrfAfter = await program.account.vrfPending.fetch(vrfPending);
-      assert.notEqual(vrfAfter.randomness.toString(), "0");
+      console.log("✅ NFT revealed and claimed:", nftMint.publicKey.toString());
     });
 
-    it("User reveals and claims NFT", async () => {
-      asset = Keypair.generate();
-      
-      [boxState] = PublicKey.findProgramAddressSync(
-        [Buffer.from("box"), asset.publicKey.toBuffer()],
-        program.programId
-      );
-
-      try {
-        await program.methods
-          .revealAndClaim()
-          .accountsPartial({
-            user: user.publicKey,
-            globalState,
-            vrfPending,
-            boxState,
-            collection: PublicKey.default,
-            asset: asset.publicKey,
-            coreProgram: MPL_CORE_PROGRAM_ID,
-            systemProgram: SystemProgram.programId,
-          })
-          .signers([user, asset])
-          .rpc({ skipPreflight: true });
-        
-        console.log("✅ NFT minted + BoxState created");
-      } catch (e: any) {
-        if (e.message?.includes("AccountNotExecutable")) {
-          console.log("⚠️  Core program not deployed (localnet - use devnet for full test)");
-        } else throw e;
-      }
-
-      const vrfAccount = await connection.getAccountInfo(vrfPending);
-      if (!vrfAccount) console.log("✅ VRF closed");
-    });
 
     it("Set price oracle", async () => {
       // Get the actual inventory hash from BoxState (or use default if not created)
