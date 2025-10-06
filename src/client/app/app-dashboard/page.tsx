@@ -21,10 +21,10 @@ export default function DashboardPage() {
       .catch(() => setPacks([]));
   }, []);
   return (
-    <div className="min-h-screen bg-black p-6 md:p-8 font-sans">
+    <div className="min-h-screen bg-[#0a0a0a] p-6 md:p-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Hero */}
-        <div className="relative rounded-2xl overflow-hidden border border-[#1a1a1a]">
+        <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
           <img
             src="/dust3.jpeg"
             alt="Dust3 Promo Pack"
@@ -37,19 +37,12 @@ export default function DashboardPage() {
                 Introducing
               </h2>
               <div className="text-4xl md:text-5xl font-extrabold text-white leading-tight">
-                Basketball Packs
+                Dust3 Promo Pack
               </div>
               <p className="text-zinc-300 max-w-2xl mt-2">
                 Open a digital pack to instantly reveal a real card. Choose to
                 hold, trade, redeem, or sell it back to us at 85% value!
               </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <a href="/app-dashboard/packs" className="inline-block">
-                <span className="inline-flex items-center px-4 py-2 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] transition-colors">
-                  View Drop
-                </span>
-              </a>
             </div>
           </div>
         </div>
@@ -58,24 +51,12 @@ export default function DashboardPage() {
         <section className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-white font-semibold">Recent Pulls</h3>
-            <a
-              href="/app-dashboard/packs"
-              className="text-[#E99500] text-sm hover:underline"
-            >
-              Open Now
-            </a>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {pulls.length === 0 && (
-              <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 p-10 text-zinc-400 gap-3">
+              <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-10 text-zinc-400 gap-3">
                 <div className="font-mono text-3xl">{":("}</div>
                 <div>Nothing here yet</div>
-                <a
-                  href="/app-dashboard/packs"
-                  className="mt-1 inline-flex items-center px-3 py-1.5 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] text-sm"
-                >
-                  Explore Packs
-                </a>
               </div>
             )}
             {pulls.map((p) => (
@@ -117,15 +98,9 @@ export default function DashboardPage() {
           <h3 className="text-white font-semibold">Your Packs</h3>
           <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-4">
             {packs.length === 0 && (
-              <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950 p-10 text-zinc-400 gap-3">
+              <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-10 text-zinc-400 gap-3">
                 <div className="font-mono text-3xl">{":("}</div>
                 <div>Nothing here yet</div>
-                <a
-                  href="/app-dashboard/packs"
-                  className="mt-1 inline-flex items-center px-3 py-1.5 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] text-sm"
-                >
-                  Browse Packs
-                </a>
               </div>
             )}
             {packs.map((p) => (
@@ -149,13 +124,13 @@ export default function DashboardPage() {
                   ${p.priceUsdc || p.priceSol}
                 </div>
                 <div className="mt-3 flex items-center gap-2">
-                  <button className="h-8 w-8 rounded bg-zinc-900 border border-zinc-700 text-white">
+                  <button className="h-8 w-8 rounded bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700 transition-colors">
                     −
                   </button>
-                  <div className="px-3 py-1 rounded bg-zinc-900 border border-zinc-700 text-white text-sm">
+                  <div className="px-3 py-1 rounded bg-zinc-800 border border-zinc-700 text-white text-sm">
                     1
                   </div>
-                  <button className="h-8 w-8 rounded bg-zinc-900 border border-zinc-700 text-white">
+                  <button className="h-8 w-8 rounded bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700 transition-colors">
                     +
                   </button>
                   <a
@@ -180,22 +155,12 @@ export default function DashboardPage() {
           ].map((s) => (
             <div
               key={s.label}
-              className="rounded-xl border border-zinc-800 bg-zinc-950 p-5"
+              className="group rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-5 transition-transform duration-200 hover:scale-[1.015] hover:border-zinc-700"
             >
               <div className="text-zinc-400 text-sm">{s.label}</div>
               <div className="text-white text-2xl font-bold">{s.value}</div>
             </div>
           ))}
-        </div>
-
-        {/* Recent Activity (placeholder) */}
-        <div className="rounded-2xl border border-zinc-800 bg-zinc-950">
-          <div className="p-5 border-b border-zinc-800 text-white font-semibold">
-            Recent Activity
-          </div>
-          <div className="p-12 text-center text-zinc-300 text-xl">
-            Coming soon: live drops, buybacks, and leaderboard highlights.
-          </div>
         </div>
       </div>
     </div>

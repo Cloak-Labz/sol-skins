@@ -185,11 +185,12 @@ export default function LeaderboardPage() {
   console.log("Leaderboard length:", leaderboard.length);
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-8">
-      <div className="mb-6">
-        <h1 className="text-4xl font-bold text-foreground mb-2">Leaderboard</h1>
-        <p className="text-muted-foreground">Top collectors and their achievements</p>
-      </div>
+    <div className="min-h-screen bg-[#0a0a0a] py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-6">
+            <h1 className="text-4xl font-bold text-foreground mb-2">Leaderboard</h1>
+            <p className="text-muted-foreground">Top collectors and their achievements</p>
+          </div>
 
       {/* Podium */}
       {podium.length > 0 && (
@@ -397,6 +398,7 @@ export default function LeaderboardPage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }

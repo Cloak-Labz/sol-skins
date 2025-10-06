@@ -73,6 +73,13 @@ export class LootBoxType {
   @Column({ type: 'decimal', precision: 5, scale: 2, default: 0 })
   chanceLegendary: number;
 
+  // Supply tracking
+  @Column({ type: 'int', nullable: true })
+  maxSupply?: number;
+
+  @Column({ type: 'int', default: 0 })
+  remainingSupply: number;
+
   // Relations
   @OneToMany(() => LootBoxSkinPool, pool => pool.lootBoxType)
   skinPools: LootBoxSkinPool[];

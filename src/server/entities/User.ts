@@ -25,6 +25,9 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   email?: string;
 
+  @Column({ type: 'varchar', nullable: true })
+  tradeUrl?: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -50,6 +50,7 @@ export const schemas = {
   updateProfile: Joi.object({
     username: Joi.string().min(3).max(50).optional(),
     email: Joi.string().email().optional(),
+    tradeUrl: Joi.string().uri().optional(),
   }),
 
   // Pagination schema

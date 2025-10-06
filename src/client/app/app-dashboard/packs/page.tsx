@@ -180,10 +180,25 @@ export default function PacksPage() {
   const rouletteRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<any>(null);
 
-  // Odds to display (fallback to defaults if API doesn't provide)
-  const oddsToUse = (Array.isArray((selectedPack as any)?.odds)
-    ? ((selectedPack as any).odds as Array<{ label?: string; rarity?: string; pct?: number; odds?: number }>)
-    : DEFAULT_ODDS);
+  // Odds to display (prefer API chances → map to labeled rows)
+  const oddsToUse = (() => {
+    const chances = (selectedPack as any)?.chances as
+      | { common?: string | number; uncommon?: string | number; rare?: string | number; epic?: string | number; legendary?: string | number }
+      | undefined;
+    const toNum = (v: any) => (typeof v === 'number' ? v : parseFloat(String(v ?? 0)));
+    if (chances) {
+      return [
+        { label: 'Legendary', rarity: 'legendary', pct: toNum(chances.legendary) },
+        { label: 'Epic', rarity: 'epic', pct: toNum(chances.epic) },
+        { label: 'Rare', rarity: 'rare', pct: toNum(chances.rare) },
+        { label: 'Uncommon', rarity: 'uncommon', pct: toNum(chances.uncommon) },
+        { label: 'Common', rarity: 'common', pct: toNum(chances.common) },
+      ];
+    }
+    const apiOdds = (selectedPack as any)?.odds as Array<{ label?: string; rarity?: string; pct?: number; odds?: number }> | undefined;
+    if (Array.isArray(apiOdds)) return apiOdds;
+    return DEFAULT_ODDS;
+  })();
 
   // Load loot boxes from API
   useEffect(() => {
@@ -417,7 +432,7 @@ export default function PacksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black p-4 md:p-6 overflow-hidden relative">
+    <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6 overflow-hidden relative">
       {/* Fullscreen Opening Animation */}
       <AnimatePresence>
         {openingPhase && (
@@ -596,7 +611,7 @@ export default function PacksPage() {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Hero */}
-          <div className="relative rounded-2xl overflow-hidden border border-zinc-800">
+          <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
             <img src="/dust3.jpeg" alt="Dust3 Pack" className="w-full h-[220px] md:h-[320px] object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
@@ -604,21 +619,32 @@ export default function PacksPage() {
                 <h2 className="text-3xl md:text-4xl font-bold text-white">Dust3 Promo Pack</h2>
                 <p className="text-zinc-300">Open packs inspired by CS classics. Provably fair, instant delivery.</p>
               </div>
-              <div className="flex items-center gap-3">
-                <Badge className="bg-zinc-900 text-zinc-200 border border-zinc-700">Limited</Badge>
-                {selectedPack && (
-                  <Badge className="bg-[#E99500] text-black border-none">{parseFloat(selectedPack.priceSol).toFixed(2)} SOL</Badge>
-                )}
-              </div>
             </div>
           </div>
 
           {/* Odds Section */}
           <div className="grid lg:grid-cols-3 gap-6 items-stretch">
             {/* Left: Pack Preview + Compact Packs (LG+) */}
-            <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 flex flex-col">
-              <div className="w-full h-[260px] md:h-[320px] lg:h-[360px]">
+            <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 flex flex-col">
+              <div className="relative w-full h-[260px] md:h-[320px] lg:h-[360px]">
                 <img src="/dust3.jpeg" alt="Dust3 Pack Preview" className="w-full h-full object-cover" />
+                {/* Supply Status Overlay */}
+                {selectedPack?.supply?.maxSupply && (
+                  <div className="absolute top-4 right-4">
+                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-sm border ${
+                      selectedPack.supply.isSoldOut 
+                        ? 'bg-red-500/20 border-red-500/30' 
+                        : 'bg-green-500/20 border-green-500/30'
+                    }`}>
+                      <div className={`w-2 h-2 rounded-full ${
+                        selectedPack.supply.isSoldOut ? 'bg-red-400' : 'bg-green-400'
+                      }`} />
+                      <span className="text-xs font-medium text-white">
+                        {selectedPack.supply.isSoldOut ? 'Out of Stock' : 'In Stock'}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
               <div className="hidden lg:block border-t border-zinc-800 p-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -631,7 +657,15 @@ export default function PacksPage() {
                       }`}
                     >
                       <div className="flex items-center gap-2">
-                        <img src={(pack as any).imageUrl || '/dust3.jpeg'} alt={pack.name} className="w-10 h-10 rounded object-cover border border-zinc-800" />
+                        <div className="relative">
+                          <img src={(pack as any).imageUrl || '/dust3.jpeg'} alt={pack.name} className="w-10 h-10 rounded object-cover border border-zinc-800" />
+                          {/* Supply Status Dot */}
+                          {pack.supply?.maxSupply && (
+                            <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 ${
+                              pack.supply.isSoldOut ? 'bg-red-400' : 'bg-green-400'
+                            }`} />
+                          )}
+                        </div>
                         <div className="min-w-0">
                           <p className="text-xs text-foreground font-semibold truncate">{pack.name}</p>
                           <p className="text-[10px] text-zinc-400">{parseFloat(pack.priceSol).toFixed(2)} SOL</p>
@@ -644,11 +678,10 @@ export default function PacksPage() {
             </div>
 
             {/* Right: Details and Odds (span 2) */}
-            <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6 md:sticky md:top-6">
+            <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6 md:sticky md:top-6 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-2xl font-bold text-foreground">{selectedPack?.name || 'Promo Pack'}</h3>
-                  <p className="text-muted-foreground">Provably fair opening. Instant delivery.</p>
                   {(selectedPack as any)?.description && (
                     <p className="text-zinc-400 text-sm mt-1 line-clamp-2">{(selectedPack as any).description}</p>
                   )}
@@ -660,12 +693,16 @@ export default function PacksPage() {
                   </div>
                   <Button
                     onClick={handleOpenPack}
-                    disabled={openingPhase !== null || !connected}
-                    className={`px-6 py-6 font-semibold rounded-lg transition-transform duration-150 ${
-                      openingPhase ? 'bg-zinc-700 cursor-not-allowed' : 'bg-zinc-100 text-black hover:bg-white hover:scale-[1.02] active:scale-[0.99]'
+                    disabled={openingPhase !== null || !connected || selectedPack?.supply?.isSoldOut}
+                    className={`px-6 py-6 ml-4 font-semibold rounded-lg transition-transform duration-150 ${
+                      openingPhase ? 'bg-zinc-700 cursor-not-allowed' : 
+                      selectedPack?.supply?.isSoldOut ? 'bg-red-500/20 text-red-400 cursor-not-allowed' :
+                      'bg-zinc-100 text-black hover:bg-white hover:scale-[1.02] active:scale-[0.99]'
                     }`}
                   >
-                    <span className="mr-2">Open Pack</span>
+                    <span className="mr-2 ml-2">
+                      {selectedPack?.supply?.isSoldOut ? 'Sold Out' : 'Open Pack'}
+                    </span>
                     <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </Button>
                 </div>
@@ -697,7 +734,6 @@ export default function PacksPage() {
                 })}
                 <div className="flex items-center justify-between pt-2">
                   <p className="text-[11px] text-zinc-500">Probabilities are estimates and may vary per pack.</p>
-                  <div className="text-[11px] text-zinc-500">Powered by Solana</div>
                 </div>
               </div>
             </div>

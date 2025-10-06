@@ -46,23 +46,26 @@ export default function ActivityPage() {
 
   if (loading && activities.length === 0) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] p-8 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-zinc-200 mx-auto mb-4" />
-          <p className="text-zinc-200">Loading activity feed...</p>
+      <div className="min-h-screen bg-[#0a0a0a] py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin text-zinc-200 mx-auto mb-4" />
+            <p className="text-zinc-200">Loading activity feed...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-8">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold text-foreground mb-2">Activity Feed</h1>
-        <p className="text-muted-foreground text-lg">
-          Real-time activity from the SolSkins community
-        </p>
-      </div>
+    <div className="min-h-screen bg-[#0a0a0a] py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-8">
+            <h1 className="text-4xl font-bold text-foreground mb-2">Activity Feed</h1>
+            <p className="text-muted-foreground text-lg">
+              Real-time activity from the Dust3 community
+            </p>
+          </div>
 
       <Card className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         <CardContent className="p-4">
@@ -115,7 +118,6 @@ export default function ActivityPage() {
             ))
           ) : (
             <div className="p-12 text-center">
-              <Sparkles className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
               <h3 className="text-xl font-semibold text-foreground mb-2">
                 No recent activity
               </h3>
@@ -124,6 +126,7 @@ export default function ActivityPage() {
           )}
         </CardContent>
       </Card>
+      </div>
     </div>
   );
 }
