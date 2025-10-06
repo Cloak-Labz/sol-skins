@@ -316,7 +316,7 @@ export default function LandingPage() {
             </motion.div>
           </div>
         </div>
-      </section>1Im
+      </section>
     </div>
   );
 }
