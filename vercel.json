@@ -5,5 +5,5 @@
   "installCommand": "npm install --prefix src/client",
   "framework": "nextjs",
   "outputDirectory": "src/client/.next",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./src/client"
+  "ignoreCommand": "bash -c 'DIR=\"src/client\"; [ -d \"$DIR\" ] || exit 1; if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then git diff --quiet HEAD~1 -- \"$DIR\"; else exit 1; fi'"
 }
