@@ -16,7 +16,7 @@ pub use events::*;
 pub use instructions::*;
 pub use states::*;
 
-declare_id!("6cSLcQ5RCyzPKeFWux2UMjm3SWf3tD41vHK5qsuphzKZ");
+declare_id!("5HosvsXvv4B6NqRjV9kY8QQsisrmqxwzY8aVRrmCvc45");
 
 #[program]
 pub mod skinvault {

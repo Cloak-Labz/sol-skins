@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-skinvault = "6cSLcQ5RCyzPKeFWux2UMjm3SWf3tD41vHK5qsuphzKZ"
+skinvault = "5HosvsXvv4B6NqRjV9kY8QQsisrmqxwzY8aVRrmCvc45"
 
 [programs.localnet]
 skinvault = "6cSLcQ5RCyzPKeFWux2UMjm3SWf3tD41vHK5qsuphzKZ"

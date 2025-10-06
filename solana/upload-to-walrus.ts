@@ -11,11 +11,15 @@ export interface WalrusHTTPResult {
 export class WalrusHTTPClient {
     private verbose: boolean;
     private publisherUrl: string;
+    private aggregatorUrl: string;
+    private mockMode: boolean;
 
     constructor(verbose: boolean = true) {
         this.verbose = verbose;
-        // Use the official Walrus Testnet publisher
-        this.publisherUrl = 'https://publisher.walrus-testnet.walrus.space';
+        // Allow overrides via env; default to testnet
+        this.publisherUrl = process.env.WALRUS_PUBLISHER_URL || 'https://publisher.walrus-testnet.walrus.space';
+        this.aggregatorUrl = process.env.WALRUS_AGGREGATOR_URL || 'https://aggregator.walrus-testnet.walrus.space/v1';
+        this.mockMode = process.env.WALRUS_HTTP_MOCK === '1';
     }
 
     /**
@@ -29,6 +33,16 @@ export class WalrusHTTPClient {
         // Convert metadata to JSON string
         const jsonString = JSON.stringify(metadata, null, 2);
         const jsonBuffer = Buffer.from(jsonString, 'utf-8');
+
+        // Mock mode: skip network and return deterministic fake blob
+        if (this.mockMode) {
+            const blobId = this.generateMockBlobId(jsonBuffer);
+            const uri = `${this.aggregatorUrl}/${blobId}`;
+            if (this.verbose) {
+                console.log(`🧪 WALRUS_HTTP_MOCK=1 → returning mock URI: ${uri}`);
+            }
+            return { blobId, uri, size: jsonBuffer.length };
+        }
 
         if (this.verbose) {
             console.log(`📤 Uploading blob to Walrus testnet via HTTP...`);
@@ -56,7 +70,7 @@ export class WalrusHTTPClient {
             }
 
             const blobId = result.newlyCreated.blobObject.blobId;
-            const uri = `https://aggregator.walrus-testnet.walrus.space/v1/${blobId}`;
+            const uri = `${this.aggregatorUrl}/${blobId}`;
             const size = jsonBuffer.length;
 
             if (this.verbose) {
@@ -108,5 +122,11 @@ export class WalrusHTTPClient {
             console.log(`\n✅ All ${metadataArray.length} files uploaded to Walrus via HTTP API!`);
         }
         return uris;
+    }
+
+    private generateMockBlobId(data: Buffer): string {
+        // Simple deterministic mock id based on size and a hash-like base64
+        const base = data.toString('base64').slice(0, 16).replace(/[^a-zA-Z0-9-_]/g, '_');
+        return `${base}-${data.length}`;
     }
 }
