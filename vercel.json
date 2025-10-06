@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build --prefix src/client",
-  "devCommand": "npm run dev --prefix src/client",
-  "installCommand": "npm install --prefix src/client",
+  "buildCommand": "npm run build",
+  "devCommand": "npm run dev",
+  "installCommand": "npm install",
   "framework": "nextjs",
-  "outputDirectory": "src/client/.next",
-  "ignoreCommand": "bash -c 'DIR=\"src/client\"; [ -d \"$DIR\" ] || exit 1; if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then git diff --quiet HEAD~1 -- \"$DIR\"; else exit 1; fi'"
+  "outputDirectory": ".next",
+  "ignoreCommand": "bash -c 'DIR=\".\"; if git rev-parse --verify HEAD~1 >/dev/null 2>&1; then git diff --quiet HEAD~1 -- \"$DIR\"; else exit 1; fi'"
 }
