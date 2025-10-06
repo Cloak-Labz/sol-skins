@@ -100,7 +100,7 @@ export default function Footer() {
 
         <div className="border-t border-[#333] mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p className="text-[#666] text-sm">
-            © 2025 SolSkins. All rights reserved.
+            © 2025 Dust3. All rights reserved.
           </p>
         </div>
       </div>

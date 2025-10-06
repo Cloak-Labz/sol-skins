@@ -5,7 +5,7 @@ export function getMockUser(): User {
     id: "mock-user-1",
     walletAddress: "SoL4MockAddre55...ABCD",
     username: "MockUser",
-    email: "mock@solskins.io",
+    email: "mock@dust3.io",
     totalSpent: 128734.23,
     totalEarned: 153201.77,
     casesOpened: 842,

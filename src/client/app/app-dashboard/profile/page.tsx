@@ -199,7 +199,7 @@ export default function ProfilePage() {
   // Show lock only when there's no wallet connection (adapter + context) and no user
   if (!adapterConnected && !isConnected && !user) {
     return (
-      <div className="min-h-screen py-8">
+      <div className="min-h-screen bg-[#0a0a0a] py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-12">
             <Lock className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
@@ -218,7 +218,7 @@ export default function ProfilePage() {
   // Loading state when wallet is connected but user profile is still fetching
   if ((adapterConnected || isConnected) && !user) {
     return (
-      <div className="min-h-screen py-8 flex items-center justify-center">
+      <div className="min-h-screen bg-[#0a0a0a] py-8 flex items-center justify-center">
         <div className="text-center text-muted-foreground">
           <Loader2 className="w-6 h-6 animate-spin mx-auto mb-3" />
           <p>Loading your profile...</p>
@@ -239,19 +239,10 @@ export default function ProfilePage() {
       : currentUser.totalEarned || 0;
 
   return (
-    <div className="min-h-screen py-8">
+    <div className="min-h-screen bg-[#0a0a0a] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <Link href="/app-dashboard">
-            <Button
-              variant="ghost"
-              className="text-muted-foreground hover:text-foreground mb-4"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Dashboard
-            </Button>
-          </Link>
           <h1 className="text-4xl font-bold text-foreground mb-2">
             Profile Dashboard
           </h1>
@@ -454,39 +445,6 @@ export default function ProfilePage() {
                       </>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Quick Actions */}
-              <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700">
-                <CardHeader>
-                  <CardTitle>Quick Actions</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <Link href="/app-dashboard/inventory" className="block">
-                    <Button variant="outline" className="w-full justify-start border-zinc-800 hover:bg-zinc-900">
-                      <Eye className="w-4 h-4 mr-2 text-zinc-400" />
-                      View Inventory
-                    </Button>
-                  </Link>
-                  <Link href="/app-dashboard/history" className="block">
-                    <Button variant="outline" className="w-full justify-start border-zinc-800 hover:bg-zinc-900">
-                      <Activity className="w-4 h-4 mr-2 text-zinc-400" />
-                      Transaction History
-                    </Button>
-                  </Link>
-                  <Link href="/app-dashboard/leaderboard" className="block">
-                    <Button variant="outline" className="w-full justify-start border-zinc-800 hover:bg-zinc-900">
-                      <Trophy className="w-4 h-4 mr-2 text-zinc-400" />
-                      Leaderboard
-                    </Button>
-                  </Link>
-                  <Link href="/app-dashboard/packs" className="block">
-                    <Button variant="outline" className="w-full justify-start border-zinc-800 hover:bg-zinc-900">
-                      <Package className="w-4 h-4 mr-2 text-zinc-400" />
-                      Open Packs
-                    </Button>
-                  </Link>
                 </CardContent>
               </Card>
             </div>

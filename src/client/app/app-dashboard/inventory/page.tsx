@@ -27,6 +27,7 @@ import {
   Loader2,
   Lock,
   Box,
+  Sparkles,
 } from "lucide-react";
 import { inventoryService } from "@/lib/services";
 import { MOCK_CONFIG } from "@/lib/config/mock";
@@ -148,7 +149,7 @@ export default function InventoryPage() {
   // Show not connected state
   if (!isConnected) {
     return (
-      <div className="min-h-screen py-8">
+      <div className="min-h-screen bg-[#0a0a0a] py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-12">
             <Lock className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
@@ -167,7 +168,7 @@ export default function InventoryPage() {
   // Show loading state
   if (loading) {
     return (
-      <div className="min-h-screen py-8">
+      <div className="min-h-screen bg-[#0a0a0a] py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="w-8 h-8 animate-spin text-zinc-200 mx-auto mb-4" />
@@ -179,7 +180,7 @@ export default function InventoryPage() {
   }
 
   return (
-    <div className="min-h-screen py-8">
+    <div className="min-h-screen bg-[#0a0a0a] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
@@ -331,19 +332,18 @@ export default function InventoryPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <Box className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-xl font-semibold text-foreground mb-2">
               No skins found
             </h3>
             <p className="text-muted-foreground mb-6">
               {searchTerm || filterBy !== "all"
                 ? "Try adjusting your search or filters"
-                : "Start opening loot boxes to build your collection"}
+                : "Start opening packs to build your collection"}
             </p>
             {!searchTerm && filterBy === "all" && (
               <Button className="bg-zinc-100 text-black hover:bg-white transition-transform duration-150 hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-1 focus-visible:ring-zinc-600">
                 <Package className="w-4 h-4 mr-2" />
-                Open Loot Boxes
+                Open Packs
               </Button>
             )}
           </div>

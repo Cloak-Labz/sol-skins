@@ -200,7 +200,7 @@ export default function HistoryPage() {
             Transaction History
           </h1>
           <p className="text-muted-foreground text-lg">
-            Track all your SolSkins activity
+            Track all your Dust3 activity
           </p>
         </div>
 

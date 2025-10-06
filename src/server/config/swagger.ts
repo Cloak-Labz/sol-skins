@@ -7,12 +7,12 @@ const options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'SolSkins API',
+      title: 'Dust3 API',
       version: '1.0.0',
       description: 'CS:GO NFT Skins Loot Box Platform API on Solana',
       contact: {
-        name: 'SolSkins Team',
-        email: 'dev@solskins.com',
+        name: 'Dust3 Team',
+        email: 'dev@dust3.com',
       },
     },
     servers: [
@@ -21,7 +21,7 @@ const options = {
         description: 'Development server',
       },
       {
-        url: `https://api.solskins.com${config.apiPrefix}`,
+        url: `https://api.dust3.com${config.apiPrefix}`,
         description: 'Production server',
       },
     ],
@@ -171,7 +171,7 @@ export function setupSwagger(app: Express): void {
   app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
     explorer: true,
     customCss: '.swagger-ui .topbar { display: none }',
-    customSiteTitle: 'SolSkins API Documentation',
+    customSiteTitle: 'Dust3 API Documentation',
   }));
 
   // Swagger JSON endpoint

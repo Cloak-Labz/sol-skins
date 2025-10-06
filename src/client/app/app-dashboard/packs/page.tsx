@@ -432,7 +432,7 @@ export default function PacksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black p-4 md:p-6 overflow-hidden relative">
+    <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6 overflow-hidden relative">
       {/* Fullscreen Opening Animation */}
       <AnimatePresence>
         {openingPhase && (
@@ -611,7 +611,7 @@ export default function PacksPage() {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Hero */}
-          <div className="relative rounded-2xl overflow-hidden border border-zinc-800">
+          <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
             <img src="/dust3.jpeg" alt="Dust3 Pack" className="w-full h-[220px] md:h-[320px] object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
@@ -625,7 +625,7 @@ export default function PacksPage() {
           {/* Odds Section */}
           <div className="grid lg:grid-cols-3 gap-6 items-stretch">
             {/* Left: Pack Preview + Compact Packs (LG+) */}
-            <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 flex flex-col">
+            <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 flex flex-col">
               <div className="relative w-full h-[260px] md:h-[320px] lg:h-[360px]">
                 <img src="/dust3.jpeg" alt="Dust3 Pack Preview" className="w-full h-full object-cover" />
                 {/* Supply Status Overlay */}
@@ -678,7 +678,7 @@ export default function PacksPage() {
             </div>
 
             {/* Right: Details and Odds (span 2) */}
-            <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6 md:sticky md:top-6">
+            <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6 md:sticky md:top-6 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <div>
                   <h3 className="text-2xl font-bold text-foreground">{selectedPack?.name || 'Promo Pack'}</h3>

@@ -35,7 +35,7 @@ export default function RootLayout({
     >
       <body
         suppressHydrationWarning
-        className="antialiased min-h-screen bg-black"
+        className="antialiased min-h-screen bg-[#0a0a0a]"
       >
         <SolanaProvider>
           <UserProvider>
