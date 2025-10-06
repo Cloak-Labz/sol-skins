@@ -96,12 +96,12 @@ pub fn create_core_asset<'info>(
     if let Some(seeds) = signer_seeds {
         create_builder.invoke_signed(seeds).map_err(|e| {
             msg!("Error creating core asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
+            anchor_lang::error::Error::from(e)
         })?;
     } else {
         create_builder.invoke().map_err(|e| {
             msg!("Error creating core asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
+            anchor_lang::error::Error::from(e)
         })?;
     }
 
@@ -153,12 +153,12 @@ pub fn burn_core_asset<'info>(
     if let Some(seeds) = signer_seeds {
         burn_builder.invoke_signed(seeds).map_err(|e| {
             msg!("Error burning core asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
+            anchor_lang::error::Error::from(e)
         })?;
     } else {
         burn_builder.invoke().map_err(|e| {
             msg!("Error burning core asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
+            anchor_lang::error::Error::from(e)
         })?;
     }
 
@@ -212,12 +212,12 @@ pub fn update_freeze_delegate<'info>(
     if let Some(seeds) = signer_seeds {
         update_builder.invoke_signed(seeds).map_err(|e| {
             msg!("Error updating freeze delegate: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
+            anchor_lang::error::Error::from(e)
         })?;
     } else {
         update_builder.invoke().map_err(|e| {
             msg!("Error updating freeze delegate: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
+            anchor_lang::error::Error::from(e)
         })?;
     }
 
@@ -281,12 +281,12 @@ pub fn add_plugin_to_asset<'info>(
     if let Some(seeds) = signer_seeds {
         add_builder.invoke_signed(seeds).map_err(|e| {
             msg!("Error adding plugin to asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
+            anchor_lang::error::Error::from(e)
         })?;
     } else {
         add_builder.invoke().map_err(|e| {
             msg!("Error adding plugin to asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
+            anchor_lang::error::Error::from(e)
         })?;
     }
 
@@ -338,12 +338,12 @@ pub fn remove_plugin_from_asset<'info>(
     if let Some(seeds) = signer_seeds {
         remove_builder.invoke_signed(seeds).map_err(|e| {
             msg!("Error removing plugin from asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
+            anchor_lang::error::Error::from(e)
         })?;
     } else {
         remove_builder.invoke().map_err(|e| {
             msg!("Error removing plugin from asset: {:?}", e);
-            anchor_lang::error::Error::from(anchor_lang::prelude::SkinVaultError::from(e))
+            anchor_lang::error::Error::from(e)
         })?;
     }
 

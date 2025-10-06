@@ -46,9 +46,9 @@ pub mod skinvault {
         )
     }
 
-    /// Mint a new loot box NFT
-    pub fn mint_box(ctx: Context<MintBox>, batch_id: u64, metadata_uri: String) -> Result<()> {
-        instructions::mint_box::mint_box_handler(ctx, batch_id, metadata_uri)
+    /// Create a new Core NFT box state (replaces old mint_box)
+    pub fn create_box(ctx: Context<CreateBox>, batch_id: u64) -> Result<()> {
+        instructions::create_box::create_box_handler(ctx, batch_id)
     }
 
     /// Open a loot box and request VRF
@@ -70,16 +70,7 @@ pub mod skinvault {
         instructions::reveal_and_claim::reveal_and_claim_handler(ctx)
     }
 
-    /// Assign an inventory item to an opened box
-    /// Optionally updates NFT metadata to show the actual skin
-    pub fn assign(
-        ctx: Context<Assign>,
-        inventory_id_hash: [u8; 32],
-        merkle_proof: Vec<[u8; 32]>,
-        new_metadata: Option<SkinMetadata>,
-    ) -> Result<()> {
-        instructions::assign::assign_handler(ctx, inventory_id_hash, merkle_proof, new_metadata)
-    }
+    // assign instruction moved out in current iteration
 
     /// Set price for an inventory item (oracle signed)
     pub fn set_price_signed(
