@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{burn, close_account, Burn, CloseAccount, Mint, Token, TokenAccount};
+use anchor_spl::token::{Mint, Token, TokenAccount};
 
+use crate::cpi::core::{burn_core_asset, update_freeze_delegate};
 use crate::errors::SkinVaultError;
 use crate::events::*;
 use crate::states::*;
@@ -41,7 +42,7 @@ pub struct SellBack<'info> {
 
     #[account(
         mut,
-        seeds = [b"box", box_state.nft_mint.as_ref()],
+        seeds = [b"box", box_state.asset.as_ref()],
         bump = box_state.bump,
         constraint = box_state.owner == seller.key() @ SkinVaultError::NotBoxOwner,
         constraint = box_state.opened @ SkinVaultError::NotOpenedYet,
@@ -50,32 +51,31 @@ pub struct SellBack<'info> {
     )]
     pub box_state: Account<'info, BoxState>,
 
-    /// NFT mint to be burned
+    /// Core NFT asset to be burned (must be owned by seller)
+    /// CHECK: Validated by Core program during burn
     #[account(
         mut,
-        constraint = nft_mint.key() == box_state.nft_mint @ SkinVaultError::Unauthorized
+        constraint = asset.key() == box_state.asset @ SkinVaultError::Unauthorized
     )]
-    pub nft_mint: Account<'info, Mint>,
+    pub asset: UncheckedAccount<'info>,
 
-    /// Seller's NFT token account (to be burned and closed)
-    #[account(
-        mut,
-        constraint = seller_nft_ata.mint == nft_mint.key() @ SkinVaultError::Unauthorized,
-        constraint = seller_nft_ata.owner == seller.key() @ SkinVaultError::Unauthorized,
-        constraint = seller_nft_ata.amount == 1 @ SkinVaultError::Unauthorized
-    )]
-    pub seller_nft_ata: Account<'info, TokenAccount>,
+    /// Optional collection (if asset belongs to a collection)
+    /// CHECK: Validated by Core program if provided
+    #[account(mut)]
+    pub collection: Option<UncheckedAccount<'info>>,
+
+    /// Metaplex Core program
+    /// CHECK: Validated in burn_core_asset helper
+    pub core_program: UncheckedAccount<'info>,
 
     #[account(mut)]
     pub seller: Signer<'info>,
 
     pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
-pub fn sell_back_handler(
-    ctx: Context<SellBack>,
-    min_price: u64,
-) -> Result<()> {
+pub fn sell_back_handler(ctx: Context<SellBack>, min_price: u64) -> Result<()> {
     let global = &mut ctx.accounts.global;
     let current_time = Clock::get()?.unix_timestamp;
 
@@ -106,17 +106,14 @@ pub fn sell_back_handler(
     let required_balance = payout
         .checked_add(global.min_treasury_balance)
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
-    
+
     require!(
         treasury_balance >= required_balance,
         SkinVaultError::TreasuryInsufficient
     );
 
     // Transfer USDC from treasury to user
-    let global_seeds: &[&[u8]] = &[
-        b"global",
-        &[global.bump],
-    ];
+    let global_seeds: &[&[u8]] = &[b"global", &[global.bump]];
     let signer_seeds: &[&[&[u8]]] = &[global_seeds];
 
     crate::cpi::spl::transfer_tokens(
@@ -129,37 +126,44 @@ pub fn sell_back_handler(
     )?;
 
     // Update global statistics
-    global.total_buybacks = global.total_buybacks
+    global.total_buybacks = global
+        .total_buybacks
         .checked_add(1)
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
-    
-    global.total_buyback_volume = global.total_buyback_volume
+
+    global.total_buyback_volume = global
+        .total_buyback_volume
         .checked_add(payout)
         .ok_or(SkinVaultError::ArithmeticOverflow)?;
 
-    // Burn the NFT
-    burn(
-        CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            Burn {
-                mint: ctx.accounts.nft_mint.to_account_info(),
-                from: ctx.accounts.seller_nft_ata.to_account_info(),
-                authority: ctx.accounts.seller.to_account_info(),
-            },
-        ),
-        1,
+    // Filter out default pubkey for collection
+    let collection_ref = ctx
+        .accounts
+        .collection
+        .as_ref()
+        .filter(|c| c.key() != Pubkey::default())
+        .map(|c| c.to_account_info());
+
+    // Step 1: Unfreeze the asset (platform has freeze delegate authority)
+    update_freeze_delegate(
+        &ctx.accounts.core_program.to_account_info(),
+        &ctx.accounts.asset.to_account_info(),
+        collection_ref.as_ref(),
+        &ctx.accounts.seller.to_account_info(),
+        &global.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        false, // frozen = false (unfreeze)
+        Some(signer_seeds),
     )?;
 
-    // Close the NFT token account and reclaim rent
-    close_account(
-        CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            CloseAccount {
-                account: ctx.accounts.seller_nft_ata.to_account_info(),
-                destination: ctx.accounts.seller.to_account_info(),
-                authority: ctx.accounts.seller.to_account_info(),
-            },
-        ),
+    // Step 2: Burn the Core NFT asset
+    burn_core_asset(
+        &ctx.accounts.core_program.to_account_info(),
+        &ctx.accounts.asset.to_account_info(),
+        collection_ref.as_ref(),
+        &ctx.accounts.seller.to_account_info(),
+        &ctx.accounts.system_program.to_account_info(),
+        None, // Seller signs the burn
     )?;
 
     // Mark box as redeemed
@@ -168,22 +172,12 @@ pub fn sell_back_handler(
     box_state.redeem_time = Clock::get()?.unix_timestamp;
 
     emit!(BuybackExecuted {
-        nft_mint: box_state.nft_mint,
+        nft_mint: box_state.asset, // Now using asset address instead of mint
         inventory_id_hash: box_state.assigned_inventory,
         price: market_price,
         spread_fee,
         payout,
         buyer: ctx.accounts.seller.key(),
     });
-
-    msg!(
-        "Buyback executed: {} USDC paid for NFT {} (market: {}, spread: {})",
-        payout,
-        box_state.nft_mint,
-        market_price,
-        spread_fee
-    );
-    msg!("NFT burned and token account closed");
-
     Ok(())
 }

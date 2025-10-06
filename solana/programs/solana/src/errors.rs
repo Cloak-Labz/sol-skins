@@ -58,4 +58,22 @@ pub enum SkinVaultError {
 
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
+
+    #[msg("Invalid Candy Machine program ID")]
+    InvalidCandyMachineProgram,
+
+    #[msg("Invalid Token Metadata program ID")]
+    InvalidMetadataProgram,
+
+    #[msg("Invalid Candy Machine address")]
+    InvalidCandyMachine,
+
+    #[msg("Invalid metadata URI or index")]
+    InvalidMetadata,
+
+    #[msg("Invalid Core program ID")]
+    InvalidCoreProgram,
+
+    #[msg("CPI call failed")]
+    CpiFailed,
 }

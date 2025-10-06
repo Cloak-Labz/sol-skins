@@ -1,16 +1,15 @@
 //! Program state accounts
 
-mod global;
 mod batch;
 mod box_state;
+mod global;
+mod inventory_assignment;
 mod price_store;
 mod vrf_pending;
-mod inventory_assignment;
 
-pub use global::*;
 pub use batch::*;
 pub use box_state::*;
+pub use global::*;
+pub use inventory_assignment::*;
 pub use price_store::*;
 pub use vrf_pending::*;
-pub use inventory_assignment::*;
-
