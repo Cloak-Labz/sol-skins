@@ -1,3 +1,4 @@
+use crate::cpi::create_core_asset;
 use crate::errors::SkinVaultError;
 use crate::states::{Batch, BoxState, Global};
 use anchor_lang::prelude::*;
@@ -25,7 +26,7 @@ pub struct RevealAndClaim<'info> {
     /// Box state (contains batch_id for deterministic selection)
     #[account(
         mut,
-        seeds = [b"box", nft_mint.key().as_ref()],
+        seeds = [b"box", box_state.asset.as_ref()],
         bump = box_state.bump,
         close = user, // Close and refund rent after claiming
     )]
@@ -38,49 +39,21 @@ pub struct RevealAndClaim<'info> {
     )]
     pub batch: Account<'info, Batch>,
 
-    /// NFT mint to create
-    #[account(
-        init,
-        payer = user,
-        mint::decimals = 0,
-        mint::authority = user,
-    )]
-    pub nft_mint: Account<'info, Mint>,
-
-    /// NFT metadata PDA (will be created)
-    /// CHECK: Derived PDA for NFT metadata
+    /// Core NFT asset to be created (signer for new asset)
+    /// CHECK: New account, will be initialized by Core program
     #[account(mut)]
-    pub nft_metadata: UncheckedAccount<'info>,
+    pub asset: Signer<'info>,
 
-    /// NFT master edition PDA (will be created)
-    /// CHECK: Derived PDA for NFT master edition
-    #[account(mut)]
-    pub nft_edition: UncheckedAccount<'info>,
+    /// Collection asset (Metaplex Core collection) - optional
+    /// CHECK: Validated by Core program during CPI
+    pub collection: Option<UncheckedAccount<'info>>,
 
-    /// User's ATA for the NFT (will be created)
-    #[account(
-        init,
-        payer = user,
-        associated_token::mint = nft_mint,
-        associated_token::authority = user,
-    )]
-    pub user_ata: Account<'info, TokenAccount>,
-
-    /// Token Metadata program
-    /// CHECK: Metaplex Token Metadata Program ID
-    pub token_metadata_program: UncheckedAccount<'info>,
-
-    /// SPL Token program
-    pub token_program: Program<'info, Token>,
-
-    /// Associated Token program
-    pub associated_token_program: Program<'info, AssociatedToken>,
+    /// Metaplex Core program
+    /// CHECK: Validated in create_core_asset helper
+    pub core_program: UncheckedAccount<'info>,
 
     /// System program
     pub system_program: Program<'info, System>,
-
-    /// Rent sysvar
-    pub rent: Sysvar<'info, Rent>,
 }
 
 /// Handler for reveal_and_claim instruction - WORKING IMPLEMENTATION!
@@ -89,16 +62,17 @@ pub struct RevealAndClaim<'info> {
 /// IMPLEMENTS real NFT minting with dynamic metadata from Batch
 pub fn reveal_and_claim_handler(ctx: Context<RevealAndClaim>) -> Result<()> {
     let batch = &ctx.accounts.batch;
-    let user = &ctx.accounts.user;
+    let global_state = &ctx.accounts.global_state;
+    let current_time = Clock::get()?.unix_timestamp;
 
-    // Validate Token Metadata program ID (Metaplex)
-    let metadata_program_id = *ctx.accounts.token_metadata_program.key;
-    let expected_program_id = "metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s"
+    // Validate Core program ID (Metaplex Core)
+    let core_program_id = *ctx.accounts.core_program.key;
+    let expected_program_id = "CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d"
         .parse::<Pubkey>()
         .unwrap();
     require!(
-        metadata_program_id == expected_program_id,
-        SkinVaultError::InvalidMetadataProgram
+        core_program_id == expected_program_id,
+        SkinVaultError::InvalidCandyMachineProgram
     );
 
     // DYNAMIC: Get metadata URIs from batch (not hardcoded!)
@@ -110,7 +84,7 @@ pub fn reveal_and_claim_handler(ctx: Context<RevealAndClaim>) -> Result<()> {
     let item_index = (batch.batch_id % num_items as u64) as u32;
     let uri = metadata_uris[item_index as usize].clone();
 
-    msg!("🎯 IMPLEMENTING REAL NFT MINTING!");
+    msg!("🎯 IMPLEMENTING CORE NFT MINTING!");
     msg!("📦 Batch ID: {}", batch.batch_id);
     msg!(
         "🎲 Determined item index: {} (deterministic from batch_id)",
@@ -118,85 +92,67 @@ pub fn reveal_and_claim_handler(ctx: Context<RevealAndClaim>) -> Result<()> {
     );
     msg!("🔗 Dynamic URI: {}", uri);
 
-    // WORKING NFT CREATION using Metaplex CPI builders!
-    msg!("🚀 Creating NFT via Metaplex Token Metadata CPI...");
-
-    // Get skin name based on index (simplified for now)
-    let skin_names = vec!["AK-47 | Fire Serpent", "AWP | Dragon Lore", "M4A4 | Howl"];
+    // Get skin name based on index
+    let skin_names = vec![
+        "AK-47 | Fire Serpent", "AWP | Dragon Lore", "M4A4 | Howl",
+        "AK-47 | Redline", "AWP | Medusa", "M4A1-S | Icarus Fell",
+        "AK-47 | Vulcan", "AWP | Lightning Strike", "M4A4 | Poseidon",
+        "AK-47 | Jaguar", "AWP | Graphite", "M4A1-S | Hyper Beast",
+        "AK-47 | Aquamarine Revenge", "AWP | Oni Taiji", "M4A4 | Asiimov",
+        "AK-47 | Bloodsport", "AWP | Redline", "M4A1-S | Golden Coil",
+        "AK-47 | Neon Revolution", "AWP | Fever Dream", "M4A4 | Desolate Space",
+        "AK-47 | The Empress", "AWP | Mortis", "M4A1-S | Mecha Industries",
+        "AK-47 | Legion of Anubis"
+    ];
     let skin_name = if item_index < skin_names.len() as u32 {
         skin_names[item_index as usize].to_string()
     } else {
         format!("Skin #{}", item_index)
     };
 
-    // Create NFT using Token Metadata CPI builder (WORKING APPROACH!)
-    mpl_token_metadata::instructions::CreateMetadataAccountV3CpiBuilder::new(
-        &ctx.accounts.token_metadata_program.to_account_info(),
-    )
-    .metadata(&ctx.accounts.nft_metadata.to_account_info())
-    .mint(&ctx.accounts.nft_mint.to_account_info())
-    .mint_authority(&ctx.accounts.user.to_account_info())
-    .payer(&ctx.accounts.user.to_account_info())
-    .update_authority(&ctx.accounts.user.to_account_info(), true)
-    .system_program(&ctx.accounts.system_program.to_account_info())
-    .rent(Some(&ctx.accounts.rent.to_account_info()))
-    .data(mpl_token_metadata::types::DataV2 {
-        name: skin_name.clone(),
-        symbol: "CSGO".to_string(),
-        uri: uri.clone(),
-        seller_fee_basis_points: 500,
-        creators: Some(vec![mpl_token_metadata::types::Creator {
-            address: user.key(),
-            verified: true,
-            share: 100,
-        }]),
-        collection: None,
-        uses: None,
-    })
-    .is_mutable(true)
-    .invoke()?;
+    // Create inventory hash (using skin index for now)
+    let mut inventory_hash = [0u8; 32];
+    inventory_hash[0] = item_index as u8;
 
-    // Create master edition for 1/1 NFT
-    mpl_token_metadata::instructions::CreateMasterEditionV3CpiBuilder::new(
-        &ctx.accounts.token_metadata_program.to_account_info(),
-    )
-    .edition(&ctx.accounts.nft_edition.to_account_info())
-    .mint(&ctx.accounts.nft_mint.to_account_info())
-    .update_authority(&ctx.accounts.user.to_account_info())
-    .mint_authority(&ctx.accounts.user.to_account_info())
-    .payer(&ctx.accounts.user.to_account_info())
-    .metadata(&ctx.accounts.nft_metadata.to_account_info())
-    .token_program(&ctx.accounts.token_program.to_account_info())
-    .system_program(&ctx.accounts.system_program.to_account_info())
-    .rent(Some(&ctx.accounts.rent.to_account_info()))
-    .max_supply(0) // 0 = 1/1 NFT
-    .invoke()?;
+    // Create Core NFT with plugins (skip collection if default pubkey)
+    let collection_ref = ctx
+        .accounts
+        .collection
+        .as_ref()
+        .filter(|c| c.key() != Pubkey::default())
+        .map(|c| c.to_account_info());
 
-    // Mint 1 token to user's ATA
-    mint_to(
-        CpiContext::new(
-            ctx.accounts.token_program.to_account_info(),
-            anchor_spl::token::MintTo {
-                mint: ctx.accounts.nft_mint.to_account_info(),
-                to: ctx.accounts.user_ata.to_account_info(),
-                authority: ctx.accounts.user.to_account_info(),
-            },
-        ),
-        1,
+    create_core_asset(
+        &ctx.accounts.core_program.to_account_info(),
+        &ctx.accounts.asset.to_account_info(),
+        collection_ref.as_ref(),
+        &ctx.accounts.user.to_account_info(),
+        Some(&ctx.accounts.user.to_account_info()),
+        &ctx.accounts.system_program.to_account_info(),
+        skin_name.clone(),
+        uri.clone(),
+        global_state.key(), // Freeze delegate authority
+        global_state.key(), // Transfer delegate authority
+        None,
     )?;
 
-    msg!("✅ REAL NFT MINTING SUCCESS!");
+    // Update BoxState
+    let box_state = &mut ctx.accounts.box_state;
+    box_state.opened = true;
+    box_state.assigned_inventory = inventory_hash;
+    box_state.open_time = current_time;
+    box_state.random_index = item_index as u64;
+
+    msg!("✅ CORE NFT MINTING SUCCESS!");
     msg!(
-        "🎯 Created NFT #{} from {} total items",
+        "🎯 Created Core NFT #{} from {} total items",
         item_index,
         num_items
     );
     msg!("🎨 NFT name: {}", skin_name);
     msg!("🔗 Used dynamic URI: {}", uri);
-    msg!("💎 NFT mint: {}", ctx.accounts.nft_mint.key());
-    msg!("📄 Metadata: {}", ctx.accounts.nft_metadata.key());
-    msg!("🎭 Master edition: {}", ctx.accounts.nft_edition.key());
-    msg!("📦 User ATA: {}", ctx.accounts.user_ata.key());
+    msg!("💎 Core asset: {}", ctx.accounts.asset.key());
+    msg!("🔒 Frozen by default (phygital lock)");
     msg!("💰 BoxState closed and rent refunded");
 
     Ok(())
