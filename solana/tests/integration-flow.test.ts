@@ -84,7 +84,7 @@ describe("🚀 HIGH-SCALE CORE NFT INTEGRATION (10 SKINS)", () => {
 
     // Find global state PDA
     [globalState] = PublicKey.findProgramAddressSync(
-      [Buffer.from("global_state")],
+      [Buffer.from("global")],
       program.programId
     );
 
@@ -526,9 +526,9 @@ describe("🚀 HIGH-SCALE CORE NFT INTEGRATION (10 SKINS)", () => {
     // Use Anchor's built-in method for better signing handling
     try {
       // Use raw instruction call since TypeScript types are outdated
-      const instruction = await program.methods
+      const instruction = await (program.methods as any)
         .revealAndClaim()
-        .accounts({
+        .accountsPartial({
           user: user,
           globalState: globalState,
           boxState: boxState,

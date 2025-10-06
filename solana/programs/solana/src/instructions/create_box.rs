@@ -6,7 +6,7 @@ use crate::states::*;
 #[derive(Accounts)]
 pub struct CreateBox<'info> {
     #[account(
-        seeds = [b"global_state"],
+        seeds = [b"global"],
         bump = global.bump
     )]
     pub global: Account<'info, Global>,

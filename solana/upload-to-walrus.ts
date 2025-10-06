@@ -296,7 +296,7 @@ export class WalrusClient {
     }
 
     /**
-     * Upload a Blob to Walrus with GRANT-COMPLIANT robust retry logic for Sui testnet congestion
+     * Upload a Blob to Walrus with robust retry logic for Sui testnet congestion
      * This method MUST succeed for grant requirements - implements multiple strategies
      */
     async uploadBlobWithRetry(data: Uint8Array, maxRetries: number = 10): Promise<WalrusUploadResult> {
@@ -373,7 +373,7 @@ export class WalrusClient {
             }
         }
         
-        throw new Error(`GRANT-CRITICAL: Failed to upload blob after ${maxRetries} attempts and alternative strategies: ${lastError?.message}`);
+        throw new Error(`Failed to upload blob after ${maxRetries} attempts and alternative strategies: ${lastError?.message}`);
     }
 
     /**
@@ -442,12 +442,12 @@ export class WalrusClient {
     }
 
     /**
-     * Upload JSON metadata to Walrus with GRANT-COMPLIANT retry logic for Sui testnet congestion
+     * Upload JSON metadata to Walrus with retry logic for Sui testnet congestion
      * This method MUST succeed for grant requirements - no fallbacks allowed
      */
     async uploadJson(metadata: object, maxRetries: number = 10): Promise<string> {
         if (this.verbose) {
-            console.log(`📝 Uploading JSON metadata to Walrus (GRANT-REQUIRED)...`);
+            console.log(`📝 Uploading JSON metadata to Walrus...`);
         }
 
         let lastError: Error | null = null;
@@ -487,7 +487,7 @@ export class WalrusClient {
             }
         }
         
-        throw new Error(`GRANT-CRITICAL: Failed to upload JSON after ${maxRetries} attempts: ${lastError?.message}`);
+        throw new Error(`Failed to upload JSON after ${maxRetries} attempts: ${lastError?.message}`);
     }
 
     /**
@@ -507,7 +507,7 @@ export class WalrusClient {
             for (let i = 0; i < metadataArray.length; i++) {
                 const metadata = metadataArray[i];
                 if (this.verbose) {
-                    console.log(`\n[${i + 1}/${metadataArray.length}] Uploading to Walrus (GRANT-ATTEMPT)...`);
+                    console.log(`\n[${i + 1}/${metadataArray.length}] Uploading to Walrus...`);
                 }
                 
                 try {
@@ -538,7 +538,7 @@ export class WalrusClient {
             // If all Walrus uploads succeeded
             if (!walrusFailed && uris.length === metadataArray.length) {
                 if (this.verbose) {
-                    console.log(`\n✅ GRANT SUCCESS: All ${metadataArray.length} files uploaded to Walrus!`);
+                    console.log(`\n✅  All ${metadataArray.length} files uploaded to Walrus!`);
                 }
                 return uris;
             }
@@ -550,42 +550,6 @@ export class WalrusClient {
             throw error;
         }
 
-        // // Strategy 2: Fallback to Arweave if Walrus failed
-        // if (walrusFailed) {
-        //     if (this.verbose) {
-        //         console.log(`\n🔄 Walrus failed, falling back to Arweave for remaining uploads...`);
-        //     }
-            
-        //     // Clear any partial Walrus results
-        //     uris.length = 0;
-            
-        //     // Upload all metadata to Arweave
-        //     for (let i = 0; i < metadataArray.length; i++) {
-        //         const metadata = metadataArray[i];
-        //         if (this.verbose) {
-        //             console.log(`\n[${i + 1}/${metadataArray.length}] Uploading to Arweave (FALLBACK)...`);
-        //         }
-                
-        //         try {
-        //             const uri = await this.uploadToArweave(metadata);
-        //             uris.push(uri);
-                    
-        //             if (this.verbose) {
-        //                 console.log(`✅ Arweave upload ${i + 1} successful: ${uri.substring(0, 50)}...`);
-        //             }
-        //         } catch (error: any) {
-        //             if (this.verbose) {
-        //                 console.error(`❌ Arweave upload ${i + 1} failed: ${error.message}`);
-        //             }
-        //             throw new Error(`Both Walrus and Arweave uploads failed for metadata ${i + 1}: ${error.message}`);
-        //         }
-        //     }
-
-        //     if (this.verbose) {
-        //         console.log(`\n✅ FALLBACK SUCCESS: All ${metadataArray.length} files uploaded to Arweave!`);
-        //     }
-        // }
-
         return uris;
     }
 
@@ -594,7 +558,7 @@ export class WalrusClient {
      */
     private async uploadToArweave(metadata: object): Promise<string> {
         if (this.verbose) {
-            console.log(`📝 Uploading JSON metadata to Arweave (FALLBACK)...`);
+            console.log(`📝 Uploading JSON metadata to Arweave...`);
         }
 
         try {

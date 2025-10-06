@@ -8,7 +8,7 @@ use crate::states::*;
 #[instruction(batch_id: u64, candy_machine: Pubkey, metadata_uris: Vec<String>)]
 pub struct PublishMerkleRoot<'info> {
     #[account(
-        seeds = [b"global_state"],
+        seeds = [b"global"],
         bump = global.bump,
         has_one = authority @ SkinVaultError::Unauthorized
     )]

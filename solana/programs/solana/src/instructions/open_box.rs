@@ -8,7 +8,7 @@ use crate::vrf::*;
 #[derive(Accounts)]
 pub struct OpenBox<'info> {
     #[account(
-        seeds = [b"global_state"],
+        seeds = [b"global"],
         bump = global.bump
     )]
     pub global: Account<'info, Global>,

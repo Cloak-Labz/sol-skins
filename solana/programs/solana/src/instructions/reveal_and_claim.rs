@@ -17,7 +17,7 @@ pub struct RevealAndClaim<'info> {
 
     /// Global state (contains authority)
     #[account(
-        seeds = [b"global_state"],
+        seeds = [b"global"],
         bump
     )]
     pub global_state: Account<'info, Global>,
