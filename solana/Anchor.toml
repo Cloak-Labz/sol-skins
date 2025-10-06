@@ -6,16 +6,19 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-skinvault = "6cSLcQ5RCyzPKeFWux2UMjm3SWf3tD41vHK5qsuphzKZ"
+skinvault = "44UwMzMZUcobRp4YyucjvAbBeTFJ3uBPxg7YqwHS2ncp"
+
+[programs.testnet]
+skinvault = "44UwMzMZUcobRp4YyucjvAbBeTFJ3uBPxg7YqwHS2ncp"
 
 [programs.localnet]
-skinvault = "6cSLcQ5RCyzPKeFWux2UMjm3SWf3tD41vHK5qsuphzKZ"
+skinvault = "44UwMzMZUcobRp4YyucjvAbBeTFJ3uBPxg7YqwHS2ncp"
 
 [registry]
 url = "https://anchor.projectserum.com"
 
 [provider]
-cluster = "localnet"
+cluster = "testnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
