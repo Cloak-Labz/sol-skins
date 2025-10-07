@@ -16,7 +16,7 @@ pub use events::*;
 pub use instructions::*;
 pub use states::*;
 
-declare_id!("HkgLfcBuBwxJroAk2C874rWjp7FzkThAXBGwcoWWRPH1");
+declare_id!("44UwMzMZUcobRp4YyucjvAbBeTFJ3uBPxg7YqwHS2ncp");
 
 #[program]
 pub mod skinvault {
@@ -69,7 +69,6 @@ pub mod skinvault {
     pub fn reveal_and_claim(ctx: Context<RevealAndClaim>) -> Result<()> {
         instructions::reveal_and_claim::reveal_and_claim_handler(ctx)
     }
-
 
     /// Set price for an inventory item (oracle signed)
     pub fn set_price_signed(
