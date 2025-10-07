@@ -284,7 +284,7 @@ export class SolanaProgramService {
       const [globalPDA] = this.getGlobalPDA();
       
       // Get treasury ATA PDA
-      const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCwuBvf9Ss623VQ5DA');
+      const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
       const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
 
       const [treasuryATA] = PublicKey.findProgramAddressSync(

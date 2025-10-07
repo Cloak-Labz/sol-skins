@@ -24,7 +24,7 @@ export default function AdminPage() {
 
   const programService = new SolanaProgramService(
     process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com',
-    process.env.NEXT_PUBLIC_PROGRAM_ID || '6cSLcQ5RCyzPKeFWux2UMjm3SWf3tD41vHK5qsuphzKZ'
+    process.env.NEXT_PUBLIC_PROGRAM_ID || 'EyqcQ4n3Pr7BoqycXQj6hmyqmxZzwFzpFasQq55GEGkR'
   );
 
   // Initialize global state form
