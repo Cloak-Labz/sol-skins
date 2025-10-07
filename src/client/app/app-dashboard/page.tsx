@@ -26,7 +26,7 @@ export default function DashboardPage() {
         {/* Hero */}
         <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
           <img
-            src="/dust3.jpeg"
+            src="/assets/banner1.jpg"
             alt="Dust3 Promo Pack"
             className="w-full h-[220px] md:h-[360px] object-cover"
           />

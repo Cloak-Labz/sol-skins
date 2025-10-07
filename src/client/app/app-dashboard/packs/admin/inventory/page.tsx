@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Package,
   Loader2,
   CheckCircle,
@@ -250,250 +257,267 @@ export default function AdminInventoryPage() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Package className="h-8 w-8 text-primary" />
-        <div>
-          <h1 className="text-3xl font-bold">NFT Inventory Admin</h1>
-          <p className="text-muted-foreground">
-            Mint Core NFTs and manage skin metadata
-          </p>
-        </div>
-      </div>
-
-      {/* Mint Section */}
-      <Card className="p-6">
-        <div className="flex items-center gap-2 mb-4">
-          <Upload className="h-5 w-5" />
-          <h2 className="text-xl font-semibold">Mint New NFT</h2>
-        </div>
-
-        <div className="grid gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="nft-name">NFT Name *</Label>
-              <Input
-                id="nft-name"
-                placeholder="AK-47 | Fire Serpent"
-                value={nftName}
-                onChange={(e) => setNftName(e.target.value)}
-                disabled={minting}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="nft-symbol">Symbol</Label>
-              <Input
-                id="nft-symbol"
-                placeholder="SKIN"
-                value={nftSymbol}
-                onChange={(e) => setNftSymbol(e.target.value)}
-                disabled={minting}
-              />
-            </div>
-          </div>
-
+    <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-2">
+          <Package className="h-8 w-8 text-primary" />
           <div>
-            <Label htmlFor="nft-description">Description</Label>
-            <Textarea
-              id="nft-description"
-              placeholder="A legendary skin from CS:GO..."
-              value={nftDescription}
-              onChange={(e) => setNftDescription(e.target.value)}
-              disabled={minting}
-              rows={3}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="nft-image-url">Image URL *</Label>
-              <Input
-                id="nft-image-url"
-                placeholder="https://example.com/fire-serpent.png"
-                value={nftImageUrl}
-                onChange={(e) => setNftImageUrl(e.target.value)}
-                disabled={minting}
-              />
-            </div>
-
-            <div>
-              <Label htmlFor="nft-rarity">Rarity</Label>
-              <Input
-                id="nft-rarity"
-                placeholder="Legendary, Epic, Rare..."
-                value={nftRarity}
-                onChange={(e) => setNftRarity(e.target.value)}
-                disabled={minting}
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label htmlFor="nft-collection">Collection Name</Label>
-            <Input
-              id="nft-collection"
-              placeholder="CS:GO Skins Collection"
-              value={nftCollection}
-              onChange={(e) => setNftCollection(e.target.value)}
-              disabled={minting}
-            />
-          </div>
-
-          <div>
-            <Label htmlFor="nft-attributes">Attributes (JSON)</Label>
-            <Textarea
-              id="nft-attributes"
-              placeholder='{"Weapon": "AK-47", "Skin": "Fire Serpent", "Float": "0.07"}'
-              value={nftAttributes}
-              onChange={(e) => setNftAttributes(e.target.value)}
-              disabled={minting}
-              rows={4}
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Optional: JSON object or array with custom attributes. Will
-              auto-upload to Walrus.
+            <h1 className="text-3xl font-bold">NFT Inventory Admin</h1>
+            <p className="text-muted-foreground">
+              Mint Core NFTs and manage skin metadata
             </p>
           </div>
-
-          <div className="bg-muted/50 p-4 rounded-lg border border-muted">
-            <p className="text-sm text-muted-foreground">
-              <strong>🐋 Walrus Upload:</strong> Metadata will be automatically
-              uploaded to Walrus Testnet before minting.
-            </p>
-          </div>
-
-          <Button
-            onClick={handleMintNFT}
-            disabled={minting || !nftName || !nftImageUrl}
-            className="w-full"
-            size="lg"
-          >
-            {minting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Minting...
-              </>
-            ) : (
-              <>
-                <Package className="mr-2 h-4 w-4" />
-                Upload to Walrus & Mint Core NFT
-              </>
-            )}
-          </Button>
-        </div>
-      </Card>
-
-      {/* Inventory List Section */}
-      <Card className="p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="h-5 w-5" />
-            <h2 className="text-xl font-semibold">Minted NFTs</h2>
-          </div>
-          <Button
-            onClick={loadInventory}
-            disabled={loading}
-            variant="outline"
-            size="sm"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
-          </Button>
         </div>
 
-        {loading ? (
-          <div className="text-center py-12">
-            <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="mt-2 text-muted-foreground">Loading inventory...</p>
+        {/* Mint Section */}
+        <Card className="p-6 bg-zinc-950 border-zinc-800">
+          <div className="flex items-center gap-2 mb-4">
+            <Upload className="h-5 w-5" />
+            <h2 className="text-xl font-semibold">Mint New NFT</h2>
           </div>
-        ) : inventory.length === 0 ? (
-          <div className="text-center py-12">
-            <Package className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
-            <p className="text-muted-foreground">No NFTs minted yet</p>
-          </div>
-        ) : (
+
           <div className="grid gap-4">
-            {inventory.map((nft) => (
-              <Card
-                key={nft.id}
-                className="p-4 hover:bg-accent/50 transition-colors"
-              >
-                <div className="flex items-start gap-4">
-                  {nft.imageUrl && (
-                    <div className="w-20 h-20 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="nft-name">NFT Name *</Label>
+                <Input
+                  id="nft-name"
+                  placeholder="AK-47 | Fire Serpent"
+                  value={nftName}
+                  onChange={(e) => setNftName(e.target.value)}
+                  disabled={minting}
+                  className="bg-zinc-900 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="nft-symbol">Symbol</Label>
+                <Input
+                  id="nft-symbol"
+                  placeholder="SKIN"
+                  value={nftSymbol}
+                  onChange={(e) => setNftSymbol(e.target.value)}
+                  disabled={minting}
+                  className="bg-zinc-900 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="nft-description">Description</Label>
+              <Textarea
+                id="nft-description"
+                placeholder="A legendary skin from CS:GO..."
+                value={nftDescription}
+                onChange={(e) => setNftDescription(e.target.value)}
+                disabled={minting}
+                rows={3}
+                className="bg-zinc-900 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="nft-image-url">Image URL *</Label>
+                <Input
+                  id="nft-image-url"
+                  placeholder="https://example.com/fire-serpent.png"
+                  value={nftImageUrl}
+                  onChange={(e) => setNftImageUrl(e.target.value)}
+                  disabled={minting}
+                  className="bg-zinc-900 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="nft-rarity">Rarity</Label>
+                <Select
+                  value={nftRarity}
+                  onValueChange={(v) => setNftRarity(v)}
+                  disabled={minting}
+                >
+                  <SelectTrigger
+                    id="nft-rarity"
+                    className="bg-zinc-900 border-zinc-700 text-zinc-100"
+                  >
+                    <SelectValue placeholder="Select rarity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Common">Common</SelectItem>
+                    <SelectItem value="Uncommon">Uncommon</SelectItem>
+                    <SelectItem value="Rare">Rare</SelectItem>
+                    <SelectItem value="Epic">Epic</SelectItem>
+                    <SelectItem value="Legendary">Legendary</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="nft-collection">Collection Name</Label>
+              <Input
+                id="nft-collection"
+                placeholder="CS:GO Skins Collection"
+                value={nftCollection}
+                onChange={(e) => setNftCollection(e.target.value)}
+                disabled={minting}
+                className="bg-zinc-900 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="nft-attributes">Attributes (JSON)</Label>
+              <Textarea
+                id="nft-attributes"
+                placeholder='{"Weapon": "AK-47", "Skin": "Fire Serpent", "Float": "0.07"}'
+                value={nftAttributes}
+                onChange={(e) => setNftAttributes(e.target.value)}
+                disabled={minting}
+                rows={4}
+                className="bg-zinc-900 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Optional: JSON object or array with custom attributes. Will
+                auto-upload to Walrus.
+              </p>
+            </div>
+
+            <div className="bg-zinc-900/40 p-4 rounded-lg border border-zinc-800">
+              <p className="text-sm text-muted-foreground">
+                <strong>🐋 Walrus Upload:</strong> Metadata will be
+                automatically uploaded to Walrus Testnet before minting.
+              </p>
+            </div>
+
+            <Button
+              onClick={handleMintNFT}
+              disabled={minting || !nftName || !nftImageUrl}
+              className="w-full"
+              size="lg"
+            >
+              {minting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Minting...
+                </>
+              ) : (
+                <>
+                  <Package className="mr-2 h-4 w-4" />
+                  Upload to Walrus & Mint Core NFT
+                </>
+              )}
+            </Button>
+          </div>
+        </Card>
+
+        {/* Inventory List Section */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-5 w-5" />
+              <h2 className="text-xl font-semibold">Minted NFTs</h2>
+            </div>
+            <Button
+              onClick={loadInventory}
+              disabled={loading}
+              variant="outline"
+              size="sm"
+            >
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Refresh"
+              )}
+            </Button>
+          </div>
+
+          {loading ? (
+            <div className="text-center py-12">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+              <p className="mt-2 text-muted-foreground">Loading inventory...</p>
+            </div>
+          ) : inventory.length === 0 ? (
+            <div className="text-center py-12">
+              <Package className="mx-auto h-12 w-12 text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">No NFTs minted yet</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {inventory.map((nft) => (
+                <Card
+                  key={nft.id}
+                  className="relative overflow-hidden bg-zinc-950 border-2 border-amber-500/80 hover:border-amber-400 transition-colors shadow-[0_0_16px_rgba(245,158,11,0.35),0_0_36px_rgba(245,158,11,0.25)]"
+                >
+                  <div className="pointer-events-none absolute inset-1 rounded-sm border border-amber-300/40" />
+                  <div className="px-4 py-3 bg-zinc-900/80 border-b border-amber-300/30 flex items-center justify-between">
+                    <h3 className="font-semibold text-sm text-zinc-100 truncate pr-2">
+                      {nft.name}
+                    </h3>
+                    {nft.rarity && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-amber-400/15 text-amber-300">
+                        {nft.rarity}
+                      </span>
+                    )}
+                  </div>
+                  <div className="relative bg-zinc-900 flex items-center justify-center h-72">
+                    {nft.imageUrl ? (
                       <img
                         src={nft.imageUrl}
                         alt={nft.name}
-                        className="w-full h-full object-cover"
+                        className="max-h-full max-w-full object-contain"
                       />
-                    </div>
-                  )}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <h3 className="font-semibold text-lg">{nft.name}</h3>
-                        {nft.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                            {nft.description}
-                          </p>
-                        )}
-                      </div>
-                      {nft.rarity && (
-                        <span className="px-2 py-1 bg-primary/10 text-primary rounded text-xs font-medium">
-                          {nft.rarity}
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="mt-3 space-y-1 text-xs">
-                      {nft.mintedAsset && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">Asset:</span>
-                          <code className="bg-muted px-2 py-0.5 rounded font-mono">
-                            {nft.mintedAsset.slice(0, 8)}...
-                            {nft.mintedAsset.slice(-8)}
-                          </code>
-                          <a
-                            href={`https://explorer.solana.com/address/${nft.mintedAsset}?cluster=devnet`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline flex items-center gap-1"
-                          >
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        </div>
-                      )}
-                      {nft.metadataUri && (
-                        <div className="flex items-center gap-2">
-                          <span className="text-muted-foreground">
-                            Metadata:
-                          </span>
-                          <a
-                            href={nft.metadataUri}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline flex items-center gap-1 truncate max-w-md"
-                          >
-                            {nft.metadataUri.slice(0, 40)}...
-                            <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                          </a>
-                        </div>
-                      )}
-                      {nft.mintedAt && (
-                        <div>
-                          <span className="text-muted-foreground">Minted:</span>{" "}
-                          {new Date(nft.mintedAt).toLocaleString()}
-                        </div>
-                      )}
+                    ) : null}
+                    <div className="pointer-events-none absolute inset-0">
+                      <div className="absolute top-1 left-1 w-3 h-3 border-t-2 border-l-2 border-amber-400/60" />
+                      <div className="absolute top-1 right-1 w-3 h-3 border-t-2 border-r-2 border-amber-400/60" />
+                      <div className="absolute bottom-1 left-1 w-3 h-3 border-b-2 border-l-2 border-amber-400/60" />
+                      <div className="absolute bottom-1 right-1 w-3 h-3 border-b-2 border-r-2 border-amber-400/60" />
                     </div>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        )}
-      </Card>
+                  <div className="p-4 space-y-2 text-xs">
+                    {nft.metadataUri && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-zinc-400">Metadata</span>
+                        <a
+                          href={nft.metadataUri}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-amber-300 hover:underline truncate max-w-[180px]"
+                        >
+                          {nft.metadataUri.slice(0, 32)}...
+                        </a>
+                      </div>
+                    )}
+                    {nft.mintedAsset && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-zinc-400">Asset</span>
+                        <a
+                          href={`https://explorer.solana.com/address/${nft.mintedAsset}?cluster=devnet`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-amber-300 hover:underline truncate max-w-[180px]"
+                        >
+                          {nft.mintedAsset.slice(0, 8)}...
+                          {nft.mintedAsset.slice(-8)}
+                        </a>
+                      </div>
+                    )}
+                    {nft.mintedAt && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-zinc-400">Minted</span>
+                        <span className="text-zinc-300">
+                          {new Date(nft.mintedAt).toLocaleString()}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

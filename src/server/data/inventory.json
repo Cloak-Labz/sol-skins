@@ -36,5 +36,23 @@
     "mintedAsset": "DhrAXmy6Tsj8wD3go9enV2aCiD9nEfEBh9UMdW9igrhy",
     "mintTx": "NILG6Oc44ZeYBZS/UIWWrk0d0iV9z6nkKOcNttHcPgSbL4+sYSFz4XkzaUK6tCv4Si2FG/Zdu1DIDDcd70/WBw==",
     "mintedAt": 1759862803942
+  },
+  {
+    "id": "1759863603581_a628de0f04ba3",
+    "name": "AK-47",
+    "description": "Muito boa.",
+    "imageUrl": "https://steamcdn-a.akamaihd.net/apps/730/icons/econ/default_generated/weapon_m4a1_cu_m4a1_howling_light_large.c64a9fc9fa04b5d10d4b1e200135e59285c8a77c.png",
+    "rarity": "Common",
+    "attributes": [
+      {
+        "trait_type": "Rarity",
+        "value": "Common"
+      }
+    ],
+    "createdAt": 1759863603581,
+    "metadataUri": "https://aggregator.walrus-testnet.walrus.space/v1/5b_ir2-VhgD5mK657q8yyfTlDjupsZ9AkOBIq1WYJdQ",
+    "mintedAsset": "2Jz9TRkdewQru3wYs6FpRapFtM9wJUhPeCdjpfAiKw6J",
+    "mintTx": "QzfTRUzv1OP1zajwJp/bELzRSQ/P9b/Ub7Pdar+jr2xnkOLRDExm9Tywycvxr7kVLDugK8uyL0/wZclL0yfvAg==",
+    "mintedAt": 1759863603581
   }
 ]

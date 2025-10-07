@@ -34,9 +34,9 @@ interface CSGOSkin {
 
 const getPackIcon = (rarity: string) => {
   switch (rarity.toLowerCase()) {
-    case 'legendary':
+    case "legendary":
       return Crown;
-    case 'premium':
+    case "premium":
       return Gem;
     default:
       return Package;
@@ -45,11 +45,11 @@ const getPackIcon = (rarity: string) => {
 
 const getPackColor = (rarity: string) => {
   switch (rarity.toLowerCase()) {
-    case 'legendary':
+    case "legendary":
       return "from-yellow-500 to-orange-600";
-    case 'premium':
+    case "premium":
       return "from-blue-600 to-purple-600";
-    case 'special':
+    case "special":
       return "from-purple-500 to-pink-600";
     default:
       return "from-gray-600 to-gray-800";
@@ -58,11 +58,11 @@ const getPackColor = (rarity: string) => {
 
 const getPackGlow = (rarity: string) => {
   switch (rarity.toLowerCase()) {
-    case 'legendary':
+    case "legendary":
       return "shadow-yellow-500/50";
-    case 'premium':
+    case "premium":
       return "shadow-blue-500/50";
-    case 'special':
+    case "special":
       return "shadow-purple-500/50";
     default:
       return "shadow-gray-500/50";
@@ -183,19 +183,32 @@ export default function PacksPage() {
   // Odds to display (prefer API chances → map to labeled rows)
   const oddsToUse = (() => {
     const chances = (selectedPack as any)?.chances as
-      | { common?: string | number; uncommon?: string | number; rare?: string | number; epic?: string | number; legendary?: string | number }
+      | {
+          common?: string | number;
+          uncommon?: string | number;
+          rare?: string | number;
+          epic?: string | number;
+          legendary?: string | number;
+        }
       | undefined;
-    const toNum = (v: any) => (typeof v === 'number' ? v : parseFloat(String(v ?? 0)));
+    const toNum = (v: any) =>
+      typeof v === "number" ? v : parseFloat(String(v ?? 0));
     if (chances) {
       return [
-        { label: 'Legendary', rarity: 'legendary', pct: toNum(chances.legendary) },
-        { label: 'Epic', rarity: 'epic', pct: toNum(chances.epic) },
-        { label: 'Rare', rarity: 'rare', pct: toNum(chances.rare) },
-        { label: 'Uncommon', rarity: 'uncommon', pct: toNum(chances.uncommon) },
-        { label: 'Common', rarity: 'common', pct: toNum(chances.common) },
+        {
+          label: "Legendary",
+          rarity: "legendary",
+          pct: toNum(chances.legendary),
+        },
+        { label: "Epic", rarity: "epic", pct: toNum(chances.epic) },
+        { label: "Rare", rarity: "rare", pct: toNum(chances.rare) },
+        { label: "Uncommon", rarity: "uncommon", pct: toNum(chances.uncommon) },
+        { label: "Common", rarity: "common", pct: toNum(chances.common) },
       ];
     }
-    const apiOdds = (selectedPack as any)?.odds as Array<{ label?: string; rarity?: string; pct?: number; odds?: number }> | undefined;
+    const apiOdds = (selectedPack as any)?.odds as
+      | Array<{ label?: string; rarity?: string; pct?: number; odds?: number }>
+      | undefined;
     if (Array.isArray(apiOdds)) return apiOdds;
     return DEFAULT_ODDS;
   })();
@@ -208,15 +221,17 @@ export default function PacksPage() {
   const loadLootBoxes = async () => {
     try {
       setLoading(true);
-      const response = await marketplaceService.getLootBoxes({ filterBy: 'all' });
+      const response = await marketplaceService.getLootBoxes({
+        filterBy: "all",
+      });
       const boxes = response.data || [];
       setLootBoxes(boxes);
       if (boxes.length > 0 && !selectedPack) {
         setSelectedPack(boxes[0]);
       }
     } catch (error) {
-      console.error('Failed to load loot boxes:', error);
-      toast.error('Failed to load packs');
+      console.error("Failed to load loot boxes:", error);
+      toast.error("Failed to load packs");
     } finally {
       setLoading(false);
     }
@@ -337,32 +352,34 @@ export default function PacksPage() {
       // Open case via API
       const response = await casesService.openCase({
         lootBoxTypeId: selectedPack.id,
-        paymentMethod: 'SOL',
+        paymentMethod: "SOL",
       });
 
-      console.log('Case opening response:', response);
+      console.log("Case opening response:", response);
 
       // FASE 2: Spinning (mostrar roleta girando)
-      setOpeningPhase('spinning');
+      setOpeningPhase("spinning");
       startContinuousSpin();
 
       // Poll for completion
       const caseOpeningId = response.data.caseOpeningId;
       let attempts = 0;
       const maxAttempts = 15; // 15 seconds max
-      
+
       const checkStatus = async () => {
         try {
           const status = await casesService.getOpeningStatus(caseOpeningId);
-          
+
           if (status.completedAt && status.skinResult) {
             // Case is complete, show result
             const wonSkin: CSGOSkin = {
               id: status.skinResult.id,
               name: `${status.skinResult.weapon} | ${status.skinResult.skinName}`,
               rarity: status.skinResult.rarity,
-              value: parseFloat(String(status.skinResult.currentPriceUsd ?? '0')),
-              image: status.skinResult.imageUrl || '/assets/skins/img2.png',
+              value: parseFloat(
+                String(status.skinResult.currentPriceUsd ?? "0")
+              ),
+              image: status.skinResult.imageUrl || "/assets/skins/img2.png",
             };
 
             stopAndShowResult(wonSkin);
@@ -372,15 +389,15 @@ export default function PacksPage() {
             setTimeout(checkStatus, 1000);
           } else {
             // Timeout
-            toast.error('Case opening timed out');
+            toast.error("Case opening timed out");
             setOpeningPhase(null);
             if (animationRef.current) {
               cancelAnimationFrame(animationRef.current);
             }
           }
         } catch (error) {
-          console.error('Error checking status:', error);
-          toast.error('Failed to check opening status');
+          console.error("Error checking status:", error);
+          toast.error("Failed to check opening status");
           setOpeningPhase(null);
           if (animationRef.current) {
             cancelAnimationFrame(animationRef.current);
@@ -390,7 +407,6 @@ export default function PacksPage() {
 
       // Start polling after 1 second
       setTimeout(checkStatus, 1000);
-
     } catch (error) {
       console.error("Failed to open pack:", error);
       toast.error("Failed to open pack");
@@ -466,9 +482,12 @@ export default function PacksPage() {
                     }}
                     className="relative"
                   >
-                  <div className="w-32 h-32 bg-gradient-to-br from-[#E99500] to-[#ff6b00] rounded-2xl flex items-center justify-center shadow-lg shadow-[#E99500]/50">
-                    {selectedPack && React.createElement(getPackIcon(selectedPack.rarity), { className: "w-16 h-16 text-black" })}
-                  </div>
+                    <div className="w-32 h-32 bg-gradient-to-br from-[#E99500] to-[#ff6b00] rounded-2xl flex items-center justify-center shadow-lg shadow-[#E99500]/50">
+                      {selectedPack &&
+                        React.createElement(getPackIcon(selectedPack.rarity), {
+                          className: "w-16 h-16 text-black",
+                        })}
+                    </div>
                   </motion.div>
 
                   {/* Status Text */}
@@ -587,7 +606,10 @@ export default function PacksPage() {
                                 {item.name}
                               </p>
                               <p className="text-white text-sm md:text-base font-bold">
-                                ${typeof item.value === 'number' ? item.value.toFixed(2) : parseFloat(item.value || '0').toFixed(2)}
+                                $
+                                {typeof item.value === "number"
+                                  ? item.value.toFixed(2)
+                                  : parseFloat(item.value || "0").toFixed(2)}
                               </p>
                             </Card>
                           </div>
@@ -612,12 +634,21 @@ export default function PacksPage() {
         <div className="max-w-7xl mx-auto space-y-8">
           {/* Hero */}
           <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
-            <img src="/dust3.jpeg" alt="Dust3 Pack" className="w-full h-[220px] md:h-[320px] object-cover" />
+            <img
+              src="/assets/2.jpg"
+              alt="Dust3 Pack"
+              className="w-full h-[220px] md:h-[320px] object-cover"
+            />
             <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 flex flex-col md:flex-row md:items-end md:justify-between gap-6">
               <div>
-                <h2 className="text-3xl md:text-4xl font-bold text-white">Dust3 Promo Pack</h2>
-                <p className="text-zinc-300">Open packs inspired by CS classics. Provably fair, instant delivery.</p>
+                <h2 className="text-3xl md:text-4xl font-bold text-white">
+                  Dust3 Promo Pack
+                </h2>
+                <p className="text-zinc-300">
+                  Open packs inspired by CS classics. Provably fair, instant
+                  delivery.
+                </p>
               </div>
             </div>
           </div>
@@ -627,20 +658,32 @@ export default function PacksPage() {
             {/* Left: Pack Preview + Compact Packs (LG+) */}
             <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 flex flex-col">
               <div className="relative w-full h-[260px] md:h-[320px] lg:h-[360px]">
-                <img src="/dust3.jpeg" alt="Dust3 Pack Preview" className="w-full h-full object-cover" />
+                <img
+                  src="/dust3.jpeg"
+                  alt="Dust3 Pack Preview"
+                  className="w-full h-full object-cover"
+                />
                 {/* Supply Status Overlay */}
                 {selectedPack?.supply?.maxSupply && (
                   <div className="absolute top-4 right-4">
-                    <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-sm border ${
-                      selectedPack.supply.isSoldOut 
-                        ? 'bg-red-500/20 border-red-500/30' 
-                        : 'bg-green-500/20 border-green-500/30'
-                    }`}>
-                      <div className={`w-2 h-2 rounded-full ${
-                        selectedPack.supply.isSoldOut ? 'bg-red-400' : 'bg-green-400'
-                      }`} />
+                    <div
+                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-sm border ${
+                        selectedPack.supply.isSoldOut
+                          ? "bg-red-500/20 border-red-500/30"
+                          : "bg-green-500/20 border-green-500/30"
+                      }`}
+                    >
+                      <div
+                        className={`w-2 h-2 rounded-full ${
+                          selectedPack.supply.isSoldOut
+                            ? "bg-red-400"
+                            : "bg-green-400"
+                        }`}
+                      />
                       <span className="text-xs font-medium text-white">
-                        {selectedPack.supply.isSoldOut ? 'Out of Stock' : 'In Stock'}
+                        {selectedPack.supply.isSoldOut
+                          ? "Out of Stock"
+                          : "In Stock"}
                       </span>
                     </div>
                   </div>
@@ -653,22 +696,36 @@ export default function PacksPage() {
                       key={pack.id}
                       onClick={() => !openingPhase && setSelectedPack(pack)}
                       className={`group text-left rounded-lg border px-3 py-3 bg-gradient-to-b from-zinc-950 to-zinc-900 transition-colors ${
-                        selectedPack?.id === pack.id ? 'border-[#E99500]' : 'border-zinc-800 hover:border-zinc-700'
+                        selectedPack?.id === pack.id
+                          ? "border-[#E99500]"
+                          : "border-zinc-800 hover:border-zinc-700"
                       }`}
                     >
                       <div className="flex items-center gap-2">
                         <div className="relative">
-                          <img src={(pack as any).imageUrl || '/dust3.jpeg'} alt={pack.name} className="w-10 h-10 rounded object-cover border border-zinc-800" />
+                          <img
+                            src={(pack as any).imageUrl || "/dust3.jpeg"}
+                            alt={pack.name}
+                            className="w-10 h-10 rounded object-cover border border-zinc-800"
+                          />
                           {/* Supply Status Dot */}
                           {pack.supply?.maxSupply && (
-                            <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 ${
-                              pack.supply.isSoldOut ? 'bg-red-400' : 'bg-green-400'
-                            }`} />
+                            <div
+                              className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 ${
+                                pack.supply.isSoldOut
+                                  ? "bg-red-400"
+                                  : "bg-green-400"
+                              }`}
+                            />
                           )}
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xs text-foreground font-semibold truncate">{pack.name}</p>
-                          <p className="text-[10px] text-zinc-400">{parseFloat(pack.priceSol).toFixed(2)} SOL</p>
+                          <p className="text-xs text-foreground font-semibold truncate">
+                            {pack.name}
+                          </p>
+                          <p className="text-[10px] text-zinc-400">
+                            {parseFloat(pack.priceSol).toFixed(2)} SOL
+                          </p>
                         </div>
                       </div>
                     </button>
@@ -681,59 +738,129 @@ export default function PacksPage() {
             <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6 md:sticky md:top-6 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700">
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
                 <div>
-                  <h3 className="text-2xl font-bold text-foreground">{selectedPack?.name || 'Promo Pack'}</h3>
+                  <h3 className="text-2xl font-bold text-foreground">
+                    {selectedPack?.name || "Promo Pack"}
+                  </h3>
                   {(selectedPack as any)?.description && (
-                    <p className="text-zinc-400 text-sm mt-1 line-clamp-2">{(selectedPack as any).description}</p>
+                    <p className="text-zinc-400 text-sm mt-1 line-clamp-2">
+                      {(selectedPack as any).description}
+                    </p>
                   )}
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="text-3xl font-bold text-foreground">{selectedPack ? parseFloat(selectedPack.priceSol).toFixed(2) : '—'} SOL</p>
-                    <p className="text-xs text-muted-foreground">{selectedPack ? `$${parseFloat(String(selectedPack.priceUsdc ?? selectedPack.priceSol)).toFixed(2)}` : ''}</p>
+                    <p className="text-3xl font-bold text-foreground">
+                      {selectedPack
+                        ? parseFloat(selectedPack.priceSol).toFixed(2)
+                        : "—"}{" "}
+                      SOL
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {selectedPack
+                        ? `$${parseFloat(
+                            String(
+                              selectedPack.priceUsdc ?? selectedPack.priceSol
+                            )
+                          ).toFixed(2)}`
+                        : ""}
+                    </p>
                   </div>
                   <Button
                     onClick={handleOpenPack}
-                    disabled={openingPhase !== null || !connected || selectedPack?.supply?.isSoldOut}
+                    disabled={
+                      openingPhase !== null ||
+                      !connected ||
+                      selectedPack?.supply?.isSoldOut
+                    }
                     className={`px-6 py-6 ml-4 font-semibold rounded-lg transition-transform duration-150 ${
-                      openingPhase ? 'bg-zinc-700 cursor-not-allowed' : 
-                      selectedPack?.supply?.isSoldOut ? 'bg-red-500/20 text-red-400 cursor-not-allowed' :
-                      'bg-zinc-100 text-black hover:bg-white hover:scale-[1.02] active:scale-[0.99]'
+                      openingPhase
+                        ? "bg-zinc-700 cursor-not-allowed"
+                        : selectedPack?.supply?.isSoldOut
+                        ? "bg-red-500/20 text-red-400 cursor-not-allowed"
+                        : "bg-zinc-100 text-black hover:bg-white hover:scale-[1.02] active:scale-[0.99]"
                     }`}
                   >
                     <span className="mr-2 ml-2">
-                      {selectedPack?.supply?.isSoldOut ? 'Sold Out' : 'Open Pack'}
+                      {selectedPack?.supply?.isSoldOut
+                        ? "Sold Out"
+                        : "Open Pack"}
                     </span>
-                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 12h14M13 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                    <svg
+                      className="w-4 h-4"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                    >
+                      <path
+                        d="M5 12h14M13 5l7 7-7 7"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
                   </Button>
                 </div>
               </div>
 
               {/* Odds List */}
               <div className="space-y-2">
-                {oddsToUse.map((o: { label?: string; rarity?: string; pct?: number; odds?: number }, idx: number) => {
-                  const label = (o.label || o.rarity || '').toString();
-                  const rarityKey = (o.rarity || label).toLowerCase();
-                  const pctNum = typeof o.pct === 'number' ? o.pct : Number((o as any).odds ?? 0);
-                  const denom = pctNum > 0 ? Math.round(100 / pctNum) : 0;
-                  return (
-                    <div key={idx} className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3">
-                      <div className="flex items-center gap-3">
-                        <span className={`inline-block size-2 rounded-full bg-gradient-to-r ${getRarityColor(rarityKey)}`} />
-                        <span className="text-sm text-foreground font-medium uppercase flex-1">{label}</span>
-                        <span className="text-xs text-zinc-400 mr-2">{denom > 0 ? `~1 in ${denom}` : "—"}</span>
-                        <span className="px-2 py-0.5 text-xs rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800">{pctNum.toFixed(1)}%</span>
+                {oddsToUse.map(
+                  (
+                    o: {
+                      label?: string;
+                      rarity?: string;
+                      pct?: number;
+                      odds?: number;
+                    },
+                    idx: number
+                  ) => {
+                    const label = (o.label || o.rarity || "").toString();
+                    const rarityKey = (o.rarity || label).toLowerCase();
+                    const pctNum =
+                      typeof o.pct === "number"
+                        ? o.pct
+                        : Number((o as any).odds ?? 0);
+                    const denom = pctNum > 0 ? Math.round(100 / pctNum) : 0;
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span
+                            className={`inline-block size-2 rounded-full bg-gradient-to-r ${getRarityColor(
+                              rarityKey
+                            )}`}
+                          />
+                          <span className="text-sm text-foreground font-medium uppercase flex-1">
+                            {label}
+                          </span>
+                          <span className="text-xs text-zinc-400 mr-2">
+                            {denom > 0 ? `~1 in ${denom}` : "—"}
+                          </span>
+                          <span className="px-2 py-0.5 text-xs rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800">
+                            {pctNum.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="mt-2 h-2 w-full rounded-full bg-zinc-800 overflow-hidden border border-zinc-700">
+                          <div
+                            className={`h-full bg-gradient-to-r ${getRarityColor(
+                              rarityKey
+                            )}`}
+                            style={{
+                              width: `${Math.min(100, Math.max(0, pctNum))}%`,
+                            }}
+                          />
+                        </div>
                       </div>
-                      <div className="mt-2 h-2 w-full rounded-full bg-zinc-800 overflow-hidden border border-zinc-700">
-                        <div
-                          className={`h-full bg-gradient-to-r ${getRarityColor(rarityKey)}`}
-                          style={{ width: `${Math.min(100, Math.max(0, pctNum))}%` }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  }
+                )}
                 <div className="flex items-center justify-between pt-2">
-                  <p className="text-[11px] text-zinc-500">Probabilities are estimates and may vary per pack.</p>
+                  <p className="text-[11px] text-zinc-500">
+                    Probabilities are estimates and may vary per pack.
+                  </p>
                 </div>
               </div>
             </div>
@@ -843,8 +970,8 @@ export default function PacksPage() {
                           toast.success("Skin claimed to inventory!");
                           setShowResult(false);
                         } catch (error) {
-                          console.error('Failed to claim skin:', error);
-                          toast.error('Failed to claim skin');
+                          console.error("Failed to claim skin:", error);
+                          toast.error("Failed to claim skin");
                         }
                       }}
                       size="lg"
@@ -862,8 +989,8 @@ export default function PacksPage() {
                           );
                           setShowResult(false);
                         } catch (error) {
-                          console.error('Failed to sell skin:', error);
-                          toast.error('Failed to sell skin');
+                          console.error("Failed to sell skin:", error);
+                          toast.error("Failed to sell skin");
                         }
                       }}
                       size="lg"

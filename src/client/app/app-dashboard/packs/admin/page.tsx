@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Shield,
   Package,
@@ -51,6 +52,20 @@ export default function AdminPage() {
   const [publishing, setPublishing] = useState(false);
   const [loadingCandyMachine, setLoadingCandyMachine] = useState(false);
 
+  // Inventory selection for batch composition
+  const [inventory, setInventory] = useState<
+    Array<{
+      id: string;
+      name: string;
+      description?: string;
+      imageUrl?: string;
+      metadataUri?: string;
+      rarity?: string;
+    }>
+  >([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [loadingInventory, setLoadingInventory] = useState(false);
+
   // Check if connected wallet is admin
   useEffect(() => {
     const adminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
@@ -75,6 +90,9 @@ export default function AdminPage() {
       if (stored) {
         setCandyMachine(stored);
       }
+
+      // Load minted NFTs from backend DB
+      void loadInventory();
     }
   }, [connected, isAdmin]);
 
@@ -193,7 +211,7 @@ export default function AdminPage() {
       return;
     }
 
-    if (!wallet.publicKey || !candyMachine || !metadataUris) {
+    if (!wallet.publicKey || !candyMachine) {
       toast.error("Please fill in all fields");
       return;
     }
@@ -203,14 +221,14 @@ export default function AdminPage() {
       toast.loading("Publishing batch...", { id: "publish" });
       const program = getProgramFromWallet(wallet as any, connection);
 
-      // Parse metadata URIs (one per line)
-      const uris = metadataUris
-        .split("\n")
-        .map((uri) => uri.trim())
-        .filter((uri) => uri.length > 0);
+      // Build metadata URIs from selected inventory
+      const selected = inventory.filter((i) => selectedIds.has(i.id));
+      const uris = selected
+        .map((i) => (i.metadataUri || "").trim())
+        .filter((u) => u.length > 0);
 
       if (uris.length === 0) {
-        toast.error("Please provide at least one metadata URI", {
+        toast.error("Select at least one NFT with metadata URI", {
           id: "publish",
         });
         return;
@@ -254,6 +272,43 @@ export default function AdminPage() {
     } finally {
       setPublishing(false);
     }
+  };
+
+  const loadInventory = async () => {
+    try {
+      setLoadingInventory(true);
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+      const res = await fetch(`${base}/api/v1/admin/inventory`);
+      const json = await res.json();
+      if (json?.success) {
+        setInventory(
+          (json.data || []).map((i: any) => ({
+            id: i.id,
+            name: i.name,
+            description: i.description,
+            imageUrl: i.imageUrl,
+            metadataUri: i.metadataUri,
+            rarity: i.rarity,
+          }))
+        );
+      } else {
+        toast.error("Failed to load inventory");
+      }
+    } catch (e) {
+      console.error("Failed to load inventory:", e);
+      toast.error("Failed to load inventory");
+    } finally {
+      setLoadingInventory(false);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   // Not connected
@@ -432,20 +487,56 @@ export default function AdminPage() {
                   </div>
 
                   <div>
-                    <Label htmlFor="metadataUris" className="text-white">
-                      Metadata URIs (one per line)
-                    </Label>
-                    <Textarea
-                      id="metadataUris"
-                      placeholder={
-                        "https://arweave.net/...\nhttps://walrus.site/...\nhttps://ipfs.io/..."
-                      }
-                      value={metadataUris}
-                      onChange={(e) => setMetadataUris(e.target.value)}
-                      className="bg-zinc-900 border-zinc-700 text-white min-h-32"
-                    />
+                    <Label className="text-white">Select NFTs for Batch</Label>
+                    <div className="mt-2 grid gap-3 max-h-80 overflow-auto pr-2">
+                      {loadingInventory ? (
+                        <p className="text-zinc-400 text-sm">
+                          Loading inventory...
+                        </p>
+                      ) : inventory.length === 0 ? (
+                        <p className="text-zinc-400 text-sm">
+                          No NFTs found in inventory
+                        </p>
+                      ) : (
+                        inventory.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 border border-zinc-800"
+                          >
+                            <div className="w-12 h-12 rounded bg-zinc-800 overflow-hidden flex-shrink-0">
+                              {item.imageUrl ? (
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : null}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white text-sm font-medium truncate">
+                                {item.name}
+                              </p>
+                              <p className="text-zinc-500 text-xs truncate">
+                                {item.metadataUri || "No metadata URI"}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-zinc-400">
+                                {item.rarity || "-"}
+                              </span>
+                              <Checkbox
+                                checked={selectedIds.has(item.id)}
+                                onCheckedChange={() => toggleSelect(item.id)}
+                                className="border-zinc-600 data-[state=checked]:bg-[#E99500] data-[state=checked]:border-[#E99500]"
+                              />
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                     <p className="text-xs text-zinc-500 mt-1">
-                      Enter metadata URIs for the skins in this batch
+                      Choose minted NFTs to include. We'll derive metadata URIs
+                      from selection.
                     </p>
                   </div>
 
