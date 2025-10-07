@@ -1,0 +1,23 @@
+{
+  "price": 0.1,
+  "number": 3,
+  "symbol": "SKIN",
+  "sellerFeeBasisPoints": 500,
+  "gatekeeper": null,
+  "solTreasuryAccount": null,
+  "splTokenAccount": null,
+  "splToken": null,
+  "goLiveDate": "2024-01-01T00:00:00Z",
+  "endSettings": null,
+  "whitelistMintSettings": null,
+  "hiddenSettings": null,
+  "uploadMethod": "bundlr",
+  "retainAuthority": true,
+  "isMutable": true,
+  "creators": [
+    {
+      "address": "INSERT_YOUR_WALLET_ADDRESS_HERE",
+      "share": 100
+    }
+  ]
+}

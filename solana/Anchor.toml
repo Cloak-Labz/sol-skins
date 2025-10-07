@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-skinvault = "6cSLcQ5RCyzPKeFWux2UMjm3SWf3tD41vHK5qsuphzKZ"
+skinvault = "HkgLfcBuBwxJroAk2C874rWjp7FzkThAXBGwcoWWRPH1"
 
 [programs.localnet]
-skinvault = "6cSLcQ5RCyzPKeFWux2UMjm3SWf3tD41vHK5qsuphzKZ"
+skinvault = "HkgLfcBuBwxJroAk2C874rWjp7FzkThAXBGwcoWWRPH1"
 
 [registry]
 url = "https://anchor.projectserum.com"
