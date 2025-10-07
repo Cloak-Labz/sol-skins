@@ -1,0 +1,40 @@
+[
+  {
+    "id": "1759862803942_1085dabfac0ff",
+    "name": "aaaaa",
+    "description": "aaaaa",
+    "imageUrl": "https://dmarket.com/blog/most-beautiful-csgo-skins/AK-47%20Nightwish_hu_d81b40f1ad29411c.webp",
+    "rarity": "Legendary",
+    "attributes": [
+      {
+        "trait_type": "Weapon",
+        "value": "AK-47"
+      },
+      {
+        "trait_type": "Pattern",
+        "value": "Fire Serpent"
+      },
+      {
+        "trait_type": "Float",
+        "value": 0.003
+      },
+      {
+        "trait_type": "Wear",
+        "value": "Factory New"
+      },
+      {
+        "trait_type": "StatTrak",
+        "value": "Yes"
+      },
+      {
+        "trait_type": "Seed",
+        "value": 661
+      }
+    ],
+    "createdAt": 1759862803942,
+    "metadataUri": "https://aggregator.walrus-testnet.walrus.space/v1/WKwMWWt9WJHTVMyCMfcWAkJdjY0jMBTOz8mheiylxBc",
+    "mintedAsset": "DhrAXmy6Tsj8wD3go9enV2aCiD9nEfEBh9UMdW9igrhy",
+    "mintTx": "NILG6Oc44ZeYBZS/UIWWrk0d0iV9z6nkKOcNttHcPgSbL4+sYSFz4XkzaUK6tCv4Si2FG/Zdu1DIDDcd70/WBw==",
+    "mintedAt": 1759862803942
+  }
+]

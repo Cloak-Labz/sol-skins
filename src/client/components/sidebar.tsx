@@ -17,11 +17,23 @@ import {
   Gift,
   User,
   ChartBarIncreasing,
+  Shield,
 } from "lucide-react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
 
 function SidebarComponent() {
   const pathname = usePathname();
+  const { publicKey } = useWallet();
+
+  // Check if connected wallet is admin
+  const isAdmin = useMemo(() => {
+    const adminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
+    if (publicKey && adminWallet) {
+      return publicKey.toBase58() === adminWallet;
+    }
+    return false;
+  }, [publicKey]);
 
   const mainNavItems = [
     { href: "/app-dashboard", label: "Home", icon: Home },
@@ -60,6 +72,19 @@ function SidebarComponent() {
   const exploreItems = [
     { href: "/refer", label: "Refer and Earn", icon: Gift, soon: true },
     { href: "/app-dashboard/about", label: "About", icon: Info },
+  ];
+
+  const adminItems = [
+    {
+      href: "/app-dashboard/packs/admin",
+      label: "Pack Manager",
+      icon: Shield,
+    },
+    {
+      href: "/app-dashboard/packs/admin/inventory",
+      label: "Inventory",
+      icon: Package,
+    },
   ];
 
   return (
@@ -173,7 +198,9 @@ function SidebarComponent() {
                   <Icon className="w-4 h-4" />
                   {item.label}
                   {item.soon && (
-                    <span className="ml-auto text-[#666] text-xs bg-[#1a1a1a] px-2 py-0.5 rounded">SOON</span>
+                    <span className="ml-auto text-[#666] text-xs bg-[#1a1a1a] px-2 py-0.5 rounded">
+                      SOON
+                    </span>
                   )}
                 </>
               );
@@ -206,6 +233,36 @@ function SidebarComponent() {
             })}
           </nav>
         </div>
+
+        {/* Admin Section - Only visible to admin wallet */}
+        {isAdmin && (
+          <div className="px-4 pb-4">
+            <h3 className="text-[#E99500] text-xs font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+              <Shield className="w-3 h-3" />
+              ADMIN
+            </h3>
+            <nav className="space-y-1">
+              {adminItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors border border-[#E99500]/20",
+                      pathname === item.href
+                        ? "bg-[#E99500]/20 text-[#E99500] border-[#E99500]"
+                        : "text-[#E99500]/80 hover:text-[#E99500] hover:bg-[#E99500]/10"
+                    )}
+                  >
+                    <Icon className="w-4 h-4" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+        )}
       </div>
     </aside>
   );

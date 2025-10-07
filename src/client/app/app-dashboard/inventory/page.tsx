@@ -256,11 +256,18 @@ export default function InventoryPage() {
               >
                 <CardHeader className="pb-4">
                   <div className="flex items-center justify-between mb-2">
-                    <Badge className={`${getRarityColor(skin.skinTemplate.rarity)} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}>
+                    <Badge
+                      className={`${getRarityColor(
+                        skin.skinTemplate.rarity
+                      )} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}
+                    >
                       {skin.skinTemplate.rarity}
                     </Badge>
                     {skin.status !== "owned" && (
-                      <Badge variant="outline" className="text-xs bg-zinc-900 text-zinc-300 border border-zinc-800">
+                      <Badge
+                        variant="outline"
+                        className="text-xs bg-zinc-900 text-zinc-300 border border-zinc-800"
+                      >
                         {skin.status}
                       </Badge>
                     )}
