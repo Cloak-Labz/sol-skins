@@ -6,9 +6,6 @@ pub struct Global {
     /// Authority that can perform admin operations
     pub authority: Pubkey,
 
-    /// Oracle public key for price signature verification
-    pub oracle_pubkey: Pubkey,
-
     /// USDC mint address
     pub usdc_mint: Pubkey,
 
@@ -43,7 +40,6 @@ pub struct Global {
 impl Global {
     pub const LEN: usize = 8 + // discriminator
         32 + // authority
-        32 + // oracle_pubkey
         32 + // usdc_mint
         1 +  // buyback_enabled
         8 +  // min_treasury_balance

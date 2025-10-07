@@ -42,7 +42,7 @@ pub fn publish_merkle_root_handler(
     // Validate timestamp (allow some tolerance for test environments)
     require!(
         snapshot_time > 0 && snapshot_time <= current_time + 60, // Allow 1 minute tolerance
-        SkinVaultError::InvalidTimestamp
+        SkinVaultError::InvalidBatchId
     );
 
     // Validate merkle root is not empty

@@ -109,6 +109,20 @@ export class InventoryService {
       );
     }
 
+    // TODO: Call Solana program's sell_back instruction
+    // The program signature is now: sell_back(market_price: u64, min_price: u64)
+    // where market_price is the current USD price (in micro-units, e.g., $10 = 10_000_000)
+    // and min_price is the user's slippage protection
+    // The program will calculate: payout = market_price * 0.85 - (market_price * 0.01)
+    // Example call (pseudo-code):
+    // await program.methods
+    //   .sellBack(
+    //     new BN(currentPrice * 1_000_000), // market_price in micro-USD
+    //     new BN(minAcceptablePrice * 1_000_000) // min_price in micro-USD
+    //   )
+    //   .accounts({ /* ... */ })
+    //   .rpc();
+
     // Create buyback transaction
     const transaction = await this.transactionRepository.create({
       userId,

@@ -36,7 +36,6 @@ const envSchema = Joi.object({
   SOLANA_RPC_URL: Joi.string().required(),
   SOLANA_WS_URL: Joi.string().required(),
   PROGRAM_ID: Joi.string().required(),
-  ORACLE_PRIVATE_KEY: Joi.string().required(),
   
   // External APIs
   STEAM_API_KEY: Joi.string().allow('').default(''),
@@ -91,7 +90,6 @@ export const config = {
     rpcUrl: envVars.SOLANA_RPC_URL,
     wsUrl: envVars.SOLANA_WS_URL,
     programId: envVars.PROGRAM_ID,
-    oraclePrivateKey: envVars.ORACLE_PRIVATE_KEY,
   },
   
   externalApis: {

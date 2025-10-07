@@ -88,7 +88,7 @@ describe("Core NFT Integration Test", () => {
     console.log(`Treasury ATA will be auto-created`);
 
     await (program.methods as any)
-      .initialize(provider.wallet.publicKey) // oracle_pubkey parameter - wallet signed automatically by provider
+      .initialize() // No oracle_pubkey parameter needed
       .accounts({
         global: globalState,
         usdcMint: usdcMint,

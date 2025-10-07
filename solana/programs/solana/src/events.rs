@@ -38,14 +38,6 @@ pub struct InventoryAssigned {
 }
 
 #[event]
-pub struct PriceSet {
-    pub inventory_id_hash: [u8; 32],
-    pub price: u64,
-    pub timestamp: i64,
-    pub oracle: Pubkey,
-}
-
-#[event]
 pub struct BuybackExecuted {
     pub nft_mint: Pubkey,
     pub inventory_id_hash: [u8; 32],
@@ -65,12 +57,5 @@ pub struct TreasuryDeposit {
 #[event]
 pub struct BuybackToggled {
     pub enabled: bool,
-    pub authority: Pubkey,
-}
-
-#[event]
-pub struct OracleUpdated {
-    pub old_oracle: Pubkey,
-    pub new_oracle: Pubkey,
     pub authority: Pubkey,
 }

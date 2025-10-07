@@ -16,20 +16,6 @@ pub fn calculate_buyback_payout(price: u64) -> Result<u64> {
         .ok_or(ProgramError::ArithmeticOverflow.into())
 }
 
-/// Check if price data is stale
-pub fn is_price_stale(price_timestamp: i64, current_time: i64) -> bool {
-    current_time - price_timestamp > MAX_PRICE_AGE_SECONDS
-}
-
-/// Create price oracle message for signature verification
-pub fn create_price_message(inventory_id_hash: &[u8; 32], price: u64, timestamp: i64) -> [u8; 32] {
-    let mut data = Vec::with_capacity(32 + 8 + 8);
-    data.extend_from_slice(inventory_id_hash);
-    data.extend_from_slice(&price.to_le_bytes());
-    data.extend_from_slice(&timestamp.to_le_bytes());
-    keccak::hash(&data).0
-}
-
 /// Generate deterministic random index from randomness and context
 pub fn generate_random_index(
     randomness: &[u8; 32],
@@ -48,13 +34,6 @@ pub fn generate_random_index(
     let index = u64::from_le_bytes(hash.0[0..8].try_into().unwrap()) % pool_size;
 
     Ok(index)
-}
-
-/// Derive PDA key for price store using inventory hash
-pub fn derive_price_store_key(inventory_id_hash: &[u8; 32]) -> Pubkey {
-    // For simplicity, we'll use the first 32 bytes of the hash directly
-    // In production, you might want a more sophisticated approach
-    Pubkey::new_from_array(*inventory_id_hash)
 }
 
 /// Validate inventory ID hash format
@@ -79,20 +58,6 @@ mod tests {
         // Test edge case: very small amount
         let result = calculate_buyback_payout(1000).unwrap();
         assert_eq!(result, 990);
-    }
-
-    #[test]
-    fn test_is_price_stale() {
-        let base_time = 1000000i64;
-
-        // Fresh price
-        assert!(!is_price_stale(base_time, base_time + 100));
-
-        // Stale price
-        assert!(is_price_stale(
-            base_time,
-            base_time + MAX_PRICE_AGE_SECONDS + 1
-        ));
     }
 
     #[test]

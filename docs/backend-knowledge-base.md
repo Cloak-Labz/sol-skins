@@ -681,9 +681,9 @@ sequenceDiagram
     alt User escolhe "keep"
         B->>B: Marca skin como inventory
     else User escolhe "buyback"
-        B->>O: Solicita preço atual
-        O-->>B: Retorna preço
-        B->>S: Chama sell_back
+        B->>B: Busca preço atual (cache/DB)
+        B->>B: Calcula valor buyback (85%)
+        B->>S: Chama sell_back(market_price, min_price)
         S->>S: Transfere USDC para user
         B->>B: Marca skin como vendida
     end
@@ -701,12 +701,11 @@ sequenceDiagram
 
     U->>F: Clica "Sell via Buyback"
     F->>B: POST /inventory/:skinId/buyback
-    B->>O: Solicita preço atual da skin
-    O-->>B: Retorna preço assinado
+    B->>B: Busca preço atual (cache/DB)
     B->>B: Calcula valor buyback (85%)
-    B->>S: Chama sell_back no programa
-    S->>S: Verifica assinatura do oracle
-    S->>S: Aplica taxas e spreads
+    B->>S: Chama sell_back(market_price, min_price)
+    S->>S: Valida market_price > 0
+    S->>S: Aplica taxas e spreads (85% - 1%)
     S->>S: Transfere USDC para user
     S-->>B: Emite BuybackEvent
     B->>B: Atualiza user_skin (sold_via_buyback=true)
@@ -729,14 +728,12 @@ sequenceDiagram
         W->>E: Busca preços Steam Market
         W->>E: Busca preços CSGOFloat
         W->>E: Busca preços DMarket
-        
+
         W->>W: Agrega e normaliza preços
         W->>B: Atualiza price_history
         W->>B: Atualiza current_price em skin_templates
-        
-        W->>O: Envia preços atualizados
-        O->>O: Assina preços com chave privada
-        O->>O: Disponibiliza via API
+
+        Note over B: Preços disponíveis via<br/>cache/DB para API
     end
 ```
 
@@ -813,22 +810,32 @@ export class OnchainListener {
 }
 ```
 
-### Oracle de Preços
+### Sistema de Preços Off-Chain
 
-Implementar em `src/worker/src/jobs/price-oracle.ts`:
+Implementado em `src/worker/src/jobs/price-oracle.ts`:
 
 ```typescript
 export class PriceOracle {
-  async updatePrices() {
-    // Buscar preços de APIs externas
-    // Normalizar e validar dados
-    // Assinar preços com chave privada
-    // Disponibilizar via endpoint
+  async updatePrices(): Promise<void> {
+    // 1. Buscar preços de APIs externas (Steam, CSGOFloat, DMarket)
+    // 2. Normalizar e validar dados
+    // 3. Calcular VWAP/median para preço de mercado
+    // 4. Armazenar em cache (Redis) com TTL de 15 minutos
+    // 5. Atualizar price_history no banco de dados
   }
-  
-  async signPrice(inventoryId: string, price: number): Promise<PriceData> {
-    // Implementar assinatura Ed25519
-    // Retornar dados assinados para o programa
+
+  async getPriceForSkin(skinId: string): Promise<OraclePrice | null> {
+    // Retornar preço atual do cache ou banco
+    // Backend usa este preço como parâmetro para sell_back
+    return { inventoryId, price, timestamp };
   }
 }
-``` 
+```
+
+**Nova Arquitetura (Sem Oracle On-Chain)**:
+- ✅ Preços mantidos off-chain em cache/banco de dados
+- ✅ Backend lê preços do cache ao processar buyback
+- ✅ Backend passa `market_price` diretamente como parâmetro para `sell_back(market_price, min_price)`
+- ✅ Programa Solana valida apenas que `market_price > 0`
+- ✅ Sem verificação de assinatura on-chain - confiança no backend
+- ✅ Mais simples, mais rápido, menor custo de transação 

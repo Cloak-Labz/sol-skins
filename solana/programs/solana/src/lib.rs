@@ -23,8 +23,8 @@ pub mod skinvault {
     use super::*;
 
     /// Initialize the SkinVault program
-    pub fn initialize(ctx: Context<Initialize>, oracle_pubkey: Pubkey) -> Result<()> {
-        instructions::admin::initialize_handler(ctx, oracle_pubkey)
+    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
+        instructions::admin::initialize_handler(ctx)
     }
 
     /// Publish a Merkle root for a new batch of inventory
@@ -70,36 +70,15 @@ pub mod skinvault {
         instructions::reveal_and_claim::reveal_and_claim_handler(ctx)
     }
 
-    /// Set price for an inventory item (oracle signed)
-    pub fn set_price_signed(
-        ctx: Context<SetPriceSigned>,
-        inventory_id_hash: [u8; 32],
-        price: u64,
-        timestamp: i64,
-        signature: [u8; 64],
-    ) -> Result<()> {
-        instructions::set_price::set_price_signed_handler(
-            ctx,
-            inventory_id_hash,
-            price,
-            timestamp,
-            signature,
-        )
-    }
 
     /// Sell back an assigned item for USDC
-    pub fn sell_back(ctx: Context<SellBack>, min_price: u64) -> Result<()> {
-        instructions::sell_back::sell_back_handler(ctx, min_price)
+    pub fn sell_back(ctx: Context<SellBack>, market_price: u64, min_price: u64) -> Result<()> {
+        instructions::sell_back::sell_back_handler(ctx, market_price, min_price)
     }
 
     // --------------------
     // ADMIN FUNCTIONS
     // --------------------
-
-    /// Set a new oracle public key
-    pub fn set_oracle(ctx: Context<SetOracle>, new_oracle_pubkey: Pubkey) -> Result<()> {
-        instructions::admin::set_oracle_handler(ctx, new_oracle_pubkey)
-    }
 
     /// Toggle buyback functionality on/off
     pub fn toggle_buyback(ctx: Context<ToggleBuyback>, enabled: bool) -> Result<()> {

@@ -40,11 +40,7 @@ pub struct VrfCallback<'info> {
     )]
     pub vrf_pending: Account<'info, VrfPending>,
 
-    /// Only oracle can provide VRF results (Switchboard)
-    #[account(
-        constraint = vrf_authority.key() == global.oracle_pubkey
-        @ SkinVaultError::Unauthorized
-    )]
+    /// VRF authority (Switchboard or authorized signer)
     pub vrf_authority: Signer<'info>,
 }
 

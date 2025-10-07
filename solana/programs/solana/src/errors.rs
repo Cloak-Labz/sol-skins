@@ -17,17 +17,11 @@ pub enum SkinVaultError {
     #[msg("Box has already been opened")]
     AlreadyOpened,
 
-    #[msg("Price data is stale or missing")]
-    PriceStale,
-
     #[msg("Treasury has insufficient funds")]
     TreasuryInsufficient,
 
     #[msg("Buyback is currently disabled")]
     BuybackDisabled,
-
-    #[msg("Oracle public key not set")]
-    OracleNotSet,
 
     #[msg("Invalid pool size for randomness")]
     InvalidPoolSize,
@@ -35,20 +29,11 @@ pub enum SkinVaultError {
     #[msg("Slippage tolerance exceeded")]
     SlippageExceeded,
 
-    #[msg("Invalid signature format")]
-    InvalidSignature,
-
     #[msg("Merkle proof depth exceeds maximum allowed")]
     MerkleProofTooDeep,
 
     #[msg("Inventory item already assigned")]
     InventoryAlreadyAssigned,
-
-    #[msg("Invalid timestamp")]
-    InvalidTimestamp,
-
-    #[msg("Price oracle signature verification failed")]
-    OracleSignatureInvalid,
 
     #[msg("Box is not owned by the caller")]
     NotBoxOwner,

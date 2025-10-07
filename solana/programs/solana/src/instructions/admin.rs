@@ -40,19 +40,6 @@ pub struct Initialize<'info> {
 }
 
 #[derive(Accounts)]
-pub struct SetOracle<'info> {
-    #[account(
-        mut,
-        seeds = [b"global"],
-        bump = global.bump,
-        has_one = authority @ SkinVaultError::Unauthorized
-    )]
-    pub global: Account<'info, Global>,
-
-    pub authority: Signer<'info>,
-}
-
-#[derive(Accounts)]
 pub struct ToggleBuyback<'info> {
     #[account(
         mut,
@@ -108,10 +95,9 @@ pub struct DepositTreasury<'info> {
     pub token_program: Program<'info, Token>,
 }
 
-pub fn initialize_handler(ctx: Context<Initialize>, oracle_pubkey: Pubkey) -> Result<()> {
+pub fn initialize_handler(ctx: Context<Initialize>) -> Result<()> {
     let global = &mut ctx.accounts.global;
     global.authority = ctx.accounts.authority.key();
-    global.oracle_pubkey = oracle_pubkey;
     global.usdc_mint = ctx.accounts.usdc_mint.key();
     global.buyback_enabled = true;
     global.min_treasury_balance = 1000 * 1_000_000; // 1000 USDC
@@ -124,28 +110,7 @@ pub fn initialize_handler(ctx: Context<Initialize>, oracle_pubkey: Pubkey) -> Re
     global.bump = ctx.bumps.global;
 
     msg!("SkinVault initialized with authority: {}", global.authority);
-    msg!("Oracle set to: {}", oracle_pubkey);
     msg!("USDC mint: {}", global.usdc_mint);
-
-    Ok(())
-}
-
-pub fn set_oracle_handler(ctx: Context<SetOracle>, new_oracle_pubkey: Pubkey) -> Result<()> {
-    let global = &mut ctx.accounts.global;
-    let old_oracle = global.oracle_pubkey;
-    global.oracle_pubkey = new_oracle_pubkey;
-
-    emit!(OracleUpdated {
-        old_oracle,
-        new_oracle: new_oracle_pubkey,
-        authority: ctx.accounts.authority.key(),
-    });
-
-    msg!(
-        "Oracle updated from {} to {}",
-        old_oracle,
-        new_oracle_pubkey
-    );
 
     Ok(())
 }

@@ -34,13 +34,6 @@ pub struct SellBack<'info> {
     pub usdc_mint: Account<'info, Mint>,
 
     #[account(
-        seeds = [b"price", box_state.assigned_inventory.as_ref()],
-        bump = price_store.bump,
-        constraint = price_store.inventory_id_hash == box_state.assigned_inventory @ SkinVaultError::InvalidBatchId
-    )]
-    pub price_store: Account<'info, PriceStore>,
-
-    #[account(
         mut,
         seeds = [b"box", box_state.asset.as_ref()],
         bump = box_state.bump,
@@ -75,9 +68,8 @@ pub struct SellBack<'info> {
     pub system_program: Program<'info, System>,
 }
 
-pub fn sell_back_handler(ctx: Context<SellBack>, min_price: u64) -> Result<()> {
+pub fn sell_back_handler(ctx: Context<SellBack>, market_price: u64, min_price: u64) -> Result<()> {
     let global = &mut ctx.accounts.global;
-    let current_time = Clock::get()?.unix_timestamp;
 
     // Check if program is paused
     require!(!global.paused, SkinVaultError::BuybackDisabled);
@@ -85,14 +77,10 @@ pub fn sell_back_handler(ctx: Context<SellBack>, min_price: u64) -> Result<()> {
     // Check buyback is enabled
     require!(global.buyback_enabled, SkinVaultError::BuybackDisabled);
 
-    // Check price is not stale
-    require!(
-        !is_price_stale(ctx.accounts.price_store.timestamp, current_time),
-        SkinVaultError::PriceStale
-    );
+    // Validate market price is non-zero
+    require!(market_price > 0, SkinVaultError::SlippageExceeded);
 
     // Calculate payout with spread fee
-    let market_price = ctx.accounts.price_store.price;
     let payout = calculate_buyback_payout(market_price)?;
     let spread_fee = market_price
         .checked_sub(payout)

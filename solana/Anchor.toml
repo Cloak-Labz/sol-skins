@@ -22,7 +22,7 @@ cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]
-test = "./node_modules/.bin/mocha -t 300000 tests/candy-machine.test.ts"
+test = "./node_modules/.bin/mocha -t 300000 tests/integration-flow.test.ts"
 test-integration = "./node_modules/.bin/mocha -t 300000 tests/integration-flow.test.ts"
 test-mainnet = "./node_modules/.bin/mocha -t 300000 tests/vrf-mainnet.test.ts"
 test-simple = "./node_modules/.bin/mocha -t 300000 tests/vrf-simple.test.ts"
