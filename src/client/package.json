@@ -11,7 +11,11 @@
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
     "@hookform/resolvers": "^3.10.0",
+    "@metaplex-foundation/mpl-candy-guard": "^0.5.0",
+    "@metaplex-foundation/mpl-candy-machine": "^6.1.0",
+    "@metaplex-foundation/mpl-candy-machine-core": "^0.2.2",
     "@metaplex-foundation/mpl-core": "^1.7.0",
+    "@metaplex-foundation/mpl-token-metadata": "^3.4.0",
     "@metaplex-foundation/umi": "^1.4.1",
     "@metaplex-foundation/umi-bundle-defaults": "^1.4.1",
     "@metaplex-foundation/umi-signer-wallet-adapters": "^1.4.1",

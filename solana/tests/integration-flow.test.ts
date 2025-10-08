@@ -4,8 +4,9 @@ import { LAMPORTS_PER_SOL, PublicKey, SystemProgram, Keypair, Transaction, Trans
 import { expect } from "chai";
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, createInitializeMintInstruction, createAssociatedTokenAccountInstruction, createMintToInstruction } from "@solana/spl-token";
 import { WalrusHTTPClient } from "../upload-to-walrus";
+import { SimplifiedCandyMachineClient, SimplifiedCandyMachineConfig } from "./simplified-candy-machine-client";
 
-describe("Core NFT Integration Test", () => {
+describe("Core NFT Integration Test - One Candy Machine Per Pack", () => {
   // Anchor setup
   const provider = anchor.AnchorProvider.env();
   anchor.setProvider(provider);
@@ -18,18 +19,29 @@ describe("Core NFT Integration Test", () => {
   let batchId: anchor.BN;
   let batch: PublicKey;
   let boxState: PublicKey;
-  let collectionMint: Keypair;
+  let legacyCollectionMint: Keypair;
   let collectionMetadataPda: PublicKey;
   let usdcMint: PublicKey;
   let treasuryAta: PublicKey;
   let walletClient: WalrusHTTPClient;
+  let simplifiedCandyMachineClient: SimplifiedCandyMachineClient;
+
+  // Pack-specific Candy Machine
+  let packId: string;
+  let candyMachine: PublicKey;
+  let candyMachineSigner: any;
+  let candyGuard: PublicKey;
+  let collectionMint: PublicKey;
+  let collectionMintSigner: any;
 
   before(async () => {
     walletClient = new WalrusHTTPClient(true);
+    simplifiedCandyMachineClient = new SimplifiedCandyMachineClient(provider.connection, wallet.payer);
     console.log("Walrus client ready");
+    console.log("Simplified Candy Machine client ready");
   });
 
-  it("Core NFT Integration Test", async () => {
+  it("Core NFT Integration Test - One Candy Machine Per Pack", async () => {
     console.log("Phase 1: Collection Setup");
 
     // 1. Initialize global state
@@ -38,17 +50,23 @@ describe("Core NFT Integration Test", () => {
     // 2. Create collection
     await createCollection();
 
-    // 3. Upload dynamic metadata to Walrus
+    // 3. Deploy Candy Machine for this specific pack
+    await deployCandyMachineForPack();
+
+    // 4. Upload dynamic metadata to Walrus
     const metadataUris = await uploadDynamicMetadata();
 
-    // 4. Create batch with dynamic metadata
+    // 5. Insert items into Candy Machine
+    await insertItemsIntoCandyMachine(metadataUris);
+
+    // 6. Create batch with dynamic metadata
     await createDynamicBatch(metadataUris);
 
-    // 5. Open box to create boxState (required for revealAndClaim)
+    // 7. Open box to create boxState (required for revealAndClaim)
     await openBox();
 
-            // 6. DIRECT REVEAL (NO VRF!) - Skip VRF callback, go straight to Core NFT reveal
-            await directCandyMachineReveal(metadataUris);
+    // 8. DIRECT REVEAL (NO VRF!) - Skip VRF callback, go straight to Core NFT reveal
+    await directCandyMachineReveal(metadataUris);
 
     console.log("Core NFT Integration Test Complete!");
   });
@@ -67,9 +85,37 @@ describe("Core NFT Integration Test", () => {
     if (existingAccount) {
       console.log(`Global state exists: ${globalState.toBase58()}`);
       
-      // Skip initialization and proceed with existing account
-      usdcMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // Use mainnet USDC
-      return;
+      // Try to fetch the account to see if it deserializes correctly
+      try {
+        const globalAccount = await (program.account as any).global.fetch(globalState);
+        console.log(`Global state deserialized successfully`);
+        console.log(`Current batch: ${globalAccount.currentBatch}`);
+        
+        // Skip initialization and proceed with existing account
+        usdcMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // Use mainnet USDC
+        return;
+      } catch (error) {
+        console.log(`Global state exists but failed to deserialize: ${error.message}`);
+        console.log("This is due to a program update. We need to close and recreate the global account.");
+        
+        // Close the existing global account to reclaim rent
+        try {
+          await (program.methods as any)
+            .closeGlobal()
+          .accounts({
+              global: globalState,
+              authority: wallet.publicKey,
+          })
+          .rpc();
+
+          console.log("Successfully closed existing global account");
+        } catch (closeError) {
+          console.log(`Failed to close global account: ${closeError.message}`);
+          console.log("Continuing with initialization anyway...");
+        }
+        
+        // Continue with initialization to create a new global account
+      }
     }
 
     // Create test USDC mint for initialization (not mainnet USDC)
@@ -123,7 +169,7 @@ describe("Core NFT Integration Test", () => {
   async function createCollection() {
     console.log("Creating collection...");
 
-    collectionMint = Keypair.generate();
+    legacyCollectionMint = Keypair.generate();
 
     // Derive collection metadata PDA
     const TOKEN_METADATA_PROGRAM_ID = new PublicKey(
@@ -134,13 +180,53 @@ describe("Core NFT Integration Test", () => {
       [
         Buffer.from("metadata"),
         TOKEN_METADATA_PROGRAM_ID.toBuffer(),
-        collectionMint.publicKey.toBuffer(),
+        legacyCollectionMint.publicKey.toBuffer(),
       ],
       TOKEN_METADATA_PROGRAM_ID
     );
 
-    console.log(`Collection mint: ${collectionMint.publicKey.toBase58()}`);
+    console.log(`Collection mint: ${legacyCollectionMint.publicKey.toBase58()}`);
     console.log(`Collection metadata: ${collectionMetadataPda.toBase58()}`);
+  }
+
+  async function deployCandyMachineForPack() {
+    console.log("Deploying Candy Machine for this pack using simplified client...");
+
+    // Generate unique pack ID
+    packId = `pack_${Date.now()}`;
+    
+    try {
+      // Create collection metadata URI (placeholder)
+      const collectionUri = "https://example.com/collection.json";
+
+      // Create Candy Machine configuration
+      const candyMachineConfig = simplifiedCandyMachineClient.createDefaultConfig(
+        packId,
+        `${packId} Collection`,
+        collectionUri,
+        3, // 3 items
+        wallet.publicKey
+      );
+
+      // Deploy Candy Machine using simplified client
+      const deployedCM = await simplifiedCandyMachineClient.createCandyMachineForPack(candyMachineConfig);
+
+      // Store the deployed addresses
+      candyMachine = deployedCM.candyMachine;
+      candyMachineSigner = deployedCM.candyMachineSigner;
+      candyGuard = deployedCM.candyGuard;
+      collectionMint = deployedCM.collectionMint;
+      collectionMintSigner = deployedCM.collectionMintSigner;
+
+      console.log(`Pack ID: ${packId}`);
+      console.log(`Candy Machine: ${candyMachine.toBase58()}`);
+      console.log(`Candy Guard: ${candyGuard.toBase58()}`);
+      console.log(`Collection Mint: ${collectionMint.toBase58()}`);
+      
+    } catch (error) {
+      console.error("Failed to deploy Candy Machine:", error);
+      throw error;
+    }
   }
 
   async function uploadDynamicMetadata(): Promise<string[]> {
@@ -151,51 +237,54 @@ describe("Core NFT Integration Test", () => {
         {
           name: "AK-47 | Fire Serpent",
           symbol: "SKIN",
-          description: "Dynamic metadata for CS:GO skin #1 of 10",
+          description: `Dynamic metadata for CS:GO skin #1 of 3 in ${packId}`,
           image: "https://example.com/fire-serpent.png",
           attributes: [
             { trait_type: "Weapon", value: "AK-47" },
             { trait_type: "Skin", value: "Fire Serpent" },
             { trait_type: "Rarity", value: "Legendary" },
+            { trait_type: "Pack", value: packId },
             { trait_type: "Index", value: 1 },
-            { trait_type: "Total Items", value: 10 }
+            { trait_type: "Total Items", value: 3 }
           ],
           collection: {
-            name: "CS:GO Skins Collection",
+            name: `CS:GO Skins Collection - ${packId}`,
             family: "Counter-Strike"
           }
         },
         {
           name: "AWP | Dragon Lore",
           symbol: "SKIN",
-          description: "Dynamic metadata for CS:GO skin #2 of 10",
+          description: `Dynamic metadata for CS:GO skin #2 of 3 in ${packId}`,
           image: "https://example.com/dragon-lore.png",
           attributes: [
             { trait_type: "Weapon", value: "AWP" },
             { trait_type: "Skin", value: "Dragon Lore" },
             { trait_type: "Rarity", value: "Legendary" },
+            { trait_type: "Pack", value: packId },
             { trait_type: "Index", value: 2 },
-            { trait_type: "Total Items", value: 10 }
+            { trait_type: "Total Items", value: 3 }
           ],
           collection: {
-            name: "CS:GO Skins Collection",
+            name: `CS:GO Skins Collection - ${packId}`,
             family: "Counter-Strike"
           }
         },
         {
           name: "M4A4 | Howl",
           symbol: "SKIN",
-          description: "Dynamic metadata for CS:GO skin #3 of 10",
+          description: `Dynamic metadata for CS:GO skin #3 of 3 in ${packId}`,
           image: "https://example.com/howl.png",
           attributes: [
             { trait_type: "Weapon", value: "M4A4" },
             { trait_type: "Skin", value: "Howl" },
             { trait_type: "Rarity", value: "Legendary" },
+            { trait_type: "Pack", value: packId },
             { trait_type: "Index", value: 3 },
-            { trait_type: "Total Items", value: 10 }
+            { trait_type: "Total Items", value: 3 }
           ],
           collection: {
-            name: "CS:GO Skins Collection",
+            name: `CS:GO Skins Collection - ${packId}`,
             family: "Counter-Strike"
           }
         },
@@ -213,6 +302,31 @@ describe("Core NFT Integration Test", () => {
     }
   }
 
+  async function insertItemsIntoCandyMachine(metadataUris: string[]) {
+    console.log("Inserting items into Candy Machine using simplified client...");
+
+    try {
+      // Create items array for simplified client
+      const items = metadataUris.map((uri, index) => ({
+        name: `${packId} #${index + 1}`,
+        uri: uri,
+      }));
+
+      // Add items to Candy Machine using simplified client
+      await simplifiedCandyMachineClient.addItemsToCandyMachine(candyMachine, items);
+      
+      console.log(`Successfully inserted ${metadataUris.length} items into Candy Machine`);
+      console.log("Items inserted:");
+      metadataUris.forEach((uri, index) => {
+        console.log(`  ${index + 1}. ${packId} #${index + 1} -> ${uri}`);
+      });
+      
+    } catch (error) {
+      console.error("Failed to insert items into Candy Machine:", error);
+      throw error;
+    }
+  }
+
   async function createDynamicBatch(metadataUris: string[]) {
     console.log("Creating dynamic batch...");
 
@@ -224,28 +338,28 @@ describe("Core NFT Integration Test", () => {
       program.programId
     );
 
-    // Prepare Candy Machine reference
-    const candyMachine = new PublicKey("5U4gnUzB9rR22UP3MyyZG3UvoSqx5wXreKRsmx6s5Qt1");
+    // Use the pack-specific Candy Machine
     const merkleRoot = Array.from(new Array(32), (_, i) => i); // Simple test root
     const snapshotTime = new anchor.BN(Math.floor(Date.now() / 1000));
 
     // For large batches, we'll use a single "hidden" URI that points to our batch
     // This follows the Metaplex Hidden Settings pattern for large drops
-    const hiddenUri = `https://skinvault.com/batch/${batchId.toString()}`;
-    const hiddenName = `CSGO Skin Batch #${batchId.toString()}`;
+    const hiddenUri = `https://skinvault.com/pack/${packId}/batch/${batchId.toString()}`;
+    const hiddenName = `CSGO Skin Pack ${packId} - Batch #${batchId.toString()}`;
     
+    console.log(`   Pack ID: ${packId}`);
     console.log(`   Batch ID: ${batchId.toString()}`);
     console.log(`   Items: ${metadataUris.length}`);
     console.log(`   Candy Machine: ${candyMachine.toBase58()}`);
     console.log(`   Hidden URI: ${hiddenUri}`);
     console.log(`   Hidden Name: ${hiddenName}`);
 
-    // Call publishMerkleRoot with SINGLE hidden URI instead of 25 individual URIs
+    // Call publishMerkleRoot with SINGLE hidden URI instead of individual URIs
     await (program.methods as any)
       .publishMerkleRoot(
         batchId,
-        candyMachine,
-        [hiddenUri], // Single hidden URI instead of 25 individual URIs
+        candyMachine, // Use pack-specific Candy Machine
+        [hiddenUri], // Single hidden URI instead of individual URIs
         merkleRoot,
         snapshotTime
       )
@@ -257,17 +371,18 @@ describe("Core NFT Integration Test", () => {
           })
           .rpc();
 
-        console.log(`Dynamic batch created: ${batch.toBase58()}`);
-        
-        // Fetch and display batch account data
-        const batchAccount = await (program.account as any).batch.fetch(batch);
-        console.log(`Batch Account Data:`);
-        console.log(`   Batch ID: ${batchAccount.batchId.toString()}`);
-        console.log(`   Candy Machine: ${batchAccount.candyMachine.toBase58()}`);
-        console.log(`   Total Items: ${batchAccount.totalItems}`);
-        console.log(`   Metadata URIs: ${batchAccount.metadataUris.length}`);
-        console.log(`   First URI: ${batchAccount.metadataUris[0]}`);
-        console.log(`   Boxes Opened: ${batchAccount.boxesOpened}`);
+    console.log(`Dynamic batch created: ${batch.toBase58()}`);
+    
+    // Fetch and display batch account data
+    const batchAccount = await (program.account as any).batch.fetch(batch);
+    console.log(`Batch Account Data:`);
+    console.log(`   Pack ID: ${packId}`);
+    console.log(`   Batch ID: ${batchAccount.batchId.toString()}`);
+    console.log(`   Candy Machine: ${batchAccount.candyMachine.toBase58()}`);
+    console.log(`   Total Items: ${batchAccount.totalItems}`);
+    console.log(`   Metadata URIs: ${batchAccount.metadataUris.length}`);
+    console.log(`   First URI: ${batchAccount.metadataUris[0]}`);
+    console.log(`   Boxes Opened: ${batchAccount.boxesOpened}`);
   }
 
   async function openBox() {
@@ -360,8 +475,10 @@ describe("Core NFT Integration Test", () => {
     const coreProgram = new PublicKey("CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d");
 
     console.log("Calling revealAndClaim with Core NFT integration...");
+    console.log(`   Pack ID: ${packId}`);
     console.log(`   Core Program: ${coreProgram.toBase58()}`);
     console.log(`   Batch: ${batch.toBase58()}`);
+    console.log(`   Candy Machine: ${candyMachine.toBase58()}`);
     console.log(`   Metadata URIs count: ${metadataUris.length}`);
 
     // Use the same global state that was initialized earlier
@@ -395,7 +512,7 @@ describe("Core NFT Integration Test", () => {
 
       console.log("CORE NFT CPI SUCCESS!");
       console.log(`Transaction: ${signature}`);
-      console.log("Skin revealed via Core NFT!");
+      console.log(`Skin revealed via Core NFT for pack: ${packId}`);
       
       // Fetch and display final account states
       console.log(`Final Account States After Reveal:`);
@@ -437,9 +554,10 @@ describe("Core NFT Integration Test", () => {
 
     // Check batch account for dynamic metadata
     const batchAccount = await (program.account as any).batch.fetch(batch);
-    // For Hidden Settings, we expect 1 URI (not 25)
+    // For Hidden Settings, we expect 1 URI (not 3)
     expect(batchAccount.metadataUris.length).to.equal(1);
 
+    console.log(`Pack ID: ${packId}`);
     console.log(`Batch has ${batchAccount.metadataUris.length} metadata URIs`);
     console.log(`First URI: ${batchAccount.metadataUris[0]}`);
     console.log(`Candy Machine: ${batchAccount.candyMachine.toBase58()}`);
