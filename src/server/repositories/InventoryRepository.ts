@@ -1,6 +1,6 @@
-import { Repository } from 'typeorm';
-import { AppDataSource } from '../config/database';
-import { Inventory } from '../entities/Inventory';
+import { Repository } from "typeorm";
+import { AppDataSource } from "../config/database";
+import { Inventory } from "../entities/Inventory";
 
 export class InventoryRepository {
   private repository: Repository<Inventory>;
@@ -11,7 +11,7 @@ export class InventoryRepository {
 
   async findAll(): Promise<Inventory[]> {
     return this.repository.find({
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
     });
   }
 
@@ -26,27 +26,27 @@ export class InventoryRepository {
   async findAvailableForBatch(): Promise<Inventory[]> {
     return this.repository.find({
       where: { assignedToBatch: false, mintedAsset: Not(IsNull()) },
-      order: { createdAt: 'DESC' },
+      order: { createdAt: "DESC" },
     });
   }
 
   async findByBatchId(batchId: number): Promise<Inventory[]> {
     return this.repository.find({
       where: { batchId },
-      order: { createdAt: 'ASC' },
+      order: { createdAt: "ASC" },
     });
   }
 
   async search(query: string): Promise<Inventory[]> {
     return this.repository
-      .createQueryBuilder('inventory')
-      .where('LOWER(inventory.name) LIKE LOWER(:query)', {
+      .createQueryBuilder("inventory")
+      .where("LOWER(inventory.name) LIKE LOWER(:query)", {
         query: `%${query}%`,
       })
-      .orWhere('LOWER(inventory.description) LIKE LOWER(:query)', {
+      .orWhere("LOWER(inventory.description) LIKE LOWER(:query)", {
         query: `%${query}%`,
       })
-      .orderBy('inventory.createdAt', 'DESC')
+      .orderBy("inventory.createdAt", "DESC")
       .getMany();
   }
 
@@ -55,7 +55,10 @@ export class InventoryRepository {
     return this.repository.save(inventory);
   }
 
-  async update(id: string, data: Partial<Inventory>): Promise<Inventory | null> {
+  async update(
+    id: string,
+    data: Partial<Inventory>
+  ): Promise<Inventory | null> {
     await this.repository.update(id, data);
     return this.findById(id);
   }
@@ -70,7 +73,7 @@ export class InventoryRepository {
   async unassignFromBatch(batchId: number): Promise<void> {
     await this.repository.update(
       { batchId },
-      { assignedToBatch: false, batchId: null }
+      { assignedToBatch: false, batchId: undefined }
     );
   }
 
@@ -81,10 +84,10 @@ export class InventoryRepository {
 
   async countByRarity(): Promise<Record<string, number>> {
     const results = await this.repository
-      .createQueryBuilder('inventory')
-      .select('inventory.rarity', 'rarity')
-      .addSelect('COUNT(*)', 'count')
-      .groupBy('inventory.rarity')
+      .createQueryBuilder("inventory")
+      .select("inventory.rarity", "rarity")
+      .addSelect("COUNT(*)", "count")
+      .groupBy("inventory.rarity")
       .getRawMany();
 
     return results.reduce((acc, row) => {
@@ -95,4 +98,4 @@ export class InventoryRepository {
 }
 
 // Import necessary operators
-import { In, Not, IsNull } from 'typeorm';
+import { In, Not, IsNull } from "typeorm";

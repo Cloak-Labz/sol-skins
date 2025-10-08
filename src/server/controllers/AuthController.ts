@@ -1,8 +1,8 @@
-import { Request, Response } from 'express';
-import { UserService } from '../services/UserService';
-import { WalletAuthMiddleware } from '../middlewares/walletAuth';
-import { ResponseUtil } from '../utils/response';
-import { catchAsync } from '../middlewares/errorHandler';
+import { Request, Response } from "express";
+import { UserService } from "../services/UserService";
+import { WalletAuthMiddleware } from "../middlewares/walletAuth";
+import { ResponseUtil } from "../utils/response";
+import { catchAsync } from "../middlewares/errorHandler";
 
 export class AuthController {
   private userService: UserService;
@@ -25,13 +25,13 @@ export class AuthController {
       );
 
       if (!isValidSignature) {
-        return ResponseUtil.unauthorized(res, 'Invalid signature');
+        return ResponseUtil.unauthorized(res, "Invalid signature");
       }
     }
 
     // Find or create user
     let user = await this.userService.findByWalletAddress(walletAddress);
-    
+
     if (!user) {
       user = await this.userService.createUser(walletAddress);
     }
@@ -39,7 +39,7 @@ export class AuthController {
     // Update last login
     await this.userService.updateLastLogin(user.id);
 
-    ResponseUtil.success(res, {
+    return ResponseUtil.success(res, {
       user: {
         id: user.id,
         walletAddress: user.walletAddress,
@@ -48,14 +48,14 @@ export class AuthController {
         totalEarned: user.totalEarned,
         casesOpened: user.casesOpened,
       },
-      message: 'Wallet connected successfully'
+      message: "Wallet connected successfully",
     });
   });
 
   disconnect = catchAsync(async (req: Request, res: Response) => {
     // For wallet-based auth, we just return success
     // The frontend will handle clearing the wallet connection
-    ResponseUtil.success(res, { message: 'Successfully disconnected' });
+    return ResponseUtil.success(res, { message: "Successfully disconnected" });
   });
 
   getProfile = catchAsync(async (req: Request, res: Response) => {
@@ -63,10 +63,10 @@ export class AuthController {
     const user = await this.userService.findById(userId);
 
     if (!user) {
-      return ResponseUtil.notFound(res, 'User not found');
+      return ResponseUtil.notFound(res, "User not found");
     }
 
-    ResponseUtil.success(res, {
+    return ResponseUtil.success(res, {
       id: user.id,
       walletAddress: user.walletAddress,
       username: user.username,
@@ -85,6 +85,8 @@ export class AuthController {
 
     await this.userService.updateUser(userId, { username, email });
 
-    ResponseUtil.success(res, { message: 'Profile updated successfully' });
+    return ResponseUtil.success(res, {
+      message: "Profile updated successfully",
+    });
   });
 }

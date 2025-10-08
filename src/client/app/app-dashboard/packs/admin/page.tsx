@@ -17,11 +17,13 @@ import {
   Plus,
   Upload,
   Settings,
+  X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey, Keypair } from "@solana/web3.js";
+import { simpleCandyMachineService } from "@/lib/services/simpleCandyMachineService";
 import {
   getProgramFromWallet,
   initializeProgram,
@@ -32,7 +34,11 @@ import {
   type BatchAccount,
 } from "@/lib/solana";
 import { WalrusClient, WalrusUploadResult } from "@/lib/walrus-client";
-import { UmiCandyMachineClient, UmiDeployedCandyMachine, UmiCandyMachineConfig } from "@/lib/umi-candy-machine-client";
+import {
+  UmiCandyMachineClient,
+  UmiDeployedCandyMachine,
+  UmiCandyMachineConfig,
+} from "@/lib/umi-candy-machine-client";
 
 interface BatchWithId extends BatchAccount {
   id: number;
@@ -45,7 +51,7 @@ interface Pack {
   candyMachine?: PublicKey;
   candyGuard?: PublicKey;
   deployedAt?: Date;
-  status: 'draft' | 'deploying' | 'deployed' | 'active' | 'completed';
+  status: "draft" | "deploying" | "deployed" | "active" | "completed";
   skins: PackSkin[];
 }
 
@@ -85,6 +91,19 @@ export default function AdminPage() {
   const [publishing, setPublishing] = useState(false);
   const [loadingCandyMachine, setLoadingCandyMachine] = useState(false);
 
+  // Candy Machine form state
+  const [showCandyMachineForm, setShowCandyMachineForm] = useState(false);
+  const [candyMachineConfig, setCandyMachineConfig] = useState({
+    name: "",
+    symbol: "",
+    description: "",
+    image: "",
+    itemsAvailable: 1000,
+    sellerFeeBasisPoints: 500,
+    creatorAddress: "",
+    creatorShare: 100,
+  });
+
   // Inventory selection for batch composition
   const [inventory, setInventory] = useState<
     Array<{
@@ -101,7 +120,8 @@ export default function AdminPage() {
 
   // Clients
   const [walrusClient] = useState(() => new WalrusClient(true)); // Testnet for now
-  const [umiCandyMachineClient, setUmiCandyMachineClient] = useState<UmiCandyMachineClient | null>(null);
+  const [umiCandyMachineClient, setUmiCandyMachineClient] =
+    useState<UmiCandyMachineClient | null>(null);
 
   // Check if connected wallet is admin
   useEffect(() => {
@@ -122,7 +142,7 @@ export default function AdminPage() {
     if (connected && isAdmin && wallet.publicKey) {
       // Initialize Umi Candy Machine client
       setUmiCandyMachineClient(new UmiCandyMachineClient(connection, wallet));
-      
+
       loadProgramState();
       loadPacks();
 
@@ -155,7 +175,10 @@ export default function AdminPage() {
 
         // Load all batches (scan up to max 50 to find all existing batches)
         const loadedBatches: BatchWithId[] = [];
-        const maxBatchToCheck = Math.max(Number(globalState.currentBatch || 0) + 10, 50);
+        const maxBatchToCheck = Math.max(
+          Number(globalState.currentBatch || 0) + 10,
+          50
+        );
 
         for (let i = 0; i <= maxBatchToCheck; i++) {
           try {
@@ -219,24 +242,76 @@ export default function AdminPage() {
     }
   };
 
-  const loadCandyMachine = async () => {
+  const createCandyMachine = async () => {
     try {
       setLoadingCandyMachine(true);
+      toast.loading("Creating Candy Machine...", { id: "candy-machine" });
 
-      // Generate new keypair (like in the test)
-      const { Keypair } = await import("@solana/web3.js");
-      const candyMachineKeypair = Keypair.generate();
-      const pubkey = candyMachineKeypair.publicKey.toBase58();
+      // Ensure we're in browser environment
+      if (typeof window === "undefined") {
+        throw new Error(
+          "Candy Machine creation can only be performed in browser environment"
+        );
+      }
 
+      // Use the statically imported service
+      const candyMachineService = simpleCandyMachineService;
 
-      setCandyMachine(pubkey);
-      toast.success("New candy machine generated!");
+      // Set up the wallet for the service
+      candyMachineService.setWallet(wallet);
+
+      // Create Candy Machine with form config
+      const config = {
+        name: candyMachineConfig.name,
+        symbol: candyMachineConfig.symbol,
+        description: candyMachineConfig.description,
+        image: candyMachineConfig.image,
+        itemsAvailable: candyMachineConfig.itemsAvailable,
+        sellerFeeBasisPoints: candyMachineConfig.sellerFeeBasisPoints,
+        creators: [
+          {
+            address:
+              candyMachineConfig.creatorAddress ||
+              wallet.publicKey?.toBase58() ||
+              "",
+            percentageShare: candyMachineConfig.creatorShare,
+            verified: true,
+          },
+        ],
+      };
+
+      const result = await candyMachineService.createFullCandyMachine(config);
+
+      setCandyMachine(result.candyMachine);
+      setShowCandyMachineForm(false);
+      toast.success("Candy Machine created successfully!", {
+        id: "candy-machine",
+      });
+      console.log("Candy Machine result:", result);
     } catch (error: any) {
-      console.error("Failed to generate candy machine:", error);
-      toast.error("Failed to generate candy machine");
+      console.error("Failed to create candy machine:", error);
+      toast.error(`Failed to create candy machine: ${error.message}`, {
+        id: "candy-machine",
+      });
     } finally {
       setLoadingCandyMachine(false);
     }
+  };
+
+  const loadCandyMachine = async () => {
+    // Set default values
+    setCandyMachineConfig({
+      name: "SolSkins Collection",
+      symbol: "SOLSKINS",
+      description:
+        "CS2 Skins as Solana NFTs - The ultimate collection of Counter-Strike 2 skins on Solana blockchain",
+      image: "",
+      itemsAvailable: 1000,
+      sellerFeeBasisPoints: 500,
+      creatorAddress: wallet.publicKey?.toBase58() || "",
+      creatorShare: 100,
+    });
+    setShowCandyMachineForm(true);
   };
 
   const handlePublishBatch = async () => {
@@ -373,20 +448,20 @@ export default function AdminPage() {
         id: packId,
         name: packName,
         description: packDescription,
-        status: 'draft',
+        status: "draft",
         skins: [],
       };
 
       // Save to backend
       const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
       const res = await fetch(`${base}/api/v1/admin/packs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(newPack),
       });
 
       if (res.ok) {
-        setPacks(prev => [...prev, newPack]);
+        setPacks((prev) => [...prev, newPack]);
         setSelectedPack(newPack);
         setPackName("");
         setPackDescription("");
@@ -414,7 +489,7 @@ export default function AdminPage() {
 
       // Step 1: Upload metadata to Walrus
       console.log("📤 Uploading metadata to Walrus...");
-      const metadataArray = pack.skins.map((skin, index) => 
+      const metadataArray = pack.skins.map((skin, index) =>
         walrusClient.createSkinMetadata({
           name: skin.name,
           weapon: skin.weapon,
@@ -427,10 +502,13 @@ export default function AdminPage() {
       );
 
       const metadataUris = await walrusClient.uploadJsonBatch(metadataArray);
-      console.log(`✅ Uploaded ${metadataUris.length} metadata files to Walrus`);
+      console.log(
+        `✅ Uploaded ${metadataUris.length} metadata files to Walrus`
+      );
 
       // Step 2: Create collection metadata URI (placeholder)
-      const collectionUri = metadataUris[0] || "https://example.com/collection.json";
+      const collectionUri =
+        metadataUris[0] || "https://example.com/collection.json";
 
       // Step 3: Deploy Candy Machine using official Umi
       console.log("🚀 Deploying Candy Machine using Umi...");
@@ -442,7 +520,9 @@ export default function AdminPage() {
         wallet.publicKey
       );
 
-      const deployedCM = await umiCandyMachineClient.createCandyMachineForPack(candyMachineConfig);
+      const deployedCM = await umiCandyMachineClient.createCandyMachineForPack(
+        candyMachineConfig
+      );
 
       // Step 4: Add items to Candy Machine
       console.log("📝 Adding items to Candy Machine...");
@@ -451,7 +531,10 @@ export default function AdminPage() {
         uri: metadataUris[index],
       }));
 
-      await umiCandyMachineClient.addItemsToCandyMachine(deployedCM.candyMachine, items);
+      await umiCandyMachineClient.addItemsToCandyMachine(
+        deployedCM.candyMachine,
+        items
+      );
 
       // Step 5: Update pack status
       const updatedPack: Pack = {
@@ -459,7 +542,7 @@ export default function AdminPage() {
         candyMachine: deployedCM.candyMachine,
         candyGuard: deployedCM.candyGuard,
         deployedAt: new Date(),
-        status: 'deployed',
+        status: "deployed",
         skins: pack.skins.map((skin, index) => ({
           ...skin,
           metadataUri: metadataUris[index],
@@ -469,23 +552,29 @@ export default function AdminPage() {
       // Save to backend
       const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
       await fetch(`${base}/api/v1/admin/packs/${pack.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedPack),
       });
 
-      setPacks(prev => prev.map(p => p.id === pack.id ? updatedPack : p));
+      setPacks((prev) => prev.map((p) => (p.id === pack.id ? updatedPack : p)));
       setSelectedPack(updatedPack);
 
-      toast.success(`Pack "${pack.name}" deployed successfully!`, { id: "deploy-pack" });
+      toast.success(`Pack "${pack.name}" deployed successfully!`, {
+        id: "deploy-pack",
+      });
       console.log(`🎉 Pack deployment complete!`);
       console.log(`📦 Candy Machine: ${deployedCM.candyMachine.toBase58()}`);
       console.log(`🛡️ Candy Guard: ${deployedCM.candyGuard.toBase58()}`);
       console.log(`🎨 Collection: ${deployedCM.collectionMint.toBase58()}`);
-
     } catch (error) {
       console.error("Failed to deploy pack:", error);
-      toast.error(`Failed to deploy pack: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: "deploy-pack" });
+      toast.error(
+        `Failed to deploy pack: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+        { id: "deploy-pack" }
+      );
     } finally {
       setDeployingPack(false);
     }
@@ -497,9 +586,9 @@ export default function AdminPage() {
     const packSkin: PackSkin = {
       id: skin.id,
       name: skin.name,
-      weapon: skin.name.split(' ')[0] || 'Unknown',
-      rarity: skin.rarity || 'Common',
-      imageUrl: skin.imageUrl || '',
+      weapon: skin.name.split(" ")[0] || "Unknown",
+      rarity: skin.rarity || "Common",
+      imageUrl: skin.imageUrl || "",
       metadataUri: skin.metadataUri,
     };
 
@@ -509,7 +598,9 @@ export default function AdminPage() {
     };
 
     setSelectedPack(updatedPack);
-    setPacks(prev => prev.map(p => p.id === selectedPack.id ? updatedPack : p));
+    setPacks((prev) =>
+      prev.map((p) => (p.id === selectedPack.id ? updatedPack : p))
+    );
   };
 
   const removeSkinFromPack = (skinId: string) => {
@@ -517,11 +608,13 @@ export default function AdminPage() {
 
     const updatedPack = {
       ...selectedPack,
-      skins: selectedPack.skins.filter(s => s.id !== skinId),
+      skins: selectedPack.skins.filter((s) => s.id !== skinId),
     };
 
     setSelectedPack(updatedPack);
-    setPacks(prev => prev.map(p => p.id === selectedPack.id ? updatedPack : p));
+    setPacks((prev) =>
+      prev.map((p) => (p.id === selectedPack.id ? updatedPack : p))
+    );
   };
 
   const toggleSelect = (id: string) => {
@@ -680,7 +773,11 @@ export default function AdminPage() {
                       </div>
                       <Button
                         onClick={createPack}
-                        disabled={creatingPack || !packName.trim() || !packDescription.trim()}
+                        disabled={
+                          creatingPack ||
+                          !packName.trim() ||
+                          !packDescription.trim()
+                        }
                         className="w-full bg-[#E99500] hover:bg-[#d18500] text-black font-semibold"
                       >
                         {creatingPack ? (
@@ -700,7 +797,9 @@ export default function AdminPage() {
                     {/* Existing Packs */}
                     {packs.length > 0 && (
                       <div className="mt-6">
-                        <h3 className="text-lg font-semibold text-white mb-3">Existing Packs</h3>
+                        <h3 className="text-lg font-semibold text-white mb-3">
+                          Existing Packs
+                        </h3>
                         <div className="space-y-2">
                           {packs.map((pack) => (
                             <div
@@ -710,16 +809,25 @@ export default function AdminPage() {
                             >
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className="text-white font-medium">{pack.name}</p>
-                                  <p className="text-xs text-zinc-400">{pack.skins.length} skins • {pack.status}</p>
+                                  <p className="text-white font-medium">
+                                    {pack.name}
+                                  </p>
+                                  <p className="text-xs text-zinc-400">
+                                    {pack.skins.length} skins • {pack.status}
+                                  </p>
                                 </div>
                                 <div className="text-right">
                                   <div className="text-xs text-zinc-500">
-                                    {pack.deployedAt ? new Date(pack.deployedAt).toLocaleDateString() : 'Draft'}
+                                    {pack.deployedAt
+                                      ? new Date(
+                                          pack.deployedAt
+                                        ).toLocaleDateString()
+                                      : "Draft"}
                                   </div>
                                   {pack.candyMachine && (
                                     <div className="text-xs text-zinc-600 font-mono">
-                                      {pack.candyMachine.toBase58().slice(0, 8)}...
+                                      {pack.candyMachine.toBase58().slice(0, 8)}
+                                      ...
                                     </div>
                                   )}
                                 </div>
@@ -735,13 +843,22 @@ export default function AdminPage() {
                     {/* Pack Details */}
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-lg font-semibold text-white">{selectedPack.name}</h3>
-                        <p className="text-sm text-zinc-400">{selectedPack.description}</p>
+                        <h3 className="text-lg font-semibold text-white">
+                          {selectedPack.name}
+                        </h3>
+                        <p className="text-sm text-zinc-400">
+                          {selectedPack.description}
+                        </p>
                         <p className="text-xs text-zinc-500 mt-1">
-                          Status: <span className="capitalize">{selectedPack.status}</span>
+                          Status:{" "}
+                          <span className="capitalize">
+                            {selectedPack.status}
+                          </span>
                           {selectedPack.candyMachine && (
                             <span className="ml-2">
-                              • CM: {selectedPack.candyMachine.toBase58().slice(0, 8)}...
+                              • CM:{" "}
+                              {selectedPack.candyMachine.toBase58().slice(0, 8)}
+                              ...
                             </span>
                           )}
                         </p>
@@ -754,25 +871,26 @@ export default function AdminPage() {
                         >
                           Back
                         </Button>
-                        {selectedPack.status === 'draft' && selectedPack.skins.length > 0 && (
-                          <Button
-                            onClick={() => deployPack(selectedPack)}
-                            disabled={deployingPack}
-                            className="bg-green-600 hover:bg-green-700 text-white"
-                          >
-                            {deployingPack ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                Deploying...
-                              </>
-                            ) : (
-                              <>
-                                <Upload className="w-4 h-4 mr-2" />
-                                Deploy Pack
-                              </>
-                            )}
-                          </Button>
-                        )}
+                        {selectedPack.status === "draft" &&
+                          selectedPack.skins.length > 0 && (
+                            <Button
+                              onClick={() => deployPack(selectedPack)}
+                              disabled={deployingPack}
+                              className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                              {deployingPack ? (
+                                <>
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  Deploying...
+                                </>
+                              ) : (
+                                <>
+                                  <Upload className="w-4 h-4 mr-2" />
+                                  Deploy Pack
+                                </>
+                              )}
+                            </Button>
+                          )}
                       </div>
                     </div>
 
@@ -784,8 +902,12 @@ export default function AdminPage() {
                       {selectedPack.skins.length === 0 ? (
                         <div className="text-center py-8 bg-zinc-900 rounded-lg border border-zinc-800">
                           <Package className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
-                          <p className="text-zinc-400 text-sm">No skins added yet</p>
-                          <p className="text-zinc-500 text-xs mt-1">Add skins from inventory below</p>
+                          <p className="text-zinc-400 text-sm">
+                            No skins added yet
+                          </p>
+                          <p className="text-zinc-500 text-xs mt-1">
+                            Add skins from inventory below
+                          </p>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -829,15 +951,26 @@ export default function AdminPage() {
 
                     {/* Add Skins from Inventory */}
                     <div>
-                      <h4 className="text-md font-semibold text-white mb-3">Add Skins from Inventory</h4>
+                      <h4 className="text-md font-semibold text-white mb-3">
+                        Add Skins from Inventory
+                      </h4>
                       <div className="grid gap-2 max-h-60 overflow-auto pr-2">
                         {loadingInventory ? (
-                          <p className="text-zinc-400 text-sm">Loading inventory...</p>
+                          <p className="text-zinc-400 text-sm">
+                            Loading inventory...
+                          </p>
                         ) : inventory.length === 0 ? (
-                          <p className="text-zinc-400 text-sm">No NFTs found in inventory</p>
+                          <p className="text-zinc-400 text-sm">
+                            No NFTs found in inventory
+                          </p>
                         ) : (
                           inventory
-                            .filter(item => !selectedPack.skins.some(skin => skin.id === item.id))
+                            .filter(
+                              (item) =>
+                                !selectedPack.skins.some(
+                                  (skin) => skin.id === item.id
+                                )
+                            )
                             .map((item) => (
                               <div
                                 key={item.id}
@@ -857,7 +990,7 @@ export default function AdminPage() {
                                     {item.name}
                                   </p>
                                   <p className="text-zinc-500 text-xs">
-                                    {item.rarity || 'Unknown'}
+                                    {item.rarity || "Unknown"}
                                   </p>
                                 </div>
                                 <Button
@@ -923,13 +1056,13 @@ export default function AdminPage() {
                             Loading...
                           </>
                         ) : (
-                          "Auto-Generate"
+                          "Create Candy Machine"
                         )}
                       </Button>
                     </div>
                     <p className="text-xs text-zinc-500 mt-1">
-                      Click "Auto-Generate" to get a persistent candy machine
-                      pubkey
+                      Click "Create Candy Machine" to configure and deploy a new
+                      Candy Machine
                     </p>
                   </div>
 
@@ -1005,12 +1138,239 @@ export default function AdminPage() {
               </Card>
             )}
 
+            {/* Candy Machine Creation Form Modal */}
+            {showCandyMachineForm && (
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                <Card className="w-full max-w-2xl max-h-[90vh] overflow-y-auto bg-zinc-950 border-zinc-800">
+                  <div className="p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <h2 className="text-xl font-bold text-white">
+                        Create Candy Machine
+                      </h2>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowCandyMachineForm(false)}
+                        className="text-zinc-400 hover:text-white"
+                      >
+                        <X className="w-4 h-4" />
+                      </Button>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Collection Details */}
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold text-white">
+                          Collection Details
+                        </h3>
+
+                        <div>
+                          <Label className="text-white">
+                            Collection Name *
+                          </Label>
+                          <Input
+                            value={candyMachineConfig.name}
+                            onChange={(e) =>
+                              setCandyMachineConfig((prev) => ({
+                                ...prev,
+                                name: e.target.value,
+                              }))
+                            }
+                            placeholder="e.g., SolSkins Collection"
+                            className="bg-zinc-900 border-zinc-700 text-white"
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-white">Symbol *</Label>
+                          <Input
+                            value={candyMachineConfig.symbol}
+                            onChange={(e) =>
+                              setCandyMachineConfig((prev) => ({
+                                ...prev,
+                                symbol: e.target.value.toUpperCase(),
+                              }))
+                            }
+                            placeholder="e.g., SOLSKINS"
+                            maxLength={10}
+                            className="bg-zinc-900 border-zinc-700 text-white"
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-white">Description *</Label>
+                          <textarea
+                            value={candyMachineConfig.description}
+                            onChange={(e) =>
+                              setCandyMachineConfig((prev) => ({
+                                ...prev,
+                                description: e.target.value,
+                              }))
+                            }
+                            placeholder="Describe your collection..."
+                            rows={3}
+                            className="w-full bg-zinc-900 border border-zinc-700 text-white rounded-md px-3 py-2"
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-white">
+                            Collection Image URL *
+                          </Label>
+                          <Input
+                            value={candyMachineConfig.image}
+                            onChange={(e) =>
+                              setCandyMachineConfig((prev) => ({
+                                ...prev,
+                                image: e.target.value,
+                              }))
+                            }
+                            placeholder="https://arweave.net/your-collection-image"
+                            className="bg-zinc-900 border-zinc-700 text-white"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Candy Machine Settings */}
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold text-white">
+                          Candy Machine Settings
+                        </h3>
+
+                        <div>
+                          <Label className="text-white">
+                            Items Available *
+                          </Label>
+                          <Input
+                            type="number"
+                            value={candyMachineConfig.itemsAvailable}
+                            onChange={(e) =>
+                              setCandyMachineConfig((prev) => ({
+                                ...prev,
+                                itemsAvailable: parseInt(e.target.value) || 0,
+                              }))
+                            }
+                            placeholder="1000"
+                            min="1"
+                            className="bg-zinc-900 border-zinc-700 text-white"
+                          />
+                        </div>
+
+                        <div>
+                          <Label className="text-white">
+                            Royalty (Basis Points) *
+                          </Label>
+                          <Input
+                            type="number"
+                            value={candyMachineConfig.sellerFeeBasisPoints}
+                            onChange={(e) =>
+                              setCandyMachineConfig((prev) => ({
+                                ...prev,
+                                sellerFeeBasisPoints:
+                                  parseInt(e.target.value) || 0,
+                              }))
+                            }
+                            placeholder="500 (5%)"
+                            min="0"
+                            max="10000"
+                            className="bg-zinc-900 border-zinc-700 text-white"
+                          />
+                          <p className="text-xs text-zinc-500 mt-1">
+                            {candyMachineConfig.sellerFeeBasisPoints / 100}%
+                            royalty
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Creator Settings */}
+                      <div className="space-y-3">
+                        <h3 className="text-lg font-semibold text-white">
+                          Creator Settings
+                        </h3>
+
+                        <div>
+                          <Label className="text-white">Creator Address</Label>
+                          <Input
+                            value={candyMachineConfig.creatorAddress}
+                            onChange={(e) =>
+                              setCandyMachineConfig((prev) => ({
+                                ...prev,
+                                creatorAddress: e.target.value,
+                              }))
+                            }
+                            placeholder={
+                              wallet.publicKey?.toBase58() ||
+                              "Enter creator address"
+                            }
+                            className="bg-zinc-900 border-zinc-700 text-white"
+                          />
+                          <p className="text-xs text-zinc-500 mt-1">
+                            Leave empty to use your wallet address
+                          </p>
+                        </div>
+
+                        <div>
+                          <Label className="text-white">
+                            Creator Share (%)
+                          </Label>
+                          <Input
+                            type="number"
+                            value={candyMachineConfig.creatorShare}
+                            onChange={(e) =>
+                              setCandyMachineConfig((prev) => ({
+                                ...prev,
+                                creatorShare: parseInt(e.target.value) || 0,
+                              }))
+                            }
+                            placeholder="100"
+                            min="0"
+                            max="100"
+                            className="bg-zinc-900 border-zinc-700 text-white"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="flex gap-3 pt-4">
+                        <Button
+                          onClick={() => setShowCandyMachineForm(false)}
+                          variant="outline"
+                          className="flex-1"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={createCandyMachine}
+                          disabled={
+                            loadingCandyMachine ||
+                            !candyMachineConfig.name ||
+                            !candyMachineConfig.symbol
+                          }
+                          className="flex-1 bg-[#E99500] hover:bg-[#d18500] text-black font-semibold"
+                        >
+                          {loadingCandyMachine ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Creating...
+                            </>
+                          ) : (
+                            "Create Candy Machine"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </div>
+            )}
+
             {/* Published Batches List */}
             {initialized && (
               <Card className="p-6 bg-zinc-950 border-zinc-800">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-white">
-                    Published Batches {batches.length > 0 && `(${batches.length})`}
+                    Published Batches{" "}
+                    {batches.length > 0 && `(${batches.length})`}
                   </h2>
                   <Button
                     onClick={loadProgramState}
@@ -1025,8 +1385,12 @@ export default function AdminPage() {
                 {batches.length === 0 ? (
                   <div className="text-center py-12">
                     <Package className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
-                    <p className="text-zinc-400 text-sm font-medium">No batches published yet</p>
-                    <p className="text-zinc-600 text-xs mt-1">Publish your first batch using the form above</p>
+                    <p className="text-zinc-400 text-sm font-medium">
+                      No batches published yet
+                    </p>
+                    <p className="text-zinc-600 text-xs mt-1">
+                      Publish your first batch using the form above
+                    </p>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1046,36 +1410,48 @@ export default function AdminPage() {
                                 {Number(batch.totalItems)} NFTs in pool
                               </p>
                               <p className="text-xs text-zinc-400">
-                                {Number(batch.boxesMinted)} boxes minted • {Number(batch.boxesOpened)} opened
+                                {Number(batch.boxesMinted)} boxes minted •{" "}
+                                {Number(batch.boxesOpened)} opened
                               </p>
                               <p className="text-xs text-zinc-500 mt-2 font-mono">
-                                Candy Machine: {batch.candyMachine.toBase58().slice(0, 8)}...
+                                Candy Machine:{" "}
+                                {batch.candyMachine.toBase58().slice(0, 8)}...
                                 {batch.candyMachine.toBase58().slice(-8)}
                               </p>
-                              {batch.metadataUris && batch.metadataUris.length > 0 && (
-                                <details className="mt-2">
-                                  <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-400">
-                                    View {batch.metadataUris.length} Metadata URIs
-                                  </summary>
-                                  <div className="mt-2 space-y-1 pl-4 border-l border-zinc-700">
-                                    {batch.metadataUris.slice(0, 5).map((uri, idx) => (
-                                      <p key={idx} className="text-xs text-zinc-600 font-mono truncate">
-                                        {idx + 1}. {uri}
-                                      </p>
-                                    ))}
-                                    {batch.metadataUris.length > 5 && (
-                                      <p className="text-xs text-zinc-600">
-                                        ... and {batch.metadataUris.length - 5} more
-                                      </p>
-                                    )}
-                                  </div>
-                                </details>
-                              )}
+                              {batch.metadataUris &&
+                                batch.metadataUris.length > 0 && (
+                                  <details className="mt-2">
+                                    <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-400">
+                                      View {batch.metadataUris.length} Metadata
+                                      URIs
+                                    </summary>
+                                    <div className="mt-2 space-y-1 pl-4 border-l border-zinc-700">
+                                      {batch.metadataUris
+                                        .slice(0, 5)
+                                        .map((uri, idx) => (
+                                          <p
+                                            key={idx}
+                                            className="text-xs text-zinc-600 font-mono truncate"
+                                          >
+                                            {idx + 1}. {uri}
+                                          </p>
+                                        ))}
+                                      {batch.metadataUris.length > 5 && (
+                                        <p className="text-xs text-zinc-600">
+                                          ... and{" "}
+                                          {batch.metadataUris.length - 5} more
+                                        </p>
+                                      )}
+                                    </div>
+                                  </details>
+                                )}
                             </div>
                           </div>
                           <div className="text-right">
                             <div className="text-xs text-zinc-500">
-                              {new Date(Number(batch.snapshotTime) * 1000).toLocaleDateString()}
+                              {new Date(
+                                Number(batch.snapshotTime) * 1000
+                              ).toLocaleDateString()}
                             </div>
                           </div>
                         </div>

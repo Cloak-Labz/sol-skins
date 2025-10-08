@@ -1,7 +1,9 @@
-import { Request, Response, NextFunction } from 'express';
+import { Request, Response, NextFunction } from "express";
 
 // List of admin wallet addresses (load from environment)
-const ADMIN_WALLETS = (process.env.ADMIN_WALLETS || '').split(',').filter(Boolean);
+const ADMIN_WALLETS = (process.env.ADMIN_WALLETS || "")
+  .split(",")
+  .filter(Boolean);
 
 export interface AdminRequest extends Request {
   user?: {
@@ -15,13 +17,17 @@ export interface AdminRequest extends Request {
  * Middleware to check if user is an admin
  * Must be used after authMiddleware
  */
-export function adminMiddleware(req: AdminRequest, res: Response, next: NextFunction) {
+export function adminMiddleware(
+  req: AdminRequest,
+  res: Response,
+  next: NextFunction
+) {
   try {
     // Check if user is authenticated
     if (!req.user || !req.user.walletAddress) {
       return res.status(401).json({
         success: false,
-        error: 'Authentication required',
+        error: "Authentication required",
       });
     }
 
@@ -31,19 +37,19 @@ export function adminMiddleware(req: AdminRequest, res: Response, next: NextFunc
     if (!isAdmin) {
       return res.status(403).json({
         success: false,
-        error: 'Admin access required',
+        error: "Admin access required",
       });
     }
 
     // Mark user as admin
     req.user.isAdmin = true;
 
-    next();
+    return next();
   } catch (error) {
-    console.error('Admin middleware error:', error);
-    res.status(500).json({
+    console.error("Admin middleware error:", error);
+    return res.status(500).json({
       success: false,
-      error: 'Internal server error',
+      error: "Internal server error",
     });
   }
 }
@@ -55,4 +61,6 @@ export function getAdminWallets(): string[] {
   return ADMIN_WALLETS;
 }
 
-console.log(`✅ Admin middleware initialized with ${ADMIN_WALLETS.length} admin wallet(s)`);
+console.log(
+  `✅ Admin middleware initialized with ${ADMIN_WALLETS.length} admin wallet(s)`
+);
