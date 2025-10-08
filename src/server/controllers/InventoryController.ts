@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
-import fs from "fs";
-import path from "path";
+import { InventoryRepository } from "../repositories/InventoryRepository";
 
 export type InventoryItem = {
   id: string;
@@ -16,35 +15,19 @@ export type InventoryItem = {
   mintTx?: string;
 };
 
-function getDbPath(): string {
-  return path.join(__dirname, "../data/inventory.json");
-}
-
-function readDb(): InventoryItem[] {
-  const file = getDbPath();
-  if (!fs.existsSync(file)) return [];
-  try {
-    const raw = fs.readFileSync(file, "utf-8");
-    return JSON.parse(raw) as InventoryItem[];
-  } catch {
-    return [];
-  }
-}
-
-function writeDb(items: InventoryItem[]) {
-  const file = getDbPath();
-  const dir = path.dirname(file);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(file, JSON.stringify(items, null, 2));
-}
+const repo = new InventoryRepository();
 
 export class InventoryController {
-  static list(req: Request, res: Response) {
-    const items = readDb();
-    res.json({ success: true, data: items });
+  static async list(_req: Request, res: Response) {
+    try {
+      const items = await repo.findAll();
+      res.json({ success: true, data: items });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e?.message || "Failed" });
+    }
   }
 
-  static add(req: Request, res: Response): Response {
+  static async add(req: Request, res: Response): Promise<Response> {
     const {
       name,
       description,
@@ -60,27 +43,27 @@ export class InventoryController {
         .status(400)
         .json({ success: false, error: "name is required" });
     }
-    const items = readDb();
-    const id = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
-    const item: InventoryItem = {
-      id,
-      name,
-      description: description || "",
-      imageUrl: imageUrl || "",
-      rarity: rarity || "Common",
-      attributes: attributes || {},
-      createdAt: Date.now(),
-      metadataUri,
-      mintedAsset,
-      mintTx,
-      mintedAt: mintedAsset ? Date.now() : undefined,
-    };
-    items.push(item);
-    writeDb(items);
-    return res.json({ success: true, data: item });
+    try {
+      const created = await repo.create({
+        name,
+        description,
+        imageUrl,
+        rarity: rarity || "Common",
+        attributes,
+        metadataUri,
+        mintedAsset,
+        mintTx,
+        mintedAt: mintedAsset ? new Date() : undefined,
+      } as any);
+      return res.json({ success: true, data: created });
+    } catch (e: any) {
+      return res
+        .status(500)
+        .json({ success: false, error: e?.message || "Failed" });
+    }
   }
 
-  static updateMint(req: Request, res: Response): Response {
+  static async updateMint(req: Request, res: Response): Promise<Response> {
     const { id } = req.params;
     const { metadataUri, mintedAsset, mintTx } = req.body || {};
 
@@ -95,55 +78,72 @@ export class InventoryController {
       });
     }
 
-    const items = readDb();
-    const idx = items.findIndex((i) => i.id === id);
-
-    if (idx === -1) {
-      return res.status(404).json({ success: false, error: "Item not found" });
+    try {
+      const updated = await repo.update(id, {
+        metadataUri,
+        mintedAsset,
+        mintTx,
+        mintedAt: new Date(),
+      } as any);
+      if (!updated) {
+        return res
+          .status(404)
+          .json({ success: false, error: "Item not found" });
+      }
+      return res.json({ success: true, data: updated });
+    } catch (e: any) {
+      return res
+        .status(500)
+        .json({ success: false, error: e?.message || "Failed" });
     }
-
-    // Update item with mint info from frontend
-    items[idx].metadataUri = metadataUri;
-    items[idx].mintedAsset = mintedAsset;
-    items[idx].mintedAt = Date.now();
-    items[idx].mintTx = mintTx;
-    writeDb(items);
-
-    return res.json({
-      success: true,
-      data: items[idx],
-    });
   }
 
   // Instance handlers expected by routes/inventory.ts
-  public getInventory = (req: Request, res: Response): Response => {
-    const items = readDb();
-    const search =
-      typeof req.query?.search === "string"
-        ? req.query.search.toLowerCase()
-        : "";
-    const filtered = search
-      ? items.filter((i) => i.name.toLowerCase().includes(search))
-      : items;
-    return res.json({ success: true, data: filtered });
-  };
-
-  public getInventoryValue = (_req: Request, res: Response): Response => {
-    const items = readDb();
-    return res.json({
-      success: true,
-      data: { totalItems: items.length, totalValue: 0, currency: "USD" },
-    });
-  };
-
-  public getInventoryStats = (_req: Request, res: Response): Response => {
-    const items = readDb();
-    const byRarity: Record<string, number> = {};
-    for (const item of items) {
-      const rarity = item.rarity || "Common";
-      byRarity[rarity] = (byRarity[rarity] || 0) + 1;
+  public getInventory = async (
+    req: Request,
+    res: Response
+  ): Promise<Response> => {
+    try {
+      const search =
+        typeof req.query?.search === "string" ? req.query.search : "";
+      const items = search ? await repo.search(search) : await repo.findAll();
+      return res.json({ success: true, data: items });
+    } catch (e: any) {
+      return res
+        .status(500)
+        .json({ success: false, error: e?.message || "Failed" });
     }
-    return res.json({ success: true, data: { byRarity } });
+  };
+
+  public getInventoryValue = async (
+    _req: Request,
+    res: Response
+  ): Promise<Response> => {
+    try {
+      const items = await repo.findAll();
+      return res.json({
+        success: true,
+        data: { totalItems: items.length, totalValue: 0, currency: "USD" },
+      });
+    } catch (e: any) {
+      return res
+        .status(500)
+        .json({ success: false, error: e?.message || "Failed" });
+    }
+  };
+
+  public getInventoryStats = async (
+    _req: Request,
+    res: Response
+  ): Promise<Response> => {
+    try {
+      const byRarity = await repo.countByRarity();
+      return res.json({ success: true, data: { byRarity } });
+    } catch (e: any) {
+      return res
+        .status(500)
+        .json({ success: false, error: e?.message || "Failed" });
+    }
   };
 
   public getSteamInventoryStats = (_req: Request, res: Response): Response => {
@@ -158,15 +158,17 @@ export class InventoryController {
     return res.json({ success: true, data: { imported: 0 } });
   };
 
-  public getSkinDetails = (req: Request, res: Response): Response => {
+  public getSkinDetails = async (
+    req: Request,
+    res: Response
+  ): Promise<Response> => {
     const { skinId } = req.params as { skinId?: string };
     if (!skinId) {
       return res
         .status(400)
         .json({ success: false, error: "skinId is required" });
     }
-    const items = readDb();
-    const item = items.find((i) => i.id === skinId);
+    const item = await repo.findById(skinId);
     if (!item) {
       return res.status(404).json({ success: false, error: "Skin not found" });
     }

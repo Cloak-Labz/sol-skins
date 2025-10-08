@@ -1,20 +1,21 @@
-import { DataSource } from 'typeorm';
-import { config } from '../../config/env';
-import { User } from '../../entities/User';
-import { LootBoxType } from '../../entities/LootBoxType';
-import { SkinTemplate } from '../../entities/SkinTemplate';
-import { LootBoxSkinPool } from '../../entities/LootBoxSkinPool';
-import { UserSkin } from '../../entities/UserSkin';
-import { Transaction } from '../../entities/Transaction';
-import { CaseOpening } from '../../entities/CaseOpening';
-import { PriceHistory } from '../../entities/PriceHistory';
-import { UserSession } from '../../entities/UserSession';
-import { SkinListing } from '../../entities/SkinListing';
-import { SteamInventory } from '../../entities/SteamInventory';
+import { DataSource } from "typeorm";
+import { config } from "../../config/env";
+import { User } from "../../entities/User";
+import { LootBoxType } from "../../entities/LootBoxType";
+import { SkinTemplate } from "../../entities/SkinTemplate";
+import { LootBoxSkinPool } from "../../entities/LootBoxSkinPool";
+import { UserSkin } from "../../entities/UserSkin";
+import { Transaction } from "../../entities/Transaction";
+import { CaseOpening } from "../../entities/CaseOpening";
+import { PriceHistory } from "../../entities/PriceHistory";
+import { UserSession } from "../../entities/UserSession";
+import { SkinListing } from "../../entities/SkinListing";
+import { SteamInventory } from "../../entities/SteamInventory";
+import { Inventory } from "../../entities/Inventory";
 
 // This is the DataSource for TypeORM CLI (migrations)
 export default new DataSource({
-  type: 'postgres',
+  type: "postgres",
   host: config.database.host,
   port: config.database.port,
   username: config.database.username,
@@ -34,8 +35,8 @@ export default new DataSource({
     UserSession,
     SkinListing,
     SteamInventory,
+    Inventory,
   ],
-  migrations: ['src/database/migrations/*.ts'],
-  subscribers: ['src/database/subscribers/*.ts'],
+  migrations: ["src/database/migrations/*.ts"],
+  subscribers: ["src/database/subscribers/*.ts"],
 });
-
