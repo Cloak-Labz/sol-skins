@@ -111,15 +111,28 @@ export default function AdminPage() {
         const nextBatch = (Number(globalState.currentBatch || 0) + 1) >>> 0;
         setBatchId(String(nextBatch));
 
-        // Load all batches
+        // Load all batches (scan up to max 50 to find all existing batches)
         const loadedBatches: BatchWithId[] = [];
-        for (let i = 0; i <= Number(globalState.currentBatch || 0); i++) {
-          const batch = await fetchBatch(program, i);
-          if (batch) {
-            loadedBatches.push({ ...batch, id: i });
+        const maxBatchToCheck = Math.max(Number(globalState.currentBatch || 0) + 10, 50);
+
+        for (let i = 0; i <= maxBatchToCheck; i++) {
+          try {
+            const batch = await fetchBatch(program, i);
+            if (batch) {
+              loadedBatches.push({ ...batch, id: i });
+            }
+          } catch (error) {
+            // Batch doesn't exist, continue scanning
           }
         }
+
+        // Sort by batch ID
+        loadedBatches.sort((a, b) => a.id - b.id);
         setBatches(loadedBatches);
+
+        if (loadedBatches.length > 0) {
+          console.log(`✅ Loaded ${loadedBatches.length} batches`);
+        }
       } else {
         setInitialized(false);
       }
@@ -534,37 +547,83 @@ export default function AdminPage() {
             )}
 
             {/* Published Batches List */}
-            {batches.length > 0 && (
+            {initialized && (
               <Card className="p-6 bg-zinc-950 border-zinc-800">
-                <h2 className="text-xl font-bold text-white mb-4">
-                  Published Batches
-                </h2>
-                <div className="space-y-3">
-                  {batches.map((batch) => (
-                    <div
-                      key={batch.id}
-                      className="p-4 bg-zinc-900 rounded-lg border border-zinc-800"
-                    >
-                      <div className="flex items-start gap-3">
-                        <Package className="w-5 h-5 text-[#E99500]" />
-                        <div>
-                          <p className="text-white font-semibold">
-                            Batch #{batch.id}
-                          </p>
-                          <p className="text-xs text-zinc-400">
-                            {batch.totalItems} items • {batch.boxesMinted}{" "}
-                            minted • {batch.boxesOpened} opened
-                          </p>
-                          <p className="text-xs text-zinc-500 mt-1">
-                            Candy Machine:{" "}
-                            {batch.candyMachine.toBase58().slice(0, 8)}...
-                            {batch.candyMachine.toBase58().slice(-8)}
-                          </p>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">
+                    Published Batches {batches.length > 0 && `(${batches.length})`}
+                  </h2>
+                  <Button
+                    onClick={loadProgramState}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                  >
+                    Refresh
+                  </Button>
+                </div>
+
+                {batches.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Package className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
+                    <p className="text-zinc-400 text-sm font-medium">No batches published yet</p>
+                    <p className="text-zinc-600 text-xs mt-1">Publish your first batch using the form above</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {batches.map((batch) => (
+                      <div
+                        key={batch.id}
+                        className="p-4 bg-zinc-900 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            <Package className="w-5 h-5 text-[#E99500] mt-0.5" />
+                            <div>
+                              <p className="text-white font-semibold">
+                                Batch #{batch.id}
+                              </p>
+                              <p className="text-xs text-zinc-400 mt-1">
+                                {Number(batch.totalItems)} NFTs in pool
+                              </p>
+                              <p className="text-xs text-zinc-400">
+                                {Number(batch.boxesMinted)} boxes minted • {Number(batch.boxesOpened)} opened
+                              </p>
+                              <p className="text-xs text-zinc-500 mt-2 font-mono">
+                                Candy Machine: {batch.candyMachine.toBase58().slice(0, 8)}...
+                                {batch.candyMachine.toBase58().slice(-8)}
+                              </p>
+                              {batch.metadataUris && batch.metadataUris.length > 0 && (
+                                <details className="mt-2">
+                                  <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-400">
+                                    View {batch.metadataUris.length} Metadata URIs
+                                  </summary>
+                                  <div className="mt-2 space-y-1 pl-4 border-l border-zinc-700">
+                                    {batch.metadataUris.slice(0, 5).map((uri, idx) => (
+                                      <p key={idx} className="text-xs text-zinc-600 font-mono truncate">
+                                        {idx + 1}. {uri}
+                                      </p>
+                                    ))}
+                                    {batch.metadataUris.length > 5 && (
+                                      <p className="text-xs text-zinc-600">
+                                        ... and {batch.metadataUris.length - 5} more
+                                      </p>
+                                    )}
+                                  </div>
+                                </details>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-xs text-zinc-500">
+                              {new Date(Number(batch.snapshotTime) * 1000).toLocaleDateString()}
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </Card>
             )}
           </>

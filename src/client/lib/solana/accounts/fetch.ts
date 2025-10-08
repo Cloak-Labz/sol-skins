@@ -69,7 +69,12 @@ export async function fetchBatch(
     const [batchPDA] = getBatchPDA(batchId);
     const account = await program.account.batch.fetch(batchPDA);
     return account as any;
-  } catch (error) {
+  } catch (error: any) {
+    // Silently return null if account doesn't exist (expected during batch scanning)
+    if (error?.message?.includes('Account does not exist')) {
+      return null;
+    }
+    // Log unexpected errors
     console.error(`Error fetching batch ${batchId}:`, error);
     return null;
   }

@@ -62,12 +62,9 @@ pub fn publish_merkle_root_handler(
     let batch = &mut ctx.accounts.batch;
     let global = &mut ctx.accounts.global;
 
-    // If this is a new batch, update global counter
-    if batch.batch_id == 0 {
-        global.current_batch = global
-            .current_batch
-            .checked_add(1)
-            .ok_or(SkinVaultError::ArithmeticOverflow)?;
+    // Update global counter to track the highest batch ID
+    if batch_id > global.current_batch {
+        global.current_batch = batch_id;
     }
 
     batch.batch_id = batch_id;
