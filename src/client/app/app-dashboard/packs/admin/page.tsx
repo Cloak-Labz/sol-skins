@@ -43,7 +43,6 @@ export default function AdminPage() {
   const [batches, setBatches] = useState<BatchWithId[]>([]);
 
   // Initialize form
-  const [oracleKey, setOracleKey] = useState("");
 
   // Publish batch form
   const [batchId, setBatchId] = useState("");
@@ -107,7 +106,6 @@ export default function AdminPage() {
       const globalState = await fetchGlobalState(program);
       if (globalState) {
         setInitialized(true);
-        setOracleKey(globalState.oraclePubkey.toBase58());
 
         // Auto-suggest next batch id
         const nextBatch = (Number(globalState.currentBatch || 0) + 1) >>> 0;
@@ -134,25 +132,27 @@ export default function AdminPage() {
   };
 
   const handleInitialize = async () => {
-    if (!wallet.publicKey || !oracleKey) {
-      toast.error("Please fill in all fields");
+    if (!wallet.publicKey) {
+      toast.error("Please connect your wallet");
       return;
     }
 
     try {
       toast.loading("Initializing program...", { id: "init" });
       const program = getProgramFromWallet(wallet as any, connection);
-      const oracle = new PublicKey(oracleKey);
 
       // Get USDC mint based on cluster
       const cluster =
         (process.env.NEXT_PUBLIC_SOLANA_CLUSTER as any) || "devnet";
       const usdcMint = getUSDCMint(cluster);
 
+      // Use authority as oracle pubkey (can be changed later via set_oracle instruction)
+      const oraclePubkey = wallet.publicKey;
+
       const result = await initializeProgram({
         program,
         authority: wallet.publicKey,
-        oraclePubkey: oracle,
+        oraclePubkey,
         usdcMint,
       });
 
@@ -201,12 +201,12 @@ export default function AdminPage() {
   const handlePublishBatch = async () => {
     // Strict batch id validation
     const batchIdNum = Number.parseInt(batchId, 10);
-    const maxU64 = 2n ** 64n - 1n;
+    // Check if batch ID is within safe integer range
     if (!Number.isFinite(batchIdNum) || batchIdNum < 0) {
       toast.error("Invalid Batch ID: must be a non-negative integer");
       return;
     }
-    if (BigInt(batchIdNum) > maxU64) {
+    if (batchIdNum > Number.MAX_SAFE_INTEGER) {
       toast.error("Invalid Batch ID: exceeds u64 range");
       return;
     }
@@ -381,21 +381,6 @@ export default function AdminPage() {
                   on-chain.
                 </p>
                 <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="oracle" className="text-white">
-                      Oracle Public Key
-                    </Label>
-                    <Input
-                      id="oracle"
-                      placeholder="Enter oracle wallet address"
-                      value={oracleKey}
-                      onChange={(e) => setOracleKey(e.target.value)}
-                      className="bg-zinc-900 border-zinc-700 text-white"
-                    />
-                    <p className="text-xs text-zinc-500 mt-1">
-                      VRF service wallet that will fulfill randomness requests
-                    </p>
-                  </div>
                   <Button
                     onClick={handleInitialize}
                     className="w-full bg-[#E99500] hover:bg-[#d18500] text-black font-semibold"
@@ -416,12 +401,6 @@ export default function AdminPage() {
                   </h2>
                 </div>
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-zinc-400">Oracle:</span>
-                    <span className="text-white font-mono text-xs">
-                      {oracleKey.slice(0, 8)}...{oracleKey.slice(-8)}
-                    </span>
-                  </div>
                   <div className="flex justify-between">
                     <span className="text-zinc-400">Total Batches:</span>
                     <span className="text-white">{batches.length}</span>

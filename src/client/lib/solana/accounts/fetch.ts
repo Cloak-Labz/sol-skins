@@ -1,6 +1,6 @@
-import { Program } from '@coral-xyz/anchor';
-import { PublicKey } from '@solana/web3.js';
-import { getGlobalPDA, getBatchPDA, getBoxStatePDA } from '../utils/pda';
+import { Program } from "@coral-xyz/anchor";
+import { PublicKey } from "@solana/web3.js";
+import { getGlobalPDA, getBatchPDA, getBoxStatePDA } from "../utils/pda";
 
 export interface BoxStateAccount {
   owner: PublicKey;
@@ -30,7 +30,7 @@ export interface BatchAccount {
 
 export interface GlobalAccount {
   authority: PublicKey;
-  oraclePubkey: PublicKey;
+  oraclePubkey: PublicKey; // Added: oracle public key for price verification
   usdcMint: PublicKey;
   buybackEnabled: boolean;
   minTreasuryBalance: number;
@@ -46,13 +46,15 @@ export interface GlobalAccount {
 /**
  * Fetch Global state
  */
-export async function fetchGlobalState(program: Program): Promise<GlobalAccount | null> {
+export async function fetchGlobalState(
+  program: Program
+): Promise<GlobalAccount | null> {
   try {
     const [globalPDA] = getGlobalPDA();
     const account = await program.account.global.fetch(globalPDA);
     return account as any;
   } catch (error) {
-    console.error('Error fetching global state:', error);
+    console.error("Error fetching global state:", error);
     return null;
   }
 }
@@ -60,7 +62,10 @@ export async function fetchGlobalState(program: Program): Promise<GlobalAccount 
 /**
  * Fetch Batch by ID
  */
-export async function fetchBatch(program: Program, batchId: number): Promise<BatchAccount | null> {
+export async function fetchBatch(
+  program: Program,
+  batchId: number
+): Promise<BatchAccount | null> {
   try {
     const [batchPDA] = getBatchPDA(batchId);
     const account = await program.account.batch.fetch(batchPDA);
@@ -74,13 +79,16 @@ export async function fetchBatch(program: Program, batchId: number): Promise<Bat
 /**
  * Fetch BoxState by asset pubkey
  */
-export async function fetchBoxState(program: Program, assetPubkey: PublicKey): Promise<BoxStateAccount | null> {
+export async function fetchBoxState(
+  program: Program,
+  assetPubkey: PublicKey
+): Promise<BoxStateAccount | null> {
   try {
     const [boxStatePDA] = getBoxStatePDA(assetPubkey);
     const account = await program.account.boxState.fetch(boxStatePDA);
     return account as any;
   } catch (error) {
-    console.error('Error fetching box state:', error);
+    console.error("Error fetching box state:", error);
     return null;
   }
 }
@@ -88,7 +96,10 @@ export async function fetchBoxState(program: Program, assetPubkey: PublicKey): P
 /**
  * Fetch all boxes owned by a wallet
  */
-export async function fetchUserBoxes(program: Program, owner: PublicKey): Promise<BoxStateAccount[]> {
+export async function fetchUserBoxes(
+  program: Program,
+  owner: PublicKey
+): Promise<BoxStateAccount[]> {
   try {
     const accounts = await program.account.boxState.all([
       {
@@ -101,7 +112,7 @@ export async function fetchUserBoxes(program: Program, owner: PublicKey): Promis
 
     return accounts.map((acc) => acc.account as any);
   } catch (error) {
-    console.error('Error fetching user boxes:', error);
+    console.error("Error fetching user boxes:", error);
     return [];
   }
 }
@@ -109,7 +120,10 @@ export async function fetchUserBoxes(program: Program, owner: PublicKey): Promis
 /**
  * Fetch boxes by batch ID
  */
-export async function fetchBoxesByBatch(program: Program, batchId: number): Promise<BoxStateAccount[]> {
+export async function fetchBoxesByBatch(
+  program: Program,
+  batchId: number
+): Promise<BoxStateAccount[]> {
   try {
     // Note: This requires the batch_id field to be at a specific offset
     // You may need to adjust the offset based on the actual account structure
@@ -120,7 +134,7 @@ export async function fetchBoxesByBatch(program: Program, batchId: number): Prom
       {
         memcmp: {
           offset: 40, // Adjust offset as needed (8 discriminator + 32 pubkey)
-          bytes: batchIdBuffer.toString('base64'),
+          bytes: batchIdBuffer.toString("base64"),
         },
       },
     ]);

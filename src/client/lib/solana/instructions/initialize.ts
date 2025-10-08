@@ -1,7 +1,11 @@
-import { Program } from '@coral-xyz/anchor';
-import { PublicKey, SystemProgram, Keypair } from '@solana/web3.js';
-import { getGlobalPDA, getTreasuryATA } from '../utils/pda';
-import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from '@solana/spl-token';
+import { Program } from "@coral-xyz/anchor";
+import { PublicKey, SystemProgram, Keypair } from "@solana/web3.js";
+import { getGlobalPDA, getTreasuryATA } from "../utils/pda";
+import {
+  TOKEN_PROGRAM_ID,
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  getAssociatedTokenAddressSync,
+} from "@solana/spl-token";
 
 export interface InitializeParams {
   program: Program;
@@ -21,7 +25,9 @@ export interface InitializeResult {
  *
  * This should only be called ONCE per deployment
  */
-export async function initializeProgram(params: InitializeParams): Promise<InitializeResult> {
+export async function initializeProgram(
+  params: InitializeParams
+): Promise<InitializeResult> {
   const { program, authority, oraclePubkey, usdcMint } = params;
 
   // Derive PDAs
@@ -36,7 +42,7 @@ export async function initializeProgram(params: InitializeParams): Promise<Initi
     ASSOCIATED_TOKEN_PROGRAM_ID
   );
 
-  console.log('Initializing program with params:', {
+  console.log("Initializing program with params:", {
     authority: authority.toBase58(),
     oraclePubkey: oraclePubkey.toBase58(),
     usdcMint: usdcMint.toBase58(),
@@ -58,7 +64,7 @@ export async function initializeProgram(params: InitializeParams): Promise<Initi
       })
       .rpc();
 
-    console.log('Program initialized successfully! Signature:', tx);
+    console.log("Program initialized successfully! Signature:", tx);
 
     return {
       signature: tx,
@@ -66,11 +72,11 @@ export async function initializeProgram(params: InitializeParams): Promise<Initi
       treasuryATA,
     };
   } catch (error: any) {
-    console.error('Error initializing program:', error);
+    console.error("Error initializing program:", error);
 
     // Check if already initialized
-    if (error.message?.includes('already in use')) {
-      throw new Error('Program is already initialized');
+    if (error.message?.includes("already in use")) {
+      throw new Error("Program is already initialized");
     }
 
     throw new Error(`Failed to initialize program: ${error.message || error}`);
@@ -82,21 +88,23 @@ export async function initializeProgram(params: InitializeParams): Promise<Initi
  */
 export const USDC_MINTS = {
   // Devnet USDC (test token)
-  devnet: new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr'),
+  devnet: new PublicKey("Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr"),
 
   // Testnet - you may need to create your own test token
   // This is a placeholder - replace with actual testnet USDC or test token
-  testnet: new PublicKey('Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr'),
+  testnet: new PublicKey("Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr"),
 
   // Mainnet USDC
-  mainnet: new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'),
+  mainnet: new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"),
 };
 
 /**
  * Helper to get USDC mint for current cluster
  */
-export function getUSDCMint(cluster: 'devnet' | 'testnet' | 'mainnet-beta'): PublicKey {
-  if (cluster === 'mainnet-beta') return USDC_MINTS.mainnet;
-  if (cluster === 'testnet') return USDC_MINTS.testnet;
+export function getUSDCMint(
+  cluster: "devnet" | "testnet" | "mainnet-beta"
+): PublicKey {
+  if (cluster === "mainnet-beta") return USDC_MINTS.mainnet;
+  if (cluster === "testnet") return USDC_MINTS.testnet;
   return USDC_MINTS.devnet;
 }

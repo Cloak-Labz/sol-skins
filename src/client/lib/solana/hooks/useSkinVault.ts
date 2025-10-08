@@ -1,12 +1,12 @@
-import { useAnchorWallet, useConnection } from '@solana/wallet-adapter-react';
-import { useMemo, useState, useCallback } from 'react';
-import { PublicKey } from '@solana/web3.js';
-import { Program } from '@coral-xyz/anchor';
+import { useAnchorWallet, useConnection } from "@solana/wallet-adapter-react";
+import { useMemo, useState, useCallback } from "react";
+import { PublicKey } from "@solana/web3.js";
+import { Program } from "@coral-xyz/anchor";
 import {
   getProgramFromWallet,
   getProgram,
   getProvider,
-} from '../config/anchor-client';
+} from "../config/anchor-client";
 import {
   fetchGlobalState,
   fetchBatch,
@@ -15,10 +15,14 @@ import {
   GlobalAccount,
   BatchAccount,
   BoxStateAccount,
-} from '../accounts/fetch';
-import { createBox, CreateBoxResult } from '../instructions/create-box';
-import { openBox, waitForVrf, OpenBoxResult } from '../instructions/open-box';
-import { initializeProgram, InitializeResult, getUSDCMint } from '../instructions/initialize';
+} from "../accounts/fetch";
+import { createBox, CreateBoxResult } from "../instructions/create-box";
+import { openBox, waitForVrf, OpenBoxResult } from "../instructions/open-box";
+import {
+  initializeProgram,
+  InitializeResult,
+  getUSDCMint,
+} from "../instructions/initialize";
 
 /**
  * Main hook for SkinVault program interactions
@@ -35,7 +39,7 @@ export function useSkinVault() {
     try {
       return getProgramFromWallet(wallet, connection);
     } catch (err) {
-      console.error('Error creating program:', err);
+      console.error("Error creating program:", err);
       return null;
     }
   }, [wallet, connection]);
@@ -92,7 +96,7 @@ export function useSkinVault() {
   const createNewBox = useCallback(
     async (batchId: number): Promise<CreateBoxResult | null> => {
       if (!program || !wallet) {
-        setError('Wallet not connected');
+        setError("Wallet not connected");
         return null;
       }
 
@@ -117,9 +121,12 @@ export function useSkinVault() {
 
   // Open box
   const openUserBox = useCallback(
-    async (boxAsset: PublicKey, poolSize: number): Promise<OpenBoxResult | null> => {
+    async (
+      boxAsset: PublicKey,
+      poolSize: number
+    ): Promise<OpenBoxResult | null> => {
       if (!program || !wallet) {
-        setError('Wallet not connected');
+        setError("Wallet not connected");
         return null;
       }
 
@@ -152,7 +159,7 @@ export function useSkinVault() {
       try {
         const fulfilled = await waitForVrf(program, boxAsset);
         if (!fulfilled) {
-          setError('VRF timeout - please check back later');
+          setError("VRF timeout - please check back later");
         }
         return fulfilled;
       } catch (err: any) {
@@ -167,9 +174,12 @@ export function useSkinVault() {
 
   // Initialize program (admin only)
   const initialize = useCallback(
-    async (oraclePubkey: PublicKey, usdcMint?: PublicKey): Promise<InitializeResult | null> => {
+    async (
+      oraclePubkey: PublicKey,
+      usdcMint?: PublicKey
+    ): Promise<InitializeResult | null> => {
       if (!program || !wallet) {
-        setError('Wallet not connected');
+        setError("Wallet not connected");
         return null;
       }
 
@@ -177,7 +187,11 @@ export function useSkinVault() {
       setError(null);
       try {
         // Use provided USDC mint or get default for cluster
-        const cluster = (process.env.NEXT_PUBLIC_SOLANA_CLUSTER as 'devnet' | 'testnet' | 'mainnet-beta') || 'devnet';
+        const cluster =
+          (process.env.NEXT_PUBLIC_SOLANA_CLUSTER as
+            | "devnet"
+            | "testnet"
+            | "mainnet-beta") || "devnet";
         const mint = usdcMint || getUSDCMint(cluster);
 
         const result = await initializeProgram({

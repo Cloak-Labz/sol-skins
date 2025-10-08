@@ -1,31 +1,336 @@
 {
-  "address": "44UwMzMZUcobRp4YyucjvAbBeTFJ3uBPxg7YqwHS2ncp",
-  "metadata": {
-    "name": "skinvault",
-    "version": "0.1.0",
-    "spec": "0.1.0",
-    "description": "Created with Anchor"
-  },
-  "instructions": [
+  "accounts": [
     {
-      "name": "accept_authority",
-      "docs": [
-        "Accept authority transfer (step 2 of 2)"
-      ],
       "discriminator": [
-        107,
+        156,
+        194,
+        70,
+        44,
+        22,
+        88,
+        137,
+        44
+      ],
+      "name": "Batch"
+    },
+    {
+      "discriminator": [
+        103,
+        153,
+        190,
+        230,
+        226,
+        85,
+        160,
+        203
+      ],
+      "name": "BoxState"
+    },
+    {
+      "discriminator": [
+        167,
+        232,
+        232,
+        177,
+        200,
+        108,
+        114,
+        127
+      ],
+      "name": "Global"
+    },
+    {
+      "discriminator": [
+        221,
+        154,
+        229,
+        176,
+        44,
+        154,
+        123,
+        47
+      ],
+      "name": "PriceStore"
+    },
+    {
+      "discriminator": [
+        223,
+        4,
+        29,
+        168,
+        28,
+        148,
+        222,
+        31
+      ],
+      "name": "VrfPending"
+    }
+  ],
+  "address": "44UwMzMZUcobRp4YyucjvAbBeTFJ3uBPxg7YqwHS2ncp",
+  "errors": [
+    {
+      "code": 6000,
+      "msg": "Unauthorized access",
+      "name": "Unauthorized"
+    },
+    {
+      "code": 6001,
+      "msg": "Invalid Merkle proof provided",
+      "name": "InvalidMerkleProof"
+    },
+    {
+      "code": 6002,
+      "msg": "VRF request not fulfilled or invalid",
+      "name": "VrfNotFulfilled"
+    },
+    {
+      "code": 6003,
+      "msg": "Box has not been opened yet",
+      "name": "NotOpenedYet"
+    },
+    {
+      "code": 6004,
+      "msg": "Box has already been opened",
+      "name": "AlreadyOpened"
+    },
+    {
+      "code": 6005,
+      "msg": "Price data is stale or missing",
+      "name": "PriceStale"
+    },
+    {
+      "code": 6006,
+      "msg": "Treasury has insufficient funds",
+      "name": "TreasuryInsufficient"
+    },
+    {
+      "code": 6007,
+      "msg": "Buyback is currently disabled",
+      "name": "BuybackDisabled"
+    },
+    {
+      "code": 6008,
+      "msg": "Oracle public key not set",
+      "name": "OracleNotSet"
+    },
+    {
+      "code": 6009,
+      "msg": "Invalid pool size for randomness",
+      "name": "InvalidPoolSize"
+    },
+    {
+      "code": 6010,
+      "msg": "Slippage tolerance exceeded",
+      "name": "SlippageExceeded"
+    },
+    {
+      "code": 6011,
+      "msg": "Invalid signature format",
+      "name": "InvalidSignature"
+    },
+    {
+      "code": 6012,
+      "msg": "Merkle proof depth exceeds maximum allowed",
+      "name": "MerkleProofTooDeep"
+    },
+    {
+      "code": 6013,
+      "msg": "Inventory item already assigned",
+      "name": "InventoryAlreadyAssigned"
+    },
+    {
+      "code": 6014,
+      "msg": "Invalid timestamp",
+      "name": "InvalidTimestamp"
+    },
+    {
+      "code": 6015,
+      "msg": "Price oracle signature verification failed",
+      "name": "OracleSignatureInvalid"
+    },
+    {
+      "code": 6016,
+      "msg": "Box is not owned by the caller",
+      "name": "NotBoxOwner"
+    },
+    {
+      "code": 6017,
+      "msg": "Invalid batch ID",
+      "name": "InvalidBatchId"
+    },
+    {
+      "code": 6018,
+      "msg": "Arithmetic overflow",
+      "name": "ArithmeticOverflow"
+    },
+    {
+      "code": 6019,
+      "msg": "Invalid Candy Machine program ID",
+      "name": "InvalidCandyMachineProgram"
+    },
+    {
+      "code": 6020,
+      "msg": "Invalid Token Metadata program ID",
+      "name": "InvalidMetadataProgram"
+    },
+    {
+      "code": 6021,
+      "msg": "Invalid Candy Machine address",
+      "name": "InvalidCandyMachine"
+    },
+    {
+      "code": 6022,
+      "msg": "Invalid metadata URI or index",
+      "name": "InvalidMetadata"
+    },
+    {
+      "code": 6023,
+      "msg": "Invalid Core program ID",
+      "name": "InvalidCoreProgram"
+    },
+    {
+      "code": 6024,
+      "msg": "CPI call failed",
+      "name": "CpiFailed"
+    }
+  ],
+  "events": [
+    {
+      "discriminator": [
+        141,
+        150,
+        109,
+        170,
+        184,
+        231,
+        225,
+        232
+      ],
+      "name": "BoxMinted"
+    },
+    {
+      "discriminator": [
+        75,
+        73,
+        106,
+        46,
+        170,
         86,
+        59,
+        67
+      ],
+      "name": "BoxOpenRequested"
+    },
+    {
+      "discriminator": [
+        182,
+        8,
+        54,
+        3,
+        13,
+        230,
+        16,
+        28
+      ],
+      "name": "BoxOpened"
+    },
+    {
+      "discriminator": [
+        150,
+        109,
+        157,
+        10,
+        124,
+        24,
+        38,
+        189
+      ],
+      "name": "BuybackExecuted"
+    },
+    {
+      "discriminator": [
+        75,
+        239,
+        143,
+        171,
+        116,
+        10,
+        72,
+        156
+      ],
+      "name": "BuybackToggled"
+    },
+    {
+      "discriminator": [
+        8,
+        103,
+        6,
+        164,
+        224,
+        18,
+        226,
+        208
+      ],
+      "name": "InventoryAssigned"
+    },
+    {
+      "discriminator": [
+        202,
+        109,
+        177,
         198,
-        91,
-        33,
-        12,
-        107,
+        203,
+        197,
+        120,
+        150
+      ],
+      "name": "MerklePublished"
+    },
+    {
+      "discriminator": [
+        138,
+        9,
+        51,
+        219,
+        228,
+        198,
+        11,
+        147
+      ],
+      "name": "OracleUpdated"
+    },
+    {
+      "discriminator": [
+        152,
+        186,
+        196,
+        72,
+        117,
+        210,
+        36,
         160
       ],
+      "name": "PriceSet"
+    },
+    {
+      "discriminator": [
+        176,
+        79,
+        3,
+        202,
+        180,
+        107,
+        127,
+        236
+      ],
+      "name": "TreasuryDeposit"
+    }
+  ],
+  "instructions": [
+    {
       "accounts": [
         {
           "name": "global",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -40,30 +345,31 @@
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "new_authority",
           "signer": true
         }
       ],
-      "args": []
+      "args": [],
+      "discriminator": [
+        107,
+        86,
+        198,
+        91,
+        33,
+        12,
+        107,
+        160
+      ],
+      "docs": [
+        "Accept authority transfer (step 2 of 2)"
+      ],
+      "name": "accept_authority"
     },
     {
-      "name": "create_box",
-      "docs": [
-        "Create a new loot box state"
-      ],
-      "discriminator": [
-        108,
-        200,
-        91,
-        3,
-        44,
-        99,
-        31,
-        27
-      ],
       "accounts": [
         {
           "name": "global",
@@ -85,7 +391,6 @@
         },
         {
           "name": "box_state",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -101,19 +406,20 @@
                 "path": "box_asset"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "owner",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
           "name": "box_asset"
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         }
       ],
       "args": [
@@ -121,12 +427,154 @@
           "name": "batch_id",
           "type": "u64"
         }
-      ]
+      ],
+      "discriminator": [
+        108,
+        200,
+        91,
+        3,
+        44,
+        99,
+        31,
+        27
+      ],
+      "docs": [
+        "Create a new loot box state"
+      ],
+      "name": "create_box"
     },
     {
-      "name": "deposit_treasury",
-      "docs": [
-        "Deposit USDC into the treasury"
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "treasury_ata",
+          "pda": {
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            },
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "global"
+              },
+              {
+                "kind": "const",
+                "value": [
+                  6,
+                  221,
+                  246,
+                  225,
+                  215,
+                  101,
+                  161,
+                  147,
+                  217,
+                  203,
+                  225,
+                  70,
+                  206,
+                  235,
+                  121,
+                  172,
+                  28,
+                  180,
+                  133,
+                  237,
+                  95,
+                  91,
+                  55,
+                  145,
+                  58,
+                  140,
+                  245,
+                  133,
+                  126,
+                  255,
+                  0,
+                  169
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "usdc_mint"
+              }
+            ]
+          },
+          "writable": true
+        },
+        {
+          "name": "depositor_ata",
+          "writable": true
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "depositor",
+          "signer": true,
+          "writable": true
+        },
+        {
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
       ],
       "discriminator": [
         2,
@@ -138,6 +586,12 @@
         151,
         230
       ],
+      "docs": [
+        "Deposit USDC into the treasury"
+      ],
+      "name": "deposit_treasury"
+    },
+    {
       "accounts": [
         {
           "name": "global",
@@ -155,126 +609,22 @@
                 ]
               }
             ]
-          }
-        },
-        {
-          "name": "treasury_ata",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "account",
-                "path": "global"
-              },
-              {
-                "kind": "const",
-                "value": [
-                  6,
-                  221,
-                  246,
-                  225,
-                  215,
-                  101,
-                  161,
-                  147,
-                  217,
-                  203,
-                  225,
-                  70,
-                  206,
-                  235,
-                  121,
-                  172,
-                  28,
-                  180,
-                  133,
-                  237,
-                  95,
-                  91,
-                  55,
-                  145,
-                  58,
-                  140,
-                  245,
-                  133,
-                  126,
-                  255,
-                  0,
-                  169
-                ]
-              },
-              {
-                "kind": "account",
-                "path": "usdc_mint"
-              }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
-        },
-        {
-          "name": "depositor_ata",
+          },
           "writable": true
         },
         {
-          "name": "usdc_mint"
-        },
-        {
-          "name": "depositor",
-          "writable": true,
+          "name": "authority",
+          "relations": [
+            "global"
+          ],
           "signer": true
-        },
-        {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
         }
       ],
       "args": [
         {
-          "name": "amount",
-          "type": "u64"
+          "name": "paused",
+          "type": "bool"
         }
-      ]
-    },
-    {
-      "name": "emergency_pause",
-      "docs": [
-        "Emergency pause/unpause all user operations"
       ],
       "discriminator": [
         21,
@@ -286,60 +636,15 @@
         210,
         255
       ],
-      "accounts": [
-        {
-          "name": "global",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  108,
-                  111,
-                  98,
-                  97,
-                  108
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "authority",
-          "signer": true,
-          "relations": [
-            "global"
-          ]
-        }
+      "docs": [
+        "Emergency pause/unpause all user operations"
       ],
-      "args": [
-        {
-          "name": "paused",
-          "type": "bool"
-        }
-      ]
+      "name": "emergency_pause"
     },
     {
-      "name": "initialize",
-      "docs": [
-        "Initialize the SkinVault program"
-      ],
-      "discriminator": [
-        175,
-        175,
-        109,
-        31,
-        13,
-        152,
-        155,
-        237
-      ],
       "accounts": [
         {
           "name": "global",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -354,21 +659,58 @@
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
-          "name": "usdc_mint",
           "docs": [
             "USDC mint (or test mint for devnet)"
-          ]
+          ],
+          "name": "usdc_mint"
         },
         {
-          "name": "treasury_ata",
           "docs": [
             "Treasury ATA - PDA will own this account"
           ],
-          "writable": true,
+          "name": "treasury_ata",
           "pda": {
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            },
             "seeds": [
               {
                 "kind": "account",
@@ -415,62 +757,26 @@
                 "kind": "account",
                 "path": "usdc_mint"
               }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+            ]
+          },
+          "writable": true
         },
         {
           "name": "authority",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "name": "token_program"
         },
         {
-          "name": "associated_token_program",
-          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL",
+          "name": "associated_token_program"
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         }
       ],
       "args": [
@@ -478,27 +784,26 @@
           "name": "oracle_pubkey",
           "type": "pubkey"
         }
-      ]
-    },
-    {
-      "name": "initiate_authority_transfer",
-      "docs": [
-        "Initiate authority transfer (step 1 of 2)"
       ],
       "discriminator": [
-        210,
-        43,
-        101,
-        215,
-        119,
-        140,
-        106,
-        218
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
       ],
+      "docs": [
+        "Initialize the SkinVault program"
+      ],
+      "name": "initialize"
+    },
+    {
       "accounts": [
         {
           "name": "global",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -513,14 +818,15 @@
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "authority",
-          "signer": true,
           "relations": [
             "global"
-          ]
+          ],
+          "signer": true
         }
       ],
       "args": [
@@ -528,23 +834,23 @@
           "name": "new_authority",
           "type": "pubkey"
         }
-      ]
-    },
-    {
-      "name": "open_box",
-      "docs": [
-        "Open a loot box and request VRF"
       ],
       "discriminator": [
-        225,
-        220,
-        10,
-        104,
-        173,
-        151,
-        214,
-        199
+        210,
+        43,
+        101,
+        215,
+        119,
+        140,
+        106,
+        218
       ],
+      "docs": [
+        "Initiate authority transfer (step 1 of 2)"
+      ],
+      "name": "initiate_authority_transfer"
+    },
+    {
       "accounts": [
         {
           "name": "global",
@@ -566,7 +872,6 @@
         },
         {
           "name": "box_state",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -578,12 +883,13 @@
                 ]
               },
               {
+                "account": "BoxState",
                 "kind": "account",
-                "path": "box_state.asset",
-                "account": "BoxState"
+                "path": "box_state.asset"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "batch",
@@ -600,16 +906,15 @@
                 ]
               },
               {
+                "account": "BoxState",
                 "kind": "account",
-                "path": "box_state.batch_id",
-                "account": "BoxState"
+                "path": "box_state.batch_id"
               }
             ]
           }
         },
         {
           "name": "vrf_pending",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -629,21 +934,22 @@
                 ]
               },
               {
+                "account": "BoxState",
                 "kind": "account",
-                "path": "box_state.asset",
-                "account": "BoxState"
+                "path": "box_state.asset"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "owner",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         }
       ],
       "args": [
@@ -651,23 +957,23 @@
           "name": "pool_size",
           "type": "u64"
         }
-      ]
-    },
-    {
-      "name": "publish_merkle_root",
-      "docs": [
-        "Publish a Merkle root for a new batch of inventory"
       ],
       "discriminator": [
-        38,
-        143,
+        225,
+        220,
         10,
-        241,
-        155,
-        226,
-        229,
-        141
+        104,
+        173,
+        151,
+        214,
+        199
       ],
+      "docs": [
+        "Open a loot box and request VRF"
+      ],
+      "name": "open_box"
+    },
+    {
       "accounts": [
         {
           "name": "global",
@@ -689,7 +995,6 @@
         },
         {
           "name": "batch",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -707,19 +1012,20 @@
                 "path": "batch_id"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "authority",
-          "writable": true,
-          "signer": true,
           "relations": [
             "global"
-          ]
+          ],
+          "signer": true,
+          "writable": true
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         }
       ],
       "args": [
@@ -750,34 +1056,34 @@
           "name": "snapshot_time",
           "type": "i64"
         }
-      ]
-    },
-    {
-      "name": "reveal_and_claim",
-      "docs": [
-        "Reveal and claim NFT from Candy Machine after VRF fulfillment"
       ],
       "discriminator": [
-        252,
-        157,
-        47,
-        161,
-        84,
-        59,
-        153,
-        60
+        38,
+        143,
+        10,
+        241,
+        155,
+        226,
+        229,
+        141
       ],
+      "docs": [
+        "Publish a Merkle root for a new batch of inventory"
+      ],
+      "name": "publish_merkle_root"
+    },
+    {
       "accounts": [
         {
           "name": "user",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
-          "name": "global_state",
           "docs": [
             "Global state (contains authority)"
           ],
+          "name": "global_state",
           "pda": {
             "seeds": [
               {
@@ -795,11 +1101,10 @@
           }
         },
         {
-          "name": "box_state",
           "docs": [
             "Box state (contains batch_id for deterministic selection)"
           ],
-          "writable": true,
+          "name": "box_state",
           "pda": {
             "seeds": [
               {
@@ -811,18 +1116,19 @@
                 ]
               },
               {
+                "account": "BoxState",
                 "kind": "account",
-                "path": "box_state.asset",
-                "account": "BoxState"
+                "path": "box_state.asset"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
-          "name": "batch",
           "docs": [
             "Batch containing metadata URIs (DYNAMIC!)"
           ],
+          "name": "batch",
           "pda": {
             "seeds": [
               {
@@ -836,63 +1142,62 @@
                 ]
               },
               {
+                "account": "BoxState",
                 "kind": "account",
-                "path": "box_state.batch_id",
-                "account": "BoxState"
+                "path": "box_state.batch_id"
               }
             ]
           }
         },
         {
-          "name": "asset",
           "docs": [
             "Core NFT asset to be created (signer for new asset)"
           ],
-          "writable": true,
-          "signer": true
+          "name": "asset",
+          "signer": true,
+          "writable": true
         },
         {
-          "name": "collection",
           "docs": [
             "Collection asset (Metaplex Core collection) - optional"
           ],
+          "name": "collection",
           "optional": true
         },
         {
-          "name": "core_program",
           "docs": [
             "Metaplex Core program"
-          ]
+          ],
+          "name": "core_program"
         },
         {
-          "name": "system_program",
+          "address": "11111111111111111111111111111111",
           "docs": [
             "System program"
           ],
-          "address": "11111111111111111111111111111111"
+          "name": "system_program"
         }
       ],
-      "args": []
+      "args": [],
+      "discriminator": [
+        252,
+        157,
+        47,
+        161,
+        84,
+        59,
+        153,
+        60
+      ],
+      "docs": [
+        "Reveal and claim NFT from Candy Machine after VRF fulfillment"
+      ],
+      "name": "reveal_and_claim"
     },
     {
-      "name": "sell_back",
-      "docs": [
-        "Sell back an assigned item for USDC"
-      ],
-      "discriminator": [
-        230,
-        50,
-        8,
-        6,
-        210,
-        15,
-        152,
-        133
-      ],
       "accounts": [
         {
           "name": "global",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -907,12 +1212,49 @@
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "treasury_ata",
-          "writable": true,
           "pda": {
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            },
             "seeds": [
               {
                 "kind": "account",
@@ -959,45 +1301,9 @@
                 "kind": "account",
                 "path": "usdc_mint"
               }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+            ]
+          },
+          "writable": true
         },
         {
           "name": "user_ata",
@@ -1021,16 +1327,15 @@
                 ]
               },
               {
+                "account": "BoxState",
                 "kind": "account",
-                "path": "box_state.assigned_inventory",
-                "account": "BoxState"
+                "path": "box_state.assigned_inventory"
               }
             ]
           }
         },
         {
           "name": "box_state",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1042,46 +1347,47 @@
                 ]
               },
               {
+                "account": "BoxState",
                 "kind": "account",
-                "path": "box_state.asset",
-                "account": "BoxState"
+                "path": "box_state.asset"
               }
             ]
-          }
-        },
-        {
-          "name": "asset",
-          "docs": [
-            "Core NFT asset to be burned (must be owned by seller)"
-          ],
+          },
           "writable": true
         },
         {
-          "name": "collection",
+          "docs": [
+            "Core NFT asset to be burned (must be owned by seller)"
+          ],
+          "name": "asset",
+          "writable": true
+        },
+        {
           "docs": [
             "Optional collection (if asset belongs to a collection)"
           ],
-          "writable": true,
-          "optional": true
+          "name": "collection",
+          "optional": true,
+          "writable": true
         },
         {
-          "name": "core_program",
           "docs": [
             "Metaplex Core program"
-          ]
+          ],
+          "name": "core_program"
         },
         {
           "name": "seller",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "name": "token_program"
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         }
       ],
       "args": [
@@ -1089,12 +1395,56 @@
           "name": "min_price",
           "type": "u64"
         }
-      ]
+      ],
+      "discriminator": [
+        230,
+        50,
+        8,
+        6,
+        210,
+        15,
+        152,
+        133
+      ],
+      "docs": [
+        "Sell back an assigned item for USDC"
+      ],
+      "name": "sell_back"
     },
     {
-      "name": "set_min_treasury_balance",
-      "docs": [
-        "Set minimum treasury balance for circuit breaker"
+      "accounts": [
+        {
+          "name": "global",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  103,
+                  108,
+                  111,
+                  98,
+                  97,
+                  108
+                ]
+              }
+            ]
+          },
+          "writable": true
+        },
+        {
+          "name": "authority",
+          "relations": [
+            "global"
+          ],
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
       ],
       "discriminator": [
         70,
@@ -1106,10 +1456,15 @@
         71,
         175
       ],
+      "docs": [
+        "Set minimum treasury balance for circuit breaker"
+      ],
+      "name": "set_min_treasury_balance"
+    },
+    {
       "accounts": [
         {
           "name": "global",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1124,27 +1479,22 @@
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "authority",
-          "signer": true,
           "relations": [
             "global"
-          ]
+          ],
+          "signer": true
         }
       ],
       "args": [
         {
-          "name": "amount",
-          "type": "u64"
+          "name": "new_oracle_pubkey",
+          "type": "pubkey"
         }
-      ]
-    },
-    {
-      "name": "set_oracle",
-      "docs": [
-        "Set a new oracle public key"
       ],
       "discriminator": [
         186,
@@ -1156,56 +1506,12 @@
         18,
         224
       ],
-      "accounts": [
-        {
-          "name": "global",
-          "writable": true,
-          "pda": {
-            "seeds": [
-              {
-                "kind": "const",
-                "value": [
-                  103,
-                  108,
-                  111,
-                  98,
-                  97,
-                  108
-                ]
-              }
-            ]
-          }
-        },
-        {
-          "name": "authority",
-          "signer": true,
-          "relations": [
-            "global"
-          ]
-        }
+      "docs": [
+        "Set a new oracle public key"
       ],
-      "args": [
-        {
-          "name": "new_oracle_pubkey",
-          "type": "pubkey"
-        }
-      ]
+      "name": "set_oracle"
     },
     {
-      "name": "set_price_signed",
-      "docs": [
-        "Set price for an inventory item (oracle signed)"
-      ],
-      "discriminator": [
-        79,
-        180,
-        142,
-        174,
-        216,
-        142,
-        144,
-        205
-      ],
       "accounts": [
         {
           "name": "global",
@@ -1227,7 +1533,6 @@
         },
         {
           "name": "price_store",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1245,16 +1550,17 @@
                 "path": "inventory_id_hash"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "payer",
-          "writable": true,
-          "signer": true
+          "signer": true,
+          "writable": true
         },
         {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
+          "address": "11111111111111111111111111111111",
+          "name": "system_program"
         }
       ],
       "args": [
@@ -1284,27 +1590,26 @@
             ]
           }
         }
-      ]
-    },
-    {
-      "name": "toggle_buyback",
-      "docs": [
-        "Toggle buyback functionality on/off"
       ],
       "discriminator": [
-        246,
-        251,
-        121,
-        101,
-        124,
-        163,
-        123,
-        165
+        79,
+        180,
+        142,
+        174,
+        216,
+        142,
+        144,
+        205
       ],
+      "docs": [
+        "Set price for an inventory item (oracle signed)"
+      ],
+      "name": "set_price_signed"
+    },
+    {
       "accounts": [
         {
           "name": "global",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1319,14 +1624,15 @@
                 ]
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "authority",
-          "signer": true,
           "relations": [
             "global"
-          ]
+          ],
+          "signer": true
         }
       ],
       "args": [
@@ -1334,23 +1640,23 @@
           "name": "enabled",
           "type": "bool"
         }
-      ]
-    },
-    {
-      "name": "vrf_callback",
-      "docs": [
-        "VRF callback to provide randomness for box opening"
       ],
       "discriminator": [
-        248,
-        224,
-        55,
-        227,
-        56,
-        10,
-        108,
-        36
+        246,
+        251,
+        121,
+        101,
+        124,
+        163,
+        123,
+        165
       ],
+      "docs": [
+        "Toggle buyback functionality on/off"
+      ],
+      "name": "toggle_buyback"
+    },
+    {
       "accounts": [
         {
           "name": "global",
@@ -1372,7 +1678,6 @@
         },
         {
           "name": "batch",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1386,16 +1691,16 @@
                 ]
               },
               {
+                "account": "Batch",
                 "kind": "account",
-                "path": "batch.batch_id",
-                "account": "Batch"
+                "path": "batch.batch_id"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "box_state",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1407,16 +1712,16 @@
                 ]
               },
               {
+                "account": "BoxState",
                 "kind": "account",
-                "path": "box_state.asset",
-                "account": "BoxState"
+                "path": "box_state.asset"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
           "name": "vrf_pending",
-          "writable": true,
           "pda": {
             "seeds": [
               {
@@ -1436,18 +1741,19 @@
                 ]
               },
               {
+                "account": "BoxState",
                 "kind": "account",
-                "path": "box_state.asset",
-                "account": "BoxState"
+                "path": "box_state.asset"
               }
             ]
-          }
+          },
+          "writable": true
         },
         {
-          "name": "vrf_authority",
           "docs": [
             "Only oracle can provide VRF results (Switchboard)"
           ],
+          "name": "vrf_authority",
           "signer": true
         }
       ],
@@ -1465,23 +1771,23 @@
             ]
           }
         }
-      ]
-    },
-    {
-      "name": "withdraw_treasury",
-      "docs": [
-        "Withdraw USDC from the treasury (authority only)"
       ],
       "discriminator": [
-        40,
-        63,
-        122,
-        158,
-        144,
-        216,
-        83,
-        96
+        248,
+        224,
+        55,
+        227,
+        56,
+        10,
+        108,
+        36
       ],
+      "docs": [
+        "VRF callback to provide randomness for box opening"
+      ],
+      "name": "vrf_callback"
+    },
+    {
       "accounts": [
         {
           "name": "global",
@@ -1503,8 +1809,44 @@
         },
         {
           "name": "treasury_ata",
-          "writable": true,
           "pda": {
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            },
             "seeds": [
               {
                 "kind": "account",
@@ -1551,45 +1893,9 @@
                 "kind": "account",
                 "path": "usdc_mint"
               }
-            ],
-            "program": {
-              "kind": "const",
-              "value": [
-                140,
-                151,
-                37,
-                143,
-                78,
-                36,
-                137,
-                241,
-                187,
-                61,
-                16,
-                41,
-                20,
-                142,
-                13,
-                131,
-                11,
-                90,
-                19,
-                153,
-                218,
-                255,
-                16,
-                132,
-                4,
-                142,
-                123,
-                216,
-                219,
-                233,
-                248,
-                89
-              ]
-            }
-          }
+            ]
+          },
+          "writable": true
         },
         {
           "name": "recipient_ata",
@@ -1600,14 +1906,14 @@
         },
         {
           "name": "authority",
-          "signer": true,
           "relations": [
             "global"
-          ]
+          ],
+          "signer": true
         },
         {
-          "name": "token_program",
-          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "name": "token_program"
         }
       ],
       "args": [
@@ -1615,367 +1921,60 @@
           "name": "amount",
           "type": "u64"
         }
-      ]
+      ],
+      "discriminator": [
+        40,
+        63,
+        122,
+        158,
+        144,
+        216,
+        83,
+        96
+      ],
+      "docs": [
+        "Withdraw USDC from the treasury (authority only)"
+      ],
+      "name": "withdraw_treasury"
     }
   ],
-  "accounts": [
-    {
-      "name": "Batch",
-      "discriminator": [
-        156,
-        194,
-        70,
-        44,
-        22,
-        88,
-        137,
-        44
-      ]
-    },
-    {
-      "name": "BoxState",
-      "discriminator": [
-        103,
-        153,
-        190,
-        230,
-        226,
-        85,
-        160,
-        203
-      ]
-    },
-    {
-      "name": "Global",
-      "discriminator": [
-        167,
-        232,
-        232,
-        177,
-        200,
-        108,
-        114,
-        127
-      ]
-    },
-    {
-      "name": "PriceStore",
-      "discriminator": [
-        221,
-        154,
-        229,
-        176,
-        44,
-        154,
-        123,
-        47
-      ]
-    },
-    {
-      "name": "VrfPending",
-      "discriminator": [
-        223,
-        4,
-        29,
-        168,
-        28,
-        148,
-        222,
-        31
-      ]
-    }
-  ],
-  "events": [
-    {
-      "name": "BoxMinted",
-      "discriminator": [
-        141,
-        150,
-        109,
-        170,
-        184,
-        231,
-        225,
-        232
-      ]
-    },
-    {
-      "name": "BoxOpenRequested",
-      "discriminator": [
-        75,
-        73,
-        106,
-        46,
-        170,
-        86,
-        59,
-        67
-      ]
-    },
-    {
-      "name": "BoxOpened",
-      "discriminator": [
-        182,
-        8,
-        54,
-        3,
-        13,
-        230,
-        16,
-        28
-      ]
-    },
-    {
-      "name": "BuybackExecuted",
-      "discriminator": [
-        150,
-        109,
-        157,
-        10,
-        124,
-        24,
-        38,
-        189
-      ]
-    },
-    {
-      "name": "BuybackToggled",
-      "discriminator": [
-        75,
-        239,
-        143,
-        171,
-        116,
-        10,
-        72,
-        156
-      ]
-    },
-    {
-      "name": "InventoryAssigned",
-      "discriminator": [
-        8,
-        103,
-        6,
-        164,
-        224,
-        18,
-        226,
-        208
-      ]
-    },
-    {
-      "name": "MerklePublished",
-      "discriminator": [
-        202,
-        109,
-        177,
-        198,
-        203,
-        197,
-        120,
-        150
-      ]
-    },
-    {
-      "name": "OracleUpdated",
-      "discriminator": [
-        138,
-        9,
-        51,
-        219,
-        228,
-        198,
-        11,
-        147
-      ]
-    },
-    {
-      "name": "PriceSet",
-      "discriminator": [
-        152,
-        186,
-        196,
-        72,
-        117,
-        210,
-        36,
-        160
-      ]
-    },
-    {
-      "name": "TreasuryDeposit",
-      "discriminator": [
-        176,
-        79,
-        3,
-        202,
-        180,
-        107,
-        127,
-        236
-      ]
-    }
-  ],
-  "errors": [
-    {
-      "code": 6000,
-      "name": "Unauthorized",
-      "msg": "Unauthorized access"
-    },
-    {
-      "code": 6001,
-      "name": "InvalidMerkleProof",
-      "msg": "Invalid Merkle proof provided"
-    },
-    {
-      "code": 6002,
-      "name": "VrfNotFulfilled",
-      "msg": "VRF request not fulfilled or invalid"
-    },
-    {
-      "code": 6003,
-      "name": "NotOpenedYet",
-      "msg": "Box has not been opened yet"
-    },
-    {
-      "code": 6004,
-      "name": "AlreadyOpened",
-      "msg": "Box has already been opened"
-    },
-    {
-      "code": 6005,
-      "name": "PriceStale",
-      "msg": "Price data is stale or missing"
-    },
-    {
-      "code": 6006,
-      "name": "TreasuryInsufficient",
-      "msg": "Treasury has insufficient funds"
-    },
-    {
-      "code": 6007,
-      "name": "BuybackDisabled",
-      "msg": "Buyback is currently disabled"
-    },
-    {
-      "code": 6008,
-      "name": "OracleNotSet",
-      "msg": "Oracle public key not set"
-    },
-    {
-      "code": 6009,
-      "name": "InvalidPoolSize",
-      "msg": "Invalid pool size for randomness"
-    },
-    {
-      "code": 6010,
-      "name": "SlippageExceeded",
-      "msg": "Slippage tolerance exceeded"
-    },
-    {
-      "code": 6011,
-      "name": "InvalidSignature",
-      "msg": "Invalid signature format"
-    },
-    {
-      "code": 6012,
-      "name": "MerkleProofTooDeep",
-      "msg": "Merkle proof depth exceeds maximum allowed"
-    },
-    {
-      "code": 6013,
-      "name": "InventoryAlreadyAssigned",
-      "msg": "Inventory item already assigned"
-    },
-    {
-      "code": 6014,
-      "name": "InvalidTimestamp",
-      "msg": "Invalid timestamp"
-    },
-    {
-      "code": 6015,
-      "name": "OracleSignatureInvalid",
-      "msg": "Price oracle signature verification failed"
-    },
-    {
-      "code": 6016,
-      "name": "NotBoxOwner",
-      "msg": "Box is not owned by the caller"
-    },
-    {
-      "code": 6017,
-      "name": "InvalidBatchId",
-      "msg": "Invalid batch ID"
-    },
-    {
-      "code": 6018,
-      "name": "ArithmeticOverflow",
-      "msg": "Arithmetic overflow"
-    },
-    {
-      "code": 6019,
-      "name": "InvalidCandyMachineProgram",
-      "msg": "Invalid Candy Machine program ID"
-    },
-    {
-      "code": 6020,
-      "name": "InvalidMetadataProgram",
-      "msg": "Invalid Token Metadata program ID"
-    },
-    {
-      "code": 6021,
-      "name": "InvalidCandyMachine",
-      "msg": "Invalid Candy Machine address"
-    },
-    {
-      "code": 6022,
-      "name": "InvalidMetadata",
-      "msg": "Invalid metadata URI or index"
-    },
-    {
-      "code": 6023,
-      "name": "InvalidCoreProgram",
-      "msg": "Invalid Core program ID"
-    },
-    {
-      "code": 6024,
-      "name": "CpiFailed",
-      "msg": "CPI call failed"
-    }
-  ],
+  "metadata": {
+    "description": "Created with Anchor",
+    "name": "skinvault",
+    "spec": "0.1.0",
+    "version": "0.1.0"
+  },
   "types": [
     {
-      "name": "Batch",
       "docs": [
         "Batch of inventory items with Merkle root for verification",
         "",
         "Each batch stores dynamic metadata URIs that can be updated by admin.",
         "This allows flexible package management without program redeployment."
       ],
+      "name": "Batch",
       "type": {
-        "kind": "struct",
         "fields": [
           {
-            "name": "batch_id",
             "docs": [
               "Unique batch identifier"
             ],
+            "name": "batch_id",
             "type": "u64"
           },
           {
-            "name": "candy_machine",
             "docs": [
               "Candy Machine reference (optional, for verification)",
               "Admin can link to external CM or leave as default"
             ],
+            "name": "candy_machine",
             "type": "pubkey"
           },
           {
-            "name": "merkle_root",
             "docs": [
               "Merkle root of the inventory snapshot (for verification)"
             ],
+            "name": "merkle_root",
             "type": {
               "array": [
                 "u8",
@@ -1984,58 +1983,58 @@
             }
           },
           {
-            "name": "snapshot_time",
             "docs": [
               "Timestamp when the snapshot was taken"
             ],
+            "name": "snapshot_time",
             "type": "i64"
           },
           {
-            "name": "total_items",
             "docs": [
               "Total items in this batch's inventory"
             ],
+            "name": "total_items",
             "type": "u64"
           },
           {
-            "name": "boxes_minted",
             "docs": [
               "Number of boxes minted for this batch"
             ],
+            "name": "boxes_minted",
             "type": "u64"
           },
           {
-            "name": "boxes_opened",
             "docs": [
               "Number of boxes opened for this batch"
             ],
+            "name": "boxes_opened",
             "type": "u64"
           },
           {
-            "name": "bump",
             "docs": [
               "Bump seed for PDA"
             ],
+            "name": "bump",
             "type": "u8"
           },
           {
-            "name": "metadata_uris",
             "docs": [
               "Dynamic metadata URIs for all skins in this batch",
               "Admin can update this list to add/remove skins",
               "Each URI should be max 200 characters (Arweave/IPFS links)"
             ],
+            "name": "metadata_uris",
             "type": {
               "vec": "string"
             }
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "BoxMinted",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "nft_mint",
@@ -2053,13 +2052,13 @@
             "name": "metadata_uri",
             "type": "string"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "BoxOpenRequested",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "nft_mint",
@@ -2075,13 +2074,13 @@
               "option": "u64"
             }
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "BoxOpened",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "nft_mint",
@@ -2104,43 +2103,43 @@
             "name": "pool_size",
             "type": "u64"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
-      "name": "BoxState",
       "docs": [
         "State of an individual loot box NFT (Metaplex Core)"
       ],
+      "name": "BoxState",
       "type": {
-        "kind": "struct",
         "fields": [
           {
-            "name": "owner",
             "docs": [
               "Owner of the box NFT"
             ],
+            "name": "owner",
             "type": "pubkey"
           },
           {
-            "name": "batch_id",
             "docs": [
               "Batch this box belongs to"
             ],
+            "name": "batch_id",
             "type": "u64"
           },
           {
-            "name": "opened",
             "docs": [
               "Whether the box has been opened"
             ],
+            "name": "opened",
             "type": "bool"
           },
           {
-            "name": "assigned_inventory",
             "docs": [
               "Hash of the assigned inventory item (zero if not assigned)"
             ],
+            "name": "assigned_inventory",
             "type": {
               "array": [
                 "u8",
@@ -2149,62 +2148,62 @@
             }
           },
           {
-            "name": "asset",
             "docs": [
               "Core NFT asset address (single account for Core NFTs)",
               "Replaces the old mint + token account pattern"
             ],
+            "name": "asset",
             "type": "pubkey"
           },
           {
-            "name": "mint_time",
             "docs": [
               "Timestamp when box was minted"
             ],
+            "name": "mint_time",
             "type": "i64"
           },
           {
-            "name": "open_time",
             "docs": [
               "Timestamp when box was opened (zero if not opened)"
             ],
+            "name": "open_time",
             "type": "i64"
           },
           {
-            "name": "random_index",
             "docs": [
               "Random index generated during opening"
             ],
+            "name": "random_index",
             "type": "u64"
           },
           {
-            "name": "redeemed",
             "docs": [
               "Whether the box has been redeemed (sold back)"
             ],
+            "name": "redeemed",
             "type": "bool"
           },
           {
-            "name": "redeem_time",
             "docs": [
               "Timestamp when redeemed (zero if not redeemed)"
             ],
+            "name": "redeem_time",
             "type": "i64"
           },
           {
-            "name": "bump",
             "docs": [
               "Bump seed for PDA"
             ],
+            "name": "bump",
             "type": "u8"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "BuybackExecuted",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "nft_mint",
@@ -2235,13 +2234,13 @@
             "name": "buyer",
             "type": "pubkey"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "BuybackToggled",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "enabled",
@@ -2251,110 +2250,110 @@
             "name": "authority",
             "type": "pubkey"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
-      "name": "Global",
       "docs": [
         "Global program state - singleton PDA with fixed seed \"global\""
       ],
+      "name": "Global",
       "type": {
-        "kind": "struct",
         "fields": [
           {
-            "name": "authority",
             "docs": [
               "Authority that can perform admin operations"
             ],
+            "name": "authority",
             "type": "pubkey"
           },
           {
-            "name": "oracle_pubkey",
             "docs": [
               "Oracle public key for price signature verification"
             ],
+            "name": "oracle_pubkey",
             "type": "pubkey"
           },
           {
-            "name": "usdc_mint",
             "docs": [
               "USDC mint address"
             ],
+            "name": "usdc_mint",
             "type": "pubkey"
           },
           {
-            "name": "buyback_enabled",
             "docs": [
               "Whether buyback is currently enabled"
             ],
+            "name": "buyback_enabled",
             "type": "bool"
           },
           {
-            "name": "min_treasury_balance",
             "docs": [
               "Minimum treasury balance required for buybacks"
             ],
+            "name": "min_treasury_balance",
             "type": "u64"
           },
           {
-            "name": "current_batch",
             "docs": [
               "Current batch counter"
             ],
+            "name": "current_batch",
             "type": "u64"
           },
           {
-            "name": "total_boxes_minted",
             "docs": [
               "Total boxes minted across all batches"
             ],
+            "name": "total_boxes_minted",
             "type": "u64"
           },
           {
-            "name": "total_buybacks",
             "docs": [
               "Total successful buybacks"
             ],
+            "name": "total_buybacks",
             "type": "u64"
           },
           {
-            "name": "total_buyback_volume",
             "docs": [
               "Total USDC volume from buybacks"
             ],
+            "name": "total_buyback_volume",
             "type": "u64"
           },
           {
-            "name": "paused",
             "docs": [
               "Emergency pause flag (stops all user operations)"
             ],
+            "name": "paused",
             "type": "bool"
           },
           {
-            "name": "pending_authority",
             "docs": [
               "Pending authority for 2-step transfer"
             ],
+            "name": "pending_authority",
             "type": {
               "option": "pubkey"
             }
           },
           {
-            "name": "bump",
             "docs": [
               "Bump seed for PDA"
             ],
+            "name": "bump",
             "type": "u8"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "InventoryAssigned",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "nft_mint",
@@ -2373,13 +2372,13 @@
             "name": "batch_id",
             "type": "u64"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "MerklePublished",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "batch_id",
@@ -2398,13 +2397,13 @@
             "name": "snapshot_time",
             "type": "i64"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "OracleUpdated",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "old_oracle",
@@ -2418,13 +2417,13 @@
             "name": "authority",
             "type": "pubkey"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "PriceSet",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "inventory_id_hash",
@@ -2447,22 +2446,22 @@
             "name": "oracle",
             "type": "pubkey"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
-      "name": "PriceStore",
       "docs": [
         "Oracle-signed price for an inventory item"
       ],
+      "name": "PriceStore",
       "type": {
-        "kind": "struct",
         "fields": [
           {
-            "name": "inventory_id_hash",
             "docs": [
               "Hash of the inventory item ID"
             ],
+            "name": "inventory_id_hash",
             "type": {
               "array": [
                 "u8",
@@ -2471,47 +2470,47 @@
             }
           },
           {
-            "name": "price",
             "docs": [
               "Price in USDC (6 decimal places)"
             ],
+            "name": "price",
             "type": "u64"
           },
           {
-            "name": "timestamp",
             "docs": [
               "Timestamp when price was set"
             ],
+            "name": "timestamp",
             "type": "i64"
           },
           {
-            "name": "oracle",
             "docs": [
               "Oracle that signed this price"
             ],
+            "name": "oracle",
             "type": "pubkey"
           },
           {
-            "name": "update_count",
             "docs": [
               "Number of times this price has been updated"
             ],
+            "name": "update_count",
             "type": "u64"
           },
           {
-            "name": "bump",
             "docs": [
               "Bump seed for PDA"
             ],
+            "name": "bump",
             "type": "u8"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
       "name": "TreasuryDeposit",
       "type": {
-        "kind": "struct",
         "fields": [
           {
             "name": "amount",
@@ -2525,67 +2524,68 @@
             "name": "new_balance",
             "type": "u64"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     },
     {
-      "name": "VrfPending",
       "docs": [
         "Temporary state for pending VRF randomness requests"
       ],
+      "name": "VrfPending",
       "type": {
-        "kind": "struct",
         "fields": [
           {
-            "name": "box_mint",
             "docs": [
               "Box mint that requested VRF"
             ],
+            "name": "box_mint",
             "type": "pubkey"
           },
           {
-            "name": "request_id",
             "docs": [
               "VRF request ID (if using external VRF service)"
             ],
+            "name": "request_id",
             "type": "u64"
           },
           {
-            "name": "request_time",
             "docs": [
               "Timestamp when VRF was requested"
             ],
+            "name": "request_time",
             "type": "i64"
           },
           {
-            "name": "pool_size",
             "docs": [
               "Pool size for random index calculation"
             ],
+            "name": "pool_size",
             "type": "u64"
           },
           {
-            "name": "randomness",
             "docs": [
               "VRF randomness result (0 if not yet fulfilled)"
             ],
+            "name": "randomness",
             "type": "u64"
           },
           {
-            "name": "user",
             "docs": [
               "User who requested the VRF (for closing account)"
             ],
+            "name": "user",
             "type": "pubkey"
           },
           {
-            "name": "bump",
             "docs": [
               "Bump seed for PDA"
             ],
+            "name": "bump",
             "type": "u8"
           }
-        ]
+        ],
+        "kind": "struct"
       }
     }
   ]
