@@ -10,7 +10,6 @@ import {
 export interface InitializeParams {
   program: Program;
   authority: PublicKey;
-  oraclePubkey: PublicKey;
   usdcMint: PublicKey;
 }
 
@@ -28,7 +27,7 @@ export interface InitializeResult {
 export async function initializeProgram(
   params: InitializeParams
 ): Promise<InitializeResult> {
-  const { program, authority, oraclePubkey, usdcMint } = params;
+  const { program, authority, usdcMint } = params;
 
   // Derive PDAs
   const [globalPDA] = getGlobalPDA();
@@ -44,7 +43,6 @@ export async function initializeProgram(
 
   console.log("Initializing program with params:", {
     authority: authority.toBase58(),
-    oraclePubkey: oraclePubkey.toBase58(),
     usdcMint: usdcMint.toBase58(),
     globalPDA: globalPDA.toBase58(),
     treasuryATA: treasuryATA.toBase58(),
@@ -52,7 +50,7 @@ export async function initializeProgram(
 
   try {
     const tx = await program.methods
-      .initialize(oraclePubkey)
+      .initialize()
       .accounts({
         global: globalPDA,
         usdcMint: usdcMint,

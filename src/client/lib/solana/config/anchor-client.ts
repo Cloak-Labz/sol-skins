@@ -3,7 +3,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import type { AnchorWallet } from '@solana/wallet-adapter-react';
 import IDL from '../../idl/skinvault.json';
 
-export const PROGRAM_ID = new PublicKey('44UwMzMZUcobRp4YyucjvAbBeTFJ3uBPxg7YqwHS2ncp');
+export const PROGRAM_ID = new PublicKey('5q1sgnwz8tTqfMJm1Hub4uziaGSZGZhdw1JgyGoERtwQ');
 
 // Network configuration
 export type ClusterType = 'devnet' | 'testnet' | 'mainnet-beta';

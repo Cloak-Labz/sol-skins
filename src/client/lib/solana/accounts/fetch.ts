@@ -30,7 +30,6 @@ export interface BatchAccount {
 
 export interface GlobalAccount {
   authority: PublicKey;
-  oraclePubkey: PublicKey; // Added: oracle public key for price verification
   usdcMint: PublicKey;
   buybackEnabled: boolean;
   minTreasuryBalance: number;

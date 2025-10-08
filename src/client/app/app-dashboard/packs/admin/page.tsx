@@ -146,13 +146,9 @@ export default function AdminPage() {
         (process.env.NEXT_PUBLIC_SOLANA_CLUSTER as any) || "devnet";
       const usdcMint = getUSDCMint(cluster);
 
-      // Use authority as oracle pubkey (can be changed later via set_oracle instruction)
-      const oraclePubkey = wallet.publicKey;
-
       const result = await initializeProgram({
         program,
         authority: wallet.publicKey,
-        oraclePubkey,
         usdcMint,
       });
 

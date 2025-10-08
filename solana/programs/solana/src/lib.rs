@@ -16,7 +16,7 @@ pub use events::*;
 pub use instructions::*;
 pub use states::*;
 
-declare_id!("44UwMzMZUcobRp4YyucjvAbBeTFJ3uBPxg7YqwHS2ncp");
+declare_id!("5q1sgnwz8tTqfMJm1Hub4uziaGSZGZhdw1JgyGoERtwQ");
 
 #[program]
 pub mod skinvault {
@@ -119,5 +119,10 @@ pub mod skinvault {
     /// Accept authority transfer (step 2 of 2)
     pub fn accept_authority(ctx: Context<AcceptAuthority>) -> Result<()> {
         instructions::admin::accept_authority_handler(ctx)
+    }
+
+    /// Close Global account (DANGEROUS - resets program state)
+    pub fn close_global(ctx: Context<CloseGlobal>) -> Result<()> {
+        instructions::admin::close_global_handler(ctx)
     }
 }

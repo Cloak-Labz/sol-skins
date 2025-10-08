@@ -309,3 +309,32 @@ pub fn accept_authority_handler(ctx: Context<AcceptAuthority>) -> Result<()> {
 
     Ok(())
 }
+
+/// Close Global account (DANGEROUS - only use to reset program state)
+/// Uses UncheckedAccount to bypass deserialization of corrupted data
+#[derive(Accounts)]
+pub struct CloseGlobal<'info> {
+    /// CHECK: We intentionally skip deserialization to close corrupted accounts
+    #[account(
+        mut,
+        seeds = [b"global"],
+        bump
+    )]
+    pub global: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub authority: Signer<'info>,
+}
+
+pub fn close_global_handler(ctx: Context<CloseGlobal>) -> Result<()> {
+    msg!("⚠️  CLOSING GLOBAL ACCOUNT - Program will need to be reinitialized!");
+    msg!("Authority: {}", ctx.accounts.authority.key());
+
+    // Manually transfer lamports and clear data
+    let global_lamports = ctx.accounts.global.lamports();
+    **ctx.accounts.global.lamports.borrow_mut() = 0;
+    **ctx.accounts.authority.lamports.borrow_mut() += global_lamports;
+
+    msg!("Recovered {} lamports", global_lamports);
+    Ok(())
+}
