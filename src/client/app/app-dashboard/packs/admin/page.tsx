@@ -64,6 +64,21 @@ interface PackSkin {
   metadataUri?: string;
 }
 
+interface CandyMachine {
+  id: string;
+  name: string;
+  symbol: string;
+  description: string;
+  image: string;
+  itemsAvailable: number;
+  sellerFeeBasisPoints: number;
+  candyMachineAddress: string;
+  collectionMint: string;
+  collectionUpdateAuthority: string;
+  createdAt: Date;
+  status: "active" | "inactive" | "completed";
+}
+
 export default function AdminPage() {
   const { connected, publicKey } = useWallet();
   const wallet = useWallet();
@@ -90,6 +105,10 @@ export default function AdminPage() {
   const [metadataUris, setMetadataUris] = useState("");
   const [publishing, setPublishing] = useState(false);
   const [loadingCandyMachine, setLoadingCandyMachine] = useState(false);
+
+  // Candy Machine management
+  const [candyMachines, setCandyMachines] = useState<CandyMachine[]>([]);
+  const [loadingCandyMachines, setLoadingCandyMachines] = useState(false);
 
   // Candy Machine form state
   const [showCandyMachineForm, setShowCandyMachineForm] = useState(false);
@@ -136,6 +155,13 @@ export default function AdminPage() {
       setIsAdmin(false);
     }
   }, [publicKey]);
+
+  // Load Candy Machines on component mount
+  useEffect(() => {
+    if (isAdmin) {
+      fetchCandyMachines();
+    }
+  }, [isAdmin]);
 
   // Initialize clients and load program state
   useEffect(() => {
@@ -282,11 +308,92 @@ export default function AdminPage() {
 
       const result = await candyMachineService.createFullCandyMachine(config);
 
+      // Create new Candy Machine object to save
+      const newCandyMachine: CandyMachine = {
+        id: result.candyMachine,
+        name: config.name,
+        symbol: config.symbol,
+        description: config.description,
+        image: config.image,
+        itemsAvailable: config.itemsAvailable,
+        sellerFeeBasisPoints: config.sellerFeeBasisPoints,
+        candyMachineAddress: result.candyMachine,
+        collectionMint: result.collectionMint,
+        collectionUpdateAuthority: result.collectionUpdateAuthority,
+        createdAt: new Date(),
+        status: "active",
+      };
+
+      // Save to localStorage
+      try {
+        const existingCandyMachines = JSON.parse(
+          localStorage.getItem("candyMachines") || "[]"
+        );
+        existingCandyMachines.push(newCandyMachine);
+        localStorage.setItem(
+          "candyMachines",
+          JSON.stringify(existingCandyMachines)
+        );
+        console.log("💾 Candy Machine saved to localStorage");
+      } catch (error) {
+        console.error("❌ Failed to save to localStorage:", error);
+      }
+
+      // Update state
+      setCandyMachines((prev) => [...prev, newCandyMachine]);
       setCandyMachine(result.candyMachine);
       setShowCandyMachineForm(false);
-      toast.success("Candy Machine created successfully!", {
-        id: "candy-machine",
-      });
+
+      // Enhanced success notification with Solscan links
+      toast.success(
+        <div className="space-y-2">
+          <div className="font-semibold">
+            Candy Machine created successfully! (Devnet)
+          </div>
+          <div className="text-sm space-y-1">
+            <div>
+              <strong>Candy Machine:</strong>{" "}
+              <a
+                href={`https://solscan.io/account/${result.candyMachine}?cluster=devnet`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 underline"
+              >
+                View on Solscan
+              </a>
+            </div>
+            <div>
+              <strong>Collection:</strong>{" "}
+              <a
+                href={`https://solscan.io/account/${result.collectionMint}?cluster=devnet`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-purple-400 hover:text-purple-300 underline"
+              >
+                View on Solscan
+              </a>
+            </div>
+            <div className="text-xs text-zinc-400">
+              Addresses copied to clipboard automatically
+            </div>
+          </div>
+        </div>,
+        {
+          id: "candy-machine",
+          duration: 8000, // Show longer for user to see links
+        }
+      );
+
+      // Auto-copy main addresses to clipboard
+      try {
+        await navigator.clipboard.writeText(
+          `Candy Machine: ${result.candyMachine}\nCollection: ${result.collectionMint}\nAuthority: ${result.collectionUpdateAuthority}`
+        );
+        console.log("📋 Addresses copied to clipboard");
+      } catch (error) {
+        console.warn("⚠️ Failed to copy to clipboard:", error);
+      }
+
       console.log("Candy Machine result:", result);
     } catch (error: any) {
       console.error("Failed to create candy machine:", error);
@@ -312,6 +419,106 @@ export default function AdminPage() {
       creatorShare: 100,
     });
     setShowCandyMachineForm(true);
+  };
+
+  const fetchCandyMachines = async () => {
+    try {
+      setLoadingCandyMachines(true);
+      console.log("🔍 Fetching Candy Machines from Sugar cache...");
+
+      // Fetch from Sugar cache file as per Metaplex documentation
+      // https://developers.metaplex.com/candy-machine/sugar/cache
+      const response = await fetch("/api/candy-machines/cache");
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch cache: ${response.statusText}`);
+      }
+
+      const cacheData = await response.json();
+      console.log("📄 Cache data received:", cacheData);
+
+      // Parse Sugar cache file structure
+      const candyMachines: CandyMachine[] = [];
+
+      if (cacheData.program && cacheData.program.candyMachine) {
+        // Extract collection information from cache
+        const collectionItem = cacheData.items?.["-1"]; // Collection is always at index -1
+        const items = Object.values(cacheData.items || {}).filter(
+          (item: any) => item.name && item.name !== collectionItem?.name
+        );
+
+        const candyMachine: CandyMachine = {
+          id: cacheData.program.candyMachine,
+          name: collectionItem?.name || "Unknown Collection",
+          symbol: "SKIN", // Default symbol
+          description: `Collection with ${items.length} items`,
+          image: collectionItem?.image_link || "",
+          itemsAvailable: items.length,
+          sellerFeeBasisPoints: 500, // Default royalty
+          candyMachineAddress: cacheData.program.candyMachine,
+          collectionMint: cacheData.program.collectionMint,
+          collectionUpdateAuthority: cacheData.program.candyMachineCreator,
+          createdAt: new Date(), // Cache doesn't store creation date
+          status: "active",
+        };
+
+        candyMachines.push(candyMachine);
+      }
+
+      // If no cache data, try to fetch from local storage or show empty state
+      if (candyMachines.length === 0) {
+        console.log("📭 No Candy Machines found in cache");
+
+        // Check if we have any locally stored Candy Machines
+        const localCandyMachines = localStorage.getItem("candyMachines");
+        if (localCandyMachines) {
+          const parsed = JSON.parse(localCandyMachines);
+          // Convert createdAt strings back to Date objects
+          const candyMachinesWithDates = parsed.map((cm: any) => ({
+            ...cm,
+            createdAt: new Date(cm.createdAt),
+          }));
+          setCandyMachines(candyMachinesWithDates);
+          console.log(
+            `✅ Found ${candyMachinesWithDates.length} locally stored Candy Machines`
+          );
+        } else {
+          setCandyMachines([]);
+        }
+      } else {
+        setCandyMachines(candyMachines);
+        console.log(
+          `✅ Found ${candyMachines.length} Candy Machines from cache`
+        );
+      }
+    } catch (error) {
+      console.error("❌ Failed to fetch Candy Machines:", error);
+
+      // Fallback to local storage
+      try {
+        const localCandyMachines = localStorage.getItem("candyMachines");
+        if (localCandyMachines) {
+          const parsed = JSON.parse(localCandyMachines);
+          // Convert createdAt strings back to Date objects
+          const candyMachinesWithDates = parsed.map((cm: any) => ({
+            ...cm,
+            createdAt: new Date(cm.createdAt),
+          }));
+          setCandyMachines(candyMachinesWithDates);
+          console.log(
+            `✅ Using ${candyMachinesWithDates.length} locally stored Candy Machines`
+          );
+        } else {
+          setCandyMachines([]);
+        }
+      } catch (localError) {
+        console.error("❌ Failed to load from local storage:", localError);
+        setCandyMachines([]);
+        toast.error("Failed to load Candy Machines");
+      }
+    } finally {
+      setLoadingCandyMachines(false);
+    }
   };
 
   const handlePublishBatch = async () => {
@@ -371,7 +578,45 @@ export default function AdminPage() {
         merkleRoot,
       });
 
-      toast.success(`Batch #${batchIdNum} published!`, { id: "publish" });
+      // Enhanced success notification with Solscan links
+      toast.success(
+        <div className="space-y-2">
+          <div className="font-semibold">
+            Batch #{batchIdNum} published successfully! (Devnet)
+          </div>
+          <div className="text-sm space-y-1">
+            <div>
+              <strong>Candy Machine:</strong>{" "}
+              <a
+                href={`https://solscan.io/account/${candyMachine}?cluster=devnet`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-400 hover:text-blue-300 underline"
+              >
+                View on Solscan
+              </a>
+            </div>
+            <div>
+              <strong>Transaction:</strong>{" "}
+              <a
+                href={`https://solscan.io/tx/${result.signature}?cluster=devnet`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-400 hover:text-green-300 underline"
+              >
+                View Transaction
+              </a>
+            </div>
+            <div className="text-xs text-zinc-400">
+              {uris.length} NFTs added to batch
+            </div>
+          </div>
+        </div>,
+        {
+          id: "publish",
+          duration: 6000,
+        }
+      );
       console.log("Publish result:", result);
 
       // Reset form (next batch)
@@ -1362,6 +1607,206 @@ export default function AdminPage() {
                   </div>
                 </Card>
               </div>
+            )}
+
+            {/* Candy Machines List */}
+            {initialized && (
+              <Card className="p-6 bg-zinc-950 border-zinc-800">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">
+                    Candy Machines{" "}
+                    {candyMachines.length > 0 && `(${candyMachines.length})`}
+                  </h2>
+                  <Button
+                    onClick={fetchCandyMachines}
+                    variant="outline"
+                    size="sm"
+                    className="text-xs"
+                    disabled={loadingCandyMachines}
+                  >
+                    {loadingCandyMachines ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      "Refresh"
+                    )}
+                  </Button>
+                </div>
+
+                {loadingCandyMachines ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="w-8 h-8 animate-spin text-[#E99500] mx-auto mb-2" />
+                    <p className="text-zinc-400 text-sm">
+                      Loading Candy Machines...
+                    </p>
+                  </div>
+                ) : candyMachines.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Package className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
+                    <p className="text-zinc-400 text-sm font-medium">
+                      No Candy Machines created yet
+                    </p>
+                    <p className="text-zinc-600 text-xs mt-1">
+                      Create your first Candy Machine using the form above
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {candyMachines.map((cm) => (
+                      <div
+                        key={cm.id}
+                        className="p-4 bg-zinc-900 border border-zinc-800 rounded-lg"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-2">
+                              <h3 className="text-lg font-semibold text-white">
+                                {cm.name}
+                              </h3>
+                              <span className="px-2 py-1 bg-green-900 text-green-300 text-xs rounded-full">
+                                {cm.status}
+                              </span>
+                            </div>
+                            <p className="text-zinc-400 text-sm mb-3">
+                              {cm.description}
+                            </p>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+                              <div>
+                                <span className="text-zinc-500">Symbol:</span>
+                                <p className="text-white font-mono">
+                                  {cm.symbol}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-zinc-500">Items:</span>
+                                <p className="text-white">
+                                  {cm.itemsAvailable.toLocaleString()}
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-zinc-500">Royalty:</span>
+                                <p className="text-white">
+                                  {(cm.sellerFeeBasisPoints / 100).toFixed(2)}%
+                                </p>
+                              </div>
+                              <div>
+                                <span className="text-zinc-500">Created:</span>
+                                <p className="text-white">
+                                  {cm.createdAt instanceof Date
+                                    ? cm.createdAt.toLocaleDateString()
+                                    : new Date(
+                                        cm.createdAt
+                                      ).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="mt-3 space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span className="text-zinc-500 text-xs">
+                                  Candy Machine:
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <code className="text-blue-300 text-xs bg-zinc-800 px-2 py-1 rounded font-mono">
+                                    {cm.candyMachineAddress}
+                                  </code>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(
+                                        cm.candyMachineAddress
+                                      );
+                                      toast.success(
+                                        "Candy Machine address copied!"
+                                      );
+                                    }}
+                                    className="text-blue-400 hover:text-blue-300 text-xs px-2 py-1 bg-blue-900/20 rounded"
+                                    title="Copy address"
+                                  >
+                                    Copy
+                                  </button>
+                                  <a
+                                    href={`https://solscan.io/account/${cm.candyMachineAddress}?cluster=devnet`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-400 hover:text-blue-300 text-xs px-2 py-1 bg-blue-900/20 rounded"
+                                    title="View on Solscan (Devnet)"
+                                  >
+                                    Solscan
+                                  </a>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-zinc-500 text-xs">
+                                  Collection:
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <code className="text-purple-300 text-xs bg-zinc-800 px-2 py-1 rounded font-mono">
+                                    {cm.collectionMint}
+                                  </code>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(
+                                        cm.collectionMint
+                                      );
+                                      toast.success(
+                                        "Collection address copied!"
+                                      );
+                                    }}
+                                    className="text-purple-400 hover:text-purple-300 text-xs px-2 py-1 bg-purple-900/20 rounded"
+                                    title="Copy address"
+                                  >
+                                    Copy
+                                  </button>
+                                  <a
+                                    href={`https://solscan.io/account/${cm.collectionMint}?cluster=devnet`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-purple-400 hover:text-purple-300 text-xs px-2 py-1 bg-purple-900/20 rounded"
+                                    title="View on Solscan (Devnet)"
+                                  >
+                                    Solscan
+                                  </a>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="text-zinc-500 text-xs">
+                                  Authority:
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  <code className="text-green-300 text-xs bg-zinc-800 px-2 py-1 rounded font-mono">
+                                    {cm.collectionUpdateAuthority}
+                                  </code>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(
+                                        cm.collectionUpdateAuthority
+                                      );
+                                      toast.success(
+                                        "Authority address copied!"
+                                      );
+                                    }}
+                                    className="text-green-400 hover:text-green-300 text-xs px-2 py-1 bg-green-900/20 rounded"
+                                    title="Copy address"
+                                  >
+                                    Copy
+                                  </button>
+                                  <a
+                                    href={`https://solscan.io/account/${cm.collectionUpdateAuthority}?cluster=devnet`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-green-400 hover:text-green-300 text-xs px-2 py-1 bg-green-900/20 rounded"
+                                    title="View on Solscan (Devnet)"
+                                  >
+                                    Solscan
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
             )}
 
             {/* Published Batches List */}
