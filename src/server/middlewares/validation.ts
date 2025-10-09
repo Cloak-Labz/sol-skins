@@ -59,7 +59,7 @@ export const validateSchema = (
 export const schemas = {
   // Auth schemas
   connectWallet: Joi.object({
-    walletAddress: Joi.string().length(44).required(),
+    walletAddress: Joi.string().min(32).max(44).required(),
     signature: Joi.string().optional(),
     message: Joi.string().optional(),
   }),
