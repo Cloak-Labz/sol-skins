@@ -4,6 +4,7 @@ import { UserRepository } from "../repositories/UserRepository";
 import { AppError } from "../middlewares/errorHandler";
 import { TransactionType, TransactionStatus } from "../entities/Transaction";
 import { simpleSolanaService } from "./simpleSolana.service";
+import { convertUsdToSol, resolveUsdPerSol } from "../utils/currency";
 
 export class InventoryService {
   private userSkinRepository: UserSkinRepository;
@@ -99,13 +100,33 @@ export class InventoryService {
       );
     }
 
-    const currentPrice =
-      userSkin.currentPriceUsd || userSkin.skinTemplate?.basePriceUsd || 0;
-    const buybackPrice = currentPrice * 0.85; // 85% of current market value
+    const rawBuybackPercentage = Number(process.env.BUYBACK_PERCENTAGE ?? "85");
+    const buybackPercentage = Number.isFinite(rawBuybackPercentage)
+      ? rawBuybackPercentage
+      : 85;
+    const buybackRate = buybackPercentage / 100;
 
-    if (minAcceptablePrice && buybackPrice < minAcceptablePrice) {
+    const currentPriceUsd = Number(
+      userSkin.currentPriceUsd ??
+        userSkin.skinTemplate?.basePriceUsd ??
+        0
+    );
+    const buybackPriceUsd = currentPriceUsd * buybackRate;
+
+    if (
+      !Number.isFinite(buybackPriceUsd) ||
+      buybackPriceUsd <= 0
+    ) {
       throw new AppError(
-        `Current buyback price (${buybackPrice.toFixed(
+        "Buyback amount is too small to process",
+        400,
+        "BUYBACK_TOO_SMALL"
+      );
+    }
+
+    if (minAcceptablePrice && buybackPriceUsd < minAcceptablePrice) {
+      throw new AppError(
+        `Current buyback price (${buybackPriceUsd.toFixed(
           2
         )}) is below minimum acceptable price`,
         400,
@@ -123,11 +144,35 @@ export class InventoryService {
     }
 
     // Execute real buyback (send SOL to user)
-    console.log(`💰 [INVENTORY BUYBACK] Sending ${buybackPrice} SOL to ${user.walletAddress}`);
+    const usdPerSol = resolveUsdPerSol(userSkin.lootBoxType);
+    const rawBuybackPriceSol = convertUsdToSol(
+      buybackPriceUsd,
+      userSkin.lootBoxType
+    );
+    const minBuybackSol = Number(process.env.MIN_BUYBACK_AMOUNT ?? "0");
+    const buybackPriceSol =
+      rawBuybackPriceSol > 0
+        ? Math.max(
+            rawBuybackPriceSol,
+            minBuybackSol > 0 ? minBuybackSol : 0
+          )
+        : 0;
+
+    if (!Number.isFinite(buybackPriceSol) || buybackPriceSol <= 0) {
+      throw new AppError(
+        "Calculated buyback SOL amount is invalid",
+        400,
+        "BUYBACK_TOO_SMALL"
+      );
+    }
+
+    console.log(
+      `💰 [INVENTORY BUYBACK] Sending ${buybackPriceSol} SOL to ${user.walletAddress}`
+    );
     
     const buybackResult = await simpleSolanaService.sendSOL({
       toWallet: user.walletAddress,
-      amount: buybackPrice,
+      amount: buybackPriceSol,
     });
     
     console.log(`✅ [BUYBACK COMPLETE] Transaction: ${buybackResult.transaction}`);
@@ -136,23 +181,27 @@ export class InventoryService {
     console.log(`   User: ${userId}`);
     console.log(`   NFT: ${userSkin.nftMintAddress}`);
     console.log(`   Skin: ${userSkin.skinTemplate?.weapon} | ${userSkin.skinTemplate?.skinName}`);
-    console.log(`   Original Price: $${currentPrice.toFixed(2)}`);
-    console.log(`   Buyback Price: $${buybackPrice.toFixed(2)}`);
+    console.log(`   Original Price: $${currentPriceUsd.toFixed(2)}`);
+    console.log(
+      `   Buyback Price: $${buybackPriceUsd.toFixed(2)} ` +
+      `(~${buybackPriceSol.toFixed(6)} SOL @ $${usdPerSol.toFixed(2)}/SOL)`
+    );
     console.log(`   Transaction: ${buybackResult.transaction}`);
 
     // Create buyback transaction
     const transaction = await this.transactionRepository.create({
       userId,
       transactionType: TransactionType.BUYBACK,
-      amountUsd: buybackPrice,
-      amountUsdc: buybackPrice,
+      amountUsd: buybackPriceUsd,
+      amountUsdc: buybackPriceUsd,
+      amountSol: buybackPriceSol,
       userSkinId: skinId,
       status: TransactionStatus.CONFIRMED,
       txHash: buybackResult.transaction,
     } as any);
 
     // Mark skin as sold
-    await this.userSkinRepository.markAsSold(skinId, buybackPrice);
+    await this.userSkinRepository.markAsSold(skinId, buybackPriceUsd);
 
     // TODO: Credit user balance (when user balance system is implemented)
 
@@ -161,13 +210,15 @@ export class InventoryService {
         id: userSkin.id,
         weapon: userSkin.skinTemplate?.weapon,
         skinName: userSkin.skinTemplate?.skinName,
-        originalPrice: currentPrice,
-        buybackPrice: buybackPrice,
-        buybackPercentage: 85,
+        originalPrice: currentPriceUsd,
+        buybackPrice: buybackPriceUsd,
+        buybackPriceSol,
+        buybackPercentage,
       },
       transaction: {
         id: transaction.id,
-        amountUsdc: buybackPrice,
+        amountUsdc: buybackPriceUsd,
+        amountSol: buybackPriceSol,
         txHash: buybackResult.transaction,
         status: transaction.status,
       },

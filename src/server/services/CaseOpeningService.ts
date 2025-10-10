@@ -16,6 +16,7 @@ import { create } from '@metaplex-foundation/mpl-core';
 import { generateSigner, signerIdentity, createSignerFromKeypair } from '@metaplex-foundation/umi';
 import bs58 from 'bs58';
 import axios from 'axios';
+import { convertUsdToSol, resolveUsdPerSol } from '../utils/currency';
 
 export class CaseOpeningService {
   private caseOpeningRepository: CaseOpeningRepository;
@@ -99,12 +100,43 @@ export class CaseOpeningService {
       skinTemplate: pool.skinTemplate,
     }));
 
-    const { item: selectedPool, probability } = randomizationService.selectFromWeightedPool(
-      random.value,
-      weightedPool
-    );
+    // 🎯 DEMO MODE: Always select AK-47 | Vulcan (Field-Tested) for demo purposes
+    const DEMO_MODE = process.env.DEMO_MODE === 'true' || true; // Set to true for demo
+    let selectedSkin: any;
+    let probability: number;
 
-    const selectedSkin = selectedPool.skinTemplate;
+    if (DEMO_MODE) {
+      // Find AK-47 | Vulcan (Field-Tested) in the pool
+      const vulcanPool = weightedPool.find(pool =>
+        pool.skinTemplate.weapon === 'AK-47' &&
+        pool.skinTemplate.skinName === 'Vulcan (Field-Tested)'
+      );
+
+      if (vulcanPool) {
+        selectedSkin = vulcanPool.skinTemplate;
+        // Calculate what the probability would have been
+        const totalWeight = weightedPool.reduce((sum, p) => sum + p.weight, 0);
+        probability = vulcanPool.weight / totalWeight;
+        console.log(`🎯 [DEMO MODE] Forcing AK-47 | Vulcan (Field-Tested) drop`);
+      } else {
+        // Fallback to normal randomization if Vulcan not found
+        const { item: selectedPool, probability: prob } = randomizationService.selectFromWeightedPool(
+          random.value,
+          weightedPool
+        );
+        selectedSkin = selectedPool.skinTemplate;
+        probability = prob;
+        console.log(`⚠️  [DEMO MODE] Vulcan (Field-Tested) not found, using random selection`);
+      }
+    } else {
+      // Normal randomization
+      const { item: selectedPool, probability: prob } = randomizationService.selectFromWeightedPool(
+        random.value,
+        weightedPool
+      );
+      selectedSkin = selectedPool.skinTemplate;
+      probability = prob;
+    }
 
     console.log(`🎲 [CASE OPENING] User: ${userId}`);
     console.log(`   Pack: ${lootBox.name}`);
@@ -112,19 +144,24 @@ export class CaseOpeningService {
     console.log(`   Rarity: ${selectedSkin.rarity}`);
     console.log(`   Probability: ${(probability * 100).toFixed(2)}%`);
 
-    // 3. Mint REAL NFT on-chain using Metaplex Core
+    // 3. Mint REAL NFT on-chain using Metaplex Core - MINTED TO ADMIN WALLET
+    // NFT will be transferred to user only if they choose "keep" decision
+    const ADMIN_WALLET = process.env.ADMIN_WALLET || '5iF1vyxpqeYqWL4fKhSnFyFw5VzBTjRqDEpkiFta3uEm';
+
     console.log(`🎨 [NFT MINTING] Creating real NFT on-chain...`);
     console.log(`   Skin: ${selectedSkin.weapon} | ${selectedSkin.skinName}`);
-    console.log(`   Owner: ${user.walletAddress}`);
-    
+    console.log(`   Owner (initial): ${ADMIN_WALLET} (admin wallet - will transfer on "keep")`);
+    console.log(`   User: ${user.walletAddress} (will receive if they choose "keep")`);
+
     const nftResult = await this.mintCoreNFT({
       name: `${selectedSkin.weapon} | ${selectedSkin.skinName}`,
       skinTemplate: selectedSkin,
-      owner: user.walletAddress,
+      owner: ADMIN_WALLET, // Mint to admin wallet initially
     });
-    
+
     console.log(`✅ [NFT MINTED] Asset: ${nftResult.mint}`);
     console.log(`   Transaction: ${nftResult.transaction}`);
+    console.log(`   ⚠️  NFT held in admin wallet until user decides to keep`);
 
     // 4. Create case opening record with random fields
     const caseOpening = await this.caseOpeningRepository.create({
@@ -140,7 +177,7 @@ export class CaseOpeningService {
       completedAt: new Date(), // Completed immediately
     } as any);
 
-    // 5. Create user skin
+    // 5. Create user skin (NOT in inventory yet - pending decision)
     const userSkin = await this.userSkinRepository.create({
       userId,
       skinTemplateId: selectedSkin.id,
@@ -152,7 +189,7 @@ export class CaseOpeningService {
       openedAt: new Date(),
       currentPriceUsd: selectedSkin.basePriceUsd,
       lastPriceUpdate: new Date(),
-      isInInventory: true,
+      isInInventory: false, // NOT in inventory until user chooses "keep"
       name: `${selectedSkin.weapon} | ${selectedSkin.skinName}`,
       symbol: 'SKIN',
       metadataUri: selectedSkin.imageUrl || '',
@@ -283,15 +320,87 @@ export class CaseOpeningService {
     };
 
     if (decision === 'keep') {
-      console.log(`✅ [DECISION] User kept NFT: ${caseOpening.userSkin?.nftMintAddress}`);
+      // ═══════════════════════════════════════════════════════════
+      //  TRANSFER NFT FROM ADMIN TO USER
+      // ═══════════════════════════════════════════════════════════
+
+      if (!caseOpening.userSkin?.nftMintAddress) {
+        throw new AppError('NFT mint address not found', 400, 'NFT_NOT_FOUND');
+      }
+
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+      }
+
+      console.log(`🔄 [NFT TRANSFER] Transferring NFT to user...`);
+      console.log(`   NFT: ${caseOpening.userSkin.nftMintAddress}`);
+      console.log(`   From: Admin wallet`);
+      console.log(`   To: ${user.walletAddress}`);
+
+      try {
+        const transferResult = await this.transferCoreNFT({
+          assetAddress: caseOpening.userSkin.nftMintAddress,
+          toAddress: user.walletAddress,
+        });
+
+        console.log(`✅ [NFT TRANSFERRED] Transaction: ${transferResult.transaction}`);
+        console.log(`   User now owns NFT: ${caseOpening.userSkin.nftMintAddress}`);
+
+        result.transferred = true;
+        result.transferTransaction = transferResult.transaction;
+      } catch (error) {
+        console.error('❌ [NFT TRANSFER] Failed:', error);
+        throw new AppError(
+          `Failed to transfer NFT: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          500,
+          'NFT_TRANSFER_FAILED'
+        );
+      }
+
+      // Mark skin as "in inventory" and "claimed" now that it's been transferred
+      await this.userSkinRepository.update(caseOpening.userSkin.id, {
+        isInInventory: true,
+        claimed: true,
+      } as any);
+
+      console.log(`✅ [DECISION] User kept NFT: ${caseOpening.userSkin.nftMintAddress}`);
       result.addedToInventory = true;
     } else if (decision === 'buyback' && caseOpening.userSkin) {
       // ═══════════════════════════════════════════════════════════
       //  OFF-CHAIN BUYBACK (Instant)
+      //  NFT remains with admin wallet - NO TRANSFER
       // ═══════════════════════════════════════════════════════════
 
-      const currentPrice = caseOpening.userSkin.currentPriceUsd || 0;
-      const buybackPrice = currentPrice * 0.85; // 85% buyback rate
+      console.log(`💰 [BUYBACK] User chose to sell back NFT`);
+      console.log(`   NFT: ${caseOpening.userSkin.nftMintAddress}`);
+      console.log(`   ⚠️  NFT stays in admin wallet (no transfer)`);
+      console.log(`   User receives buyback payment instead`);
+
+      const rawBuybackPercentage = Number(process.env.BUYBACK_PERCENTAGE ?? '85');
+      const buybackPercentage = Number.isFinite(rawBuybackPercentage) ? rawBuybackPercentage : 85;
+      const buybackRate = buybackPercentage / 100;
+
+      // ⚠️ IMPORTANT: Buyback is based on PACK price, not skin value!
+      // This prevents the system from losing money on lucky drops.
+      // User pays $5 for pack → Gets lucky $150 skin → Buyback pays 85% of $5 = $4.25
+      const packPriceUsd = Number(caseOpening.lootBoxType.priceUsdc ?? 0);
+      const buybackPriceUsd = packPriceUsd * buybackRate;
+
+      if (!Number.isFinite(buybackPriceUsd) || buybackPriceUsd <= 0) {
+        throw new AppError('Buyback amount is too small to process', 400, 'BUYBACK_TOO_SMALL');
+      }
+
+      const usdPerSol = resolveUsdPerSol(caseOpening.lootBoxType);
+      const rawBuybackPriceSol = convertUsdToSol(buybackPriceUsd, caseOpening.lootBoxType);
+      const minBuybackSol = Number(process.env.MIN_BUYBACK_AMOUNT ?? '0');
+      const buybackPriceSol = rawBuybackPriceSol > 0
+        ? Math.max(rawBuybackPriceSol, minBuybackSol > 0 ? minBuybackSol : 0)
+        : 0;
+
+      if (!Number.isFinite(buybackPriceSol) || buybackPriceSol <= 0) {
+        throw new AppError('Calculated buyback SOL amount is invalid', 400, 'BUYBACK_TOO_SMALL');
+      }
 
       // Execute real buyback (SOL to user)
       const user = await this.userRepository.findById(userId);
@@ -300,31 +409,45 @@ export class CaseOpeningService {
       }
       const buybackResult = await simpleSolanaService.sendSOL({
         toWallet: user.walletAddress,
-        amount: buybackPrice,
+        amount: buybackPriceSol,
       });
 
+      const skinValueUsd = Number(
+        caseOpening.userSkin.currentPriceUsd ??
+        caseOpening.skinTemplate?.basePriceUsd ??
+        0
+      );
+      
       console.log(`💰 [BUYBACK] Executed`);
       console.log(`   NFT: ${caseOpening.userSkin.nftMintAddress}`);
-      console.log(`   Original Price: $${currentPrice.toFixed(2)}`);
-      console.log(`   Buyback Price: $${buybackPrice.toFixed(2)}`);
+      console.log(`   Skin Value: $${skinValueUsd.toFixed(2)} (user got lucky!)`);
+      console.log(`   Pack Price: $${packPriceUsd.toFixed(2)}`);
+      console.log(
+        `   Buyback Price: $${buybackPriceUsd.toFixed(2)} (${buybackPercentage}% of pack) ` +
+        `(~${buybackPriceSol.toFixed(6)} SOL @ $${usdPerSol.toFixed(2)}/SOL)`
+      );
       console.log(`   Transaction: ${buybackResult.transaction}`);
 
       // Mark skin as sold
-      await this.userSkinRepository.markAsSold(caseOpening.userSkin.id, buybackPrice);
+      await this.userSkinRepository.markAsSold(caseOpening.userSkin.id, buybackPriceUsd);
 
       // Create buyback transaction
       await this.transactionRepository.create({
         userId,
         transactionType: TransactionType.BUYBACK,
-        amountUsd: buybackPrice,
-        amountUsdc: buybackPrice,
+        amountUsd: buybackPriceUsd,
+        amountUsdc: buybackPriceUsd,
+        amountSol: buybackPriceSol,
         userSkinId: caseOpening.userSkin.id,
         status: TransactionStatus.CONFIRMED,
+        txHash: buybackResult.transaction,
       });
 
       // TODO: Credit user balance (when user balance system is implemented)
 
-      result.buybackPrice = buybackPrice;
+      result.buybackPrice = buybackPriceUsd;
+      result.buybackPriceSol = buybackPriceSol;
+      result.buybackPercentage = buybackPercentage;
       result.addedToInventory = false;
       result.transaction = buybackResult.transaction;
       result.solSent = true;
@@ -368,13 +491,13 @@ export class CaseOpeningService {
   private async uploadToWalrus(metadata: any): Promise<string> {
     const WALRUS_PUBLISHER = process.env.WALRUS_PUBLISHER || 'https://publisher.walrus-testnet.walrus.space';
     const WALRUS_AGGREGATOR = process.env.WALRUS_AGGREGATOR || 'https://aggregator.walrus-testnet.walrus.space';
-    
+
     console.log(`📝 [WALRUS] Uploading metadata...`);
-    
+
     try {
       const jsonString = JSON.stringify(metadata);
       const blob = Buffer.from(jsonString, 'utf-8');
-      
+
       const response = await axios.put(`${WALRUS_PUBLISHER}/v1/store`, blob, {
         headers: {
           'Content-Type': 'application/octet-stream',
@@ -413,7 +536,7 @@ export class CaseOpeningService {
     owner: string;
   }): Promise<{ mint: string; transaction: string }> {
     const { name, skinTemplate, owner } = params;
-    
+
     // Get admin keypair from environment
     const ADMIN_PRIVATE_KEY = process.env.ADMIN_PRIVATE_KEY;
     if (!ADMIN_PRIVATE_KEY) {
@@ -422,10 +545,10 @@ export class CaseOpeningService {
 
     // Setup Solana connection
     const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
-    
+
     // Setup Umi
     const umi = createUmi(rpcUrl).use(mplCore());
-    
+
     // Convert admin keypair
     const adminKeypairBytes = bs58.decode(ADMIN_PRIVATE_KEY);
     const adminKeypair = umi.eddsa.createKeypairFromSecretKey(adminKeypairBytes);
@@ -454,7 +577,7 @@ export class CaseOpeningService {
 
     // Mint Core NFT with owner set to user's wallet
     console.log(`🔨 [CORE NFT] Minting to owner: ${owner}...`);
-    
+
     const tx = await create(umi, {
       asset,
       name,
@@ -467,6 +590,61 @@ export class CaseOpeningService {
 
     return {
       mint: asset.publicKey,
+      transaction: signature,
+    };
+  }
+
+  /**
+   * Transfer a Core NFT from admin wallet to user
+   */
+  private async transferCoreNFT(params: {
+    assetAddress: string;
+    toAddress: string;
+  }): Promise<{ transaction: string }> {
+    const { assetAddress, toAddress } = params;
+
+    // Get admin keypair from environment
+    const ADMIN_PRIVATE_KEY = process.env.ADMIN_PRIVATE_KEY;
+    if (!ADMIN_PRIVATE_KEY) {
+      throw new Error('ADMIN_PRIVATE_KEY not configured');
+    }
+
+    // Setup Solana connection
+    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+
+    // Setup Umi
+    const umi = createUmi(rpcUrl).use(mplCore());
+
+    // Convert admin keypair
+    const adminKeypairBytes = bs58.decode(ADMIN_PRIVATE_KEY);
+    const adminKeypair = umi.eddsa.createKeypairFromSecretKey(adminKeypairBytes);
+    const adminSigner = createSignerFromKeypair(umi, adminKeypair);
+    umi.use(signerIdentity(adminSigner));
+
+    // Import necessary functions from mpl-core
+    const { transferV1, fetchAssetV1 } = await import('@metaplex-foundation/mpl-core');
+
+    console.log(`🔄 [CORE NFT] Fetching asset state: ${assetAddress}`);
+
+    // Fetch the asset to get its current state (needed for compression proof)
+    const asset = await fetchAssetV1(umi, assetAddress as any);
+
+    console.log(`🔄 [CORE NFT] Transferring asset from ${asset.owner} to ${toAddress}...`);
+    console.log(`🔄 [CORE NFT] Asset details:`, {
+      address: asset.publicKey,
+      owner: asset.owner,
+      updateAuthority: asset.updateAuthority,
+    });
+
+    // Transfer the asset using transferV1 with proper authority
+    const tx = await transferV1(umi, {
+      asset: asset.publicKey,
+      newOwner: toAddress as any,
+    }).sendAndConfirm(umi);
+
+    const signature = bs58.encode(tx.signature);
+
+    return {
       transaction: signature,
     };
   }

@@ -30,24 +30,51 @@ export function UserProvider({ children }: UserProviderProps) {
 
   const isConnected = walletAddress !== null;
 
+  // Load wallet address from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('walletAddress');
+    if (stored) {
+      console.log('Restoring wallet address from localStorage:', stored);
+      setWalletAddress(stored);
+      // Optionally refresh user data
+      refreshUserSilently(stored);
+    }
+  }, []);
+
+  // Helper to refresh user without showing loading state
+  const refreshUserSilently = async (address: string) => {
+    try {
+      const response = await authService.connectWallet(address);
+      setUser(response.user);
+    } catch (err) {
+      console.error('Failed to restore user session:', err);
+      // Clear invalid session
+      localStorage.removeItem('walletAddress');
+      setWalletAddress(null);
+    }
+  };
+
   const connectWallet = async (address: string, signature?: string, message?: string) => {
     // Prevent multiple simultaneous connection attempts
     if (isLoading) {
       console.log('Connection already in progress, skipping...');
       return;
     }
-    
+
     try {
       setIsLoading(true);
       setError(null);
-      
+
       console.log('Connecting wallet to backend:', address);
       const response = await authService.connectWallet(address, signature, message);
       console.log('Backend response:', response);
-      
+
       setUser(response.user);
       setWalletAddress(address);
-      
+
+      // Persist to localStorage
+      localStorage.setItem('walletAddress', address);
+
       console.log('Wallet connected successfully');
     } catch (err) {
       console.error('Wallet connection error:', err);
@@ -63,10 +90,13 @@ export function UserProvider({ children }: UserProviderProps) {
     try {
       setIsLoading(true);
       setError(null);
-      
+
       await authService.disconnectWallet();
       setUser(null);
       setWalletAddress(null);
+
+      // Clear from localStorage
+      localStorage.removeItem('walletAddress');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to disconnect wallet';
       setError(errorMessage);

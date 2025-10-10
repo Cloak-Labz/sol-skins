@@ -39,6 +39,7 @@ import { formatCurrency } from "@/lib/utils";
 
 export default function InventoryPage() {
   const { connected: isConnected } = useWallet();
+  const { walletAddress, isLoading: isUserLoading } = useUser();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("date");
   const [filterBy, setFilterBy] = useState("all");
@@ -49,17 +50,18 @@ export default function InventoryPage() {
   const [inventorySkins, setInventorySkins] = useState<UserSkin[]>([]);
   const [totalValue, setTotalValue] = useState(0);
 
-  // Load inventory from backend
+  // Load inventory from backend - wait for UserContext to complete authentication
   useEffect(() => {
-    if (isConnected || MOCK_CONFIG.ENABLE_MOCK) {
+    // Only load inventory if wallet is connected AND UserContext has completed backend auth
+    if ((isConnected && walletAddress) || MOCK_CONFIG.ENABLE_MOCK) {
       loadInventory();
     } else {
-      // Not connected - clear data and stop loading
+      // Not connected or backend auth not complete - clear data and stop loading
       setLoading(false);
       setInventorySkins([]);
       setTotalValue(0);
     }
-  }, [isConnected]); // Only depend on isConnected, filters handled in loadInventory
+  }, [isConnected, walletAddress]); // Depend on both wallet connection and UserContext wallet address
 
   const loadInventory = async () => {
     try {
@@ -149,18 +151,23 @@ export default function InventoryPage() {
   };
 
   // Show not connected state
-  if (!isConnected) {
+  if (!isConnected || !walletAddress) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-12">
             <Lock className="w-16 h-16 mx-auto mb-4 text-muted-foreground" />
             <h3 className="text-xl font-semibold text-foreground mb-2">
-              Wallet Not Connected
+              {!isConnected ? "Wallet Not Connected" : "Connecting to Backend..."}
             </h3>
             <p className="text-muted-foreground">
-              Please connect your wallet to view your inventory
+              {!isConnected
+                ? "Please connect your wallet to view your inventory"
+                : "Authenticating with backend, please wait..."}
             </p>
+            {isUserLoading && (
+              <Loader2 className="w-8 h-8 animate-spin text-zinc-200 mx-auto mt-4" />
+            )}
           </div>
         </div>
       </div>

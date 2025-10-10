@@ -15,6 +15,15 @@ class ApiClient {
       },
     });
 
+    // Restore wallet address from localStorage if available
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('walletAddress');
+      if (stored) {
+        this.walletAddress = stored;
+        console.log('ApiClient: Restored wallet address from localStorage:', stored);
+      }
+    }
+
     this.setupInterceptors();
   }
 
@@ -89,6 +98,15 @@ class ApiClient {
   setWalletAddress(address: string | null) {
     console.log("Setting wallet address:", address);
     this.walletAddress = address;
+
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      if (address) {
+        localStorage.setItem('walletAddress', address);
+      } else {
+        localStorage.removeItem('walletAddress');
+      }
+    }
   }
 
   getWalletAddress(): string | null {
