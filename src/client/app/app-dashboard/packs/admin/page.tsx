@@ -18,7 +18,7 @@ import {
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
-import { PublicKey, Keypair } from "@solana/web3.js";
+import { PublicKey } from "@solana/web3.js";
 import { simpleCandyMachineService } from "@/lib/services/simpleCandyMachineService";
 import {
   getProgramFromWallet,
@@ -28,11 +28,9 @@ import {
   getUSDCMint,
   type BatchAccount,
 } from "@/lib/solana";
-import { WalrusClient, WalrusUploadResult } from "@/lib/walrus-client";
+import { WalrusClient } from "@/lib/walrus-client";
 import {
   UmiCandyMachineClient,
-  UmiDeployedCandyMachine,
-  UmiCandyMachineConfig,
 } from "@/lib/umi-candy-machine-client";
 
 interface BatchWithId extends BatchAccount {
@@ -813,7 +811,7 @@ export default function AdminPage() {
                   <h2 className="text-xl font-bold text-white flex items-center gap-2">
                     <Package className="w-5 h-5 text-[#E99500]" />
                     Pack Management
-                  </h2>
+                </h2>
                   <Button
                     onClick={() => setSelectedPack(null)}
                     variant="outline"
@@ -825,33 +823,33 @@ export default function AdminPage() {
                 </div>
 
                 {!selectedPack ? (
-                  <div className="space-y-4">
+                <div className="space-y-4">
                     {/* Create New Pack */}
                     <div className="space-y-3">
-                      <div>
+                  <div>
                         <Label htmlFor="packName" className="text-white">
                           Pack Name
-                        </Label>
-                        <Input
+                    </Label>
+                    <Input
                           id="packName"
                           placeholder="e.g., CS:GO Weapon Case"
                           value={packName}
                           onChange={(e) => setPackName(e.target.value)}
-                          className="bg-zinc-900 border-zinc-700 text-white"
-                        />
-                      </div>
-                      <div>
+                      className="bg-zinc-900 border-zinc-700 text-white"
+                    />
+                  </div>
+                  <div>
                         <Label htmlFor="packDescription" className="text-white">
                           Description
-                        </Label>
+                    </Label>
                         <Textarea
                           id="packDescription"
                           placeholder="Describe this pack..."
                           value={packDescription}
                           onChange={(e) => setPackDescription(e.target.value)}
-                          className="bg-zinc-900 border-zinc-700 text-white"
+                        className="bg-zinc-900 border-zinc-700 text-white"
                           rows={3}
-                        />
+                      />
                       </div>
                       <Button
                         onClick={createPack}
@@ -931,7 +929,7 @@ export default function AdminPage() {
                         <p className="text-sm text-zinc-400">
                           {selectedPack.description}
                         </p>
-                        <p className="text-xs text-zinc-500 mt-1">
+                    <p className="text-xs text-zinc-500 mt-1">
                           Status:{" "}
                           <span className="capitalize">
                             {selectedPack.status}
@@ -974,10 +972,10 @@ export default function AdminPage() {
                             </Button>
                           )}
                       </div>
-                    </div>
+                  </div>
 
                     {/* Pack Skins */}
-                    <div>
+                  <div>
                       <h4 className="text-md font-semibold text-white mb-3">
                         Pack Skins ({selectedPack.skins.length})
                       </h4>
@@ -1037,15 +1035,15 @@ export default function AdminPage() {
                         Add Skins from Inventory
                       </h4>
                       <div className="grid gap-2 max-h-60 overflow-auto pr-2">
-                        {loadingInventory ? (
-                          <p className="text-zinc-400 text-sm">
-                            Loading inventory...
-                          </p>
-                        ) : inventory.length === 0 ? (
-                          <p className="text-zinc-400 text-sm">
-                            No NFTs found in inventory
-                          </p>
-                        ) : (
+                      {loadingInventory ? (
+                        <p className="text-zinc-400 text-sm">
+                          Loading inventory...
+                        </p>
+                      ) : inventory.length === 0 ? (
+                        <p className="text-zinc-400 text-sm">
+                          No NFTs found in inventory
+                        </p>
+                      ) : (
                           inventory
                             .filter(
                               (item) =>
@@ -1054,27 +1052,27 @@ export default function AdminPage() {
                                 )
                             )
                             .map((item) => (
-                              <div
-                                key={item.id}
+                          <div
+                            key={item.id}
                                 className="flex items-center gap-3 p-2 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
-                              >
+                          >
                                 <div className="w-8 h-8 rounded bg-zinc-800 overflow-hidden flex-shrink-0">
-                                  {item.imageUrl ? (
-                                    <img
-                                      src={item.imageUrl}
-                                      alt={item.name}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : null}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-white text-sm font-medium truncate">
-                                    {item.name}
-                                  </p>
+                              {item.imageUrl ? (
+                                <img
+                                  src={item.imageUrl}
+                                  alt={item.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : null}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-white text-sm font-medium truncate">
+                                {item.name}
+                              </p>
                                   <p className="text-zinc-500 text-xs">
                                     {item.rarity || "Unknown"}
-                                  </p>
-                                </div>
+                              </p>
+                            </div>
                                 <Button
                                   onClick={() => addSkinToPack(item)}
                                   size="sm"
@@ -1082,10 +1080,10 @@ export default function AdminPage() {
                                 >
                                   Add
                                 </Button>
-                              </div>
-                            ))
-                        )}
-                      </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
                     </div>
                   </div>
                 )}
@@ -1229,12 +1227,12 @@ export default function AdminPage() {
                             max="10000"
                             className="bg-zinc-900 border-zinc-700 text-white"
                           />
-                          <p className="text-xs text-zinc-500 mt-1">
+                    <p className="text-xs text-zinc-500 mt-1">
                             {candyMachineConfig.sellerFeeBasisPoints / 100}%
                             royalty
-                          </p>
+                    </p>
                         </div>
-                      </div>
+                  </div>
 
                       {/* Creator Settings */}
                       <div className="space-y-3">
@@ -1286,7 +1284,7 @@ export default function AdminPage() {
 
                       {/* Action Buttons */}
                       <div className="flex gap-3 pt-4">
-                        <Button
+                  <Button
                           onClick={() => setShowCandyMachineForm(false)}
                           variant="outline"
                           className="flex-1"
@@ -1303,17 +1301,17 @@ export default function AdminPage() {
                           className="flex-1 bg-[#E99500] hover:bg-[#d18500] text-black font-semibold"
                         >
                           {loadingCandyMachine ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                               Creating...
-                            </>
-                          ) : (
+                      </>
+                    ) : (
                             "Create Candy Machine"
-                          )}
-                        </Button>
+                    )}
+                  </Button>
                       </div>
                     </div>
-                  </div>
+                </div>
                 </Card>
               </div>
             )}
@@ -1574,12 +1572,12 @@ export default function AdminPage() {
                               </p>
                               {batch.metadataUris &&
                                 batch.metadataUris.length > 0 && (
-                                  <details className="mt-2">
-                                    <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-400">
+                                <details className="mt-2">
+                                  <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-400">
                                       View {batch.metadataUris.length} Metadata
                                       URIs
-                                    </summary>
-                                    <div className="mt-2 space-y-1 pl-4 border-l border-zinc-700">
+                                  </summary>
+                                  <div className="mt-2 space-y-1 pl-4 border-l border-zinc-700">
                                       {batch.metadataUris
                                         .slice(0, 5)
                                         .map((uri, idx) => (
@@ -1587,18 +1585,18 @@ export default function AdminPage() {
                                             key={idx}
                                             className="text-xs text-zinc-600 font-mono truncate"
                                           >
-                                            {idx + 1}. {uri}
-                                          </p>
-                                        ))}
-                                      {batch.metadataUris.length > 5 && (
-                                        <p className="text-xs text-zinc-600">
+                                        {idx + 1}. {uri}
+                                      </p>
+                                    ))}
+                                    {batch.metadataUris.length > 5 && (
+                                      <p className="text-xs text-zinc-600">
                                           ... and{" "}
                                           {batch.metadataUris.length - 5} more
-                                        </p>
-                                      )}
-                                    </div>
-                                  </details>
-                                )}
+                                      </p>
+                                    )}
+                                  </div>
+                                </details>
+                              )}
                             </div>
                           </div>
                           <div className="text-right">

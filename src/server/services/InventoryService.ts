@@ -1,15 +1,19 @@
 import { UserSkinRepository } from "../repositories/UserSkinRepository";
 import { TransactionRepository } from "../repositories/TransactionRepository";
+import { UserRepository } from "../repositories/UserRepository";
 import { AppError } from "../middlewares/errorHandler";
 import { TransactionType, TransactionStatus } from "../entities/Transaction";
+import { simpleSolanaService } from "./simpleSolana.service";
 
 export class InventoryService {
   private userSkinRepository: UserSkinRepository;
   private transactionRepository: TransactionRepository;
+  private userRepository: UserRepository;
 
   constructor() {
     this.userSkinRepository = new UserSkinRepository();
     this.transactionRepository = new TransactionRepository();
+    this.userRepository = new UserRepository();
   }
 
   async getUserInventory(
@@ -109,32 +113,48 @@ export class InventoryService {
       );
     }
 
-    // TODO: Call Solana program's sell_back instruction
-    // The program signature is now: sell_back(market_price: u64, min_price: u64)
-    // where market_price is the current USD price (in micro-units, e.g., $10 = 10_000_000)
-    // and min_price is the user's slippage protection
-    // The program will calculate: payout = market_price * 0.85 - (market_price * 0.01)
-    // Example call (pseudo-code):
-    // await program.methods
-    //   .sellBack(
-    //     new BN(currentPrice * 1_000_000), // market_price in micro-USD
-    //     new BN(minAcceptablePrice * 1_000_000) // min_price in micro-USD
-    //   )
-    //   .accounts({ /* ... */ })
-    //   .rpc();
+    // ═══════════════════════════════════════════════════════════
+    //  OFF-CHAIN BUYBACK (Mock Solana Service)
+    // ═══════════════════════════════════════════════════════════
+
+    const user = await this.userRepository.findById(userId);
+    if (!user) {
+      throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+    }
+
+    // Execute real buyback (send SOL to user)
+    console.log(`💰 [INVENTORY BUYBACK] Sending ${buybackPrice} SOL to ${user.walletAddress}`);
+    
+    const buybackResult = await simpleSolanaService.sendSOL({
+      toWallet: user.walletAddress,
+      amount: buybackPrice,
+    });
+    
+    console.log(`✅ [BUYBACK COMPLETE] Transaction: ${buybackResult.transaction}`);
+
+    console.log(`💰 [INVENTORY BUYBACK] Executed`);
+    console.log(`   User: ${userId}`);
+    console.log(`   NFT: ${userSkin.nftMintAddress}`);
+    console.log(`   Skin: ${userSkin.skinTemplate?.weapon} | ${userSkin.skinTemplate?.skinName}`);
+    console.log(`   Original Price: $${currentPrice.toFixed(2)}`);
+    console.log(`   Buyback Price: $${buybackPrice.toFixed(2)}`);
+    console.log(`   Transaction: ${buybackResult.transaction}`);
 
     // Create buyback transaction
     const transaction = await this.transactionRepository.create({
       userId,
       transactionType: TransactionType.BUYBACK,
       amountUsd: buybackPrice,
-      amountUsdc: buybackPrice, // Assuming 1:1 USDC to USD
+      amountUsdc: buybackPrice,
       userSkinId: skinId,
-      status: TransactionStatus.PENDING,
-    });
+      status: TransactionStatus.CONFIRMED,
+      txHash: buybackResult.transaction,
+    } as any);
 
     // Mark skin as sold
     await this.userSkinRepository.markAsSold(skinId, buybackPrice);
+
+    // TODO: Credit user balance (when user balance system is implemented)
 
     return {
       soldSkin: {
@@ -148,9 +168,11 @@ export class InventoryService {
       transaction: {
         id: transaction.id,
         amountUsdc: buybackPrice,
-        txHash: transaction.txHash,
+        txHash: buybackResult.transaction,
         status: transaction.status,
       },
+      burned: buybackResult.burned,
+      credited: buybackResult.credited,
     };
   }
 

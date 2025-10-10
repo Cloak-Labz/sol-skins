@@ -25,8 +25,18 @@ export class UserSkin {
   @Column('uuid', { nullable: true })
   skinTemplateId?: string;
 
-  @Column({ type: 'varchar', unique: true, length: 44 })
-  nftMintAddress: string;
+  @Column({ type: 'varchar', unique: true, length: 44, nullable: true })
+  nftMintAddress?: string; // Null if not yet claimed on-chain
+
+  // Off-chain tracking
+  @Column({ type: 'varchar', length: 20, default: 'opened' })
+  source?: string; // 'opened', 'bought', 'traded'
+
+  @Column({ type: 'boolean', default: false })
+  claimed?: boolean; // Whether NFT has been minted on-chain
+
+  @Column('uuid', { nullable: true })
+  caseOpeningId?: string; // Link to the opening that created this
 
   // Opening data
   @Column('uuid', { nullable: true })

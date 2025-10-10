@@ -130,8 +130,10 @@ export default function InventoryPage() {
       const response = await inventoryService.sellSkin(selectedSkin.id, {});
 
       if (response.success) {
+        const buybackPrice = response.data?.soldSkin?.buybackPrice || 0;
         toast.success(
-          `Sold for ${formatCurrency(response.data.payoutAmount)}!`
+          `Sold for ${formatCurrency(buybackPrice)} (85% buyback)!`,
+          { duration: 4000 }
         );
         setIsSellingDialogOpen(false);
         setSelectedSkin(null);

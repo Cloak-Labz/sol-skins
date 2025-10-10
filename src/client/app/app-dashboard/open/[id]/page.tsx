@@ -36,15 +36,15 @@ export default function OpenCasePage() {
     loadLootBoxDetails();
   }, [params.id]);
 
-  // Poll for case opening status if we have an opening in progress
-  useEffect(() => {
-    if (caseOpening && caseOpening.status === "pending") {
-      const interval = setInterval(() => {
-        checkOpeningStatus();
-      }, 2000);
-      return () => clearInterval(interval);
-    }
-  }, [caseOpening]);
+  // No more polling needed! Results are immediate with off-chain randomization
+  // useEffect(() => {
+  //   if (caseOpening && caseOpening.status === "pending") {
+  //     const interval = setInterval(() => {
+  //       checkOpeningStatus();
+  //     }, 2000);
+  //     return () => clearInterval(interval);
+  //   }
+  // }, [caseOpening]);
 
   const loadLootBoxDetails = async () => {
     try {
@@ -102,34 +102,48 @@ export default function OpenCasePage() {
       setAnimationPhase("spinning");
       setError(null);
 
+      // ═══════════════════════════════════════════════════════════
+      //  OFF-CHAIN: Immediate results (no polling!)
+      // ═══════════════════════════════════════════════════════════
+
       const response = await casesService.openCase({
         lootBoxTypeId: lootBox.id,
         paymentMethod: "SOL", // Default to SOL for now
       });
 
-      // Create a case opening object for the UI
+      console.log("🎉 [FRONTEND] Case opened with immediate result:", response.data);
+
+      // Backend returns complete result immediately!
+      const skinResult = response.data.skinResult;
+      const randomization = response.data.randomization;
+
+      // Store case opening for decision
       const newOpening: CaseOpening = {
         id: response.data.caseOpeningId,
-        status: "pending",
-        vrfRequestId: response.data.vrfRequestId,
+        status: "completed", // Already completed!
+        nftMintAddress: response.data.nftMintAddress,
+        skinResult: skinResult,
+        randomSeed: randomization.seed,
+        randomValue: randomization.value,
+        randomHash: randomization.hash,
         openedAt: new Date().toISOString(),
-        estimatedCompletionTime: response.data.estimatedCompletionTime,
-      };
+      } as any;
 
       setCaseOpening(newOpening);
-      toast.success("Case opening initiated!");
+      toast.success("Case opened successfully!");
 
-      // Animation sequence
+      // Show reveal animation (purely visual, result already determined)
       setTimeout(() => {
         setAnimationPhase("slowing");
-      }, 2000);
+      }, 1500);
 
-      // Since we're simulating, we need to get the result
-      // In production, this would be VRF callback
-      setTimeout(async () => {
-        // Simulate result
-        simulateResult();
-      }, 5000);
+      setTimeout(() => {
+        setRevealedSkin(skinResult);
+        setAnimationPhase("revealed");
+        setShowResult(true);
+        setIsOpening(false);
+      }, 3500);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to open case");
       setIsOpening(false);
@@ -138,63 +152,25 @@ export default function OpenCasePage() {
     }
   };
 
-  const simulateResult = () => {
-    if (!lootBox?.possibleSkins || lootBox.possibleSkins.length === 0) {
-      // Fallback if no skins available
-      toast.error("No skins available in this loot box");
-      setIsOpening(false);
-      setAnimationPhase("idle");
-      return;
-    }
-
-    // Select random skin with weighted probabilities based on loot box chances
-    const random = Math.random() * 100;
-    let selectedSkin: any;
-
-    const chances = lootBox.chances;
-    const legendaryThreshold = parseFloat(chances.legendary);
-    const epicThreshold = legendaryThreshold + parseFloat(chances.epic);
-    const rareThreshold = epicThreshold + parseFloat(chances.rare);
-    const uncommonThreshold = rareThreshold + parseFloat(chances.uncommon);
-
-    if (random < legendaryThreshold) {
-      selectedSkin = lootBox.possibleSkins.find(
-        (s) => s.rarity === "Legendary"
-      );
-    } else if (random < epicThreshold) {
-      selectedSkin = lootBox.possibleSkins.find((s) => s.rarity === "Epic");
-    } else if (random < rareThreshold) {
-      selectedSkin = lootBox.possibleSkins.find((s) => s.rarity === "Rare");
-    } else if (random < uncommonThreshold) {
-      selectedSkin = lootBox.possibleSkins.find((s) => s.rarity === "Uncommon");
-    } else {
-      selectedSkin = lootBox.possibleSkins.find((s) => s.rarity === "Common");
-    }
-
-    // Fallback to random skin if no skin found for rarity
-    if (!selectedSkin) {
-      selectedSkin =
-        lootBox.possibleSkins[
-          Math.floor(Math.random() * lootBox.possibleSkins.length)
-        ];
-    }
-
-    console.log("Simulated result:", selectedSkin);
-    setRevealedSkin(selectedSkin);
-    setAnimationPhase("revealed");
-    setShowResult(true);
-    setIsOpening(false);
-  };
+  // simulateResult() removed - backend now returns immediate results!
 
   const keepSkin = async () => {
     if (!caseOpening) return;
 
     try {
-      await casesService.makeDecision(caseOpening.id, { decision: "keep" });
-      toast.success("Skin added to your inventory!");
-      router.push("/inventory");
+      toast.loading("Adding skin to inventory...", { id: "decision" });
+      const result = await casesService.makeDecision(caseOpening.id, { decision: "keep" });
+
+      console.log("✅ [KEEP] Skin added to inventory:", result);
+
+      toast.success("Skin added to your inventory!", { id: "decision" });
+
+      setTimeout(() => {
+        router.push("/app-dashboard/inventory");
+      }, 1000);
     } catch (err) {
-      toast.error("Failed to keep skin");
+      toast.error("Failed to keep skin", { id: "decision" });
+      console.error("Error keeping skin:", err);
     }
   };
 
@@ -202,11 +178,23 @@ export default function OpenCasePage() {
     if (!caseOpening) return;
 
     try {
-      await casesService.makeDecision(caseOpening.id, { decision: "buyback" });
-      toast.success("Skin sold via buyback!");
-      router.push("/history");
+      toast.loading("Executing buyback...", { id: "decision" });
+      const result = await casesService.makeDecision(caseOpening.id, { decision: "buyback" });
+
+      console.log("💰 [BUYBACK] Skin sold:", result);
+
+      const buybackPrice = result.data?.buybackPrice || 0;
+      toast.success(
+        `Skin sold for $${buybackPrice.toFixed(2)} (85% buyback)!`,
+        { id: "decision", duration: 4000 }
+      );
+
+      setTimeout(() => {
+        router.push("/app-dashboard/history");
+      }, 1000);
     } catch (err) {
-      toast.error("Failed to sell skin");
+      toast.error("Failed to sell skin", { id: "decision" });
+      console.error("Error selling skin:", err);
     }
   };
 

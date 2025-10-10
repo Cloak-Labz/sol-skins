@@ -28,12 +28,25 @@ export class CaseOpening {
   @Column('uuid')
   lootBoxTypeId: string;
 
-  // VRF process
+  // VRF process (on-chain - deprecated)
   @Column({ type: 'varchar', length: 100, nullable: true })
   vrfRequestId?: string;
 
   @Column({ type: 'varchar', length: 66, nullable: true })
   randomnessSeed?: string;
+
+  // Off-chain randomization
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  randomSeed?: string; // Public seed for provably fair randomization
+
+  @Column({ type: 'decimal', precision: 20, scale: 18, nullable: true })
+  randomValue?: number; // 0-1 random value generated
+
+  @Column({ type: 'varchar', length: 64, nullable: true })
+  randomHash?: string; // SHA-256 hash for verification
+
+  @Column({ type: 'varchar', length: 20, default: 'revealing' })
+  status?: string; // 'revealing', 'decided', 'completed'
 
   // Result
   @Column('uuid', { nullable: true })

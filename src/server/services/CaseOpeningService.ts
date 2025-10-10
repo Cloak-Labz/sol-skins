@@ -7,6 +7,15 @@ import { AppError } from '../middlewares/errorHandler';
 import { TransactionType, TransactionStatus } from '../entities/Transaction';
 import { UserDecision } from '../entities/CaseOpening';
 import { v4 as uuidv4 } from 'uuid';
+import { randomizationService } from './randomization.service';
+import { simpleSolanaService } from './simpleSolana.service';
+import { Connection, Keypair, PublicKey } from '@solana/web3.js';
+import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
+import { mplCore } from '@metaplex-foundation/mpl-core';
+import { create } from '@metaplex-foundation/mpl-core';
+import { generateSigner, signerIdentity, createSignerFromKeypair } from '@metaplex-foundation/umi';
+import bs58 from 'bs58';
+import axios from 'axios';
 
 export class CaseOpeningService {
   private caseOpeningRepository: CaseOpeningRepository;
@@ -47,44 +56,158 @@ export class CaseOpeningService {
       throw new AppError('User not found', 404, 'USER_NOT_FOUND');
     }
 
-    // Generate unique NFT mint address and VRF request ID
-    const nftMintAddress = uuidv4().replace(/-/g, ''); // Simple mock for now
-    const vrfRequestId = `vrf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    if (!lootBox.skinPools || lootBox.skinPools.length === 0) {
+      throw new AppError('Pack has no skin pool configured', 500, 'NO_SKIN_POOL');
+    }
 
-    // Create case opening record
+    // ═══════════════════════════════════════════════════════════
+    //  PAYMENT VERIFICATION (Real Blockchain Check)
+    // ═══════════════════════════════════════════════════════════
+
+    console.log(`💳 [PAYMENT VERIFICATION] Checking payment from ${user.walletAddress}`);
+    console.log(`   Expected amount: ${lootBox.priceSol} SOL`);
+
+    const paymentVerified = await simpleSolanaService.verifyPayment({
+      userWallet: user.walletAddress,
+      expectedAmount: lootBox.priceSol,
+      timeWindow: 120, // 2 minutes to find payment
+    });
+
+    if (!paymentVerified.verified) {
+      throw new AppError(
+        `Payment not found. Please ensure you sent ${lootBox.priceSol} SOL to the admin wallet.`,
+        402,
+        'PAYMENT_REQUIRED'
+      );
+    }
+
+    console.log(`✅ [PAYMENT VERIFIED] Transaction: ${paymentVerified.transaction}`);
+    console.log(`   Amount: ${paymentVerified.amount} SOL`);
+
+    // ═══════════════════════════════════════════════════════════
+    //  OFF-CHAIN RANDOMIZATION (Instant)
+    // ═══════════════════════════════════════════════════════════
+
+    // 1. Generate provably fair random seed
+    const publicSeed = `${userId}_${data.lootBoxTypeId}_${Date.now()}`;
+    const random = randomizationService.generateRandom(publicSeed);
+
+    // 2. Select skin from weighted pool
+    const weightedPool = lootBox.skinPools.map(pool => ({
+      id: pool.id,
+      weight: pool.weight,
+      skinTemplate: pool.skinTemplate,
+    }));
+
+    const { item: selectedPool, probability } = randomizationService.selectFromWeightedPool(
+      random.value,
+      weightedPool
+    );
+
+    const selectedSkin = selectedPool.skinTemplate;
+
+    console.log(`🎲 [CASE OPENING] User: ${userId}`);
+    console.log(`   Pack: ${lootBox.name}`);
+    console.log(`   Selected: ${selectedSkin.weapon} | ${selectedSkin.skinName}`);
+    console.log(`   Rarity: ${selectedSkin.rarity}`);
+    console.log(`   Probability: ${(probability * 100).toFixed(2)}%`);
+
+    // 3. Mint REAL NFT on-chain using Metaplex Core
+    console.log(`🎨 [NFT MINTING] Creating real NFT on-chain...`);
+    console.log(`   Skin: ${selectedSkin.weapon} | ${selectedSkin.skinName}`);
+    console.log(`   Owner: ${user.walletAddress}`);
+    
+    const nftResult = await this.mintCoreNFT({
+      name: `${selectedSkin.weapon} | ${selectedSkin.skinName}`,
+      skinTemplate: selectedSkin,
+      owner: user.walletAddress,
+    });
+    
+    console.log(`✅ [NFT MINTED] Asset: ${nftResult.mint}`);
+    console.log(`   Transaction: ${nftResult.transaction}`);
+
+    // 4. Create case opening record with random fields
     const caseOpening = await this.caseOpeningRepository.create({
       userId,
       lootBoxTypeId: data.lootBoxTypeId,
-      vrfRequestId,
+      vrfRequestId: null, // Not using VRF
+      randomSeed: publicSeed,
+      randomValue: random.value,
+      randomHash: random.hash,
+      status: 'revealing',
+      skinTemplateId: selectedSkin.id,
       openedAt: new Date(),
-    });
+      completedAt: new Date(), // Completed immediately
+    } as any);
 
-    // Create transaction record
+    // 5. Create user skin
+    const userSkin = await this.userSkinRepository.create({
+      userId,
+      skinTemplateId: selectedSkin.id,
+      nftMintAddress: nftResult.mint,
+      lootBoxTypeId: data.lootBoxTypeId,
+      caseOpeningId: caseOpening.id,
+      source: 'opened',
+      claimed: false,
+      openedAt: new Date(),
+      currentPriceUsd: selectedSkin.basePriceUsd,
+      lastPriceUpdate: new Date(),
+      isInInventory: true,
+      name: `${selectedSkin.weapon} | ${selectedSkin.skinName}`,
+      symbol: 'SKIN',
+      metadataUri: selectedSkin.imageUrl || '',
+    } as any);
+
+    // 6. Update case opening with user skin
+    await this.caseOpeningRepository.update(caseOpening.id, {
+      userSkinId: userSkin.id,
+      status: 'completed',
+    } as any);
+
+    // 7. Create transaction record
     const solAmount = lootBox.priceSol;
     const usdcAmount = lootBox.priceUsdc || 0;
-    
-    const transaction = await this.transactionRepository.create({
+
+    await this.transactionRepository.create({
       userId,
       transactionType: TransactionType.OPEN_CASE,
       amountSol: data.paymentMethod === 'SOL' ? -solAmount : undefined,
       amountUsdc: data.paymentMethod === 'USDC' ? -usdcAmount : undefined,
-      amountUsd: data.paymentMethod === 'SOL' ? -usdcAmount : -usdcAmount, // Use USDC price for USD amount
+      amountUsd: data.paymentMethod === 'SOL' ? -usdcAmount : -usdcAmount,
       lootBoxTypeId: data.lootBoxTypeId,
-      status: TransactionStatus.PENDING,
+      status: TransactionStatus.CONFIRMED,
     });
 
-    // Simulate VRF completion after a short delay (in real implementation, this would be handled by blockchain events)
-    setTimeout(() => this.simulateVrfCompletion(caseOpening.id, lootBox.id, nftMintAddress), 2000);
+    // 8. Update user stats
+    await this.userRepository.updateStats(userId, {
+      casesOpened: user.casesOpened + 1,
+    });
 
-    const estimatedCompletionTime = new Date();
-    estimatedCompletionTime.setSeconds(estimatedCompletionTime.getSeconds() + 30);
+    // 9. Decrement supply
+    if (lootBox.maxSupply) {
+      await this.lootBoxRepository.decrementSupply(data.lootBoxTypeId);
+    }
 
+    // Return immediate result
     return {
       caseOpeningId: caseOpening.id,
-      nftMintAddress,
-      vrfRequestId,
-      transactionId: transaction.id,
-      estimatedCompletionTime,
+      nftMintAddress: nftResult.mint,
+      transaction: nftResult.transaction,
+      skinResult: {
+        id: selectedSkin.id,
+        weapon: selectedSkin.weapon,
+        skinName: selectedSkin.skinName,
+        rarity: selectedSkin.rarity,
+        condition: selectedSkin.condition,
+        currentPriceUsd: selectedSkin.basePriceUsd,
+        imageUrl: selectedSkin.imageUrl,
+      },
+      randomization: {
+        seed: publicSeed,
+        value: random.value,
+        hash: random.hash,
+        probability: (probability * 100).toFixed(2) + '%',
+      },
     };
   }
 
@@ -99,15 +222,20 @@ export class CaseOpeningService {
       throw new AppError('Unauthorized to view this case opening', 403, 'UNAUTHORIZED');
     }
 
-    const status = caseOpening.completedAt ? 'completed' : 'processing';
+    const status = (caseOpening as any).status || (caseOpening.completedAt ? 'completed' : 'processing');
 
     const response: any = {
       id: caseOpening.id,
       status,
-      vrfRequestId: caseOpening.vrfRequestId,
-      randomnessSeed: caseOpening.randomnessSeed,
       openedAt: caseOpening.openedAt,
       completedAt: caseOpening.completedAt,
+      // Off-chain randomization fields
+      randomSeed: (caseOpening as any).randomSeed,
+      randomValue: (caseOpening as any).randomValue,
+      randomHash: (caseOpening as any).randomHash,
+      // Legacy VRF fields (for backwards compatibility)
+      vrfRequestId: caseOpening.vrfRequestId,
+      randomnessSeed: caseOpening.randomnessSeed,
     };
 
     if (caseOpening.skinTemplate && caseOpening.userSkin) {
@@ -120,6 +248,7 @@ export class CaseOpeningService {
         currentPriceUsd: caseOpening.userSkin.currentPriceUsd,
         imageUrl: caseOpening.skinTemplate.imageUrl,
         nftMintAddress: caseOpening.userSkin.nftMintAddress,
+        claimed: (caseOpening.userSkin as any).claimed || false,
       };
     }
 
@@ -154,12 +283,33 @@ export class CaseOpeningService {
     };
 
     if (decision === 'keep') {
+      console.log(`✅ [DECISION] User kept NFT: ${caseOpening.userSkin?.nftMintAddress}`);
       result.addedToInventory = true;
     } else if (decision === 'buyback' && caseOpening.userSkin) {
-      // Process immediate buyback
-      const currentPrice = caseOpening.userSkin.currentPriceUsd || 0;
-      const buybackPrice = currentPrice * 0.85;
+      // ═══════════════════════════════════════════════════════════
+      //  OFF-CHAIN BUYBACK (Instant)
+      // ═══════════════════════════════════════════════════════════
 
+      const currentPrice = caseOpening.userSkin.currentPriceUsd || 0;
+      const buybackPrice = currentPrice * 0.85; // 85% buyback rate
+
+      // Execute real buyback (SOL to user)
+      const user = await this.userRepository.findById(userId);
+      if (!user) {
+        throw new AppError('User not found', 404, 'USER_NOT_FOUND');
+      }
+      const buybackResult = await simpleSolanaService.sendSOL({
+        toWallet: user.walletAddress,
+        amount: buybackPrice,
+      });
+
+      console.log(`💰 [BUYBACK] Executed`);
+      console.log(`   NFT: ${caseOpening.userSkin.nftMintAddress}`);
+      console.log(`   Original Price: $${currentPrice.toFixed(2)}`);
+      console.log(`   Buyback Price: $${buybackPrice.toFixed(2)}`);
+      console.log(`   Transaction: ${buybackResult.transaction}`);
+
+      // Mark skin as sold
       await this.userSkinRepository.markAsSold(caseOpening.userSkin.id, buybackPrice);
 
       // Create buyback transaction
@@ -172,9 +322,18 @@ export class CaseOpeningService {
         status: TransactionStatus.CONFIRMED,
       });
 
+      // TODO: Credit user balance (when user balance system is implemented)
+
       result.buybackPrice = buybackPrice;
       result.addedToInventory = false;
+      result.transaction = buybackResult.transaction;
+      result.solSent = true;
     }
+
+    // Update status
+    await this.caseOpeningRepository.update(caseOpeningId, {
+      status: 'decided',
+    } as any);
 
     return result;
   }
@@ -203,67 +362,113 @@ export class CaseOpeningService {
     };
   }
 
-  // Simulate VRF completion (in real implementation, this would be triggered by blockchain events)
-  private async simulateVrfCompletion(caseOpeningId: string, lootBoxTypeId: string, nftMintAddress: string) {
+  /**
+   * Upload metadata to Walrus
+   */
+  private async uploadToWalrus(metadata: any): Promise<string> {
+    const WALRUS_PUBLISHER = process.env.WALRUS_PUBLISHER || 'https://publisher.walrus-testnet.walrus.space';
+    const WALRUS_AGGREGATOR = process.env.WALRUS_AGGREGATOR || 'https://aggregator.walrus-testnet.walrus.space';
+    
+    console.log(`📝 [WALRUS] Uploading metadata...`);
+    
     try {
-      const lootBox = await this.lootBoxRepository.findById(lootBoxTypeId);
-      if (!lootBox || !lootBox.skinPools?.length) return;
-
-      // Simple weighted random selection
-      const randomSeed = `0x${Math.random().toString(16).substr(2, 64)}`;
-      const totalWeight = lootBox.skinPools.reduce((sum, pool) => sum + pool.weight, 0);
-      const randomValue = Math.random() * totalWeight;
+      const jsonString = JSON.stringify(metadata);
+      const blob = Buffer.from(jsonString, 'utf-8');
       
-      let currentWeight = 0;
-      let selectedSkin = lootBox.skinPools[0].skinTemplate;
-      
-      for (const pool of lootBox.skinPools) {
-        currentWeight += pool.weight;
-        if (randomValue <= currentWeight) {
-          selectedSkin = pool.skinTemplate;
-          break;
-        }
-      }
-
-      // Create user skin
-      const userSkin = await this.userSkinRepository.create({
-        userId: (await this.caseOpeningRepository.findById(caseOpeningId))?.userId,
-        skinTemplateId: selectedSkin.id,
-        nftMintAddress,
-        lootBoxTypeId,
-        openedAt: new Date(),
-        currentPriceUsd: selectedSkin.basePriceUsd,
-        lastPriceUpdate: new Date(),
-        isInInventory: true,
-        name: `${selectedSkin.weapon} | ${selectedSkin.skinName}`,
-        symbol: 'SKIN',
+      const response = await axios.put(`${WALRUS_PUBLISHER}/v1/store`, blob, {
+        headers: {
+          'Content-Type': 'application/octet-stream',
+        },
+        maxBodyLength: Infinity,
+        timeout: 10000, // 10 seconds max
       });
 
-      // Update case opening with results
-      await this.caseOpeningRepository.updateWithVrfResult(caseOpeningId, {
-        randomnessSeed: randomSeed,
-        skinTemplateId: selectedSkin.id,
-        userSkinId: userSkin.id,
-        completedAt: new Date(),
-      });
-
-      // Update user stats
-      const caseOpening = await this.caseOpeningRepository.findById(caseOpeningId);
-      if (caseOpening?.userId) {
-        const user = await this.userRepository.findById(caseOpening.userId);
-        if (user) {
-          await this.userRepository.updateStats(caseOpening.userId, {
-            casesOpened: user.casesOpened + 1,
-          });
-        }
+      if (response.data?.newlyCreated?.blobObject?.blobId) {
+        const blobId = response.data.newlyCreated.blobObject.blobId;
+        const uri = `${WALRUS_AGGREGATOR}/v1/${blobId}`;
+        console.log(`✅ [WALRUS] Uploaded: ${uri}`);
+        return uri;
+      } else if (response.data?.alreadyCertified?.blobId) {
+        const blobId = response.data.alreadyCertified.blobId;
+        const uri = `${WALRUS_AGGREGATOR}/v1/${blobId}`;
+        console.log(`✅ [WALRUS] Already exists: ${uri}`);
+        return uri;
       }
 
-      // Decrement supply after successful opening
-      if (lootBox.maxSupply) {
-        await this.lootBoxRepository.decrementSupply(lootBoxTypeId);
-      }
+      throw new Error('Invalid Walrus response');
     } catch (error) {
-      console.error('Error in VRF simulation:', error);
+      console.error('❌ [WALRUS] Upload failed:', error instanceof Error ? error.message : String(error));
+      // Fallback to using image URL directly if Walrus fails
+      console.log('⚠️  [WALRUS] Using fallback metadata URI');
+      return metadata.image || '';
     }
   }
+
+  /**
+   * Mint a real Core NFT on-chain
+   */
+  private async mintCoreNFT(params: {
+    name: string;
+    skinTemplate: any;
+    owner: string;
+  }): Promise<{ mint: string; transaction: string }> {
+    const { name, skinTemplate, owner } = params;
+    
+    // Get admin keypair from environment
+    const ADMIN_PRIVATE_KEY = process.env.ADMIN_PRIVATE_KEY;
+    if (!ADMIN_PRIVATE_KEY) {
+      throw new Error('ADMIN_PRIVATE_KEY not configured');
+    }
+
+    // Setup Solana connection
+    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+    
+    // Setup Umi
+    const umi = createUmi(rpcUrl).use(mplCore());
+    
+    // Convert admin keypair
+    const adminKeypairBytes = bs58.decode(ADMIN_PRIVATE_KEY);
+    const adminKeypair = umi.eddsa.createKeypairFromSecretKey(adminKeypairBytes);
+    const adminSigner = createSignerFromKeypair(umi, adminKeypair);
+    umi.use(signerIdentity(adminSigner));
+
+    // Prepare metadata
+    const metadata = {
+      name,
+      description: skinTemplate.description || `${skinTemplate.weapon} | ${skinTemplate.skinName} - ${skinTemplate.rarity}`,
+      image: skinTemplate.imageUrl,
+      attributes: [
+        { trait_type: 'Weapon', value: skinTemplate.weapon },
+        { trait_type: 'Skin', value: skinTemplate.skinName },
+        { trait_type: 'Rarity', value: skinTemplate.rarity },
+        { trait_type: 'Condition', value: skinTemplate.condition },
+        { trait_type: 'Base Price USD', value: skinTemplate.basePriceUsd.toString() },
+      ],
+    };
+
+    // Upload metadata to Walrus
+    const metadataUri = await this.uploadToWalrus(metadata);
+
+    // Generate asset signer
+    const asset = generateSigner(umi);
+
+    // Mint Core NFT with owner set to user's wallet
+    console.log(`🔨 [CORE NFT] Minting to owner: ${owner}...`);
+    
+    const tx = await create(umi, {
+      asset,
+      name,
+      uri: metadataUri,
+      owner: owner as any, // Will be converted to Umi PublicKey internally
+      plugins: [],
+    }).sendAndConfirm(umi);
+
+    const signature = bs58.encode(tx.signature);
+
+    return {
+      mint: asset.publicKey,
+      transaction: signature,
+    };
+  }
+
 } 

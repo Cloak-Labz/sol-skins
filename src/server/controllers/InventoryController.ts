@@ -1,5 +1,8 @@
 import { Request, Response } from "express";
 import { InventoryRepository } from "../repositories/InventoryRepository";
+import { InventoryService } from "../services/InventoryService";
+import { catchAsync } from "../middlewares/errorHandler";
+import { ResponseUtil } from "../utils/response";
 
 export type InventoryItem = {
   id: string;
@@ -18,6 +21,11 @@ export type InventoryItem = {
 const repo = new InventoryRepository();
 
 export class InventoryController {
+  private inventoryService: InventoryService;
+
+  constructor() {
+    this.inventoryService = new InventoryService();
+  }
   static async list(_req: Request, res: Response) {
     try {
       const items = await repo.findAll();
@@ -175,18 +183,17 @@ export class InventoryController {
     return res.json({ success: true, data: item });
   };
 
-  public sellSkin = (req: Request, res: Response): Response => {
-    const { skinId } = req.params as { skinId?: string };
-    if (!skinId) {
-      return res
-        .status(400)
-        .json({ success: false, error: "skinId is required" });
-    }
-    const minAcceptablePrice =
-      (req.body?.minAcceptablePrice as number | undefined) ?? null;
-    return res.json({
-      success: true,
-      data: { skinId, status: "queued", minAcceptablePrice },
-    });
-  };
+  public sellSkin = catchAsync(async (req: Request, res: Response) => {
+    const userId = req.user!.id;
+    const { skinId } = req.params;
+    const { minAcceptablePrice } = req.body;
+
+    const result = await this.inventoryService.sellSkinViaBuyback(
+      userId,
+      skinId,
+      minAcceptablePrice
+    );
+
+    ResponseUtil.success(res, result);
+  });
 }

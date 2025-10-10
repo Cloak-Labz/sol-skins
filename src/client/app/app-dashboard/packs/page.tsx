@@ -23,6 +23,7 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { casesService, marketplaceService } from "@/lib/services";
 import { LootBoxType } from "@/lib/types/api";
+import { Connection, PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 interface CSGOSkin {
   id: string;
@@ -167,7 +168,8 @@ const DEFAULT_ODDS: { label: string; rarity: string; pct: number }[] = [
 ];
 
 export default function PacksPage() {
-  const { connected } = useWallet();
+  const wallet = useWallet();
+  const { connected, publicKey, signTransaction, sendTransaction } = wallet;
   const [lootBoxes, setLootBoxes] = useState<LootBoxType[]>([]);
   const [selectedPack, setSelectedPack] = useState<LootBoxType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -179,6 +181,15 @@ export default function PacksPage() {
   const [spinItems, setSpinItems] = useState<CSGOSkin[]>([]);
   const rouletteRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<any>(null);
+
+  // Debug logging
+  console.log("🔍 [DEBUG] Button state:", {
+    connected,
+    openingPhase,
+    selectedPack: selectedPack?.id,
+    isSoldOut: selectedPack?.supply?.isSoldOut,
+    isDisabled: openingPhase !== null || !connected || selectedPack?.supply?.isSoldOut,
+  });
 
   // Odds to display (prefer API chances → map to labeled rows)
   const oddsToUse = (() => {
@@ -328,13 +339,18 @@ export default function PacksPage() {
     }, 100);
   };
 
+  const [caseOpeningId, setCaseOpeningId] = useState<string | null>(null);
+
   const handleOpenPack = async () => {
-    if (!connected) {
+    if (!connected || !publicKey) {
       toast.error("Connect your wallet first!");
       return;
     }
 
     if (openingPhase || !selectedPack) return;
+
+    // Admin wallet address from environment
+    const ADMIN_WALLET = process.env.NEXT_PUBLIC_ADMIN_WALLET || "5iF1vyxpqeYqWL4fKhSnFyFw5VzBTjRqDEpkiFta3uEm";
 
     // FASE 1: Waiting (apenas texto)
     setOpeningPhase("waiting");
@@ -349,67 +365,99 @@ export default function PacksPage() {
     }
 
     try {
-      // Open case via API
+      // ═══════════════════════════════════════════════════════════
+      //  STEP 1: TRANSFER SOL TO ADMIN WALLET
+      // ═══════════════════════════════════════════════════════════
+      
+      const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.devnet.solana.com";
+      const connection = new Connection(rpcUrl, "confirmed");
+      
+      // Convert SOL amount to lamports
+      const amountInLamports = Math.floor(parseFloat(selectedPack.priceSol) * LAMPORTS_PER_SOL);
+      
+      console.log(`💳 [PAYMENT] Sending ${selectedPack.priceSol} SOL (${amountInLamports} lamports) to admin...`);
+      toast.loading(`Sending ${selectedPack.priceSol} SOL payment...`, { id: "payment" });
+
+      // Create transfer transaction
+      const transaction = new Transaction().add(
+        SystemProgram.transfer({
+          fromPubkey: publicKey,
+          toPubkey: new PublicKey(ADMIN_WALLET),
+          lamports: amountInLamports,
+        })
+      );
+
+      // Get recent blockhash
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = publicKey;
+
+      // Send transaction
+      const signature = await sendTransaction(transaction, connection);
+      console.log(`✅ [PAYMENT] Transaction sent: ${signature}`);
+      
+      // Wait for confirmation
+      toast.loading("Confirming payment...", { id: "payment" });
+      await connection.confirmTransaction(signature, "confirmed");
+      
+      console.log(`✅ [PAYMENT] Payment confirmed!`);
+      toast.success("Payment confirmed!", { id: "payment" });
+
+      // ═══════════════════════════════════════════════════════════
+      //  STEP 2: OPEN CASE VIA API (Backend will verify payment)
+      // ═══════════════════════════════════════════════════════════
+
+      toast.loading("Opening pack...", { id: "opening" });
+      
       const response = await casesService.openCase({
         lootBoxTypeId: selectedPack.id,
         paymentMethod: "SOL",
       });
 
-      console.log("Case opening response:", response);
+      toast.success("Pack opened!", { id: "opening" });
+      console.log("🎉 [PACKS PAGE] Case opened with immediate result:", response);
 
-      // FASE 2: Spinning (mostrar roleta girando)
+      // Extract result from immediate response
+      const skinResult = response.data.skinResult;
+      const randomization = response.data.randomization;
+
+      // Store case opening ID for decision making
+      setCaseOpeningId(response.data.caseOpeningId);
+
+      // FASE 2: Spinning (mostrar roleta girando - puramente visual!)
       setOpeningPhase("spinning");
       startContinuousSpin();
 
-      // Poll for completion
-      const caseOpeningId = response.data.caseOpeningId;
-      let attempts = 0;
-      const maxAttempts = 15; // 15 seconds max
-
-      const checkStatus = async () => {
-        try {
-          const status = await casesService.getOpeningStatus(caseOpeningId);
-
-          if (status.completedAt && status.skinResult) {
-            // Case is complete, show result
-            const wonSkin: CSGOSkin = {
-              id: status.skinResult.id,
-              name: `${status.skinResult.weapon} | ${status.skinResult.skinName}`,
-              rarity: status.skinResult.rarity,
-              value: parseFloat(
-                String(status.skinResult.currentPriceUsd ?? "0")
-              ),
-              image: status.skinResult.imageUrl || "/assets/skins/img2.png",
-            };
-
-            stopAndShowResult(wonSkin);
-          } else if (attempts < maxAttempts) {
-            // Keep polling
-            attempts++;
-            setTimeout(checkStatus, 1000);
-          } else {
-            // Timeout
-            toast.error("Case opening timed out");
-            setOpeningPhase(null);
-            if (animationRef.current) {
-              cancelAnimationFrame(animationRef.current);
-            }
-          }
-        } catch (error) {
-          console.error("Error checking status:", error);
-          toast.error("Failed to check opening status");
-          setOpeningPhase(null);
-          if (animationRef.current) {
-            cancelAnimationFrame(animationRef.current);
-          }
-        }
+      // Create won skin from immediate result
+      const wonSkin: CSGOSkin = {
+        id: skinResult.id,
+        name: `${skinResult.weapon} | ${skinResult.skinName}`,
+        rarity: skinResult.rarity,
+        value: parseFloat(String(skinResult.currentPriceUsd ?? "0")),
+        image: skinResult.imageUrl || "/assets/skins/img2.png",
       };
 
-      // Start polling after 1 second
-      setTimeout(checkStatus, 1000);
-    } catch (error) {
+      console.log("🎲 Random seed:", randomization.seed);
+      console.log("🎲 Random value:", randomization.value);
+      console.log("🎲 Random hash:", randomization.hash);
+      console.log("📊 Probability:", randomization.probability);
+
+      // Show result after animation (purely visual delay)
+      setTimeout(() => {
+        stopAndShowResult(wonSkin);
+      }, 2000);
+    } catch (error: any) {
       console.error("Failed to open pack:", error);
-      toast.error("Failed to open pack");
+      
+      // More specific error messages
+      if (error?.message?.includes("Payment not found")) {
+        toast.error("Payment verification failed. Please try again.", { id: "payment" });
+      } else if (error?.message?.includes("User rejected")) {
+        toast.error("Transaction cancelled", { id: "payment" });
+      } else {
+        toast.error(error?.message || "Failed to open pack", { id: "opening" });
+      }
+      
       setOpeningPhase(null);
       if (animationRef.current) {
         cancelAnimationFrame(animationRef.current);
@@ -964,14 +1012,26 @@ export default function PacksPage() {
                   >
                     <Button
                       onClick={async () => {
+                        if (!caseOpeningId) {
+                          toast.error("Case opening ID not found");
+                          return;
+                        }
                         try {
-                          // Find the case opening ID from the won skin
-                          // In production, store this in state when opening
-                          toast.success("Skin claimed to inventory!");
+                          toast.loading("Adding skin to inventory...", {
+                            id: "claim",
+                          });
+                          await casesService.makeDecision(caseOpeningId, {
+                            decision: "keep",
+                          });
+                          toast.success("Skin added to inventory!", {
+                            id: "claim",
+                          });
                           setShowResult(false);
+                          // Optional: Navigate to inventory
+                          window.location.href = "/app-dashboard/inventory";
                         } catch (error) {
                           console.error("Failed to claim skin:", error);
-                          toast.error("Failed to claim skin");
+                          toast.error("Failed to claim skin", { id: "claim" });
                         }
                       }}
                       size="lg"
@@ -982,15 +1042,29 @@ export default function PacksPage() {
                     </Button>
                     <Button
                       onClick={async () => {
+                        if (!caseOpeningId) {
+                          toast.error("Case opening ID not found");
+                          return;
+                        }
                         try {
-                          // In production, make API call to sell
+                          toast.loading("Executing buyback...", { id: "sell" });
+                          const result = await casesService.makeDecision(
+                            caseOpeningId,
+                            { decision: "buyback" }
+                          );
+                          const buybackPrice =
+                            result.data?.buybackPrice ||
+                            wonSkin.value * 0.85;
                           toast.success(
-                            `Sold for $${(wonSkin.value * 0.85).toFixed(2)}`
+                            `Sold for $${buybackPrice.toFixed(2)} (85% buyback)!`,
+                            { id: "sell", duration: 4000 }
                           );
                           setShowResult(false);
+                          // Optional: Navigate to history
+                          window.location.href = "/app-dashboard/history";
                         } catch (error) {
                           console.error("Failed to sell skin:", error);
-                          toast.error("Failed to sell skin");
+                          toast.error("Failed to sell skin", { id: "sell" });
                         }
                       }}
                       size="lg"
