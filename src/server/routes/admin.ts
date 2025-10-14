@@ -26,3 +26,6 @@ adminRoutes.post("/inventory", InventoryController.add);
 
 // PUT /admin/inventory/:id/mint - Update mint info for existing item
 adminRoutes.put("/inventory/:id/mint", InventoryController.updateMint);
+
+// GET /admin/packs - List all packs (loot boxes)
+adminRoutes.get("/packs", adminController.getPacks);

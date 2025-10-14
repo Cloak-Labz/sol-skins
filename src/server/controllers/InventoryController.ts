@@ -20,10 +20,14 @@ const repo = new InventoryRepository();
 export class InventoryController {
   static async list(_req: Request, res: Response) {
     try {
+      console.log("🔍 Attempting to fetch inventory items...");
       const items = await repo.findAll();
+      console.log("✅ Successfully fetched inventory items:", items.length);
       res.json({ success: true, data: items });
     } catch (e: any) {
-      res.status(500).json({ success: false, error: e?.message || "Failed" });
+      console.error("❌ Error fetching inventory:", e);
+      console.error("❌ Error stack:", e.stack);
+      res.status(500).json({ success: false, error: e?.message || "Failed to fetch inventory" });
     }
   }
 

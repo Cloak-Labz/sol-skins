@@ -51,4 +51,11 @@ export class AdminController {
 
     ResponseUtil.success(res, stats);
   });
+
+  getPacks = catchAsync(async (req: Request, res: Response) => {
+    // For now, return empty array - packs will be managed through the Solana program
+    // In the future, this could fetch from a database table
+    const packs = [];
+    ResponseUtil.success(res, packs);
+  });
 } 

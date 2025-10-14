@@ -20,7 +20,7 @@ export const AppDataSource = new DataSource({
   username: config.database.username,
   password: config.database.password,
   database: config.database.database,
-  synchronize: config.database.synchronize,
+  synchronize: true, // Temporarily enable to create missing tables
   logging: config.database.logging,
   entities: [
     User,
