@@ -5,18 +5,14 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Shield,
   Package,
   Loader2,
   CheckCircle,
   AlertCircle,
-  Unlock,
-  TrendingUp,
   Plus,
   Upload,
-  Settings,
   X,
 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -27,7 +23,6 @@ import { simpleCandyMachineService } from "@/lib/services/simpleCandyMachineServ
 import {
   getProgramFromWallet,
   initializeProgram,
-  publishBatch,
   fetchGlobalState,
   fetchBatch,
   getUSDCMint,
@@ -97,18 +92,11 @@ export default function AdminPage() {
   // Pack creation form
   const [packName, setPackName] = useState("");
   const [packDescription, setPackDescription] = useState("");
-  const [packSkins, setPackSkins] = useState<PackSkin[]>([]);
-
-  // Legacy batch form (for backward compatibility)
-  const [batchId, setBatchId] = useState("");
-  const [candyMachine, setCandyMachine] = useState("");
-  const [metadataUris, setMetadataUris] = useState("");
-  const [publishing, setPublishing] = useState(false);
-  const [loadingCandyMachine, setLoadingCandyMachine] = useState(false);
 
   // Candy Machine management
   const [candyMachines, setCandyMachines] = useState<CandyMachine[]>([]);
   const [loadingCandyMachines, setLoadingCandyMachines] = useState(false);
+  const [loadingCandyMachine, setLoadingCandyMachine] = useState(false);
 
   // Candy Machine form state
   const [showCandyMachineForm, setShowCandyMachineForm] = useState(false);
@@ -123,7 +111,7 @@ export default function AdminPage() {
     creatorShare: 100,
   });
 
-  // Inventory selection for batch composition
+  // Inventory for pack composition
   const [inventory, setInventory] = useState<
     Array<{
       id: string;
@@ -134,7 +122,6 @@ export default function AdminPage() {
       rarity?: string;
     }>
   >([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [loadingInventory, setLoadingInventory] = useState(false);
 
   // Clients
@@ -172,12 +159,6 @@ export default function AdminPage() {
       loadProgramState();
       loadPacks();
 
-      // Auto-load candy machine from cache if available
-      const stored = localStorage.getItem("candy_machine_pubkey");
-      if (stored) {
-        setCandyMachine(stored);
-      }
-
       // Load minted NFTs from backend DB
       void loadInventory();
     }
@@ -194,10 +175,6 @@ export default function AdminPage() {
       const globalState = await fetchGlobalState(program);
       if (globalState) {
         setInitialized(true);
-
-        // Auto-suggest next batch id
-        const nextBatch = (Number(globalState.currentBatch || 0) + 1) >>> 0;
-        setBatchId(String(nextBatch));
 
         // Load all batches (scan up to max 50 to find all existing batches)
         const loadedBatches: BatchWithId[] = [];
@@ -341,7 +318,6 @@ export default function AdminPage() {
 
       // Update state
       setCandyMachines((prev) => [...prev, newCandyMachine]);
-      setCandyMachine(result.candyMachine);
       setShowCandyMachineForm(false);
 
       // Enhanced success notification with Solscan links
@@ -405,22 +381,6 @@ export default function AdminPage() {
     }
   };
 
-  const loadCandyMachine = async () => {
-    // Set default values
-    setCandyMachineConfig({
-      name: "SolSkins Collection",
-      symbol: "SOLSKINS",
-      description:
-        "CS2 Skins as Solana NFTs - The ultimate collection of Counter-Strike 2 skins on Solana blockchain",
-      image: "",
-      itemsAvailable: 1000,
-      sellerFeeBasisPoints: 500,
-      creatorAddress: wallet.publicKey?.toBase58() || "",
-      creatorShare: 100,
-    });
-    setShowCandyMachineForm(true);
-  };
-
   const fetchCandyMachines = async () => {
     try {
       setLoadingCandyMachines(true);
@@ -434,11 +394,22 @@ export default function AdminPage() {
         throw new Error(`Failed to fetch cache: ${response.statusText}`);
       }
 
-      const cacheData = await response.json();
-      console.log("📄 Cache data received:", cacheData);
+      const responseData = await response.json();
+      console.log("📄 Cache data received:", responseData);
+
+      // Extract the actual cache data from the nested structure
+      const cacheData = responseData.cacheData || responseData;
+      console.log("📄 Extracted cache data:", cacheData);
 
       // Parse Sugar cache file structure
       const candyMachines: CandyMachine[] = [];
+
+      console.log("🔍 Debug cache structure:", {
+        hasProgram: !!cacheData.program,
+        programKeys: cacheData.program ? Object.keys(cacheData.program) : [],
+        candyMachine: cacheData.program?.candyMachine,
+        fullProgram: cacheData.program
+      });
 
       if (cacheData.program && cacheData.program.candyMachine) {
         // Extract collection information from cache
@@ -518,120 +489,6 @@ export default function AdminPage() {
       }
     } finally {
       setLoadingCandyMachines(false);
-    }
-  };
-
-  const handlePublishBatch = async () => {
-    // Strict batch id validation
-    const batchIdNum = Number.parseInt(batchId, 10);
-    // Check if batch ID is within safe integer range
-    if (!Number.isFinite(batchIdNum) || batchIdNum < 0) {
-      toast.error("Invalid Batch ID: must be a non-negative integer");
-      return;
-    }
-    if (batchIdNum > Number.MAX_SAFE_INTEGER) {
-      toast.error("Invalid Batch ID: exceeds u64 range");
-      return;
-    }
-
-    if (!wallet.publicKey || !candyMachine) {
-      toast.error("Please fill in all fields");
-      return;
-    }
-
-    try {
-      setPublishing(true);
-      toast.loading("Publishing batch...", { id: "publish" });
-      const program = getProgramFromWallet(wallet as any, connection);
-
-      // Build metadata URIs from selected inventory
-      const selected = inventory.filter((i) => selectedIds.has(i.id));
-      const uris = selected
-        .map((i) => (i.metadataUri || "").trim())
-        .filter((u) => u.length > 0);
-
-      if (uris.length === 0) {
-        toast.error("Select at least one NFT with metadata URI", {
-          id: "publish",
-        });
-        return;
-      }
-
-      // Compute a deterministic non-zero merkle root from URIs (simple SHA-256 of joined URIs)
-      const encoder = new TextEncoder();
-      const data = encoder.encode(uris.join("\n"));
-      // @ts-ignore - web crypto available in browser
-      const digest = await crypto.subtle.digest("SHA-256", data);
-      const merkleRoot = new Uint8Array(digest);
-      // Sanity: ensure not all zeros
-      const nonZero = merkleRoot.some((b) => b !== 0);
-      if (!nonZero) {
-        throw new Error("Computed merkle root is zero - invalid input");
-      }
-
-      const result = await publishBatch({
-        program,
-        authority: wallet.publicKey,
-        batchId: batchIdNum,
-        candyMachine: new PublicKey(candyMachine),
-        metadataUris: uris,
-        merkleRoot,
-      });
-
-      // Enhanced success notification with Solscan links
-      toast.success(
-        <div className="space-y-2">
-          <div className="font-semibold">
-            Batch #{batchIdNum} published successfully! (Devnet)
-          </div>
-          <div className="text-sm space-y-1">
-            <div>
-              <strong>Candy Machine:</strong>{" "}
-              <a
-                href={`https://solscan.io/account/${candyMachine}?cluster=devnet`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-400 hover:text-blue-300 underline"
-              >
-                View on Solscan
-              </a>
-            </div>
-            <div>
-              <strong>Transaction:</strong>{" "}
-              <a
-                href={`https://solscan.io/tx/${result.signature}?cluster=devnet`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-green-400 hover:text-green-300 underline"
-              >
-                View Transaction
-              </a>
-            </div>
-            <div className="text-xs text-zinc-400">
-              {uris.length} NFTs added to batch
-            </div>
-          </div>
-        </div>,
-        {
-          id: "publish",
-          duration: 6000,
-        }
-      );
-      console.log("Publish result:", result);
-
-      // Reset form (next batch)
-      setBatchId(String(batchIdNum + 1));
-      setMetadataUris("");
-
-      // Reload batches
-      await loadProgramState();
-    } catch (error: any) {
-      console.error("Failed to publish batch:", error);
-      toast.error(error.message || "Failed to publish batch", {
-        id: "publish",
-      });
-    } finally {
-      setPublishing(false);
     }
   };
 
@@ -860,15 +717,6 @@ export default function AdminPage() {
     setPacks((prev) =>
       prev.map((p) => (p.id === selectedPack.id ? updatedPack : p))
     );
-  };
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   };
 
   // Not connected
@@ -1252,134 +1100,6 @@ export default function AdminPage() {
                     </div>
                   </div>
                 )}
-              </Card>
-            )}
-
-            {/* Legacy Batch Management (for backward compatibility) */}
-            {initialized && (
-              <Card className="p-6 bg-zinc-950 border-zinc-800">
-                <h2 className="text-xl font-bold text-white mb-4">
-                  Legacy Batch Management
-                </h2>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="batchId" className="text-white">
-                      Batch ID
-                    </Label>
-                    <Input
-                      id="batchId"
-                      type="number"
-                      placeholder="0"
-                      value={batchId}
-                      onChange={(e) => setBatchId(e.target.value)}
-                      className="bg-zinc-900 border-zinc-700 text-white"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="candyMachine" className="text-white">
-                      Candy Machine (Collection)
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="candyMachine"
-                        placeholder="Auto-generated candy machine"
-                        value={candyMachine}
-                        onChange={(e) => setCandyMachine(e.target.value)}
-                        className="bg-zinc-900 border-zinc-700 text-white"
-                        readOnly
-                      />
-                      <Button
-                        type="button"
-                        onClick={loadCandyMachine}
-                        disabled={loadingCandyMachine}
-                        className="bg-zinc-700 hover:bg-zinc-600 text-white whitespace-nowrap"
-                      >
-                        {loadingCandyMachine ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Loading...
-                          </>
-                        ) : (
-                          "Create Candy Machine"
-                        )}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-zinc-500 mt-1">
-                      Click "Create Candy Machine" to configure and deploy a new
-                      Candy Machine
-                    </p>
-                  </div>
-
-                  <div>
-                    <Label className="text-white">Select NFTs for Batch</Label>
-                    <div className="mt-2 grid gap-3 max-h-80 overflow-auto pr-2">
-                      {loadingInventory ? (
-                        <p className="text-zinc-400 text-sm">
-                          Loading inventory...
-                        </p>
-                      ) : inventory.length === 0 ? (
-                        <p className="text-zinc-400 text-sm">
-                          No NFTs found in inventory
-                        </p>
-                      ) : (
-                        inventory.map((item) => (
-                          <div
-                            key={item.id}
-                            className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 border border-zinc-800"
-                          >
-                            <div className="w-12 h-12 rounded bg-zinc-800 overflow-hidden flex-shrink-0">
-                              {item.imageUrl ? (
-                                <img
-                                  src={item.imageUrl}
-                                  alt={item.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : null}
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-white text-sm font-medium truncate">
-                                {item.name}
-                              </p>
-                              <p className="text-zinc-500 text-xs truncate">
-                                {item.metadataUri || "No metadata URI"}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-zinc-400">
-                                {item.rarity || "-"}
-                              </span>
-                              <Checkbox
-                                checked={selectedIds.has(item.id)}
-                                onCheckedChange={() => toggleSelect(item.id)}
-                                className="border-zinc-600 data-[state=checked]:bg-[#E99500] data-[state=checked]:border-[#E99500]"
-                              />
-                            </div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <p className="text-xs text-zinc-500 mt-1">
-                      Choose minted NFTs to include. We'll derive metadata URIs
-                      from selection.
-                    </p>
-                  </div>
-
-                  <Button
-                    onClick={handlePublishBatch}
-                    disabled={publishing}
-                    className="w-full bg-[#E99500] hover:bg-[#d18500] text-black font-semibold"
-                  >
-                    {publishing ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Publishing...
-                      </>
-                    ) : (
-                      "Publish Batch"
-                    )}
-                  </Button>
-                </div>
               </Card>
             )}
 

@@ -62,6 +62,30 @@ export async function publishBatch(
     batchPDA: batchPDA.toBase58(),
   });
 
+  // Check if batch already exists with different size
+  try {
+    const existingBatch = await program.account.batch.fetchNullable(batchPDA);
+    if (existingBatch) {
+      const existingUriCount = existingBatch.metadataUris?.length || 0;
+      if (existingUriCount !== metadataUris.length) {
+        const suggestedId = batchId + 1;
+        throw new Error(
+          `❌ Batch ${batchId} already exists with ${existingUriCount} URIs, but you're trying to use ${metadataUris.length} URIs.\n\n` +
+          `🔒 Solana accounts cannot be resized once created.\n\n` +
+          `✅ Solution: Change Batch ID to ${suggestedId} (or any unused number) and try again.`
+        );
+      }
+      console.log(`Batch ${batchId} already exists with same size, will be updated`);
+    }
+  } catch (error: any) {
+    // If it's our custom error, re-throw it
+    if (error.message?.includes("already exists with")) {
+      throw error;
+    }
+    // Otherwise, continue (batch doesn't exist yet)
+    console.log("Batch does not exist yet, will create new");
+  }
+
   try {
     // IDL instruction name: publish_merkle_root → publishMerkleRoot
     // Arg order per IDL: batch_id, candy_machine, metadata_uris, merkle_root, snapshot_time
