@@ -21,7 +21,8 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { casesService, marketplaceService } from "@/lib/services";
+import { casesService, marketplaceService, SolanaProgramService } from "@/lib/services";
+import { PublicKey, Keypair } from '@solana/web3.js';
 import { LootBoxType } from "@/lib/types/api";
 
 interface CSGOSkin {
@@ -167,7 +168,7 @@ const DEFAULT_ODDS: { label: string; rarity: string; pct: number }[] = [
 ];
 
 export default function PacksPage() {
-  const { connected } = useWallet();
+  const { connected, publicKey, signTransaction } = useWallet();
   const [lootBoxes, setLootBoxes] = useState<LootBoxType[]>([]);
   const [selectedPack, setSelectedPack] = useState<LootBoxType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -349,71 +350,98 @@ export default function PacksPage() {
     }
 
     try {
-      // Open case via API
-      const response = await casesService.openCase({
-        lootBoxTypeId: selectedPack.id,
-        paymentMethod: "SOL",
-      });
+      const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+      const pid = process.env.NEXT_PUBLIC_PROGRAM_ID as string;
+      const programService = new SolanaProgramService(rpc, pid);
 
-      console.log("Case opening response:", response);
+      const wallet = { publicKey, signTransaction };
+      
+      // 1. Initialize global state if needed
+      try {
+        const initSig = await programService.testInitialize(wallet);
+        console.log("Global state initialized:", initSig);
+        toast.success("Global state initialized successfully!");
+      } catch (initError) {
+        console.log("Global state might already be initialized:", initError);
+        // Continue anyway
+      }
 
-      // FASE 2: Spinning (mostrar roleta girando)
+      // 2. Create batch with test data
+      const batchId = Number.parseInt((selectedPack as any).batchId || `${Date.now()}`);
+      const candyMachine = new PublicKey('11111111111111111111111111111111'); // Mock candy machine
+      const metadataUris = [
+        'https://example.com/metadata1.json',
+        'https://example.com/metadata2.json',
+        'https://example.com/metadata3.json'
+      ];
+      const merkleRoot = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
+      
+      try {
+        const batchSig = await programService.createBatch(wallet, {
+          batchId,
+          candyMachine,
+          metadataUris,
+          merkleRoot
+        });
+        console.log("Batch created:", batchSig);
+        toast.success("Batch created successfully!");
+      } catch (batchError) {
+        console.log("Batch might already exist:", batchError);
+        // Continue anyway
+      }
+
+      // 3. Create box
+      const boxAsset = Keypair.generate().publicKey;
+      try {
+        const boxSig = await programService.createBox(wallet, { batchId, boxAsset });
+        console.log("Box created:", boxSig);
+        toast.success("Box created successfully!");
+      } catch (boxError) {
+        console.log("Box creation failed:", boxError);
+        // Continue anyway
+      }
+
+      // 4. Open box (real VRF flow)
+      const openSig = await programService.openBox(wallet, { batchId, poolSize: 1, boxAsset });
+      console.log("Box opened:", openSig);
+      toast.success("Box opened successfully!");
+
+      // 2. Start roulette animation
       setOpeningPhase("spinning");
       startContinuousSpin();
 
-      // Poll for completion
-      const caseOpeningId = response.data.caseOpeningId;
-      let attempts = 0;
-      const maxAttempts = 15; // 15 seconds max
-
-      const checkStatus = async () => {
+      // 3. After animation, reveal and claim
+      setTimeout(async () => {
         try {
-          const status = await casesService.getOpeningStatus(caseOpeningId);
-
-          if (status.completedAt && status.skinResult) {
-            // Case is complete, show result
-            const wonSkin: CSGOSkin = {
-              id: status.skinResult.id,
-              name: `${status.skinResult.weapon} | ${status.skinResult.skinName}`,
-              rarity: status.skinResult.rarity,
-              value: parseFloat(
-                String(status.skinResult.currentPriceUsd ?? "0")
-              ),
-              image: status.skinResult.imageUrl || "/assets/skins/img2.png",
-            };
-
-            stopAndShowResult(wonSkin);
-          } else if (attempts < maxAttempts) {
-            // Keep polling
-            attempts++;
-            setTimeout(checkStatus, 1000);
-          } else {
-            // Timeout
-            toast.error("Case opening timed out");
-            setOpeningPhase(null);
-            if (animationRef.current) {
-              cancelAnimationFrame(animationRef.current);
-            }
-          }
+          // Create a fresh program service instance to avoid transaction reuse
+          const freshProgramService = new SolanaProgramService(rpc, pid);
+          const { signature, asset } = await freshProgramService.revealAndClaim(wallet, { batchId, boxAsset });
+          console.log("Revealed and claimed:", { signature, asset });
+          
+          // Simulate result for now (you can fetch real metadata later)
+          const mockSkin: CSGOSkin = {
+            id: asset,
+            name: "AK-47 | Fire Serpent",
+            rarity: "legendary",
+            value: 150.0,
+            image: "/assets/skins/img2.png"
+          };
+          
+          setWonSkin(mockSkin);
+          setOpeningPhase("revealing");
+          stopAndShowResult(mockSkin);
         } catch (error) {
-          console.error("Error checking status:", error);
-          toast.error("Failed to check opening status");
+          console.error("Failed to reveal and claim:", error);
+          console.error("Full error details:", JSON.stringify(error, null, 2));
+          toast.error("Failed to reveal and claim: " + (error as Error).message);
           setOpeningPhase(null);
-          if (animationRef.current) {
-            cancelAnimationFrame(animationRef.current);
-          }
         }
-      };
+      }, 4000); // After roulette animation
 
-      // Start polling after 1 second
-      setTimeout(checkStatus, 1000);
     } catch (error) {
-      console.error("Failed to open pack:", error);
-      toast.error("Failed to open pack");
+      console.error("Failed to open box:", error);
+      toast.error("Failed to open box: " + (error as Error).message);
       setOpeningPhase(null);
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
     }
   };
 
