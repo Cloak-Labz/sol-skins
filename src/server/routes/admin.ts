@@ -29,3 +29,6 @@ adminRoutes.put("/inventory/:id/mint", InventoryController.updateMint);
 
 // GET /admin/packs - List all packs (loot boxes)
 adminRoutes.get("/packs", adminController.getPacks);
+
+// POST /admin/packs - Create new pack
+adminRoutes.post("/packs", adminController.createPack);

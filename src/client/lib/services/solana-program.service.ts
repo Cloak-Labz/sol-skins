@@ -27,6 +27,26 @@ export class SolanaProgramService {
     return PublicKey.findProgramAddressSync([Buffer.from('global')], this.programId);
   }
 
+  public async getGlobalState(): Promise<any> {
+    try {
+      const [globalPDA] = this.getGlobalPDA();
+      const accountInfo = await this.connection.getAccountInfo(globalPDA);
+      if (!accountInfo) {
+        throw new Error('Global state account not found');
+      }
+      // For now, return basic account info - you'll need to deserialize properly
+      return {
+        address: globalPDA.toBase58(),
+        data: accountInfo.data,
+        lamports: accountInfo.lamports,
+        currentBatch: 0 // Default fallback
+      };
+    } catch (error) {
+      console.error('Error fetching global state:', error);
+      throw error;
+    }
+  }
+
   public getBatchPDA(batchId: number): [PublicKey, number] {
     const buf = Buffer.alloc(8);
     buf.writeBigUInt64LE(BigInt(batchId));
@@ -118,13 +138,13 @@ export class SolanaProgramService {
 
     const [global] = this.getGlobalPDA();
     
-    // Use a test USDC mint for devnet (EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v)
-    const usdcMint = new PublicKey('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+    // Devnet USDC mint
+    const usdcMint = new PublicKey('Gh9ZwEmdLJ8DscKNTkTqVBVDM8E5MNVNY3L9pfWoySAs');
     
     // Get treasury ATA PDA
     const [treasuryAta] = PublicKey.findProgramAddressSync(
       [global.toBuffer(), Buffer.from('associated_token'), usdcMint.toBuffer()],
-      new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL') // Associated Token Program
+      new PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL')
     );
 
     const tx = await program.methods

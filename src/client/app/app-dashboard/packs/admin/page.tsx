@@ -15,7 +15,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 import { PublicKey, Keypair } from "@solana/web3.js";
@@ -28,7 +28,9 @@ import {
   getUSDCMint,
   type BatchAccount,
 } from "@/lib/solana";
-import { WalrusClient, WalrusUploadResult } from "@/lib/walrus-client";
+import { boxesService, SolanaProgramService } from "@/lib/services";
+// import { WalrusClient, WalrusUploadResult } from "@/lib/walrus-client";
+import { uploadJsonToIrys, uploadJsonBatchToIrys } from "@/lib/irys-upload";
 import {
   UmiCandyMachineClient,
   UmiDeployedCandyMachine,
@@ -82,12 +84,27 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [batches, setBatches] = useState<BatchWithId[]>([]);
+  const [currentBatchOnChain, setCurrentBatchOnChain] = useState<number | null>(null);
 
   // Pack management
   const [packs, setPacks] = useState<Pack[]>([]);
   const [selectedPack, setSelectedPack] = useState<Pack | null>(null);
   const [creatingPack, setCreatingPack] = useState(false);
   const [deployingPack, setDeployingPack] = useState(false);
+  // Create Box form
+  const [creatingBox, setCreatingBox] = useState(false);
+  const [boxName, setBoxName] = useState("");
+  const [boxDescription, setBoxDescription] = useState("");
+  const [boxMetadataUris, setBoxMetadataUris] = useState("");
+  const [selectedBoxInventoryIds, setSelectedBoxInventoryIds] = useState<Set<string>>(new Set());
+  
+  // Publish Batch form
+  const [publishing, setPublishing] = useState(false);
+  const [batchIdInput, setBatchIdInput] = useState("");
+  const isPublishingRef = useRef(false);
+  const [candyMachineInput, setCandyMachineInput] = useState("");
+  const [snapshotTimeInput, setSnapshotTimeInput] = useState("");
+  const [selectedBoxId, setSelectedBoxId] = useState("");
 
   // Pack creation form
   const [packName, setPackName] = useState("");
@@ -125,7 +142,7 @@ export default function AdminPage() {
   const [loadingInventory, setLoadingInventory] = useState(false);
 
   // Clients
-  const [walrusClient] = useState(() => new WalrusClient(true)); // Testnet for now
+  // Walrus client deprecated - using Irys upload helpers instead
   const [umiCandyMachineClient, setUmiCandyMachineClient] =
     useState<UmiCandyMachineClient | null>(null);
 
@@ -175,6 +192,11 @@ export default function AdminPage() {
       const globalState = await fetchGlobalState(program);
       if (globalState) {
         setInitialized(true);
+        try {
+          // Save currentBatch if present for auto-batch id
+          const cb = Number(globalState.currentBatch || 0);
+          if (Number.isFinite(cb)) setCurrentBatchOnChain(cb);
+        } catch {}
 
         // Load all batches (scan up to max 50 to find all existing batches)
         const loadedBatches: BatchWithId[] = [];
@@ -495,7 +517,7 @@ export default function AdminPage() {
   const loadInventory = async () => {
     try {
       setLoadingInventory(true);
-      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
       const res = await fetch(`${base}/api/v1/admin/inventory`);
       const json = await res.json();
       if (json?.success) {
@@ -523,11 +545,35 @@ export default function AdminPage() {
   // Pack Management Functions
   const loadPacks = async () => {
     try {
-      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
       const res = await fetch(`${base}/api/v1/admin/packs`);
       const json = await res.json();
       if (json?.success) {
-        setPacks(json.data || []);
+        // Transform Box data to Pack format
+        const packs = (json.data || []).map((box: any) => {
+          const metadataUris: string[] = Array.isArray(box.metadataUris) ? box.metadataUris : [];
+          const skinsFromMetadata = metadataUris.map((uri, idx) => ({
+            id: `${box.id}-${idx}`,
+            name: `Item #${idx + 1}`,
+            weapon: "",
+            rarity: "",
+            imageUrl: "",
+            metadataUri: uri,
+          }));
+          return {
+            id: box.id,
+            name: box.name,
+            description: box.description,
+            status: box.status || 'active',
+            skins: skinsFromMetadata,
+            deployedAt: box.createdAt ? new Date(box.createdAt) : undefined,
+            candyMachine: box.candyMachine !== '11111111111111111111111111111111' ? box.candyMachine : undefined,
+            candyGuard: undefined,
+            // Keep original box data for reference
+            _boxData: box
+          } as Pack & { _boxData: any };
+        });
+        setPacks(packs);
       }
     } catch (error) {
       console.error("Failed to load packs:", error);
@@ -555,7 +601,7 @@ export default function AdminPage() {
       };
 
       // Save to backend
-      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
       const res = await fetch(`${base}/api/v1/admin/packs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -589,24 +635,23 @@ export default function AdminPage() {
       setDeployingPack(true);
       toast.loading(`Deploying pack "${pack.name}"...`, { id: "deploy-pack" });
 
-      // Step 1: Upload metadata to Walrus
-      console.log("📤 Uploading metadata to Walrus...");
-      const metadataArray = pack.skins.map((skin, index) =>
-        walrusClient.createSkinMetadata({
-          name: skin.name,
-          weapon: skin.weapon,
-          rarity: skin.rarity,
-          imageUrl: skin.imageUrl,
-          packId: pack.id,
-          index: index + 1,
-          totalItems: pack.skins.length,
-        })
-      );
+      // Step 1: Upload metadata to Arweave (Irys)
+      console.log("📤 Uploading metadata to Arweave (Irys)...");
+      const metadataArray = (pack.skins || []).map((skin, index) => ({
+        name: skin.name,
+        description: `${skin.weapon || ''}`.trim() || skin.name,
+        image: skin.imageUrl,
+        attributes: [
+          { trait_type: 'weapon', value: skin.weapon || 'Unknown' },
+          { trait_type: 'rarity', value: skin.rarity || 'common' },
+          { trait_type: 'packId', value: pack.id },
+          { trait_type: 'index', value: index + 1 },
+          { trait_type: 'totalItems', value: (pack.skins || []).length },
+        ],
+      }));
 
-      const metadataUris = await walrusClient.uploadJsonBatch(metadataArray);
-      console.log(
-        `✅ Uploaded ${metadataUris.length} metadata files to Walrus`
-      );
+      const metadataUris = await uploadJsonBatchToIrys(wallet as any, metadataArray);
+      console.log(`✅ Uploaded ${metadataUris.length} metadata files to Arweave`);
 
       // Step 2: Create collection metadata URI (placeholder)
       const collectionUri =
@@ -618,7 +663,7 @@ export default function AdminPage() {
         pack.id,
         `${pack.name} Collection`,
         collectionUri,
-        pack.skins.length,
+        (pack.skins || []).length,
         wallet.publicKey
       );
 
@@ -628,7 +673,7 @@ export default function AdminPage() {
 
       // Step 4: Add items to Candy Machine
       console.log("📝 Adding items to Candy Machine...");
-      const items = pack.skins.map((skin, index) => ({
+      const items = (pack.skins || []).map((skin, index) => ({
         name: `${pack.id} #${index + 1}`,
         uri: metadataUris[index],
       }));
@@ -645,14 +690,14 @@ export default function AdminPage() {
         candyGuard: deployedCM.candyGuard,
         deployedAt: new Date(),
         status: "deployed",
-        skins: pack.skins.map((skin, index) => ({
+        skins: (pack.skins || []).map((skin, index) => ({
           ...skin,
           metadataUri: metadataUris[index],
         })),
       };
 
       // Save to backend
-      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002";
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
       await fetch(`${base}/api/v1/admin/packs/${pack.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -717,6 +762,218 @@ export default function AdminPage() {
     setPacks((prev) =>
       prev.map((p) => (p.id === selectedPack.id ? updatedPack : p))
     );
+  };
+
+  // Simple 32-byte digest as placeholder merkle root
+  const computeMerkleRoot32 = (uris: string[]): number[] => {
+    const out = new Uint8Array(32);
+    let acc = 2166136261 | 0;
+    for (const u of uris) {
+      for (let i = 0; i < u.length; i++) {
+        acc ^= u.charCodeAt(i);
+        acc = Math.imul(acc, 16777619);
+      }
+    }
+    for (let i = 0; i < 32; i++) {
+      out[i] = (acc >>> (i & 7)) & 0xff;
+      acc = (acc ^ (acc << 13)) | 0;
+    }
+    return Array.from(out);
+  };
+
+  const handleCreateBox = async () => {
+    if (!boxName.trim()) {
+      toast.error("Box name is required");
+      return;
+    }
+    
+    // Get metadata URIs from selected inventory or manual input
+    let metadataUris: string[] = [];
+    if (selectedBoxInventoryIds.size > 0) {
+      const selected = inventory.filter((i) => selectedBoxInventoryIds.has(i.id) && i.metadataUri);
+      metadataUris = Array.from(new Set(selected.map((i) => i.metadataUri!)));
+    }
+    if (metadataUris.length === 0) {
+      metadataUris = boxMetadataUris
+        .split(/\r?\n/)
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+    }
+    if (metadataUris.length === 0) {
+      toast.error("Add at least one metadata URI");
+      return;
+    }
+
+    try {
+      setCreatingBox(true);
+      toast.loading("Creating box...", { id: "create-box" });
+      
+      const box = await boxesService.createBox({
+        name: boxName,
+        description: boxDescription,
+        metadataUris,
+        status: 'active',
+        totalItems: metadataUris.length,
+        itemsAvailable: metadataUris.length,
+        itemsOpened: 0,
+      });
+
+      toast.success("Box created successfully", { id: "create-box" });
+      await loadPacks();
+      
+      // Clear form
+      setBoxName("");
+      setBoxDescription("");
+      setBoxMetadataUris("");
+      setSelectedBoxInventoryIds(new Set());
+    } catch (e: any) {
+      console.error("Failed to create box:", e);
+      toast.error(e?.message || "Failed to create box", { id: "create-box" });
+    } finally {
+      setCreatingBox(false);
+    }
+  };
+
+  const handlePublishBatch = async () => {
+    if (!wallet.publicKey) {
+      toast.error("Connect wallet");
+      return;
+    }
+    
+    if (isPublishingRef.current) {
+      toast.error("Transaction already in progress");
+      return;
+    }
+    // Get next batch ID from on-chain program
+    let batchId: number;
+    if (batchIdInput.trim().length > 0) {
+      batchId = parseInt(batchIdInput.trim());
+      if (!Number.isFinite(batchId)) {
+        toast.error("Invalid batchId");
+        return;
+      }
+    } else {
+      // Auto-generate: get the highest batchId from existing boxes
+      try {
+        const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+        const res = await fetch(`${base}/api/v1/admin/packs`);
+        const json = await res.json();
+        if (json?.success && json.data) {
+          const boxes = json.data;
+          const maxBatchId = Math.max(0, ...boxes.map((box: any) => box.batchId || 0));
+          batchId = maxBatchId + 1;
+          console.log(`Next batch ID: ${batchId} (max existing: ${maxBatchId})`);
+        } else {
+          throw new Error("Failed to load existing boxes");
+        }
+      } catch (error) {
+        console.error("Failed to get current batch count from database:", error);
+        // Fallback to timestamp
+        batchId = Math.floor(Date.now() / 1000);
+        console.log(`Using fallback batch ID: ${batchId}`);
+      }
+    }
+    if (!selectedBoxId) {
+      toast.error("Select a box to publish as batch");
+      return;
+    }
+    
+    // Get the selected box's metadata URIs
+    const selectedBox = packs.find(p => p.id === selectedBoxId);
+    const boxData: any = selectedBox && (selectedBox as any)._boxData ? (selectedBox as any)._boxData : null;
+    if (!selectedBox || !boxData?.metadataUris) {
+      toast.error("Selected box not found or has no metadata URIs");
+      return;
+    }
+    
+    const metadataUris = boxData.metadataUris;
+
+    try {
+      isPublishingRef.current = true;
+      setPublishing(true);
+      toast.loading("Publishing batch on-chain...", { id: "publish-batch" });
+      const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.devnet.solana.com";
+      const pid = process.env.NEXT_PUBLIC_PROGRAM_ID as string;
+      const programService = new SolanaProgramService(rpc, pid);
+      const cm = candyMachineInput && candyMachineInput.length > 0
+        ? new PublicKey(candyMachineInput)
+        : new PublicKey("11111111111111111111111111111111");
+      const merkleRoot = computeMerkleRoot32(metadataUris);
+      // Snapshot time defaults to now if not provided
+      if (!snapshotTimeInput) {
+        setSnapshotTimeInput(`${Math.floor(Date.now() / 1000)}`);
+      }
+
+      await programService.createBatch(wallet as any, {
+        batchId,
+        candyMachine: cm,
+        metadataUris,
+        merkleRoot,
+      });
+
+      // Update the box with the batchId first
+      const selectedBox = packs.find(p => p.id === selectedBoxId);
+      if (selectedBox) {
+        await boxesService.updateBox(selectedBox.id, { batchId });
+        console.log(`Updated box ${selectedBox.id} with batchId ${batchId}`);
+        
+        // Small delay to ensure database transaction is committed
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } else {
+        throw new Error("Selected box not found");
+      }
+
+      await boxesService.syncBox(batchId);
+      await loadPacks();
+      await loadProgramState();
+      toast.success("Batch published & synced", { id: "publish-batch" });
+    } catch (e: any) {
+      console.error("Failed to publish batch:", e);
+      const errorMsg = e?.message || "Failed to publish batch";
+      if (errorMsg.includes("already been processed")) {
+        toast.error("Transaction already processed - batch may have been created", { id: "publish-batch" });
+      } else {
+        toast.error(errorMsg, { id: "publish-batch" });
+      }
+    } finally {
+      isPublishingRef.current = false;
+      setPublishing(false);
+    }
+  };
+
+  const savePackMetadata = async () => {
+    if (!selectedPack) return;
+    try {
+      const metadataUris = (selectedPack.skins || [])
+        .map((s) => s.metadataUri)
+        .filter((u): u is string => Boolean(u));
+      if (metadataUris.length === 0) {
+        toast.error("Add at least one skin with a metadata URI");
+        return;
+      }
+
+      // Persist to boxes table using the box id (packs list is derived from boxes)
+      await boxesService.updateBox(selectedPack.id, { metadataUris });
+
+      // Reflect in local state: update _boxData.metadataUris if present
+      setPacks((prev) =>
+        prev.map((p) =>
+          p.id === selectedPack.id
+            ? ({
+                ...p,
+                _boxData: {
+                  ...(p as any)._boxData,
+                  metadataUris,
+                },
+              } as any)
+            : p
+        )
+      );
+      toast.success("Metadata saved to box");
+    } catch (e: any) {
+      console.error("Failed to save metadata to box:", e);
+      toast.error(e?.message || "Failed to save metadata");
+    }
   };
 
   // Not connected
@@ -817,291 +1074,7 @@ export default function AdminPage() {
               </Card>
             )}
 
-            {/* Pack Management */}
-            {initialized && (
-              <Card className="p-6 bg-zinc-950 border-zinc-800">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Package className="w-5 h-5 text-[#E99500]" />
-                    Pack Management
-                  </h2>
-                  <Button
-                    onClick={() => setSelectedPack(null)}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                  >
-                    New Pack
-                  </Button>
-                </div>
-
-                {!selectedPack ? (
-                  <div className="space-y-4">
-                    {/* Create New Pack */}
-                    <div className="space-y-3">
-                      <div>
-                        <Label htmlFor="packName" className="text-white">
-                          Pack Name
-                        </Label>
-                        <Input
-                          id="packName"
-                          placeholder="e.g., CS:GO Weapon Case"
-                          value={packName}
-                          onChange={(e) => setPackName(e.target.value)}
-                          className="bg-zinc-900 border-zinc-700 text-white"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="packDescription" className="text-white">
-                          Description
-                        </Label>
-                        <Textarea
-                          id="packDescription"
-                          placeholder="Describe this pack..."
-                          value={packDescription}
-                          onChange={(e) => setPackDescription(e.target.value)}
-                          className="bg-zinc-900 border-zinc-700 text-white"
-                          rows={3}
-                        />
-                      </div>
-                      <Button
-                        onClick={createPack}
-                        disabled={
-                          creatingPack ||
-                          !packName.trim() ||
-                          !packDescription.trim()
-                        }
-                        className="w-full bg-[#E99500] hover:bg-[#d18500] text-black font-semibold"
-                      >
-                        {creatingPack ? (
-                          <>
-                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            Creating...
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="w-4 h-4 mr-2" />
-                            Create Pack
-                          </>
-                        )}
-                      </Button>
-                    </div>
-
-                    {/* Existing Packs */}
-                    {packs.length > 0 && (
-                      <div className="mt-6">
-                        <h3 className="text-lg font-semibold text-white mb-3">
-                          Existing Packs
-                        </h3>
-                        <div className="space-y-2">
-                          {packs.map((pack) => (
-                            <div
-                              key={pack.id}
-                              className="p-3 bg-zinc-900 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors cursor-pointer"
-                              onClick={() => setSelectedPack(pack)}
-                            >
-                              <div className="flex items-center justify-between">
-                                <div>
-                                  <p className="text-white font-medium">
-                                    {pack.name}
-                                  </p>
-                                  <p className="text-xs text-zinc-400">
-                                    {pack.skins.length} skins • {pack.status}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <div className="text-xs text-zinc-500">
-                                    {pack.deployedAt
-                                      ? new Date(
-                                          pack.deployedAt
-                                        ).toLocaleDateString()
-                                      : "Draft"}
-                                  </div>
-                                  {pack.candyMachine && (
-                                    <div className="text-xs text-zinc-600 font-mono">
-                                      {pack.candyMachine.toBase58().slice(0, 8)}
-                                      ...
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {/* Pack Details */}
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-semibold text-white">
-                          {selectedPack.name}
-                        </h3>
-                        <p className="text-sm text-zinc-400">
-                          {selectedPack.description}
-                        </p>
-                        <p className="text-xs text-zinc-500 mt-1">
-                          Status:{" "}
-                          <span className="capitalize">
-                            {selectedPack.status}
-                          </span>
-                          {selectedPack.candyMachine && (
-                            <span className="ml-2">
-                              • CM:{" "}
-                              {selectedPack.candyMachine.toBase58().slice(0, 8)}
-                              ...
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          onClick={() => setSelectedPack(null)}
-                          variant="outline"
-                          size="sm"
-                        >
-                          Back
-                        </Button>
-                        {selectedPack.status === "draft" &&
-                          selectedPack.skins.length > 0 && (
-                            <Button
-                              onClick={() => deployPack(selectedPack)}
-                              disabled={deployingPack}
-                              className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                              {deployingPack ? (
-                                <>
-                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                  Deploying...
-                                </>
-                              ) : (
-                                <>
-                                  <Upload className="w-4 h-4 mr-2" />
-                                  Deploy Pack
-                                </>
-                              )}
-                            </Button>
-                          )}
-                      </div>
-                    </div>
-
-                    {/* Pack Skins */}
-                    <div>
-                      <h4 className="text-md font-semibold text-white mb-3">
-                        Pack Skins ({selectedPack.skins.length})
-                      </h4>
-                      {selectedPack.skins.length === 0 ? (
-                        <div className="text-center py-8 bg-zinc-900 rounded-lg border border-zinc-800">
-                          <Package className="w-12 h-12 text-zinc-600 mx-auto mb-3" />
-                          <p className="text-zinc-400 text-sm">
-                            No skins added yet
-                          </p>
-                          <p className="text-zinc-500 text-xs mt-1">
-                            Add skins from inventory below
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {selectedPack.skins.map((skin) => (
-                            <div
-                              key={skin.id}
-                              className="p-3 bg-zinc-900 rounded-lg border border-zinc-800"
-                            >
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded bg-zinc-800 overflow-hidden flex-shrink-0">
-                                  {skin.imageUrl ? (
-                                    <img
-                                      src={skin.imageUrl}
-                                      alt={skin.name}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : null}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-white text-sm font-medium truncate">
-                                    {skin.name}
-                                  </p>
-                                  <p className="text-zinc-500 text-xs">
-                                    {skin.weapon} • {skin.rarity}
-                                  </p>
-                                </div>
-                                <Button
-                                  onClick={() => removeSkinFromPack(skin.id)}
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-400 hover:text-red-300 hover:border-red-400"
-                                >
-                                  Remove
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Add Skins from Inventory */}
-                    <div>
-                      <h4 className="text-md font-semibold text-white mb-3">
-                        Add Skins from Inventory
-                      </h4>
-                      <div className="grid gap-2 max-h-60 overflow-auto pr-2">
-                        {loadingInventory ? (
-                          <p className="text-zinc-400 text-sm">
-                            Loading inventory...
-                          </p>
-                        ) : inventory.length === 0 ? (
-                          <p className="text-zinc-400 text-sm">
-                            No NFTs found in inventory
-                          </p>
-                        ) : (
-                          inventory
-                            .filter(
-                              (item) =>
-                                !selectedPack.skins.some(
-                                  (skin) => skin.id === item.id
-                                )
-                            )
-                            .map((item) => (
-                              <div
-                                key={item.id}
-                                className="flex items-center gap-3 p-2 rounded bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-colors"
-                              >
-                                <div className="w-8 h-8 rounded bg-zinc-800 overflow-hidden flex-shrink-0">
-                                  {item.imageUrl ? (
-                                    <img
-                                      src={item.imageUrl}
-                                      alt={item.name}
-                                      className="w-full h-full object-cover"
-                                    />
-                                  ) : null}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-white text-sm font-medium truncate">
-                                    {item.name}
-                                  </p>
-                                  <p className="text-zinc-500 text-xs">
-                                    {item.rarity || "Unknown"}
-                                  </p>
-                                </div>
-                                <Button
-                                  onClick={() => addSkinToPack(item)}
-                                  size="sm"
-                                  className="bg-[#E99500] hover:bg-[#d18500] text-black"
-                                >
-                                  Add
-                                </Button>
-                              </div>
-                            ))
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </Card>
-            )}
+            {/* Pack Management removed: admin is on-chain-first now */}
 
             {/* Candy Machine Creation Form Modal */}
             {showCandyMachineForm && (
@@ -1529,13 +1502,178 @@ export default function AdminPage() {
               </Card>
             )}
 
+            {/* Create Box */}
+            <Card className="p-6 bg-zinc-950 border-zinc-800">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-white">Create Box</h2>
+              </div>
+              <div className="grid gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-white">Box Name *</Label>
+                    <Input 
+                      value={boxName} 
+                      onChange={(e) => setBoxName(e.target.value)} 
+                      placeholder="e.g., D3 Collection Box"
+                      className="bg-zinc-900 border-zinc-700 text-white"
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-white">Description</Label>
+                    <Input 
+                      value={boxDescription} 
+                      onChange={(e) => setBoxDescription(e.target.value)} 
+                      placeholder="Optional description"
+                      className="bg-zinc-900 border-zinc-700 text-white"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <Label className="text-white">Metadata URIs</Label>
+                  <div className="space-y-2">
+                    <div className="text-sm text-zinc-400">
+                      Select from inventory or enter manually:
+                    </div>
+                    {inventory.length > 0 && (
+                      <div className="max-h-32 overflow-y-auto border border-zinc-700 rounded p-2 bg-zinc-900">
+                        {inventory.map((item) => (
+                          <label key={item.id} className="flex items-center space-x-2 text-sm text-white">
+                            <input
+                              type="checkbox"
+                              checked={selectedBoxInventoryIds.has(item.id)}
+                              onChange={(e) => {
+                                const newSet = new Set(selectedBoxInventoryIds);
+                                if (e.target.checked) {
+                                  newSet.add(item.id);
+                                } else {
+                                  newSet.delete(item.id);
+                                }
+                                setSelectedBoxInventoryIds(newSet);
+                              }}
+                              className="bg-zinc-800"
+                            />
+                            <span>{item.name} - {item.metadataUri}</span>
+                          </label>
+                        ))}
+                      </div>
+                    )}
+                    <Textarea
+                      value={boxMetadataUris}
+                      onChange={(e) => setBoxMetadataUris(e.target.value)}
+                      placeholder="Enter metadata URIs (one per line)"
+                      rows={3}
+                      className="bg-zinc-900 border-zinc-700 text-white"
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={handleCreateBox} 
+                    disabled={creatingBox}
+                    className="bg-[#E99500] hover:bg-[#d18500] text-black"
+                  >
+                    {creatingBox ? "Creating..." : "Create Box"}
+                  </Button>
+                </div>
+                <p className="text-xs text-zinc-500">Creates a box in the database with metadata URIs. Required before publishing batch.</p>
+              </div>
+            </Card>
+
+            {/* Publish Batch (On-chain) */}
+            {initialized && (
+              <Card className="p-6 bg-zinc-950 border-zinc-800">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-xl font-bold text-white">Publish Batch (On-chain)</h2>
+                </div>
+                <div className="grid gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-white">Batch ID *</Label>
+                      <div className="flex gap-2">
+                        <Input value={batchIdInput} onChange={(e)=>setBatchIdInput(e.target.value)} placeholder="auto: next available" className="bg-zinc-900 border-zinc-700 text-white"/>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="text-xs"
+                          onClick={async () => {
+                            try {
+                              const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+                              const res = await fetch(`${base}/api/v1/admin/packs`);
+                              const json = await res.json();
+                              if (json?.success && json.data) {
+                                const boxes = json.data;
+                                const maxBatchId = Math.max(0, ...boxes.map((box: any) => box.batchId || 0));
+                                setBatchIdInput(String(maxBatchId + 1));
+                              } else {
+                                setBatchIdInput(String(Math.floor(Date.now() / 1000)));
+                              }
+                            } catch (error) {
+                              setBatchIdInput(String(Math.floor(Date.now() / 1000)));
+                            }
+                          }}
+                        >
+                          Auto-generate
+                        </Button>
+                      </div>
+                    </div>
+                    <div>
+                      <Label className="text-white">Candy Machine (optional)</Label>
+                      <Input value={candyMachineInput} onChange={(e)=>setCandyMachineInput(e.target.value)} placeholder="11111111111111111111111111111111" className="bg-zinc-900 border-zinc-700 text-white"/>
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-white">Snapshot Time (sec, optional)</Label>
+                    <Input value={snapshotTimeInput} onChange={(e)=>setSnapshotTimeInput(e.target.value)} placeholder={`${Math.floor(Date.now()/1000)}`} className="bg-zinc-900 border-zinc-700 text-white"/>
+                  </div>
+                  <div>
+                    <Label className="text-white">Select Box *</Label>
+                    <select 
+                      value={selectedBoxId} 
+                      onChange={(e) => setSelectedBoxId(e.target.value)}
+                      className="w-full p-2 bg-zinc-900 border border-zinc-700 text-white rounded"
+                    >
+                      <option value="">Choose a box...</option>
+                      {packs.map((pack) => {
+                        const data: any = (pack as any)._boxData;
+                        const count = data?.metadataUris?.length || 0;
+                        return (
+                          <option key={pack.id} value={pack.id}>
+                            {pack.name} ({count} items)
+                          </option>
+                        );
+                      })}
+                    </select>
+                    {selectedBoxId && (
+                      <div className="mt-2 p-2 bg-zinc-800 rounded text-sm">
+                        <p className="text-white font-medium">Selected Box:</p>
+                        <p className="text-zinc-400">
+                          {(() => {
+                            const sel: any = packs.find(p => p.id === selectedBoxId);
+                            return sel?._boxData?.metadataUris?.length || 0;
+                          })()} metadata URIs
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex justify-end">
+                    <Button onClick={handlePublishBatch} disabled={publishing} className="bg-[#E99500] hover:bg-[#d18500] text-black">
+                      {publishing ? (<><Loader2 className="w-4 h-4 mr-2 animate-spin"/>Publishing...</>) : ("Publish Batch")}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-zinc-500">Writes on-chain then syncs DB mirror. Player UI reads DB but opens on-chain by batchId.</p>
+                </div>
+              </Card>
+            )}
+
             {/* Published Batches List */}
             {initialized && (
               <Card className="p-6 bg-zinc-950 border-zinc-800">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-xl font-bold text-white">
                     Published Batches{" "}
-                    {batches.length > 0 && `(${batches.length})`}
+                    {packs.filter(p => (p as any)._boxData?.batchId).length > 0 && `(${packs.filter(p => (p as any)._boxData?.batchId).length})`}
                   </h2>
                   <Button
                     onClick={loadProgramState}
@@ -1547,7 +1685,7 @@ export default function AdminPage() {
                   </Button>
                 </div>
 
-                {batches.length === 0 ? (
+                {packs.filter(p => (p as any)._boxData?.batchId).length === 0 ? (
                   <div className="text-center py-12">
                     <Package className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
                     <p className="text-zinc-400 text-sm font-medium">
@@ -1559,9 +1697,11 @@ export default function AdminPage() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {batches.map((batch) => (
+                    {packs.filter(p => (p as any)._boxData?.batchId).map((pack) => {
+                      const boxData = (pack as any)._boxData;
+                      return (
                       <div
-                        key={batch.id}
+                        key={pack.id}
                         className="p-4 bg-zinc-900 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors"
                       >
                         <div className="flex items-start justify-between">
@@ -1569,31 +1709,31 @@ export default function AdminPage() {
                             <Package className="w-5 h-5 text-[#E99500] mt-0.5" />
                             <div>
                               <p className="text-white font-semibold">
-                                Batch #{batch.id}
+                                Batch #{boxData?.batchId} - {pack.name}
                               </p>
                               <p className="text-xs text-zinc-400 mt-1">
-                                {Number(batch.totalItems)} NFTs in pool
+                                {boxData?.totalItems || 0} NFTs in pool
                               </p>
                               <p className="text-xs text-zinc-400">
-                                {Number(batch.boxesMinted)} boxes minted •{" "}
-                                {Number(batch.boxesOpened)} opened
+                                {boxData?.itemsAvailable || 0} available •{" "}
+                                {boxData?.itemsOpened || 0} opened
                               </p>
                               <p className="text-xs text-zinc-500 mt-2 font-mono">
                                 Candy Machine:{" "}
-                                {batch.candyMachine.toBase58().slice(0, 8)}...
-                                {batch.candyMachine.toBase58().slice(-8)}
+                                {boxData?.candyMachine?.slice(0, 8)}...
+                                {boxData?.candyMachine?.slice(-8)}
                               </p>
-                              {batch.metadataUris &&
-                                batch.metadataUris.length > 0 && (
+                              {boxData?.metadataUris &&
+                                boxData.metadataUris.length > 0 && (
                                   <details className="mt-2">
                                     <summary className="text-xs text-zinc-500 cursor-pointer hover:text-zinc-400">
-                                      View {batch.metadataUris.length} Metadata
+                                      View {boxData.metadataUris.length} Metadata
                                       URIs
                                     </summary>
                                     <div className="mt-2 space-y-1 pl-4 border-l border-zinc-700">
-                                      {batch.metadataUris
+                                      {boxData.metadataUris
                                         .slice(0, 5)
-                                        .map((uri, idx) => (
+                                        .map((uri: string, idx: number) => (
                                           <p
                                             key={idx}
                                             className="text-xs text-zinc-600 font-mono truncate"
@@ -1601,10 +1741,10 @@ export default function AdminPage() {
                                             {idx + 1}. {uri}
                                           </p>
                                         ))}
-                                      {batch.metadataUris.length > 5 && (
+                                      {boxData.metadataUris.length > 5 && (
                                         <p className="text-xs text-zinc-600">
                                           ... and{" "}
-                                          {batch.metadataUris.length - 5} more
+                                          {boxData.metadataUris.length - 5} more
                                         </p>
                                       )}
                                     </div>
@@ -1615,13 +1755,14 @@ export default function AdminPage() {
                           <div className="text-right">
                             <div className="text-xs text-zinc-500">
                               {new Date(
-                                Number(batch.snapshotTime) * 1000
+                                Number(boxData?.snapshotTime) * 1000
                               ).toLocaleDateString()}
                             </div>
                           </div>
                         </div>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </Card>

@@ -8,6 +8,7 @@ import { historyRoutes } from "./history";
 import { leaderboardRoutes } from "./leaderboard";
 import { activityRoutes } from "./activity";
 import { adminRoutes } from "./admin";
+import { boxRoutes } from "./boxes";
 
 export async function createRoutes(): Promise<Router> {
   const router = Router();
@@ -22,6 +23,7 @@ export async function createRoutes(): Promise<Router> {
   router.use("/leaderboard", leaderboardRoutes);
   router.use("/activity", activityRoutes);
   router.use("/admin", adminRoutes);
+  router.use("/boxes", boxRoutes);
 
   return router;
 }

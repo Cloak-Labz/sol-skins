@@ -29,7 +29,8 @@ import {
   useConnection,
 } from "@solana/wallet-adapter-react";
 import { mintCoreNft } from "@/lib/solana/core-nft";
-import { getWalrusClient } from "@/lib/walrus/upload";
+// import { getWalrusClient } from "@/lib/walrus/upload";
+import { uploadJsonToIrys } from "@/lib/irys-upload";
 
 interface MintedNFT {
   id: string;
@@ -90,7 +91,7 @@ export default function AdminInventoryPage() {
       setLoading(true);
       const response = await fetch(
         `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
         }/api/v1/admin/inventory`
       );
       const data = await response.json();
@@ -118,7 +119,7 @@ export default function AdminInventoryPage() {
 
     try {
       setMinting(true);
-      toast.loading("Uploading metadata to Walrus...", { id: "upload" });
+      toast.loading("Uploading metadata to Arweave (Irys)...", { id: "upload" });
 
       // Parse attributes if provided
       let parsedAttributes: any[] = [];
@@ -156,23 +157,22 @@ export default function AdminInventoryPage() {
         },
       };
 
-      console.log("Uploading metadata to Walrus:", metadata);
+      console.log("Uploading metadata to Arweave (Irys):", metadata);
 
-      // Upload to Walrus
-      const walrusClient = getWalrusClient(true);
-      const walrusResult = await walrusClient.uploadJson(metadata);
+      // Upload to Arweave (Irys)
+      const irys = await uploadJsonToIrys(wallet as any, metadata);
 
       toast.success(
-        `Uploaded to Walrus! BlobID: ${walrusResult.blobId.slice(0, 8)}...`,
+        `Uploaded to Arweave! Tx: ${irys.id.slice(0, 8)}...`,
         { id: "upload" }
       );
-      console.log("Walrus upload result:", walrusResult);
+      console.log("Irys upload result:", irys);
 
       // Mint Core NFT on-chain
       toast.loading("Minting Core NFT...", { id: "mint" });
       const result = await mintCoreNft({
         name: nftName,
-        uri: walrusResult.uri,
+        uri: irys.uri,
         walletAdapter: walletCtx as any,
         connection,
       });
@@ -184,7 +184,7 @@ export default function AdminInventoryPage() {
       toast.loading("Saving to database...", { id: "save" });
       const saveResponse = await fetch(
         `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3002"
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
         }/api/v1/admin/inventory`,
         {
           method: "POST",
@@ -193,7 +193,7 @@ export default function AdminInventoryPage() {
             name: nftName,
             description: nftDescription,
             imageUrl: nftImageUrl,
-            metadataUri: walrusResult.uri,
+            metadataUri: irys.uri,
             rarity: nftRarity,
             attributes: metadata.attributes,
             mintedAsset: result.assetAddress,
@@ -379,14 +379,14 @@ export default function AdminInventoryPage() {
               />
               <p className="text-xs text-muted-foreground mt-1">
                 Optional: JSON object or array with custom attributes. Will
-                auto-upload to Walrus.
+                auto-upload to Arweave (Irys).
               </p>
             </div>
 
             <div className="bg-zinc-900/40 p-4 rounded-lg border border-zinc-800">
               <p className="text-sm text-muted-foreground">
-                <strong>🐋 Walrus Upload:</strong> Metadata will be
-                automatically uploaded to Walrus Testnet before minting.
+                <strong>🕸️ Arweave (Irys) Upload:</strong> Metadata will be
+                automatically uploaded to Arweave via Irys before minting.
               </p>
             </div>
 
@@ -404,7 +404,7 @@ export default function AdminInventoryPage() {
               ) : (
                 <>
                   <Package className="mr-2 h-4 w-4" />
-                  Upload to Walrus & Mint Core NFT
+                  Upload to Arweave (Irys) & Mint Core NFT
                 </>
               )}
             </Button>

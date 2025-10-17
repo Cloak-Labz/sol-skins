@@ -21,7 +21,7 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { casesService, marketplaceService, SolanaProgramService } from "@/lib/services";
+import { casesService, marketplaceService, SolanaProgramService, boxesService } from "@/lib/services";
 import { PublicKey, Keypair } from '@solana/web3.js';
 import { LootBoxType } from "@/lib/types/api";
 
@@ -33,7 +33,8 @@ interface CSGOSkin {
   image: string;
 }
 
-const getPackIcon = (rarity: string) => {
+const getPackIcon = (rarity?: string) => {
+  if (!rarity) return Package;
   switch (rarity.toLowerCase()) {
     case "legendary":
       return Crown;
@@ -44,7 +45,8 @@ const getPackIcon = (rarity: string) => {
   }
 };
 
-const getPackColor = (rarity: string) => {
+const getPackColor = (rarity?: string) => {
+  if (!rarity) return "from-gray-600 to-gray-800";
   switch (rarity.toLowerCase()) {
     case "legendary":
       return "from-yellow-500 to-orange-600";
@@ -57,7 +59,8 @@ const getPackColor = (rarity: string) => {
   }
 };
 
-const getPackGlow = (rarity: string) => {
+const getPackGlow = (rarity?: string) => {
+  if (!rarity) return "shadow-gray-500/50";
   switch (rarity.toLowerCase()) {
     case "legendary":
       return "shadow-yellow-500/50";
@@ -171,6 +174,11 @@ export default function PacksPage() {
   const { connected, publicKey, signTransaction } = useWallet();
   const [lootBoxes, setLootBoxes] = useState<LootBoxType[]>([]);
   const [selectedPack, setSelectedPack] = useState<LootBoxType | null>(null);
+  const [boxes, setBoxes] = useState<any[]>([]);
+  const [loadingBoxes, setLoadingBoxes] = useState(false);
+  const [selectedBoxMetaUris, setSelectedBoxMetaUris] = useState<string[]>([]);
+  const isRevealingRef = useRef(false);
+  const isOpeningRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [openingPhase, setOpeningPhase] = useState<
     "waiting" | "spinning" | "revealing" | null
@@ -214,9 +222,9 @@ export default function PacksPage() {
     return DEFAULT_ODDS;
   })();
 
-  // Load loot boxes from API
+  // Load boxes from database
   useEffect(() => {
-    loadLootBoxes();
+    loadBoxes(); // Load boxes from database
   }, []);
 
   const loadLootBoxes = async () => {
@@ -238,10 +246,59 @@ export default function PacksPage() {
     }
   };
 
+  const loadBoxes = async () => {
+    try {
+      setLoading(true);
+      setLoadingBoxes(true);
+      const data = await boxesService.getActiveBoxes();
+      console.log("loadBoxes - received data:", data);
+      console.log("loadBoxes - data length:", data?.length);
+      setBoxes(data);
+      console.log("loadBoxes - boxes state set");
+      // Set the first box as selected pack if none is selected
+      if (data.length > 0 && !selectedPack) {
+        setSelectedPack(data[0]);
+        console.log("loadBoxes - selectedPack set to:", data[0]);
+        // Prefetch metadata URIs for first selection
+        void fetchSelectedBoxMetaUris(data[0]);
+      }
+    } catch (error) {
+      console.error("Failed to load boxes:", error);
+      toast.error("Failed to load boxes");
+    } finally {
+      setLoading(false);
+      setLoadingBoxes(false);
+    }
+  };
+
+  const fetchSelectedBoxMetaUris = async (pack: any) => {
+    try {
+      const batchId = pack?.batchId;
+      if (!batchId) {
+        setSelectedBoxMetaUris([]);
+        return;
+      }
+      const box = await boxesService.getBoxByBatchId(batchId);
+      const uris = Array.isArray(box?.metadataUris) ? box.metadataUris : [];
+      setSelectedBoxMetaUris(uris);
+      console.log('Fetched metadataUris for batch', batchId, uris.length);
+    } catch (e) {
+      console.warn('Failed to fetch box by batchId for metadataUris', e);
+      setSelectedBoxMetaUris([]);
+    }
+  };
+
   // Generate initial roulette items
   useEffect(() => {
     generateSpinItems();
-  }, []);
+  }, [selectedPack, selectedBoxMetaUris]);
+
+  // When user changes selected pack, fetch its metadataUris from backend
+  useEffect(() => {
+    if (selectedPack) {
+      void fetchSelectedBoxMetaUris(selectedPack as any);
+    }
+  }, [selectedPack]);
 
   // Cleanup animation on unmount
   useEffect(() => {
@@ -252,12 +309,69 @@ export default function PacksPage() {
     };
   }, []);
 
-  const generateSpinItems = () => {
+  const generateSpinItems = async () => {
     const items: CSGOSkin[] = [];
-    for (let i = 0; i < 50; i++) {
-      items.push(MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)]);
+
+    // Use real metadata from selected pack (fetched from backend) if available
+    const metadataUris = selectedBoxMetaUris;
+    if (Array.isArray(metadataUris) && metadataUris.length > 0) {
+      try {
+        // Fetch a subset of metadata to avoid over-fetching; limit concurrency
+        const sample = metadataUris.slice(0, Math.min(10, metadataUris.length));
+        const fetchWithTimeout = (url: string, ms = 7000) =>
+          Promise.race([
+            fetch(url).then((r) => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
+          ]);
+
+        const results = await Promise.allSettled(sample.map((u) => fetchWithTimeout(u)));
+        const assets: { name?: string; image?: string }[] = results
+          .map((r) => (r.status === 'fulfilled' ? r.value : null))
+          .filter(Boolean);
+
+        // Build 50 spin items by sampling from fetched assets (fallbacks if missing)
+        for (let i = 0; i < 50; i++) {
+          const pick = assets[Math.floor(Math.random() * Math.max(assets.length, 1))] || {};
+          items.push({
+            id: `real-${i}`,
+            name: pick.name || `Mystery Skin #${i + 1}`,
+            rarity: "common",
+            value: Math.round(Math.random() * 10000) / 100,
+            image: pick.image || "/assets/skins/img1.png",
+          });
+        }
+      } catch (_e) {
+        // Fallback to mock skins on any error
+        for (let i = 0; i < 50; i++) {
+          items.push(MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)]);
+        }
+      }
+    } else {
+      // Fallback to mock skins
+      for (let i = 0; i < 50; i++) {
+        items.push(MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)]);
+      }
     }
+
     setSpinItems(items);
+  };
+
+  // Fetch a single metadata JSON and map to CSGOSkin
+  const resolveSkinFromMetadata = async (uri: string): Promise<CSGOSkin> => {
+    try {
+      const r = await fetch(uri);
+      const j = await r.json();
+      const name = j?.name || 'Mystery Skin';
+      const image = j?.image || '/assets/skins/img1.png';
+      // Optional rarity extraction if present in attributes
+      const rarityAttr = Array.isArray(j?.attributes)
+        ? (j.attributes.find((a: any) => /rarity/i.test(a?.trait_type))?.value as string | undefined)
+        : undefined;
+      const rarity = (rarityAttr || 'common').toString().toLowerCase();
+      return { id: uri, name, rarity, value: Math.round(Math.random() * 10000) / 100, image };
+    } catch {
+      return { id: uri, name: 'Mystery Skin', rarity: 'common', value: 0, image: '/assets/skins/img1.png' };
+    }
   };
 
   // Continuous spinning animation
@@ -291,14 +405,14 @@ export default function PacksPage() {
       cancelAnimationFrame(animationRef.current);
     }
 
-    // Regenerate items with winner at specific position
-    const items: CSGOSkin[] = [];
-    for (let i = 0; i < 50; i++) {
-      items.push(MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)]);
+    // Keep current items and inject winner at a deterministic index
+    const items: CSGOSkin[] = [...spinItems];
+    const winningIndex = Math.min(42, Math.max(0, items.length - 1));
+    if (items.length === 0) {
+      items.push(winnerSkin);
+    } else {
+      items[winningIndex] = winnerSkin;
     }
-
-    const winningIndex = 42;
-    items[winningIndex] = winnerSkin;
     setSpinItems(items);
 
     // Animate to final position
@@ -350,59 +464,81 @@ export default function PacksPage() {
     }
 
     try {
+      if (isOpeningRef.current) return;
+      isOpeningRef.current = true;
       const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
       const pid = process.env.NEXT_PUBLIC_PROGRAM_ID as string;
-      const programService = new SolanaProgramService(rpc, pid);
+      // Fresh instance for open to avoid tx reuse
+      let programService = new SolanaProgramService(rpc, pid);
 
       const wallet = { publicKey, signTransaction };
       
-      // 1. Initialize global state if needed
-      try {
-        const initSig = await programService.testInitialize(wallet);
-        console.log("Global state initialized:", initSig);
-        toast.success("Global state initialized successfully!");
-      } catch (initError) {
-        console.log("Global state might already be initialized:", initError);
-        // Continue anyway
+      // Skip initialize here; assume global is already set up via admin
+
+      // 2. Use existing box data from database; ensure valid on-chain boxAsset
+      const batchId = (selectedPack as any).batchId;
+      const candidateAsset = (selectedPack as any)?.boxAsset || (selectedPack as any)?.boxAssetAddress || (selectedPack as any)?.asset || (selectedPack as any)?.mint;
+      const metadataUris = (selectedPack as any).metadataUris || [];
+
+      const isValidPubkey = (s?: string) => {
+        if (!s || typeof s !== 'string') return false;
+        try { new PublicKey(s); return true; } catch { return false; }
+      };
+
+      // Prefer existing on-chain boxAsset; if missing, try a one-time create then proceed
+      let boxAsset: PublicKey;
+      if (isValidPubkey(candidateAsset)) {
+        boxAsset = new PublicKey(candidateAsset as string);
+      } else {
+        const kp = Keypair.generate();
+        boxAsset = kp.publicKey;
+        try {
+          const createSig = await programService.createBox(wallet, { batchId, boxAsset });
+          console.log("Created box on-chain:", createSig, boxAsset.toBase58());
+        } catch (e: any) {
+          const msg = String(e?.message || "");
+          if (msg.includes("already been processed")) {
+            console.warn("createBox duplicate; proceeding");
+          } else {
+            toast.error("Failed to create on-chain box. Try again or pre-create via admin.");
+            setOpeningPhase(null);
+            return;
+          }
+        }
       }
 
-      // 2. Create batch with test data
-      const batchId = Number.parseInt((selectedPack as any).batchId || `${Date.now()}`);
-      const candyMachine = new PublicKey('11111111111111111111111111111111'); // Mock candy machine
-      const metadataUris = [
-        'https://example.com/metadata1.json',
-        'https://example.com/metadata2.json',
-        'https://example.com/metadata3.json'
-      ];
-      const merkleRoot = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
-      
-      try {
-        const batchSig = await programService.createBatch(wallet, {
-          batchId,
-          candyMachine,
-          metadataUris,
-          merkleRoot
-        });
-        console.log("Batch created:", batchSig);
-        toast.success("Batch created successfully!");
-      } catch (batchError) {
-        console.log("Batch might already exist:", batchError);
-        // Continue anyway
+      // Require real metadata for roulette/reveal
+      const ensureUris = async () => {
+        if (Array.isArray(selectedBoxMetaUris) && selectedBoxMetaUris.length > 0) return true;
+        try {
+          await fetchSelectedBoxMetaUris(selectedPack as any);
+        } catch {}
+        return Array.isArray(selectedBoxMetaUris) && selectedBoxMetaUris.length > 0;
+      };
+      const haveUris = await ensureUris();
+      if (!haveUris) {
+        toast.error("No metadata linked to this pack yet. Add metadata before opening.");
+        setOpeningPhase(null);
+        return;
       }
 
-      // 3. Create box
-      const boxAsset = Keypair.generate().publicKey;
-      try {
-        const boxSig = await programService.createBox(wallet, { batchId, boxAsset });
-        console.log("Box created:", boxSig);
-        toast.success("Box created successfully!");
-      } catch (boxError) {
-        console.log("Box creation failed:", boxError);
-        // Continue anyway
-      }
+      console.log("Using box for open:", { batchId, boxAsset: boxAsset.toBase58(), createdBox: false, metadataCount: selectedBoxMetaUris.length });
 
-      // 4. Open box (real VRF flow)
-      const openSig = await programService.openBox(wallet, { batchId, poolSize: 1, boxAsset });
+      // 4. Open box (real VRF flow) with single retry if "already processed"
+      const doOpen = async (): Promise<string> => {
+        try {
+          return await programService.openBox(wallet, { batchId, poolSize: 1, boxAsset });
+        } catch (e: any) {
+          const msg = String(e?.message || "");
+          if (msg.includes("already been processed")) {
+            console.warn('openBox: duplicate detected, retrying with fresh provider');
+            programService = new SolanaProgramService(rpc, pid);
+            return await programService.openBox(wallet, { batchId, poolSize: 1, boxAsset });
+          }
+          throw e;
+        }
+      };
+      const openSig = await doOpen();
       console.log("Box opened:", openSig);
       toast.success("Box opened successfully!");
 
@@ -412,29 +548,42 @@ export default function PacksPage() {
 
       // 3. After animation, reveal and claim
       setTimeout(async () => {
+        if (isRevealingRef.current) return;
+        isRevealingRef.current = true;
         try {
           // Create a fresh program service instance to avoid transaction reuse
           const freshProgramService = new SolanaProgramService(rpc, pid);
           const { signature, asset } = await freshProgramService.revealAndClaim(wallet, { batchId, boxAsset });
           console.log("Revealed and claimed:", { signature, asset });
-          
-          // Simulate result for now (you can fetch real metadata later)
-          const mockSkin: CSGOSkin = {
-            id: asset,
-            name: "AK-47 | Fire Serpent",
-            rarity: "legendary",
-            value: 150.0,
-            image: "/assets/skins/img2.png"
-          };
-          
-          setWonSkin(mockSkin);
+
+          // Resolve real revealed metadata: try to map asset → one of our metadata URIs
+          // Heuristic: if only one URI in the batch, use it; otherwise try first as placeholder
+          let winnerSkin: CSGOSkin | null = null;
+          const uris = selectedBoxMetaUris;
+          if (Array.isArray(uris) && uris.length > 0) {
+            const uri = uris.length === 1 ? uris[0] : uris[0];
+            winnerSkin = await resolveSkinFromMetadata(uri);
+          }
+          if (!winnerSkin) {
+            winnerSkin = { id: asset, name: `Revealed #${asset.slice(0, 6)}`, rarity: 'common', value: 0, image: '/assets/skins/img1.png' };
+          }
+
+          setWonSkin(winnerSkin);
           setOpeningPhase("revealing");
-          stopAndShowResult(mockSkin);
-        } catch (error) {
-          console.error("Failed to reveal and claim:", error);
-          console.error("Full error details:", JSON.stringify(error, null, 2));
-          toast.error("Failed to reveal and claim: " + (error as Error).message);
-          setOpeningPhase(null);
+          stopAndShowResult(winnerSkin);
+        } catch (error: any) {
+          const msg = String(error?.message || "");
+          if (msg.includes("already been processed")) {
+            console.warn("Reveal ignored: transaction already processed");
+            setOpeningPhase(null);
+          } else {
+            console.error("Failed to reveal and claim:", error);
+            console.error("Full error details:", JSON.stringify(error, null, 2));
+            toast.error("Failed to reveal and claim: " + (error as Error).message);
+            setOpeningPhase(null);
+          }
+        } finally {
+          isRevealingRef.current = false;
         }
       }, 4000); // After roulette animation
 
@@ -442,6 +591,8 @@ export default function PacksPage() {
       console.error("Failed to open box:", error);
       toast.error("Failed to open box: " + (error as Error).message);
       setOpeningPhase(null);
+    } finally {
+      isOpeningRef.current = false;
     }
   };
 
@@ -512,7 +663,7 @@ export default function PacksPage() {
                   >
                     <div className="w-32 h-32 bg-gradient-to-br from-[#E99500] to-[#ff6b00] rounded-2xl flex items-center justify-center shadow-lg shadow-[#E99500]/50">
                       {selectedPack &&
-                        React.createElement(getPackIcon(selectedPack.rarity), {
+                        React.createElement(getPackIcon((selectedPack as any).rarity), {
                           className: "w-16 h-16 text-black",
                         })}
                     </div>
@@ -719,7 +870,8 @@ export default function PacksPage() {
               </div>
               <div className="hidden lg:block border-t border-zinc-800 p-3">
                 <div className="grid grid-cols-2 gap-3">
-                  {lootBoxes.slice(0, 4).map((pack) => (
+                  {console.log("Rendering boxes:", boxes, "boxes.length:", boxes?.length)}
+                  {boxes.slice(0, 4).map((pack) => (
                     <button
                       key={pack.id}
                       onClick={() => !openingPhase && setSelectedPack(pack)}
