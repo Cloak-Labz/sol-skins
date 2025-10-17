@@ -171,7 +171,8 @@ const DEFAULT_ODDS: { label: string; rarity: string; pct: number }[] = [
 ];
 
 export default function PacksPage() {
-  const { connected, publicKey, signTransaction } = useWallet();
+  const walletCtx = useWallet();
+  const { connected, publicKey, signTransaction } = walletCtx;
   const [lootBoxes, setLootBoxes] = useState<LootBoxType[]>([]);
   const [selectedPack, setSelectedPack] = useState<LootBoxType | null>(null);
   const [boxes, setBoxes] = useState<any[]>([]);
@@ -253,14 +254,16 @@ export default function PacksPage() {
       const data = await boxesService.getActiveBoxes();
       console.log("loadBoxes - received data:", data);
       console.log("loadBoxes - data length:", data?.length);
-      setBoxes(data);
+      // Only show published boxes (on-chain batches): require non-null batchId
+      const published = Array.isArray(data) ? data.filter((b: any) => !!b?.batchId) : [];
+      setBoxes(published);
       console.log("loadBoxes - boxes state set");
       // Set the first box as selected pack if none is selected
-      if (data.length > 0 && !selectedPack) {
-        setSelectedPack(data[0]);
-        console.log("loadBoxes - selectedPack set to:", data[0]);
+      if (published.length > 0 && !selectedPack) {
+        setSelectedPack(published[0] as any);
+        console.log("loadBoxes - selectedPack set to:", published[0]);
         // Prefetch metadata URIs for first selection
-        void fetchSelectedBoxMetaUris(data[0]);
+        void fetchSelectedBoxMetaUris(published[0]);
       }
     } catch (error) {
       console.error("Failed to load boxes:", error);
@@ -471,7 +474,7 @@ export default function PacksPage() {
       // Fresh instance for open to avoid tx reuse
       let programService = new SolanaProgramService(rpc, pid);
 
-      const wallet = { publicKey, signTransaction };
+      const wallet = walletCtx;
       
       // Skip initialize here; assume global is already set up via admin
 
@@ -870,7 +873,7 @@ export default function PacksPage() {
               </div>
               <div className="hidden lg:block border-t border-zinc-800 p-3">
                 <div className="grid grid-cols-2 gap-3">
-                  {console.log("Rendering boxes:", boxes, "boxes.length:", boxes?.length)}
+                  {/* Compact list of published packs */}
                   {boxes.slice(0, 4).map((pack) => (
                     <button
                       key={pack.id}
