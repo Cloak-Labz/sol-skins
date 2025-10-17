@@ -30,7 +30,9 @@ import {
 } from "@solana/wallet-adapter-react";
 import { mintCoreNft } from "@/lib/solana/core-nft";
 // import { getWalrusClient } from "@/lib/walrus/upload";
-import { uploadJsonToIrys } from "@/lib/irys-upload";
+// import { uploadJsonToIrys } from "@/lib/irys-upload";
+// import { irysService } from "@/lib/services/irys.service";
+import { metadataService } from "@/lib/services/metadata.service";
 
 interface MintedNFT {
   id: string;
@@ -60,10 +62,16 @@ export default function AdminInventoryPage() {
   const [nftName, setNftName] = useState("");
   const [nftDescription, setNftDescription] = useState("");
   const [nftImageUrl, setNftImageUrl] = useState("");
-  const [nftRarity, setNftRarity] = useState("Legendary");
-  const [nftAttributes, setNftAttributes] = useState("");
+  const [nftRarity, setNftRarity] = useState("legendary");
   const [nftSymbol, setNftSymbol] = useState("SKIN");
   const [nftCollection, setNftCollection] = useState("CS:GO Skins Collection");
+  
+  // Structured attributes
+  const [nftWeapon, setNftWeapon] = useState("");
+  const [nftSkin, setNftSkin] = useState("");
+  const [nftFloat, setNftFloat] = useState("");
+  const [nftWear, setNftWear] = useState("");
+  const [nftStattrak, setNftStattrak] = useState(false);
 
   // Check if connected wallet is admin
   useEffect(() => {
@@ -119,27 +127,17 @@ export default function AdminInventoryPage() {
 
     try {
       setMinting(true);
-      toast.loading("Uploading metadata to Arweave (Irys)...", { id: "upload" });
+      toast.loading("Saving metadata to server...", { id: "upload" });
 
-      // Parse attributes if provided
-      let parsedAttributes: any[] = [];
-      if (nftAttributes.trim()) {
-        try {
-          const parsed = JSON.parse(nftAttributes);
-          // Convert object to array format for NFT metadata
-          if (typeof parsed === "object" && !Array.isArray(parsed)) {
-            parsedAttributes = Object.entries(parsed).map(([key, value]) => ({
-              trait_type: key,
-              value: value,
-            }));
-          } else if (Array.isArray(parsed)) {
-            parsedAttributes = parsed;
-          }
-        } catch {
-          toast.error("Invalid JSON in attributes field", { id: "upload" });
-          return;
-        }
-      }
+      // Create structured attributes from form inputs
+      const parsedAttributes = [
+        { trait_type: "Rarity", value: nftRarity },
+        { trait_type: "Weapon", value: nftWeapon || "Unknown" },
+        { trait_type: "Skin", value: nftSkin || "Default" },
+        { trait_type: "Float", value: nftFloat || "0.00" },
+        { trait_type: "Wear", value: nftWear || "Factory New" },
+        { trait_type: "StatTrak", value: nftStattrak ? "Yes" : "No" },
+      ];
 
       // Create metadata object exactly like integration-flow.test.ts
       const metadata = {
@@ -157,22 +155,22 @@ export default function AdminInventoryPage() {
         },
       };
 
-      console.log("Uploading metadata to Arweave (Irys):", metadata);
+      console.log("Saving metadata to DB:", metadata);
 
-      // Upload to Arweave (Irys)
-      const irys = await uploadJsonToIrys(wallet as any, metadata);
+      // Save metadata JSON to server DB
+      const stored = await metadataService.upload(metadata);
 
       toast.success(
-        `Uploaded to Arweave! Tx: ${irys.id.slice(0, 8)}...`,
+        `Metadata saved! ID: ${stored.id.slice(0, 8)}...`,
         { id: "upload" }
       );
-      console.log("Irys upload result:", irys);
+      console.log("Metadata store result:", stored);
 
       // Mint Core NFT on-chain
       toast.loading("Minting Core NFT...", { id: "mint" });
       const result = await mintCoreNft({
         name: nftName,
-        uri: irys.uri,
+        uri: stored.uri,
         walletAdapter: walletCtx as any,
         connection,
       });
@@ -193,7 +191,7 @@ export default function AdminInventoryPage() {
             name: nftName,
             description: nftDescription,
             imageUrl: nftImageUrl,
-            metadataUri: irys.uri,
+            metadataUri: stored.uri,
             rarity: nftRarity,
             attributes: metadata.attributes,
             mintedAsset: result.assetAddress,
@@ -210,10 +208,16 @@ export default function AdminInventoryPage() {
         setNftName("");
         setNftDescription("");
         setNftImageUrl("");
-        setNftRarity("Legendary");
-        setNftAttributes("");
+        setNftRarity("legendary");
         setNftSymbol("SKIN");
         setNftCollection("CS:GO Skins Collection");
+        
+        // Clear structured attributes
+        setNftWeapon("");
+        setNftSkin("");
+        setNftFloat("");
+        setNftWear("Factory New");
+        setNftStattrak(false);
 
         // Reload inventory
         await loadInventory();
@@ -344,11 +348,11 @@ export default function AdminInventoryPage() {
                     <SelectValue placeholder="Select rarity" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Common">Common</SelectItem>
-                    <SelectItem value="Uncommon">Uncommon</SelectItem>
-                    <SelectItem value="Rare">Rare</SelectItem>
-                    <SelectItem value="Epic">Epic</SelectItem>
-                    <SelectItem value="Legendary">Legendary</SelectItem>
+                    <SelectItem value="common">Common</SelectItem>
+                    <SelectItem value="uncommon">Uncommon</SelectItem>
+                    <SelectItem value="rare">Rare</SelectItem>
+                    <SelectItem value="epic">Epic</SelectItem>
+                    <SelectItem value="legendary">Legendary</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -366,21 +370,77 @@ export default function AdminInventoryPage() {
               />
             </div>
 
-            <div>
-              <Label htmlFor="nft-attributes">Attributes (JSON)</Label>
-              <Textarea
-                id="nft-attributes"
-                placeholder='{"Weapon": "AK-47", "Skin": "Fire Serpent", "Float": "0.07"}'
-                value={nftAttributes}
-                onChange={(e) => setNftAttributes(e.target.value)}
-                disabled={minting}
-                rows={4}
-                className="bg-zinc-900 border-zinc-700 text-zinc-100 placeholder:text-zinc-500"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Optional: JSON object or array with custom attributes. Will
-                auto-upload to Arweave (Irys).
-              </p>
+            {/* Structured Attributes */}
+            <div className="space-y-4">
+              <Label className="text-white">Weapon & Skin Details</Label>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="nft-weapon" className="text-zinc-300">Weapon</Label>
+                  <Input
+                    id="nft-weapon"
+                    placeholder="AK-47, AWP, M4A4..."
+                    value={nftWeapon}
+                    onChange={(e) => setNftWeapon(e.target.value)}
+                    disabled={minting}
+                    className="bg-zinc-900 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="nft-skin" className="text-zinc-300">Skin Name</Label>
+                  <Input
+                    id="nft-skin"
+                    placeholder="Fire Serpent, Dragon Lore..."
+                    value={nftSkin}
+                    onChange={(e) => setNftSkin(e.target.value)}
+                    disabled={minting}
+                    className="bg-zinc-900 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="nft-float" className="text-zinc-300">Float Value</Label>
+                  <Input
+                    id="nft-float"
+                    placeholder="0.07"
+                    value={nftFloat}
+                    onChange={(e) => setNftFloat(e.target.value)}
+                    disabled={minting}
+                    className="bg-zinc-900 border-zinc-700 text-zinc-100"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="nft-wear" className="text-zinc-300">Wear Condition</Label>
+                  <Select value={nftWear} onValueChange={setNftWear} disabled={minting}>
+                    <SelectTrigger className="bg-zinc-900 border-zinc-700 text-zinc-100">
+                      <SelectValue placeholder="Select wear" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Factory New">Factory New</SelectItem>
+                      <SelectItem value="Minimal Wear">Minimal Wear</SelectItem>
+                      <SelectItem value="Field-Tested">Field-Tested</SelectItem>
+                      <SelectItem value="Well-Worn">Well-Worn</SelectItem>
+                      <SelectItem value="Battle-Scarred">Battle-Scarred</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  id="nft-stattrak"
+                  checked={nftStattrak}
+                  onChange={(e) => setNftStattrak(e.target.checked)}
+                  disabled={minting}
+                  className="bg-zinc-800"
+                />
+                <Label htmlFor="nft-stattrak" className="text-zinc-300">StatTrak™</Label>
+              </div>
             </div>
 
             <div className="bg-zinc-900/40 p-4 rounded-lg border border-zinc-800">

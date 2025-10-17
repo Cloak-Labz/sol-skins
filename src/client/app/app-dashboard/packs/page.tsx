@@ -190,43 +190,125 @@ export default function PacksPage() {
   const rouletteRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<any>(null);
 
-  // Odds to display (prefer API chances → map to labeled rows)
-  const oddsToUse = (() => {
-    const chances = (selectedPack as any)?.chances as
-      | {
-          common?: string | number;
-          uncommon?: string | number;
-          rare?: string | number;
-          epic?: string | number;
-          legendary?: string | number;
+  // Calculate real odds from batch metadata URIs
+  const calculateRealOdds = async (metadataUris: string[]) => {
+    if (!Array.isArray(metadataUris) || metadataUris.length === 0) {
+      return DEFAULT_ODDS;
+    }
+
+    try {
+      // Fetch metadata for all items in the batch
+      const metadataPromises = metadataUris.slice(0, 20).map(async (uri) => {
+        try {
+          const response = await fetch(uri);
+          if (!response.ok) return null;
+          const metadata = await response.json();
+          return metadata;
+        } catch {
+          return null;
         }
-      | undefined;
-    const toNum = (v: any) =>
-      typeof v === "number" ? v : parseFloat(String(v ?? 0));
-    if (chances) {
-      return [
+      });
+
+      const metadataResults = await Promise.allSettled(metadataPromises);
+      const validMetadata = metadataResults
+        .filter((result) => result.status === 'fulfilled' && result.value)
+        .map((result) => (result as any).value);
+
+      if (validMetadata.length === 0) {
+        return DEFAULT_ODDS;
+      }
+
+      // Count items by rarity
+      const rarityCounts: Record<string, number> = {
+        common: 0,
+        uncommon: 0,
+        rare: 0,
+        epic: 0,
+        legendary: 0,
+      };
+
+      validMetadata.forEach((metadata) => {
+        const rarityAttr = Array.isArray(metadata?.attributes)
+          ? metadata.attributes.find((a: any) => /rarity/i.test(a?.trait_type))?.value
+          : null;
+        
+        const rarity = (rarityAttr || 'common').toString().toLowerCase();
+        if (rarity in rarityCounts) {
+          rarityCounts[rarity]++;
+        } else {
+          rarityCounts.common++;
+        }
+      });
+
+      const totalItems = validMetadata.length;
+      
+      // Calculate percentages
+      const odds = [
         {
           label: "Legendary",
           rarity: "legendary",
-          pct: toNum(chances.legendary),
+          pct: (rarityCounts.legendary / totalItems) * 100,
         },
-        { label: "Epic", rarity: "epic", pct: toNum(chances.epic) },
-        { label: "Rare", rarity: "rare", pct: toNum(chances.rare) },
-        { label: "Uncommon", rarity: "uncommon", pct: toNum(chances.uncommon) },
-        { label: "Common", rarity: "common", pct: toNum(chances.common) },
+        {
+          label: "Epic", 
+          rarity: "epic",
+          pct: (rarityCounts.epic / totalItems) * 100,
+        },
+        {
+          label: "Rare",
+          rarity: "rare", 
+          pct: (rarityCounts.rare / totalItems) * 100,
+        },
+        {
+          label: "Uncommon",
+          rarity: "uncommon",
+          pct: (rarityCounts.uncommon / totalItems) * 100,
+        },
+        {
+          label: "Common",
+          rarity: "common",
+          pct: (rarityCounts.common / totalItems) * 100,
+        },
       ];
+
+      console.log('Calculated real odds from batch metadata:', odds);
+      return odds;
+    } catch (error) {
+      console.error('Error calculating real odds:', error);
+      return DEFAULT_ODDS;
     }
-    const apiOdds = (selectedPack as any)?.odds as
-      | Array<{ label?: string; rarity?: string; pct?: number; odds?: number }>
-      | undefined;
-    if (Array.isArray(apiOdds)) return apiOdds;
-    return DEFAULT_ODDS;
-  })();
+  };
+
+  // Odds to display (prefer real calculated odds → API chances → default)
+  const [oddsToUse, setOddsToUse] = useState(DEFAULT_ODDS);
+
+  // Weighted selection function based on odds
+  const selectRarityByOdds = (odds: typeof DEFAULT_ODDS) => {
+    const random = Math.random() * 100;
+    let cumulative = 0;
+    
+    for (const odd of odds) {
+      cumulative += odd.pct;
+      if (random <= cumulative) {
+        return odd.rarity;
+      }
+    }
+    
+    // Fallback to common if no match
+    return 'common';
+  };
 
   // Load boxes from database
   useEffect(() => {
     loadBoxes(); // Load boxes from database
   }, []);
+
+  // Calculate real odds when pack is selected
+  useEffect(() => {
+    if (selectedPack && selectedBoxMetaUris.length > 0) {
+      calculateRealOdds(selectedBoxMetaUris).then(setOddsToUse);
+    }
+  }, [selectedPack, selectedBoxMetaUris]);
 
   const loadLootBoxes = async () => {
     try {
@@ -321,12 +403,29 @@ export default function PacksPage() {
       try {
         // Fetch a subset of metadata to avoid over-fetching; limit concurrency
         const sample = metadataUris.slice(0, Math.min(10, metadataUris.length));
-        const fetchWithTimeout = (url: string, ms = 7000) => {
-          // Skip Walrus URLs as they're deprecated
-          if (url.includes('walrus.space') || url.includes('aggregator.walrus')) {
-            console.warn('Skipping deprecated Walrus URL:', url);
-            return Promise.reject(new Error('Walrus URL deprecated'));
+        const fetchWithTimeout = (rawUrl: string, ms = 7000) => {
+          // Normalize metadata URLs
+          const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+          const baseV1 = `${apiBase}/api/v1`;
+
+          let url = rawUrl?.trim();
+          if (!url) return Promise.reject(new Error('empty url'));
+
+          // If UUID-like, assume DB metadata id
+          const uuidLike = /^[0-9a-fA-F-]{32,36}$/;
+          if (uuidLike.test(url)) {
+            url = `${baseV1}/metadata/${url}`;
           }
+
+          // If relative metadata path
+          if (url.startsWith('/metadata/')) {
+            url = `${baseV1}${url}`;
+          }
+          if (url.startsWith('/api/v1/metadata/')) {
+            url = `${apiBase}${url}`;
+          }
+
+          // Allow Arweave and any HTTP(S); do not hard-skip deprecated hosts, just let fetch fail
           return Promise.race([
             fetch(url).then((r) => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
@@ -334,31 +433,89 @@ export default function PacksPage() {
         };
 
         const results = await Promise.allSettled(sample.map((u) => fetchWithTimeout(u)));
-        const assets: { name?: string; image?: string }[] = results
-          .map((r) => (r.status === 'fulfilled' ? r.value : null))
-          .filter(Boolean);
+        // Debug: log raw metadata responses for field mapping
+        try {
+          console.log('Roulette metadata fetch results (first 3):', results.slice(0, 3).map((r: any, i) => ({
+            idx: i,
+            status: r?.status,
+            keys: r?.status === 'fulfilled' ? Object.keys(r.value || {}) : undefined,
+            sample: r?.status === 'fulfilled' ? r.value : r?.reason?.message || String(r?.reason || '')
+          })));
+        } catch {}
+        const normalize = (md: any) => {
+          if (!md) return null;
+          
+          // Unwrap API envelope { success, data }
+          if (md.success && md.data) md = md.data;
+          if (md.data && !md.name && !md.image) md = md.data; // nested data
+          
+          // Extract name (trim whitespace)
+          const name = md.name ? md.name.trim() : undefined;
+          
+          // Extract rarity from attributes
+          const rarityAttr = Array.isArray(md?.attributes)
+            ? md.attributes.find((a: any) => /rarity/i.test(a?.trait_type))?.value
+            : undefined;
+          const rarity = typeof rarityAttr === 'string' ? rarityAttr.toLowerCase() : undefined;
+          
+          // Extract image
+          const image = md.image || (md as any).image_url || (md as any).imageUri || md?.properties?.files?.[0]?.uri || undefined;
+          
+          // Extract value from Float attribute (CS:GO float value)
+          const floatAttr = Array.isArray(md?.attributes)
+            ? md.attributes.find((a: any) => /float/i.test(a?.trait_type))?.value
+            : undefined;
+          const floatValue = floatAttr ? parseFloat(floatAttr) : undefined;
+          
+          // Use float value as the price (multiply by 1000 for display)
+          const value = floatValue ? floatValue * 1000 : undefined;
+          
+          return { name, image, rarity, value };
+        };
 
-        // Build 50 spin items by sampling from fetched assets (fallbacks if missing)
+        const assets: { name?: string; image?: string; rarity?: string; value?: number }[] = results
+          .map((r) => (r.status === 'fulfilled' ? normalize((r as any).value) : null))
+          .filter(Boolean) as any;
+        try {
+          console.log('Normalized roulette assets (first 5):', assets.slice(0, 5));
+        } catch {}
+
+        // Build 50 spin items using weighted selection based on real odds
         for (let i = 0; i < 50; i++) {
-          const pick = assets[Math.floor(Math.random() * Math.max(assets.length, 1))] || {};
+          const pick = assets[Math.floor(Math.random() * Math.max(assets.length, 1))] || {} as any;
+          const rarityFromMeta = pick.rarity && ['common','uncommon','rare','epic','legendary'].includes(pick.rarity)
+            ? pick.rarity
+            : undefined;
+          const chosenRarity = rarityFromMeta || selectRarityByOdds(oddsToUse);
+
           items.push({
             id: `real-${i}`,
             name: pick.name || `Mystery Skin #${i + 1}`,
-            rarity: "common",
-            value: Math.round(Math.random() * 10000) / 100,
+            rarity: chosenRarity,
+            value: pick.value || Math.round(Math.random() * 10000) / 100,
             image: pick.image || "/assets/skins/img1.png",
           });
         }
       } catch (_e) {
-        // Fallback to mock skins on any error
+        // Fallback to mock skins on any error, but still use weighted selection
         for (let i = 0; i < 50; i++) {
-          items.push(MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)]);
+          const selectedRarity = selectRarityByOdds(oddsToUse);
+          const mockSkin = MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)];
+          items.push({
+            ...mockSkin,
+            rarity: selectedRarity, // Override with weighted rarity
+          });
         }
       }
     } else {
-      // Fallback to mock skins
+      // Fallback to mock skins with weighted selection
       for (let i = 0; i < 50; i++) {
-        items.push(MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)]);
+        const selectedRarity = selectRarityByOdds(oddsToUse);
+        const mockSkin = MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)];
+        items.push({
+          ...mockSkin,
+          rarity: selectedRarity, // Override with weighted rarity
+        });
       }
     }
 
@@ -368,17 +525,40 @@ export default function PacksPage() {
   // Fetch a single metadata JSON and map to CSGOSkin
   const resolveSkinFromMetadata = async (uri: string): Promise<CSGOSkin> => {
     try {
+      console.log('DEBUG: Fetching metadata from URI:', uri);
       const r = await fetch(uri);
       const j = await r.json();
-      const name = j?.name || 'Mystery Skin';
-      const image = j?.image || '/assets/skins/img1.png';
-      // Optional rarity extraction if present in attributes
-      const rarityAttr = Array.isArray(j?.attributes)
-        ? (j.attributes.find((a: any) => /rarity/i.test(a?.trait_type))?.value as string | undefined)
+      console.log('DEBUG: Raw metadata response:', j);
+      
+      // Unwrap API envelope { success, data }
+      const md = j.success && j.data ? j.data : j;
+      
+      // Extract name (trim whitespace)
+      const name = md.name ? md.name.trim() : 'Mystery Skin';
+      
+      // Extract rarity from attributes
+      const rarityAttr = Array.isArray(md?.attributes)
+        ? md.attributes.find((a: any) => /rarity/i.test(a?.trait_type))?.value
         : undefined;
-      const rarity = (rarityAttr || 'common').toString().toLowerCase();
-      return { id: uri, name, rarity, value: Math.round(Math.random() * 10000) / 100, image };
-    } catch {
+      const rarity = typeof rarityAttr === 'string' ? rarityAttr.toLowerCase() : 'common';
+      
+      // Extract image
+      const image = md.image || '/assets/skins/img1.png';
+      
+      // Extract value from Float attribute (CS:GO float value)
+      const floatAttr = Array.isArray(md?.attributes)
+        ? md.attributes.find((a: any) => /float/i.test(a?.trait_type))?.value
+        : undefined;
+      const floatValue = floatAttr ? parseFloat(floatAttr) : undefined;
+      
+      // Use float value as the price (multiply by 1000 for display)
+      const value = floatValue ? floatValue * 1000 : 0;
+      
+      const result = { id: uri, name, rarity, value, image };
+      console.log('DEBUG: Resolved skin:', result);
+      return result;
+    } catch (error) {
+      console.error('DEBUG: Failed to resolve metadata:', error);
       return { id: uri, name: 'Mystery Skin', rarity: 'common', value: 0, image: '/assets/skins/img1.png' };
     }
   };
@@ -757,8 +937,12 @@ export default function PacksPage() {
                                   className="max-w-full max-h-full object-contain"
                                 />
                               </div>
-                              <p className="text-white text-xs font-bold text-center line-clamp-2 px-1">
-                                {item.name}
+                              {/* Rarity badge */}
+                              <div className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide border border-white/20 bg-black/30 text-white/90">
+                                {(item.rarity || '').toString()}
+                              </div>
+                              <p className="text-white text-xs font-bold text-center px-1 min-h-[2rem] flex items-center justify-center">
+                                {item.name || 'Mystery Skin'}
                               </p>
                               <p className="text-white text-sm md:text-base font-bold">
                                 $

@@ -320,18 +320,49 @@ export class SolanaProgramService {
         .add(openTx)
         .add(revealTx);
 
-      // Set required transaction properties
-      const { blockhash } = await this.connection.getLatestBlockhash();
-      combinedTx.recentBlockhash = blockhash;
-      combinedTx.feePayer = wallet.publicKey;
+      // Helper to (re)prepare, sign and send
+      const sendWithFreshBlockhash = async (): Promise<string> => {
+        const { blockhash, lastValidBlockHeight } = await this.connection.getLatestBlockhash('finalized');
+        combinedTx.recentBlockhash = blockhash;
+        combinedTx.feePayer = wallet.publicKey!;
 
-      // Sign and send the combined transaction
-      const signedTx = await wallet.signTransaction!(combinedTx);
-      // Add the asset keypair as a signer since it's used in revealAndClaim
-      signedTx.partialSign(asset);
-      const signature = await this.connection.sendRawTransaction(signedTx.serialize());
+        // First, partial sign with additional signer(s)
+        combinedTx.partialSign(asset);
+        // Then, wallet signs
+        const walletSigned = await wallet.signTransaction!(combinedTx);
 
-      return { signature, asset: asset.publicKey.toBase58() };
+        const raw = walletSigned.serialize();
+        const sig = await this.connection.sendRawTransaction(raw, {
+          skipPreflight: false,
+          preflightCommitment: 'confirmed',
+          maxRetries: 3,
+        });
+
+        // Confirm to avoid stale blockhash race
+        await this.connection.confirmTransaction(
+          { signature: sig, blockhash, lastValidBlockHeight },
+          'confirmed'
+        );
+        return sig;
+      };
+
+      // Try once, retry on blockhash error
+      try {
+        const signature = await sendWithFreshBlockhash();
+        return { signature, asset: asset.publicKey.toBase58() };
+      } catch (e: any) {
+        const message = String(e?.message || '').toLowerCase();
+        if (message.includes('blockhash not found') || message.includes('expired')) {
+          const signature = await sendWithFreshBlockhash();
+          return { signature, asset: asset.publicKey.toBase58() };
+        }
+        // Attempt to simulate for better logs before throwing
+        try {
+          const sim = await this.connection.simulateTransaction(combinedTx, { sigVerify: false });
+          console.error('Simulation logs:', sim?.value?.logs || []);
+        } catch {}
+        throw e;
+      }
     } catch (error) {
       console.error('Combined open pack error details:', error);
       throw error;
