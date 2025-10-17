@@ -321,11 +321,17 @@ export default function PacksPage() {
       try {
         // Fetch a subset of metadata to avoid over-fetching; limit concurrency
         const sample = metadataUris.slice(0, Math.min(10, metadataUris.length));
-        const fetchWithTimeout = (url: string, ms = 7000) =>
-          Promise.race([
+        const fetchWithTimeout = (url: string, ms = 7000) => {
+          // Skip Walrus URLs as they're deprecated
+          if (url.includes('walrus.space') || url.includes('aggregator.walrus')) {
+            console.warn('Skipping deprecated Walrus URL:', url);
+            return Promise.reject(new Error('Walrus URL deprecated'));
+          }
+          return Promise.race([
             fetch(url).then((r) => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
             new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
           ]);
+        };
 
         const results = await Promise.allSettled(sample.map((u) => fetchWithTimeout(u)));
         const assets: { name?: string; image?: string }[] = results
@@ -478,37 +484,19 @@ export default function PacksPage() {
       
       // Skip initialize here; assume global is already set up via admin
 
-      // 2. Use existing box data from database; ensure valid on-chain boxAsset
+      // 2. Use existing box data from database
       const batchId = (selectedPack as any).batchId;
-      const candidateAsset = (selectedPack as any)?.boxAsset || (selectedPack as any)?.boxAssetAddress || (selectedPack as any)?.asset || (selectedPack as any)?.mint;
-      const metadataUris = (selectedPack as any).metadataUris || [];
-
-      const isValidPubkey = (s?: string) => {
-        if (!s || typeof s !== 'string') return false;
-        try { new PublicKey(s); return true; } catch { return false; }
-      };
-
-      // Prefer existing on-chain boxAsset; if missing, try a one-time create then proceed
-      let boxAsset: PublicKey;
-      if (isValidPubkey(candidateAsset)) {
-        boxAsset = new PublicKey(candidateAsset as string);
-      } else {
-        const kp = Keypair.generate();
-        boxAsset = kp.publicKey;
-        try {
-          const createSig = await programService.createBox(wallet, { batchId, boxAsset });
-          console.log("Created box on-chain:", createSig, boxAsset.toBase58());
-        } catch (e: any) {
-          const msg = String(e?.message || "");
-          if (msg.includes("already been processed")) {
-            console.warn("createBox duplicate; proceeding");
-          } else {
-            toast.error("Failed to create on-chain box. Try again or pre-create via admin.");
-            setOpeningPhase(null);
-            return;
-          }
-        }
+      if (!batchId) {
+        toast.error("This pack is not a published batch. Only published batches can be opened.");
+        setOpeningPhase(null);
+        return;
       }
+
+      // Generate a new box asset for this opening
+      const boxAsset = Keypair.generate().publicKey;
+
+      // 3. Execute complete pack opening in single transaction
+      // This combines createBox + openBox + revealAndClaim
 
       // Require real metadata for roulette/reveal
       const ensureUris = async () => {
@@ -525,39 +513,24 @@ export default function PacksPage() {
         return;
       }
 
-      console.log("Using box for open:", { batchId, boxAsset: boxAsset.toBase58(), createdBox: false, metadataCount: selectedBoxMetaUris.length });
+      console.log("Using box for open:", { batchId, boxAsset: boxAsset.toBase58(), metadataCount: selectedBoxMetaUris.length });
 
-      // 4. Open box (real VRF flow) with single retry if "already processed"
-      const doOpen = async (): Promise<string> => {
-        try {
-          return await programService.openBox(wallet, { batchId, poolSize: 1, boxAsset });
-        } catch (e: any) {
-          const msg = String(e?.message || "");
-          if (msg.includes("already been processed")) {
-            console.warn('openBox: duplicate detected, retrying with fresh provider');
-            programService = new SolanaProgramService(rpc, pid);
-            return await programService.openBox(wallet, { batchId, poolSize: 1, boxAsset });
-          }
-          throw e;
-        }
-      };
-      const openSig = await doOpen();
-      console.log("Box opened:", openSig);
-      toast.success("Box opened successfully!");
+      // 4. Execute complete pack opening (createBox + openBox + revealAndClaim in single transaction)
+      const result = await programService.openPackComplete(wallet, { batchId, poolSize: 1, boxAsset });
+      console.log("Pack opened and NFT claimed:", result);
+      toast.success("Pack opened successfully!");
 
       // 2. Start roulette animation
       setOpeningPhase("spinning");
       startContinuousSpin();
 
-      // 3. After animation, reveal and claim
+      // 3. After animation, show the revealed NFT
       setTimeout(async () => {
         if (isRevealingRef.current) return;
         isRevealingRef.current = true;
         try {
-          // Create a fresh program service instance to avoid transaction reuse
-          const freshProgramService = new SolanaProgramService(rpc, pid);
-          const { signature, asset } = await freshProgramService.revealAndClaim(wallet, { batchId, boxAsset });
-          console.log("Revealed and claimed:", { signature, asset });
+          const { signature, asset } = result;
+          console.log("Using revealed NFT:", { signature, asset });
 
           // Resolve real revealed metadata: try to map asset → one of our metadata URIs
           // Heuristic: if only one URI in the batch, use it; otherwise try first as placeholder

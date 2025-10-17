@@ -1,4 +1,4 @@
-import { Connection, PublicKey, SystemProgram, Keypair } from '@solana/web3.js';
+import { Connection, PublicKey, SystemProgram, Keypair, Transaction } from '@solana/web3.js';
 import { AnchorProvider, BN, Idl, Program } from '@coral-xyz/anchor';
 import { WalletContextState } from '@solana/wallet-adapter-react';
 import idlJson from '../solana/idl/skinvault.json';
@@ -239,6 +239,101 @@ export class SolanaProgramService {
       return { signature: sig, asset: asset.publicKey.toBase58() };
     } catch (error) {
       console.error('Reveal and claim error details:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Combined method that executes createBox + openBox + revealAndClaim in a single transaction
+   * This provides better UX as user only needs to sign once
+   */
+  public async openPackComplete(wallet: WalletContextState, params: { 
+    batchId: number; 
+    poolSize: number; 
+    boxAsset: PublicKey 
+  }): Promise<{ signature: string; asset: string }> {
+    if (!wallet.publicKey || !wallet.signTransaction) throw new Error('Wallet not connected');
+    const provider = new AnchorProvider(this.connection, wallet as any, { commitment: 'confirmed' });
+    const program = this.program(provider);
+
+    const [global] = this.getGlobalPDA();
+    const [batch] = this.getBatchPDA(params.batchId);
+    const [box] = this.getBoxPDA(params.boxAsset);
+    const [vrfPending] = this.getVrfPendingPDA(params.boxAsset);
+    const asset = Keypair.generate();
+    const CORE_PROGRAM_ID = new PublicKey('CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d');
+    const collection = new PublicKey('11111111111111111111111111111111');
+
+    console.log('Combined open pack accounts:', {
+      globalState: global.toString(),
+      batch: batch.toString(),
+      boxState: box.toString(),
+      vrfPending: vrfPending.toString(),
+      asset: asset.publicKey.toString(),
+      collection: collection.toString(),
+      user: wallet.publicKey.toString(),
+      coreProgram: CORE_PROGRAM_ID.toString()
+    });
+
+    try {
+      // Build transaction with all 3 instructions
+      const tx = await program.methods
+        .createBox(new BN(params.batchId))
+        .accounts({ 
+          global, 
+          boxState: box, 
+          owner: wallet.publicKey,
+          boxAsset: params.boxAsset,
+          systemProgram: SystemProgram.programId 
+        } as any)
+        .instruction();
+
+      const openTx = await program.methods
+        .openBox(new BN(params.poolSize))
+        .accounts({ 
+          global, 
+          boxState: box, 
+          batch, 
+          vrfPending,
+          owner: wallet.publicKey, 
+          systemProgram: SystemProgram.programId 
+        } as any)
+        .instruction();
+
+      const revealTx = await program.methods
+        .revealAndClaim()
+        .accounts({ 
+          globalState: global, 
+          batch, 
+          boxState: box, 
+          asset: asset.publicKey, 
+          collection,
+          user: wallet.publicKey, 
+          coreProgram: CORE_PROGRAM_ID, 
+          systemProgram: SystemProgram.programId 
+        } as any)
+        .instruction();
+
+      // Combine all instructions into a single transaction
+      const combinedTx = new Transaction()
+        .add(tx)
+        .add(openTx)
+        .add(revealTx);
+
+      // Set required transaction properties
+      const { blockhash } = await this.connection.getLatestBlockhash();
+      combinedTx.recentBlockhash = blockhash;
+      combinedTx.feePayer = wallet.publicKey;
+
+      // Sign and send the combined transaction
+      const signedTx = await wallet.signTransaction!(combinedTx);
+      // Add the asset keypair as a signer since it's used in revealAndClaim
+      signedTx.partialSign(asset);
+      const signature = await this.connection.sendRawTransaction(signedTx.serialize());
+
+      return { signature, asset: asset.publicKey.toBase58() };
+    } catch (error) {
+      console.error('Combined open pack error details:', error);
       throw error;
     }
   }
