@@ -189,6 +189,7 @@ export default function PacksPage() {
   const [spinItems, setSpinItems] = useState<CSGOSkin[]>([]);
   const rouletteRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<any>(null);
+  const [batchPrice, setBatchPrice] = useState<number | null>(null);
 
   // Calculate real odds from batch metadata URIs
   const calculateRealOdds = async (metadataUris: string[]) => {
@@ -373,6 +374,27 @@ export default function PacksPage() {
     }
   };
 
+  const fetchBatchPrice = async (pack: any) => {
+    try {
+      const batchId = pack?.batchId;
+      if (!batchId) {
+        setBatchPrice(null);
+        return;
+      }
+
+      const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+      const pid = process.env.NEXT_PUBLIC_PROGRAM_ID as string;
+      const programService = new SolanaProgramService(rpc, pid);
+      
+      const batchInfo = await programService.getBatchInfo(batchId);
+      setBatchPrice(batchInfo.priceSol);
+      console.log('Fetched batch price:', batchInfo.priceSol, 'SOL');
+    } catch (error) {
+      console.error("Failed to fetch batch price:", error);
+      setBatchPrice(null);
+    }
+  };
+
   // Generate initial roulette items
   useEffect(() => {
     generateSpinItems();
@@ -382,6 +404,7 @@ export default function PacksPage() {
   useEffect(() => {
     if (selectedPack) {
       void fetchSelectedBoxMetaUris(selectedPack as any);
+      void fetchBatchPrice(selectedPack as any);
     }
   }, [selectedPack]);
 
@@ -697,16 +720,37 @@ export default function PacksPage() {
 
       // 4. Execute complete pack opening (createBox + openBox + revealAndClaim in single transaction)
       // Get treasury address from environment, admin panel, or use admin wallet as fallback
-      const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_ADDRESS || 'v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs';
+      const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_ADDRESS || 'mgfSqUe1qaaUjeEzuLUyDUx5Rk4fkgePB5NtLnS3Vxa';
       if (!treasuryAddress) {
         toast.error("Treasury address not configured. Please set NEXT_PUBLIC_TREASURY_ADDRESS in environment variables.");
         setOpeningPhase(null);
         return;
       }
       const treasury = new PublicKey(treasuryAddress);
+      
+      // Show payment information to user
+      const paymentAmount = batchPrice || (selectedPack as any)?.priceSol || 0;
+      const paymentInSOL = paymentAmount / 1_000_000_000;
+      console.log(`💳 Payment: ${paymentInSOL} SOL will be deducted from your wallet`);
+      toast(`💳 Opening pack costs ${paymentInSOL} SOL`, { 
+        duration: 3000,
+        icon: '💰'
+      });
+      
       const result = await programService.openPackComplete(wallet, { batchId, poolSize: 1, boxAsset, treasury });
       console.log("Pack opened and NFT claimed:", result);
-      toast.success("Pack opened successfully!");
+      
+      // Show transaction link for verification
+      const explorerUrl = `https://solana.fm/tx/${result.signature}?cluster=devnet-solana`;
+      console.log('🔍 View transaction:', explorerUrl);
+      
+      toast.success(`Pack opened successfully! ${paymentInSOL} SOL paid to treasury.`, {
+        duration: 5000,
+        action: {
+          label: 'View Transaction',
+          onClick: () => window.open(explorerUrl, '_blank')
+        }
+      });
 
       // 2. Start roulette animation
       setOpeningPhase("spinning");
@@ -1098,13 +1142,17 @@ export default function PacksPage() {
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <p className="text-3xl font-bold text-foreground">
-                      {selectedPack
+                      {batchPrice !== null
+                        ? (batchPrice / 1_000_000_000).toFixed(4)
+                        : selectedPack
                         ? parseFloat(selectedPack.priceSol).toFixed(2)
                         : "—"}{" "}
                       SOL
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {selectedPack
+                      {batchPrice !== null
+                        ? `$${((batchPrice / 1_000_000_000) * 100).toFixed(2)}`
+                        : selectedPack
                         ? `$${parseFloat(
                             String(
                               selectedPack.priceUsdc ?? selectedPack.priceSol

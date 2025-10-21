@@ -48,15 +48,22 @@ export async function openBox(params: OpenBoxParams): Promise<OpenBoxResult> {
     batchId: boxState.batchId,
   });
 
+  // Get batch info to fetch the correct payment amount
+  const batchAccount = await program.account.batch.fetch(batchPDA);
+  const paymentAmount = batchAccount.priceSol;
+  
+  console.log('Batch payment amount:', paymentAmount.toString());
+
   try {
     const tx = await program.methods
-      .openBox(new BN(poolSize))
+      .openBox(new BN(poolSize), new BN(paymentAmount))
       .accounts({
         global: globalPDA,
         boxState: boxStatePDA,
         batch: batchPDA,
         vrfPending: vrfPendingPDA,
         owner: owner,
+        treasury: owner, // Use owner as treasury for now
         systemProgram: SystemProgram.programId,
       })
       .rpc();

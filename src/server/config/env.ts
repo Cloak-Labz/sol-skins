@@ -36,11 +36,17 @@ const envSchema = Joi.object({
   SOLANA_RPC_URL: Joi.string().required(),
   SOLANA_WS_URL: Joi.string().required(),
   PROGRAM_ID: Joi.string().required(),
+  ORACLE_PRIVATE_KEY: Joi.string().allow('').default(''),
   
   // External APIs
   STEAM_API_KEY: Joi.string().allow('').default(''),
   CSGOFLOAT_API_KEY: Joi.string().allow('').default(''),
   DMARKET_API_KEY: Joi.string().allow('').default(''),
+  
+  // Discord Integration
+  DISCORD_BOT_TOKEN: Joi.string().allow('').default(''),
+  DISCORD_TICKET_CHANNEL_ID: Joi.string().allow('').default(''),
+  DISCORD_GUILD_ID: Joi.string().allow('').default(''),
   
   // Monitoring
   LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug').default('info'),
@@ -96,6 +102,12 @@ export const config = {
     steamApiKey: envVars.STEAM_API_KEY,
     csgofloatApiKey: envVars.CSGOFLOAT_API_KEY,
     dmarketApiKey: envVars.DMARKET_API_KEY,
+  },
+  
+  discord: {
+    botToken: envVars.DISCORD_BOT_TOKEN,
+    ticketChannelId: envVars.DISCORD_TICKET_CHANNEL_ID,
+    guildId: envVars.DISCORD_GUILD_ID,
   },
   
   logging: {

@@ -11,6 +11,7 @@ import { adminRoutes } from "./admin";
 import { boxRoutes } from "./boxes";
 import irysRoutes from "./irys";
 import metadataRoutes from "./metadata";
+import discordRoutes from "./discord";
 
 export async function createRoutes(): Promise<Router> {
   const router = Router();
@@ -28,6 +29,7 @@ export async function createRoutes(): Promise<Router> {
   router.use("/boxes", boxRoutes);
   router.use("/irys", irysRoutes);
   router.use("/metadata", metadataRoutes);
+  router.use("/discord", discordRoutes);
 
   return router;
 }

@@ -5,7 +5,7 @@ Este guia fornece exemplos de curl para testar todos os endpoints da API SolSkin
 ## Configuração Base
 
 ```bash
-export API_BASE="http://localhost:3001/api/v1"
+export API_BASE="http://localhost:4000/api/v1"
 export AUTH_TOKEN="your_jwt_token_here"
 ```
 
@@ -418,7 +418,7 @@ curl -X GET "http://localhost:3002/health"
 #!/bin/bash
 # test-setup.sh
 
-export API_BASE="http://localhost:3001/api/v1"
+export API_BASE="http://localhost:4000/api/v1"
 
 # Conectar wallet e obter token
 CONNECT_RESPONSE=$(curl -s -X POST "$API_BASE/auth/connect" \

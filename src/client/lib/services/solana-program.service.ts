@@ -56,18 +56,16 @@ export class SolanaProgramService {
   public async getBatchInfo(batchId: number): Promise<{ priceSol: number }> {
     try {
       const [batchPDA] = this.getBatchPDA(batchId);
-      const accountInfo = await this.connection.getAccountInfo(batchPDA);
-      if (!accountInfo) {
-        throw new Error('Batch not found');
-      }
       
-      // Parse the batch data to extract price_sol
-      // The price_sol is at offset 8 + 32 + 32 + 8 + 8 + 8 + 8 = 104 bytes
-      const data = accountInfo.data;
-      const priceSol = data.readBigUInt64LE(104); // price_sol is at offset 104
+      // Use Anchor program to properly fetch and deserialize the batch account
+      const provider = new AnchorProvider(this.connection, {} as any, { commitment: 'confirmed' });
+      const program = this.program(provider);
+      
+      const batchAccount = await program.account.batch.fetch(batchPDA);
+      console.log('Batch account data:', batchAccount);
       
       return {
-        priceSol: Number(priceSol)
+        priceSol: batchAccount.priceSol.toNumber()
       };
     } catch (error) {
       console.error('Error fetching batch info:', error);
@@ -137,6 +135,9 @@ export class SolanaProgramService {
     // Get batch price from blockchain
     const batchInfo = await this.getBatchInfo(params.batchId);
     const paymentAmount = batchInfo.priceSol;
+    
+    console.log('Fetched batch info:', batchInfo);
+    console.log('Payment amount being sent:', paymentAmount);
 
     const [global] = this.getGlobalPDA();
     const [batch] = this.getBatchPDA(params.batchId);
@@ -316,6 +317,7 @@ export class SolanaProgramService {
       asset: asset.publicKey.toString(),
       collection: collection.toString(),
       user: wallet.publicKey.toString(),
+      treasury: params.treasury.toString(),
       coreProgram: CORE_PROGRAM_ID.toString()
     });
 
@@ -335,6 +337,14 @@ export class SolanaProgramService {
       // Get batch price from blockchain
       const batchInfo = await this.getBatchInfo(params.batchId);
       const paymentAmount = batchInfo.priceSol;
+      
+      console.log('💰 Payment Details:', {
+        batchId: params.batchId,
+        paymentAmount: paymentAmount,
+        paymentInSOL: paymentAmount / 1_000_000_000,
+        from: wallet.publicKey.toString(),
+        to: params.treasury.toString()
+      });
 
       const openTx = await program.methods
         .openBox(new BN(params.poolSize), new BN(paymentAmount))
@@ -392,6 +402,14 @@ export class SolanaProgramService {
           { signature: sig, blockhash, lastValidBlockHeight },
           'confirmed'
         );
+        
+        console.log('✅ Transaction confirmed:', {
+          signature: sig,
+          paymentAmount: paymentAmount,
+          paymentInSOL: paymentAmount / 1_000_000_000,
+          treasury: params.treasury.toString()
+        });
+        
         return sig;
       };
 
