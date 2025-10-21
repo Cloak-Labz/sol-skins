@@ -5,7 +5,7 @@ dotenv.config();
 
 const envSchema = Joi.object({
   NODE_ENV: Joi.string().valid('development', 'production', 'test').default('development'),
-  PORT: Joi.number().default(3001),
+  PORT: Joi.number().default(4000),
   API_PREFIX: Joi.string().default('/api/v1'),
   
   // Database

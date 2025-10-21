@@ -99,7 +99,7 @@ export default function AdminInventoryPage() {
       setLoading(true);
       const response = await fetch(
         `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
         }/api/v1/admin/inventory`
       );
       const data = await response.json();
@@ -182,7 +182,7 @@ export default function AdminInventoryPage() {
       toast.loading("Saving to database...", { id: "save" });
       const saveResponse = await fetch(
         `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
         }/api/v1/admin/inventory`,
         {
           method: "POST",

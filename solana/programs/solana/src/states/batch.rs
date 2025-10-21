@@ -28,6 +28,9 @@ pub struct Batch {
     /// Number of boxes opened for this batch
     pub boxes_opened: u64,
 
+    /// Price in lamports (SOL) to open a box from this batch
+    pub price_sol: u64,
+
     /// Bump seed for PDA
     pub bump: u8,
 
@@ -49,6 +52,7 @@ impl Batch {
         8 +   // total_items
         8 +   // boxes_minted
         8 +   // boxes_opened
+        8 +   // price_sol
         1 +   // bump
         4 +   // vec length
         (num_items * 204) // 200 chars + 4 length per URI

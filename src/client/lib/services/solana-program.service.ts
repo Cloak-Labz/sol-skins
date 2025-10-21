@@ -53,6 +53,28 @@ export class SolanaProgramService {
     return PublicKey.findProgramAddressSync([Buffer.from('batch'), buf], this.programId);
   }
 
+  public async getBatchInfo(batchId: number): Promise<{ priceSol: number }> {
+    try {
+      const [batchPDA] = this.getBatchPDA(batchId);
+      const accountInfo = await this.connection.getAccountInfo(batchPDA);
+      if (!accountInfo) {
+        throw new Error('Batch not found');
+      }
+      
+      // Parse the batch data to extract price_sol
+      // The price_sol is at offset 8 + 32 + 32 + 8 + 8 + 8 + 8 = 104 bytes
+      const data = accountInfo.data;
+      const priceSol = data.readBigUInt64LE(104); // price_sol is at offset 104
+      
+      return {
+        priceSol: Number(priceSol)
+      };
+    } catch (error) {
+      console.error('Error fetching batch info:', error);
+      throw error;
+    }
+  }
+
   public getBoxPDA(owner: PublicKey): [PublicKey, number] {
     return PublicKey.findProgramAddressSync([Buffer.from('box'), owner.toBuffer()], this.programId);
   }
@@ -107,28 +129,47 @@ export class SolanaProgramService {
     }
   }
 
-  public async openBox(wallet: WalletContextState, params: { batchId: number; poolSize: number; boxAsset: PublicKey }): Promise<string> {
+  public async openBox(wallet: WalletContextState, params: { batchId: number; poolSize: number; boxAsset: PublicKey; treasury: PublicKey }): Promise<string> {
     if (!wallet.publicKey || !wallet.signTransaction) throw new Error('Wallet not connected');
     const provider = new AnchorProvider(this.connection, wallet as any, { commitment: 'confirmed' });
     const program = this.program(provider);
+
+    // Get batch price from blockchain
+    const batchInfo = await this.getBatchInfo(params.batchId);
+    const paymentAmount = batchInfo.priceSol;
 
     const [global] = this.getGlobalPDA();
     const [batch] = this.getBatchPDA(params.batchId);
     const [box] = this.getBoxPDA(params.boxAsset);
     const [vrfPending] = this.getVrfPendingPDA(params.boxAsset);
 
-    const tx = await program.methods
-      .openBox(new BN(params.poolSize))
-      .accounts({ 
-        global, 
-        boxState: box, 
-        batch, 
-        vrfPending,
-        owner: wallet.publicKey, 
-        systemProgram: SystemProgram.programId 
-      } as any)
-      .rpc();
-    return tx;
+    try {
+      const tx = await program.methods
+        .openBox(new BN(params.poolSize), new BN(paymentAmount))
+        .accounts({ 
+          global, 
+          boxState: box, 
+          batch, 
+          vrfPending,
+          owner: wallet.publicKey,
+          treasury: params.treasury,
+          systemProgram: SystemProgram.programId 
+        } as any)
+        .rpc();
+      return tx;
+    } catch (error: any) {
+      // Handle specific payment errors
+      if (error.message?.includes('InvalidPaymentAmount')) {
+        throw new Error(`Payment amount ${paymentAmount} lamports does not match batch price`);
+      }
+      if (error.message?.includes('insufficient funds')) {
+        throw new Error('Insufficient SOL balance to open pack');
+      }
+      if (error.message?.includes('InvalidAccountData')) {
+        throw new Error('Invalid batch data - batch may not exist or be corrupted');
+      }
+      throw error;
+    }
   }
 
   public async testInitialize(wallet: WalletContextState): Promise<string> {
@@ -166,7 +207,8 @@ export class SolanaProgramService {
     batchId: number; 
     candyMachine: PublicKey; 
     metadataUris: string[]; 
-    merkleRoot: number[] 
+    merkleRoot: number[];
+    priceSol: number;
   }): Promise<string> {
     if (!wallet.publicKey || !wallet.signTransaction) throw new Error('Wallet not connected');
     const provider = new AnchorProvider(this.connection, wallet as any, { commitment: 'confirmed' });
@@ -184,7 +226,8 @@ export class SolanaProgramService {
         params.candyMachine,
         params.metadataUris,
         Array.from(merkleRootBytes),
-        new BN(Math.floor(Date.now() / 1000))
+        new BN(Math.floor(Date.now() / 1000)),
+        new BN(params.priceSol)
       )
       .accounts({ 
         global, 
@@ -250,7 +293,8 @@ export class SolanaProgramService {
   public async openPackComplete(wallet: WalletContextState, params: { 
     batchId: number; 
     poolSize: number; 
-    boxAsset: PublicKey 
+    boxAsset: PublicKey;
+    treasury: PublicKey;
   }): Promise<{ signature: string; asset: string }> {
     if (!wallet.publicKey || !wallet.signTransaction) throw new Error('Wallet not connected');
     const provider = new AnchorProvider(this.connection, wallet as any, { commitment: 'confirmed' });
@@ -288,14 +332,19 @@ export class SolanaProgramService {
         } as any)
         .instruction();
 
+      // Get batch price from blockchain
+      const batchInfo = await this.getBatchInfo(params.batchId);
+      const paymentAmount = batchInfo.priceSol;
+
       const openTx = await program.methods
-        .openBox(new BN(params.poolSize))
+        .openBox(new BN(params.poolSize), new BN(paymentAmount))
         .accounts({ 
           global, 
           boxState: box, 
           batch, 
           vrfPending,
-          owner: wallet.publicKey, 
+          owner: wallet.publicKey,
+          treasury: params.treasury,
           systemProgram: SystemProgram.programId 
         } as any)
         .instruction();

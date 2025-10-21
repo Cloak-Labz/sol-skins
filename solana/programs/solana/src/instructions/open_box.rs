@@ -40,10 +40,14 @@ pub struct OpenBox<'info> {
     #[account(mut)]
     pub owner: Signer<'info>,
 
+    /// Treasury account to receive payment
+    #[account(mut)]
+    pub treasury: SystemAccount<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
-pub fn open_box_handler(ctx: Context<OpenBox>, pool_size: u64) -> Result<()> {
+pub fn open_box_handler(ctx: Context<OpenBox>, pool_size: u64, payment_amount: u64) -> Result<()> {
     // Check if program is paused
     require!(!ctx.accounts.global.paused, SkinVaultError::BuybackDisabled);
 
@@ -52,6 +56,25 @@ pub fn open_box_handler(ctx: Context<OpenBox>, pool_size: u64) -> Result<()> {
         pool_size <= ctx.accounts.batch.total_items,
         SkinVaultError::InvalidPoolSize
     );
+
+    // Validate payment amount matches batch price
+    require!(
+        payment_amount == ctx.accounts.batch.price_sol,
+        SkinVaultError::InvalidPaymentAmount
+    );
+
+    // Transfer SOL payment to treasury
+    let transfer_instruction = anchor_lang::system_program::Transfer {
+        from: ctx.accounts.owner.to_account_info(),
+        to: ctx.accounts.treasury.to_account_info(),
+    };
+    anchor_lang::system_program::transfer(
+        CpiContext::new(
+            ctx.accounts.system_program.to_account_info(),
+            transfer_instruction,
+        ),
+        payment_amount,
+    )?;
 
     let current_time = Clock::get()?.unix_timestamp;
     let box_mint = ctx.accounts.box_state.asset;

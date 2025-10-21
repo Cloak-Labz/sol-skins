@@ -11,7 +11,7 @@ export const corsOptions = {
   origin: (origin: string | undefined, callback: Function) => {
     const allowedOrigins = [
       'http://localhost:3000',
-      'http://localhost:3001',
+      'http://localhost:4000',
       'https://dust3.vercel.app',
       'https://dust3.com',
     ];

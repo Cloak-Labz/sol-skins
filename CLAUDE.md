@@ -47,7 +47,7 @@ npm run dev          # http://localhost:3000
 
 # Backend (Express)
 cd src/server
-npm run dev          # http://localhost:3001
+npm run dev          # http://localhost:4000
 
 # Solana Program
 cd solana
@@ -165,8 +165,8 @@ User → Frontend (Next.js)
 ## Backend (Express + TypeORM)
 
 **Location**: `src/server/`
-**Port**: `3001`
-**Documentation**: http://localhost:3001/api-docs (Swagger)
+**Port**: `4000`
+**Documentation**: http://localhost:4000/api-docs (Swagger)
 
 ### Key Entities
 
@@ -285,7 +285,7 @@ SOLANA_RPC_URL=https://api.devnet.solana.com
 ANCHOR_WALLET=~/.config/solana/id.json
 
 # API
-PORT=3001
+PORT=4000
 NODE_ENV=development
 JWT_SECRET=<random-secret>
 ```

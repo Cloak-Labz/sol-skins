@@ -36,6 +36,7 @@ pub fn publish_merkle_root_handler(
     metadata_uris: Vec<String>,
     merkle_root: [u8; 32],
     snapshot_time: i64,
+    price_sol: u64,
 ) -> Result<()> {
     let current_time = Clock::get()?.unix_timestamp;
 
@@ -75,6 +76,7 @@ pub fn publish_merkle_root_handler(
     batch.total_items = total_items;
     batch.boxes_minted = 0;
     batch.boxes_opened = 0;
+    batch.price_sol = price_sol;
     batch.bump = ctx.bumps.batch;
 
     emit!(MerklePublished {

@@ -16,7 +16,7 @@ pub use events::*;
 pub use instructions::*;
 pub use states::*;
 
-declare_id!("5q1sgnwz8tTqfMJm1Hub4uziaGSZGZhdw1JgyGoERtwQ");
+declare_id!("EyqcQ4n3Pr7BoqycXQj6hmyqmxZzwFzpFasQq55GEGkR");
 
 #[program]
 pub mod skinvault {
@@ -35,6 +35,7 @@ pub mod skinvault {
         metadata_uris: Vec<String>,
         merkle_root: [u8; 32],
         snapshot_time: i64,
+        price_sol: u64,
     ) -> Result<()> {
         instructions::publish_root::publish_merkle_root_handler(
             ctx,
@@ -43,6 +44,7 @@ pub mod skinvault {
             metadata_uris,
             merkle_root,
             snapshot_time,
+            price_sol,
         )
     }
 
@@ -52,8 +54,8 @@ pub mod skinvault {
     }
 
     /// Open a loot box and request VRF
-    pub fn open_box(ctx: Context<OpenBox>, pool_size: u64) -> Result<()> {
-        instructions::open_box::open_box_handler(ctx, pool_size)
+    pub fn open_box(ctx: Context<OpenBox>, pool_size: u64, payment_amount: u64) -> Result<()> {
+        instructions::open_box::open_box_handler(ctx, pool_size, payment_amount)
     }
 
     /// VRF callback to provide randomness for box opening

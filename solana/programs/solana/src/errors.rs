@@ -61,4 +61,7 @@ pub enum SkinVaultError {
 
     #[msg("CPI call failed")]
     CpiFailed,
+
+    #[msg("Invalid payment amount")]
+    InvalidPaymentAmount,
 }

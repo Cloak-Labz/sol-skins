@@ -405,7 +405,7 @@ export default function PacksPage() {
         const sample = metadataUris.slice(0, Math.min(10, metadataUris.length));
         const fetchWithTimeout = (rawUrl: string, ms = 7000) => {
           // Normalize metadata URLs
-          const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+          const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
           const baseV1 = `${apiBase}/api/v1`;
 
           let url = rawUrl?.trim();
@@ -696,7 +696,15 @@ export default function PacksPage() {
       console.log("Using box for open:", { batchId, boxAsset: boxAsset.toBase58(), metadataCount: selectedBoxMetaUris.length });
 
       // 4. Execute complete pack opening (createBox + openBox + revealAndClaim in single transaction)
-      const result = await programService.openPackComplete(wallet, { batchId, poolSize: 1, boxAsset });
+      // Get treasury address from environment, admin panel, or use admin wallet as fallback
+      const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_ADDRESS || 'v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs';
+      if (!treasuryAddress) {
+        toast.error("Treasury address not configured. Please set NEXT_PUBLIC_TREASURY_ADDRESS in environment variables.");
+        setOpeningPhase(null);
+        return;
+      }
+      const treasury = new PublicKey(treasuryAddress);
+      const result = await programService.openPackComplete(wallet, { batchId, poolSize: 1, boxAsset, treasury });
       console.log("Pack opened and NFT claimed:", result);
       toast.success("Pack opened successfully!");
 

@@ -104,6 +104,8 @@ export default function AdminPage() {
   const isPublishingRef = useRef(false);
   const [candyMachineInput, setCandyMachineInput] = useState("");
   const [snapshotTimeInput, setSnapshotTimeInput] = useState("");
+  const [priceSolInput, setPriceSolInput] = useState("1"); // Default to 1 SOL
+  const [treasuryAddress, setTreasuryAddress] = useState("");
   const [selectedBoxId, setSelectedBoxId] = useState("");
 
   // Pack creation form
@@ -517,7 +519,7 @@ export default function AdminPage() {
   const loadInventory = async () => {
     try {
       setLoadingInventory(true);
-      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
       const res = await fetch(`${base}/api/v1/admin/inventory`);
       const json = await res.json();
       if (json?.success) {
@@ -545,7 +547,7 @@ export default function AdminPage() {
   // Pack Management Functions
   const loadPacks = async () => {
     try {
-      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
       const res = await fetch(`${base}/api/v1/admin/packs`);
       const json = await res.json();
       if (json?.success) {
@@ -601,7 +603,7 @@ export default function AdminPage() {
       };
 
       // Save to backend
-      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
       const res = await fetch(`${base}/api/v1/admin/packs`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -697,7 +699,7 @@ export default function AdminPage() {
       };
 
       // Save to backend
-      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+      const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
       await fetch(`${base}/api/v1/admin/packs/${pack.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
@@ -855,7 +857,7 @@ export default function AdminPage() {
     } else {
       // Auto-generate: get the highest batchId from existing boxes
       try {
-        const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+        const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
         const res = await fetch(`${base}/api/v1/admin/packs`);
         const json = await res.json();
         if (json?.success && json.data) {
@@ -904,11 +906,14 @@ export default function AdminPage() {
         setSnapshotTimeInput(`${Math.floor(Date.now() / 1000)}`);
       }
 
+      const priceSol = parseFloat(priceSolInput) * 1_000_000_000; // Convert SOL to lamports
+      
       await programService.createBatch(wallet as any, {
         batchId,
         candyMachine: cm,
         metadataUris,
         merkleRoot,
+        priceSol: Math.floor(priceSol),
       });
 
       // Update the box with the batchId first
@@ -1599,7 +1604,7 @@ export default function AdminPage() {
                           className="text-xs"
                           onClick={async () => {
                             try {
-                              const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+                              const base = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
                               const res = await fetch(`${base}/api/v1/admin/packs`);
                               const json = await res.json();
                               if (json?.success && json.data) {
@@ -1626,6 +1631,29 @@ export default function AdminPage() {
                   <div>
                     <Label className="text-white">Snapshot Time (sec, optional)</Label>
                     <Input value={snapshotTimeInput} onChange={(e)=>setSnapshotTimeInput(e.target.value)} placeholder={`${Math.floor(Date.now()/1000)}`} className="bg-zinc-900 border-zinc-700 text-white"/>
+                  </div>
+                  <div>
+                    <Label className="text-white">Price (SOL) *</Label>
+                    <Input 
+                      value={priceSolInput} 
+                      onChange={(e)=>setPriceSolInput(e.target.value)} 
+                      placeholder="1.0" 
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      className="bg-zinc-900 border-zinc-700 text-white"
+                    />
+                    <p className="text-xs text-zinc-500 mt-1">Price in SOL to open a pack from this batch</p>
+                  </div>
+                  <div>
+                    <Label className="text-white">Treasury Address (optional)</Label>
+                    <Input 
+                      value={treasuryAddress} 
+                      onChange={(e)=>setTreasuryAddress(e.target.value)} 
+                      placeholder="Enter treasury wallet address" 
+                      className="bg-zinc-900 border-zinc-700 text-white"
+                    />
+                    <p className="text-xs text-zinc-500 mt-1">Wallet address to receive payments. Leave empty to use environment variable.</p>
                   </div>
                   <div>
                     <Label className="text-white">Select Box *</Label>
