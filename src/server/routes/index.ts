@@ -12,6 +12,7 @@ import { boxRoutes } from "./boxes";
 import irysRoutes from "./irys";
 import metadataRoutes from "./metadata";
 import discordRoutes from "./discord";
+import pendingSkinsRoutes from "./pending-skins";
 
 export async function createRoutes(): Promise<Router> {
   const router = Router();
@@ -30,6 +31,7 @@ export async function createRoutes(): Promise<Router> {
   router.use("/irys", irysRoutes);
   router.use("/metadata", metadataRoutes);
   router.use("/discord", discordRoutes);
+  router.use("/pending-skins", pendingSkinsRoutes);
 
   return router;
 }

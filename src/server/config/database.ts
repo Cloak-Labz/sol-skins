@@ -14,6 +14,7 @@ import { SteamInventory } from "../entities/SteamInventory";
 import { Inventory } from "../entities/Inventory";
 import { Box } from "../entities/Box";
 import { Metadata } from "../entities/Metadata";
+import { PendingSkin } from "../entities/PendingSkin";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -39,9 +40,10 @@ export const AppDataSource = new DataSource({
     Inventory,
     Box,
     Metadata,
+    PendingSkin,
   ],
-  migrations: ["src/database/migrations/*.ts"],
-  subscribers: ["src/database/subscribers/*.ts"],
+  // migrations: ["src/database/migrations/*.ts"],
+  // subscribers: ["src/database/subscribers/*.ts"],
 });
 
 export const initializeDatabase = async (): Promise<void> => {

@@ -28,15 +28,26 @@ export class DiscordService {
    * Create a Discord ticket for a skin claim
    */
   async createSkinClaimTicket(data: DiscordTicketData): Promise<void> {
+    console.log('🎫 DiscordService.createSkinClaimTicket called with:', {
+      skinName: data.skinName,
+      rarity: data.skinRarity,
+      user: data.walletAddress,
+      botToken: this.botToken ? 'SET' : 'NOT SET',
+      channelId: this.channelId
+    });
+
     if (!this.botToken || !this.channelId) {
       console.warn('Discord integration not configured - skipping ticket creation');
       return;
     }
 
     try {
+      console.log('🔍 Creating Discord embed...');
       const embed = this.createTicketEmbed(data);
+      console.log('✅ Discord embed created:', embed.title);
       
-      await axios.post(
+      console.log('📤 Sending Discord message to channel:', this.channelId);
+      const response = await axios.post(
         `https://discord.com/api/v10/channels/${this.channelId}/messages`,
         {
           embeds: [embed],
@@ -74,9 +85,15 @@ export class DiscordService {
         }
       );
 
+      console.log('✅ Discord message sent successfully! Response:', {
+        status: response.status,
+        messageId: response.data.id,
+        channelId: response.data.channel_id
+      });
       console.log(`Discord ticket created for skin claim: ${data.skinName}`);
-    } catch (error) {
-      console.error('Failed to create Discord ticket:', error);
+    } catch (error: any) {
+      console.error('❌ Failed to create Discord ticket:', error.message);
+      console.error('❌ Full error:', error.response?.data || error);
       // Don't throw - we don't want Discord failures to break skin claims
     }
   }
@@ -120,7 +137,7 @@ export class DiscordService {
         },
         {
           name: '⛓️ Blockchain',
-          value: `**NFT Mint:** \`${data.nftMintAddress}\`\n**Opened:** <t:${Math.floor(data.openedAt.getTime() / 1000)}:R>`,
+          value: `**NFT Mint:** \`${data.nftMintAddress}\`\n**Opened:** <t:${Math.floor(new Date(data.openedAt).getTime() / 1000)}:R>`,
           inline: false
         }
       ],

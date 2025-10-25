@@ -21,7 +21,9 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { casesService, marketplaceService, SolanaProgramService, boxesService } from "@/lib/services";
+import { casesService, marketplaceService, SolanaProgramService, boxesService, authService } from "@/lib/services";
+import { discordService } from "@/lib/services/discord.service";
+import { pendingSkinsService } from "@/lib/services/pending-skins.service";
 import { PublicKey, Keypair } from '@solana/web3.js';
 import { LootBoxType } from "@/lib/types/api";
 
@@ -190,6 +192,8 @@ export default function PacksPage() {
   const rouletteRef = useRef<HTMLDivElement>(null);
   const animationRef = useRef<any>(null);
   const [batchPrice, setBatchPrice] = useState<number | null>(null);
+  const [lastPackResult, setLastPackResult] = useState<{ signature: string; asset: string } | null>(null);
+  const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
 
   // Calculate real odds from batch metadata URIs
   const calculateRealOdds = async (metadataUris: string[]) => {
@@ -407,6 +411,24 @@ export default function PacksPage() {
       void fetchBatchPrice(selectedPack as any);
     }
   }, [selectedPack]);
+
+  // Fetch user's trade URL on component mount
+  useEffect(() => {
+    const fetchUserTradeUrl = async () => {
+      try {
+        const userProfile = await authService.getProfile();
+        setUserTradeUrl(userProfile.tradeUrl || null);
+      } catch (error) {
+        console.error('Failed to fetch user profile:', error);
+        setUserTradeUrl(null);
+      }
+    };
+
+    if (connected) {
+      void fetchUserTradeUrl();
+    }
+  }, [connected]);
+
 
   // Cleanup animation on unmount
   useEffect(() => {
@@ -737,20 +759,25 @@ export default function PacksPage() {
         icon: '💰'
       });
       
+      // Execute the Solana transaction
       const result = await programService.openPackComplete(wallet, { batchId, poolSize: 1, boxAsset, treasury });
       console.log("Pack opened and NFT claimed:", result);
+      setLastPackResult(result); // Store the result for later use
       
       // Show transaction link for verification
       const explorerUrl = `https://solana.fm/tx/${result.signature}?cluster=devnet-solana`;
       console.log('🔍 View transaction:', explorerUrl);
       
       toast.success(`Pack opened successfully! ${paymentInSOL} SOL paid to treasury.`, {
-        duration: 5000,
-        action: {
-          label: 'View Transaction',
-          onClick: () => window.open(explorerUrl, '_blank')
-        }
+        duration: 5000
       });
+      
+      // Show transaction link separately
+      toast(`🔍 View transaction: ${explorerUrl}`, {
+        duration: 10000,
+        icon: '🔗'
+      });
+
 
       // 2. Start roulette animation
       setOpeningPhase("spinning");
@@ -778,7 +805,36 @@ export default function PacksPage() {
 
           setWonSkin(winnerSkin);
           setOpeningPhase("revealing");
+          
+          // Store the won skin in database via API
+          try {
+            if (walletCtx.publicKey) {
+              await pendingSkinsService.createPendingSkin({
+                userId: walletCtx.publicKey.toString(),
+                skinName: winnerSkin.name,
+                skinRarity: winnerSkin.rarity,
+                skinWeapon: winnerSkin.name.split(' | ')[0] || 'Unknown',
+                skinValue: winnerSkin.value,
+                skinImage: winnerSkin.image,
+                nftMintAddress: result?.asset,
+                transactionHash: result?.signature,
+                caseOpeningId: `pack-${Date.now()}`,
+              });
+              console.log('💾 Stored pending skin in database:', winnerSkin.name);
+            }
+          } catch (error) {
+            console.error('Failed to store pending skin in database:', error);
+            // Fallback to localStorage if API fails
+            try {
+              localStorage.setItem('pendingSkin', JSON.stringify(winnerSkin));
+              console.log('💾 Fallback: Stored pending skin in localStorage:', winnerSkin.name);
+            } catch (localError) {
+              console.error('Failed to store pending skin in localStorage:', localError);
+            }
+          }
+          
           stopAndShowResult(winnerSkin);
+
         } catch (error: any) {
           const msg = String(error?.message || "");
           if (msg.includes("already been processed")) {
@@ -1352,6 +1408,30 @@ export default function PacksPage() {
                     </motion.p>
                   </motion.div>
 
+                  {/* Steam Trade URL Warning */}
+                  {userTradeUrl === null && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.6 }}
+                      className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 mb-4 mx-4"
+                    >
+                      <div className="flex items-center gap-2 text-yellow-200">
+                        <Lock className="w-5 h-5" />
+                        <span className="font-semibold">Steam Trade URL Required</span>
+                      </div>
+                      <p className="text-yellow-100 text-sm mt-1">
+                        You need to set up your Steam Trade URL in your profile to claim this skin. Your skin will be saved and waiting for you!
+                      </p>
+                      <Link 
+                        href="/app-dashboard/profile" 
+                        className="text-yellow-200 underline text-sm hover:text-yellow-100 mt-2 inline-block"
+                      >
+                        Go to Profile Settings →
+                      </Link>
+                    </motion.div>
+                  )}
+
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -1359,11 +1439,39 @@ export default function PacksPage() {
                     className="flex gap-4 justify-center pt-4"
                   >
                     <Button
+                      disabled={userTradeUrl === null}
                       onClick={async () => {
                         try {
+                          // Check if user has Steam Trade URL set up
+                          const userProfile = await authService.getProfile();
+                          if (!userProfile.tradeUrl || userProfile.tradeUrl.trim() === '') {
+                            toast.error("Please set up your Steam Trade URL in your profile before claiming skins!");
+                            return;
+                          }
+
+                          // Create Discord ticket for skin claim
+                          if (wonSkin) {
+                            console.log('🎫 Creating Discord ticket for claimed skin:', wonSkin);
+                            await discordService.createSkinClaimTicket({
+                              userId: walletCtx.publicKey?.toString() || 'unknown',
+                              walletAddress: walletCtx.publicKey?.toString() || 'unknown',
+                              steamTradeUrl: userProfile.tradeUrl,
+                              skinName: wonSkin.name,
+                              skinRarity: wonSkin.rarity,
+                              skinWeapon: wonSkin.name.split(' | ')[0] || 'Unknown',
+                              nftMintAddress: lastPackResult?.asset || 'unknown',
+                              openedAt: new Date(),
+                              caseOpeningId: `pack-${Date.now()}`,
+                            });
+                            console.log('✅ Discord ticket created successfully for:', wonSkin.name);
+                          }
+                          
                           // Find the case opening ID from the won skin
                           // In production, store this in state when opening
                           toast.success("Skin claimed to inventory!");
+                          
+                          // Clear the pending skin from localStorage
+                          localStorage.removeItem('pendingSkin');
                           setShowResult(false);
                         } catch (error) {
                           console.error("Failed to claim skin:", error);

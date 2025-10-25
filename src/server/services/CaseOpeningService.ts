@@ -259,6 +259,13 @@ export class CaseOpeningService {
 
           // Create Discord ticket for skin claim
           try {
+            console.log('🎫 Creating Discord ticket for real skin claim:', {
+              skinName: `${selectedSkin.weapon} | ${selectedSkin.skinName}`,
+              rarity: selectedSkin.rarity,
+              user: user.walletAddress,
+              caseOpeningId: caseOpeningId
+            });
+            
             await discordService.createSkinClaimTicket({
               userId: user.id,
               walletAddress: user.walletAddress,
@@ -270,8 +277,10 @@ export class CaseOpeningService {
               openedAt: userSkin.openedAt,
               caseOpeningId: caseOpeningId,
             });
+            
+            console.log('✅ Discord ticket created successfully for real skin claim');
           } catch (error) {
-            console.error('Failed to create Discord ticket:', error);
+            console.error('❌ Failed to create Discord ticket for real skin claim:', error);
             // Don't throw - Discord failures shouldn't break skin claims
           }
         }

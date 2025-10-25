@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { User } from '../types/api';
 import { authService } from '../services';
+import { apiClient } from '../services/api';
 
 interface UserContextType {
   user: User | null;
@@ -48,6 +49,9 @@ export function UserProvider({ children }: UserProviderProps) {
       setUser(response.user);
       setWalletAddress(address);
       
+      // Update API client with wallet address
+      apiClient.setWalletAddress(address);
+      
       console.log('Wallet connected successfully');
     } catch (err) {
       console.error('Wallet connection error:', err);
@@ -67,6 +71,9 @@ export function UserProvider({ children }: UserProviderProps) {
       await authService.disconnectWallet();
       setUser(null);
       setWalletAddress(null);
+      
+      // Clear wallet address from API client
+      apiClient.setWalletAddress(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to disconnect wallet';
       setError(errorMessage);

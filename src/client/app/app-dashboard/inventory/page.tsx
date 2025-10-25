@@ -29,16 +29,17 @@ import {
   Box,
   Sparkles,
 } from "lucide-react";
-import { inventoryService } from "@/lib/services";
+import { inventoryService, authService } from "@/lib/services";
 import { MOCK_CONFIG } from "@/lib/config/mock";
 import { UserSkin } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
-import { useWallet } from "@solana/wallet-adapter-react";
 import { toast } from "react-hot-toast";
 import { formatCurrency } from "@/lib/utils";
+import { discordService } from "@/lib/services/discord.service";
+import { pendingSkinsService, PendingSkin } from "@/lib/services/pending-skins.service";
 
 export default function InventoryPage() {
-  const { connected: isConnected } = useWallet();
+  const { isConnected, walletAddress } = useUser();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("date");
   const [filterBy, setFilterBy] = useState("all");
@@ -48,6 +49,8 @@ export default function InventoryPage() {
   const [selling, setSelling] = useState(false);
   const [inventorySkins, setInventorySkins] = useState<UserSkin[]>([]);
   const [totalValue, setTotalValue] = useState(0);
+  const [pendingSkin, setPendingSkin] = useState<PendingSkin | null>(null);
+  const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
 
   // Load inventory from backend
   useEffect(() => {
@@ -61,6 +64,93 @@ export default function InventoryPage() {
     }
   }, [isConnected]); // Only depend on isConnected, filters handled in loadInventory
 
+  // Check for pending skin and fetch user trade URL
+  useEffect(() => {
+    const checkPendingSkin = async () => {
+      try {
+        if (isConnected && walletAddress) {
+          console.log('🔍 Checking for pending skins with wallet:', walletAddress);
+          
+          // Fetch pending skins from API using wallet address
+          try {
+            console.log('🔍 Fetching pending skins for wallet:', walletAddress);
+            const pendingSkins = await pendingSkinsService.getUserPendingSkins(walletAddress);
+            console.log('📦 Pending skins from API:', pendingSkins);
+            if (pendingSkins.length > 0) {
+              setPendingSkin(pendingSkins[0]); // Show the first pending skin
+              console.log('🔄 Found pending skin in database:', pendingSkins[0].skinName);
+            } else {
+              console.log('📭 No pending skins found in database');
+            }
+          } catch (apiError) {
+            console.error('Failed to fetch pending skins from API:', apiError);
+            // Fallback to localStorage
+            const stored = localStorage.getItem('pendingSkin');
+            if (stored) {
+              const pendingSkinData = JSON.parse(stored);
+              setPendingSkin(pendingSkinData);
+              console.log('🔄 Fallback: Found pending skin in localStorage:', pendingSkinData.name);
+            }
+          }
+
+          // Try to fetch user profile for trade URL (but don't fail if it doesn't work)
+          try {
+            const userProfile = await authService.getProfile();
+            setUserTradeUrl(userProfile.tradeUrl || null);
+          } catch (profileError) {
+            console.log('Could not fetch user profile, will try again later:', profileError);
+            // Don't fail the whole process if profile fetch fails
+          }
+        }
+      } catch (error) {
+        console.error('Failed to check pending skin:', error);
+      }
+    };
+
+    checkPendingSkin();
+  }, [isConnected, walletAddress]);
+
+  // Claim pending skin
+  const claimPendingSkin = async () => {
+    if (!pendingSkin) return;
+
+    try {
+      // Check if user has Steam Trade URL set up
+      if (!userTradeUrl || userTradeUrl.trim() === '') {
+        toast.error("Please set up your Steam Trade URL in your profile before claiming skins!");
+        return;
+      }
+
+      // Claim the pending skin via API
+      const claimedSkin = await pendingSkinsService.claimPendingSkin(pendingSkin.id, pendingSkin.userId);
+      console.log('✅ Pending skin claimed successfully:', claimedSkin.id);
+
+      // Create Discord ticket for skin claim
+      console.log('🎫 Creating Discord ticket for claimed skin:', pendingSkin);
+      await discordService.createSkinClaimTicket({
+        userId: pendingSkin.userId,
+        walletAddress: pendingSkin.userId, // Using userId as wallet address for now
+        steamTradeUrl: userTradeUrl,
+        skinName: pendingSkin.skinName,
+        skinRarity: pendingSkin.skinRarity,
+        skinWeapon: pendingSkin.skinWeapon,
+        nftMintAddress: pendingSkin.nftMintAddress || 'unknown',
+        openedAt: new Date(),
+        caseOpeningId: pendingSkin.caseOpeningId || `pending-${Date.now()}`,
+      });
+      console.log('✅ Discord ticket created successfully for:', pendingSkin.skinName);
+
+      // Clear the pending skin from state and localStorage
+      setPendingSkin(null);
+      localStorage.removeItem('pendingSkin');
+      
+      toast.success("Skin claimed to inventory!");
+    } catch (error) {
+      console.error("Failed to claim pending skin:", error);
+      toast.error("Failed to claim skin");
+    }
+  };
+
   const loadInventory = async () => {
     try {
       setLoading(true);
@@ -68,16 +158,21 @@ export default function InventoryPage() {
         sortBy: sortBy as any,
         filterBy: filterBy === "all" ? undefined : (filterBy as any),
       });
-      const payload: any = (response as any).skins
-        ? response
-        : (response as any).data ?? response;
-      if (payload && payload.skins) {
-        setInventorySkins(payload.skins);
-        setTotalValue(Number(payload.summary?.totalValue ?? 0));
-      } else {
-        setInventorySkins([]);
-        setTotalValue(0);
+      // The API returns { success: true, data: items } or just the items array directly
+      let inventoryItems = [];
+      if (Array.isArray(response)) {
+        // Response is already the items array
+        inventoryItems = response;
+      } else if (response && response.data && Array.isArray(response.data)) {
+        // Response has data property with items array
+        inventoryItems = response.data;
+      } else if (response && response.skins && Array.isArray(response.skins)) {
+        // Response has skins property (legacy format)
+        inventoryItems = response.skins;
       }
+      
+      setInventorySkins(inventoryItems);
+      setTotalValue(Number(response?.summary?.totalValue ?? 0));
     } catch (err) {
       console.error("Failed to load inventory:", err);
       toast.error("Failed to load inventory");
@@ -111,8 +206,8 @@ export default function InventoryPage() {
       if (!searchTerm) return true;
       const searchLower = searchTerm.toLowerCase();
       return (
-        skin.skinTemplate.skinName.toLowerCase().includes(searchLower) ||
-        skin.skinTemplate.weapon.toLowerCase().includes(searchLower)
+        skin.name.toLowerCase().includes(searchLower) ||
+        skin.name.toLowerCase().includes(searchLower)
       );
     });
   }, [inventorySkins, searchTerm]);
@@ -246,6 +341,71 @@ export default function InventoryPage() {
           </Select>
         </div>
 
+        {/* Pending Skin */}
+        {pendingSkin && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Package className="w-5 h-5 text-yellow-500" />
+              <h3 className="text-lg font-semibold text-yellow-200">Pending Skin</h3>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              <Card className="group bg-gradient-to-b from-yellow-950/20 to-yellow-900/20 border border-yellow-500/30 transition-transform duration-200 hover:scale-[1.015] hover:border-yellow-400/50">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <Badge className="bg-yellow-500/20 text-yellow-200 border-yellow-500/30">
+                      {pendingSkin.skinRarity}
+                    </Badge>
+                    <Badge variant="outline" className="text-xs bg-yellow-900/20 text-yellow-300 border border-yellow-500/30">
+                      PENDING
+                    </Badge>
+                  </div>
+                  <div className="aspect-square bg-gradient-to-br from-yellow-900/20 to-yellow-800/20 rounded-lg flex items-center justify-center mb-3">
+                    <img
+                      src={pendingSkin.skinImage}
+                      alt={pendingSkin.skinName}
+                      className="w-full h-full object-cover rounded-lg"
+                    />
+                  </div>
+                  <CardTitle className="text-white text-lg leading-tight">
+                    {pendingSkin.skinName}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-2xl font-bold text-yellow-200">
+                      ${Number(pendingSkin.skinValue).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {userTradeUrl ? (
+                      <Button
+                        onClick={claimPendingSkin}
+                        className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold"
+                      >
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Claim Skin
+                      </Button>
+                    ) : (
+                      <div className="space-y-2">
+                        <Button
+                          disabled
+                          className="w-full bg-gray-600 text-gray-300 font-semibold"
+                        >
+                          <Lock className="w-4 h-4 mr-2" />
+                          Steam Trade URL Required
+                        </Button>
+                        <p className="text-xs text-yellow-300 text-center">
+                          Set up your Steam Trade URL in your profile to claim this skin
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+
         {/* Inventory Grid */}
         {filteredSkins.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -258,25 +418,23 @@ export default function InventoryPage() {
                   <div className="flex items-center justify-between mb-2">
                     <Badge
                       className={`${getRarityColor(
-                        skin.skinTemplate.rarity
+                        skin.rarity
                       )} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}
                     >
-                      {skin.skinTemplate.rarity}
+                      {skin.rarity}
                     </Badge>
-                    {skin.status !== "owned" && (
-                      <Badge
-                        variant="outline"
-                        className="text-xs bg-zinc-900 text-zinc-300 border border-zinc-800"
-                      >
-                        {skin.status}
-                      </Badge>
-                    )}
+                    <Badge
+                      variant="outline"
+                      className="text-xs bg-zinc-900 text-zinc-300 border border-zinc-800"
+                    >
+                      Owned
+                    </Badge>
                   </div>
                   <div className="aspect-square rounded-lg flex items-center justify-center mb-4 animate-float border border-zinc-800 bg-zinc-950">
-                    {skin.skinTemplate.imageUrl ? (
+                    {skin.imageUrl ? (
                       <img
-                        src={skin.skinTemplate.imageUrl}
-                        alt={skin.skinTemplate.skinName}
+                        src={skin.imageUrl}
+                        alt={skin.name}
                         className="w-full h-full object-contain rounded-lg"
                       />
                     ) : (
@@ -286,33 +444,33 @@ export default function InventoryPage() {
                 </CardHeader>
                 <CardContent className="pt-0">
                   <CardTitle className="text-lg mb-1">
-                    {skin.skinTemplate.weapon}
+                    {skin.name}
                   </CardTitle>
                   <p className="text-foreground font-semibold mb-1">
-                    {skin.skinTemplate.skinName}
+                    {skin.description || skin.name}
                   </p>
                   <p className="text-sm text-muted-foreground mb-3">
-                    {skin.condition}
+                    {skin.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
                   </p>
 
                   <div className="flex justify-between items-center mb-4">
                     <span className="text-2xl font-bold text-foreground">
-                      {formatCurrency(skin.currentPrice)}
+                      {skin.attributes?.find(attr => attr.trait_type === 'Float')?.value || 'N/A'}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(skin.acquiredAt).toLocaleDateString()}
+                      {new Date(skin.mintedAt).toLocaleDateString()}
                     </span>
                   </div>
 
                   <div className="space-y-2">
-                    {skin.mintAddress && (
+                    {skin.mintedAsset && (
                       <Button
                         variant="outline"
                         size="sm"
                         className="w-full border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-zinc-100 bg-transparent hover:bg-zinc-900 transition-transform duration-150 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-zinc-600"
                         onClick={() =>
                           window.open(
-                            `https://explorer.solana.com/address/${skin.mintAddress}`,
+                            `https://explorer.solana.com/address/${skin.mintedAsset}`,
                             "_blank"
                           )
                         }
@@ -322,7 +480,6 @@ export default function InventoryPage() {
                       </Button>
                     )}
 
-                    {skin.status === "owned" && (
                       <Button
                         size="sm"
                         className="w-full bg-zinc-100 text-black hover:bg-white transition-transform duration-150 hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-1 focus-visible:ring-zinc-600"
@@ -331,7 +488,6 @@ export default function InventoryPage() {
                         <Coins className="w-4 h-4 mr-2" />
                         Sell via Buyback
                       </Button>
-                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -371,10 +527,10 @@ export default function InventoryPage() {
               <div className="space-y-4">
                 <div className="flex items-center gap-4 p-4 rounded-lg border border-zinc-800 bg-zinc-950">
                   <div className="w-16 h-16 flex items-center justify-center">
-                    {selectedSkin.skinTemplate.imageUrl ? (
+                    {selectedSkin.imageUrl ? (
                       <img
-                        src={selectedSkin.skinTemplate.imageUrl}
-                        alt={selectedSkin.skinTemplate.skinName}
+                        src={selectedSkin.imageUrl}
+                        alt={selectedSkin.name}
                         className="w-16 h-16 object-cover rounded"
                       />
                     ) : (
@@ -383,18 +539,17 @@ export default function InventoryPage() {
                   </div>
                   <div>
                     <h3 className="font-semibold text-foreground">
-                      {selectedSkin.skinTemplate.weapon} |{" "}
-                      {selectedSkin.skinTemplate.skinName}
+                      {selectedSkin.name}
                     </h3>
                     <p className="text-sm text-muted-foreground">
-                      {selectedSkin.condition}
+                      {selectedSkin.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
                     </p>
                     <Badge
                       className={`${getRarityColor(
-                        selectedSkin.skinTemplate.rarity
+                        selectedSkin.rarity
                       )} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}
                     >
-                      {selectedSkin.skinTemplate.rarity}
+                      {selectedSkin.rarity}
                     </Badge>
                   </div>
                 </div>
