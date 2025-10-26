@@ -7,6 +7,7 @@ import { AppError } from '../middlewares/errorHandler';
 import { TransactionType, TransactionStatus } from '../entities/Transaction';
 import { UserDecision } from '../entities/CaseOpening';
 import { v4 as uuidv4 } from 'uuid';
+import { discordService } from './DiscordService';
 
 export class CaseOpeningService {
   private caseOpeningRepository: CaseOpeningRepository;
@@ -255,6 +256,33 @@ export class CaseOpeningService {
           await this.userRepository.updateStats(caseOpening.userId, {
             casesOpened: user.casesOpened + 1,
           });
+
+          // Create Discord ticket for skin claim
+          try {
+            console.log('🎫 Creating Discord ticket for real skin claim:', {
+              skinName: `${selectedSkin.weapon} | ${selectedSkin.skinName}`,
+              rarity: selectedSkin.rarity,
+              user: user.walletAddress,
+              caseOpeningId: caseOpeningId
+            });
+            
+            await discordService.createSkinClaimTicket({
+              userId: user.id,
+              walletAddress: user.walletAddress,
+              steamTradeUrl: user.tradeUrl,
+              skinName: `${selectedSkin.weapon} | ${selectedSkin.skinName}`,
+              skinRarity: selectedSkin.rarity,
+              skinWeapon: selectedSkin.weapon,
+              nftMintAddress: userSkin.nftMintAddress,
+              openedAt: userSkin.openedAt,
+              caseOpeningId: caseOpeningId,
+            });
+            
+            console.log('✅ Discord ticket created successfully for real skin claim');
+          } catch (error) {
+            console.error('❌ Failed to create Discord ticket for real skin claim:', error);
+            // Don't throw - Discord failures shouldn't break skin claims
+          }
         }
       }
 

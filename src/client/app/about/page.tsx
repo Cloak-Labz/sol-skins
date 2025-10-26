@@ -38,15 +38,29 @@ export default function AboutPage() {
     },
   };
   const hoverTilt = {
-    rest: { rotateX: 0, rotateY: 0, scale: 1, transition: { type: "spring", stiffness: 200, damping: 15 } },
-    hover: { rotateX: -2, rotateY: 3, scale: 1.02, transition: { type: "spring", stiffness: 200, damping: 15 } },
+    rest: {
+      rotateX: 0,
+      rotateY: 0,
+      scale: 1,
+      transition: { type: "spring", stiffness: 200, damping: 15 },
+    },
+    hover: {
+      rotateX: -2,
+      rotateY: 3,
+      scale: 1.02,
+      transition: { type: "spring", stiffness: 200, damping: 15 },
+    },
   } as const;
   return (
     <div className="min-h-screen bg-black">
       {/* Hero */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <img src="/dust3.jpeg" alt="Dust3" className="w-full h-full object-cover opacity-30" />
+          <img
+            src="/dust3.jpeg"
+            alt="Dust3"
+            className="w-full h-full object-cover opacity-30"
+          />
           <div className="absolute inset-0 bg-gradient-to-b from-black via-black/70 to-black" />
         </div>
         <div className="relative px-6 md:px-10 lg:px-16 py-24">
@@ -70,14 +84,24 @@ export default function AboutPage() {
               <h1 className="text-5xl md:text-7xl font-extrabold text-white tracking-tight mb-4">
                 The Future of
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E99500] to-[#ffad33]">Collecting</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#E99500] to-[#ffad33]">
+                  Collecting
+                </span>
               </h1>
               <p className="text-gray-300 text-lg md:text-xl max-w-3xl mx-auto mb-8">
-                Experience the seamless bridge between premium pack opening and verifiable ownership — fair, fast, and liquid on Solana.
+                Experience the seamless bridge between premium pack opening and
+                verifiable ownership — fair, fast, and liquid on Solana.
               </p>
               <div className="flex items-center justify-center gap-3">
-                <Button className="bg-[#E99500] text-black hover:bg-[#d88500]">View Marketplace</Button>
-                <Button variant="outline" className="border-[#333] text-white hover:bg-[#111]">Learn More</Button>
+                <Button className="bg-[#E99500] text-black hover:bg-[#d88500]">
+                  View Marketplace
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-[#333] text-white hover:bg-[#111]"
+                >
+                  Learn More
+                </Button>
               </div>
             </motion.div>
             {/* Scroll cue */}
@@ -103,7 +127,10 @@ export default function AboutPage() {
             { label: "Rank on\nGlobal Leaderboard", Icon: Zap },
             { label: "Redeem Anytime,\nAnywhere", Icon: Globe },
           ].map(({ label, Icon }, i) => (
-            <div key={i} className="flex flex-col items-center justify-center gap-2">
+            <div
+              key={i}
+              className="flex flex-col items-center justify-center gap-2"
+            >
               <div className="size-8 rounded-md bg-[#E99500]/15 flex items-center justify-center">
                 <Icon className="w-4 h-4 text-[#E99500]" />
               </div>
@@ -118,8 +145,22 @@ export default function AboutPage() {
       {/* Core Benefits */}
       <section className="px-6 md:px-10 lg:px-16 py-16">
         <div className="max-w-6xl mx-auto">
-          <motion.h2 variants={fadeIn} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-2xl md:text-3xl font-bold text-white mb-8">Core Benefits</motion.h2>
-          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }} className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <motion.h2
+            variants={fadeIn}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="text-2xl md:text-3xl font-bold text-white mb-8"
+          >
+            Core Benefits
+          </motion.h2>
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
+          >
             {[
               {
                 title: "Track Your Wins",
@@ -142,17 +183,26 @@ export default function AboutPage() {
                 Icon: Coins,
               },
             ].map(({ title, desc, Icon }, idx) => (
-              <motion.div key={idx} variants={fadeIn} whileHover="hover" initial="rest" animate="rest">
-                <motion.div variants={hoverTilt} className="[transform-style:preserve-3d]">
+              <motion.div
+                key={idx}
+                variants={fadeIn}
+                whileHover="hover"
+                initial="rest"
+                animate="rest"
+              >
+                <motion.div
+                  variants={hoverTilt}
+                  className="[transform-style:preserve-3d]"
+                >
                   <Card className="bg-[#0d0d0d] border-[#1f1f1f] hover:border-[#E99500] transition-colors">
                     <CardContent className="p-6">
-                  <div className="w-10 h-10 rounded-md bg-[#E99500]/10 flex items-center justify-center mb-4">
-                    <Icon className="w-5 h-5 text-[#E99500]" />
-                  </div>
-                  <h3 className="text-white font-semibold mb-2">{title}</h3>
-                  <p className="text-gray-400 text-sm leading-relaxed">
-                    {desc}
-                  </p>
+                      <div className="w-10 h-10 rounded-md bg-[#E99500]/10 flex items-center justify-center mb-4">
+                        <Icon className="w-5 h-5 text-[#E99500]" />
+                      </div>
+                      <h3 className="text-white font-semibold mb-2">{title}</h3>
+                      <p className="text-gray-400 text-sm leading-relaxed">
+                        {desc}
+                      </p>
                     </CardContent>
                   </Card>
                 </motion.div>
@@ -186,11 +236,15 @@ export default function AboutPage() {
             </div>
           </div>
           <div>
-            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+            >
               <Card className="bg-[#0f0f0f] border-[#1f1f1f] overflow-hidden">
                 <CardContent className="p-0">
                   <motion.img
-                    src="/dust3.jpeg"
+                    src="/assets/banner2.jpg"
                     alt="Dust3"
                     className="w-full h-64 object-cover"
                     whileHover={{ scale: 1.03 }}
@@ -206,8 +260,22 @@ export default function AboutPage() {
       {/* Key Features */}
       <section className="px-6 md:px-10 lg:px-16 py-16">
         <div className="max-w-6xl mx-auto">
-          <motion.h2 variants={fadeIn} initial="hidden" whileInView="show" viewport={{ once: true }} className="text-2xl md:text-3xl font-bold text-white mb-8">Key Benefits</motion.h2>
-          <motion.div variants={stagger} initial="hidden" whileInView="show" viewport={{ once: true }} className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <motion.h2
+            variants={fadeIn}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="text-2xl md:text-3xl font-bold text-white mb-8"
+          >
+            Key Benefits
+          </motion.h2>
+          <motion.div
+            variants={stagger}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true }}
+            className="grid md:grid-cols-2 lg:grid-cols-4 gap-6"
+          >
             {[
               {
                 t: "On-Chain Fairness",
@@ -250,15 +318,26 @@ export default function AboutPage() {
                 Icon: Lock,
               },
             ].map(({ t, d, Icon }, i) => (
-              <motion.div key={i} variants={fadeIn} whileHover="hover" initial="rest" animate="rest">
-                <motion.div variants={hoverTilt} className="[transform-style:preserve-3d]">
+              <motion.div
+                key={i}
+                variants={fadeIn}
+                whileHover="hover"
+                initial="rest"
+                animate="rest"
+              >
+                <motion.div
+                  variants={hoverTilt}
+                  className="[transform-style:preserve-3d]"
+                >
                   <Card className="bg-[#0d0d0d] border-[#1f1f1f]">
                     <CardContent className="p-6">
                       <div className="w-10 h-10 rounded-md bg-[#E99500]/10 flex items-center justify-center mb-4">
                         <Icon className="w-5 h-5 text-[#E99500]" />
                       </div>
                       <h3 className="text-white font-semibold mb-2">{t}</h3>
-                      <p className="text-gray-400 text-sm leading-relaxed">{d}</p>
+                      <p className="text-gray-400 text-sm leading-relaxed">
+                        {d}
+                      </p>
                     </CardContent>
                   </Card>
                 </motion.div>

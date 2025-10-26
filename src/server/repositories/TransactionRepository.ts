@@ -1,7 +1,7 @@
-import { Repository, IsNull, MoreThanOrEqual } from 'typeorm';
-import { Transaction } from '../entities/Transaction';
-import { TransactionType, TransactionStatus } from '../entities/Transaction';
-import { AppDataSource } from '../config/database';
+import { Repository, IsNull, MoreThanOrEqual } from "typeorm";
+import { Transaction } from "../entities/Transaction";
+import { TransactionType, TransactionStatus } from "../entities/Transaction";
+import { AppDataSource } from "../config/database";
 
 export class TransactionRepository {
   private repository: Repository<Transaction>;
@@ -13,94 +13,95 @@ export class TransactionRepository {
   async findById(id: string): Promise<Transaction | null> {
     return this.repository.findOne({
       where: { id },
-      relations: ['user', 'lootBoxType', 'userSkin'],
+      relations: ["user", "lootBoxType", "userSkin"],
     });
   }
 
-  async findAll(options: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    type?: string;
-    sortBy?: string;
-  } = {}): Promise<[Transaction[], number]> {
+  async findAll(
+    options: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      type?: string;
+      sortBy?: string;
+    } = {}
+  ): Promise<[Transaction[], number]> {
     const page = options.page || 1;
     const limit = options.limit || 20;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repository.createQueryBuilder('transaction')
-      .leftJoinAndSelect('transaction.user', 'user')
-      .leftJoinAndSelect('transaction.lootBoxType', 'lootBoxType')
-      .leftJoinAndSelect('transaction.userSkin', 'userSkin');
+    const queryBuilder = this.repository
+      .createQueryBuilder("transaction")
+      .leftJoinAndSelect("transaction.user", "user")
+      .leftJoinAndSelect("transaction.lootBoxType", "lootBoxType")
+      .leftJoinAndSelect("transaction.userSkin", "userSkin");
 
     if (options.search) {
       queryBuilder.andWhere(
-        '(lootBoxType.name ILIKE :search OR userSkin.weapon ILIKE :search OR userSkin.skinName ILIKE :search)',
+        "(lootBoxType.name ILIKE :search OR userSkin.weapon ILIKE :search OR userSkin.skinName ILIKE :search)",
         { search: `%${options.search}%` }
       );
     }
 
-    if (options.type && options.type !== 'all') {
-      queryBuilder.andWhere('transaction.transactionType = :type', { 
-        type: options.type as TransactionType 
+    if (options.type && options.type !== "all") {
+      queryBuilder.andWhere("transaction.transactionType = :type", {
+        type: options.type as TransactionType,
       });
     }
 
-    if (options.sortBy === 'amount-high') {
-      queryBuilder.orderBy('transaction.amountUsd', 'DESC');
-    } else if (options.sortBy === 'amount-low') {
-      queryBuilder.orderBy('transaction.amountUsd', 'ASC');
+    if (options.sortBy === "amount-high") {
+      queryBuilder.orderBy("transaction.amountUsd", "DESC");
+    } else if (options.sortBy === "amount-low") {
+      queryBuilder.orderBy("transaction.amountUsd", "ASC");
     } else {
-      queryBuilder.orderBy('transaction.createdAt', 'DESC');
+      queryBuilder.orderBy("transaction.createdAt", "DESC");
     }
 
-    return queryBuilder
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+    return queryBuilder.skip(skip).take(limit).getManyAndCount();
   }
 
-  async findByUser(userId: string, options: {
-    page?: number;
-    limit?: number;
-    search?: string;
-    type?: string;
-    sortBy?: string;
-  } = {}): Promise<[Transaction[], number]> {
+  async findByUser(
+    userId: string,
+    options: {
+      page?: number;
+      limit?: number;
+      search?: string;
+      type?: string;
+      sortBy?: string;
+    } = {}
+  ): Promise<[Transaction[], number]> {
     const page = options.page || 1;
     const limit = options.limit || 20;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.repository.createQueryBuilder('transaction')
-      .leftJoinAndSelect('transaction.lootBoxType', 'lootBoxType')
-      .leftJoinAndSelect('transaction.userSkin', 'userSkin')
-      .where('transaction.userId = :userId', { userId });
+    const queryBuilder = this.repository
+      .createQueryBuilder("transaction")
+      .leftJoinAndSelect("transaction.lootBoxType", "lootBoxType")
+      .leftJoinAndSelect("transaction.userSkin", "userSkin")
+      .where("transaction.userId = :userId", { userId });
 
     if (options.search) {
       queryBuilder.andWhere(
-        '(lootBoxType.name ILIKE :search OR userSkin.weapon ILIKE :search OR userSkin.skinName ILIKE :search)',
+        "(lootBoxType.name ILIKE :search OR userSkin.weapon ILIKE :search OR userSkin.skinName ILIKE :search)",
         { search: `%${options.search}%` }
       );
     }
 
-    if (options.type && options.type !== 'all') {
-      queryBuilder.andWhere('transaction.transactionType = :type', { 
-        type: options.type as TransactionType 
+    if (options.type && options.type !== "all") {
+      queryBuilder.andWhere("transaction.transactionType = :type", {
+        type: options.type as TransactionType,
       });
     }
 
-    if (options.sortBy === 'amount-high') {
-      queryBuilder.orderBy('transaction.amountUsd', 'DESC');
-    } else if (options.sortBy === 'amount-low') {
-      queryBuilder.orderBy('transaction.amountUsd', 'ASC');
+    if (options.sortBy === "amount-high") {
+      queryBuilder.orderBy("transaction.amountUsd", "DESC");
+    } else if (options.sortBy === "amount-low") {
+      queryBuilder.orderBy("transaction.amountUsd", "ASC");
     } else {
-      queryBuilder.orderBy('transaction.createdAt', 'DESC');
+      queryBuilder.orderBy("transaction.createdAt", "DESC");
     }
 
-    return queryBuilder
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+    return queryBuilder.skip(skip).take(limit).getManyAndCount();
   }
 
   async create(transactionData: Partial<Transaction>): Promise<Transaction> {
@@ -120,13 +121,14 @@ export class TransactionRepository {
     id: string,
     status: TransactionStatus,
     txHash?: string,
-    blockSlot?: string
+    blockSlot?: number
   ): Promise<void> {
     const updateData: Partial<Transaction> = { status };
-    
+
     if (txHash) updateData.txHash = txHash;
     if (blockSlot) updateData.blockSlot = blockSlot;
-    if (status === TransactionStatus.CONFIRMED) updateData.confirmedAt = new Date();
+    if (status === TransactionStatus.CONFIRMED)
+      updateData.confirmedAt = new Date();
 
     await this.repository.update(id, updateData);
   }
@@ -144,20 +146,20 @@ export class TransactionRepository {
     });
 
     const totalSpent = transactions
-      .filter(t => t.transactionType === TransactionType.OPEN_CASE)
+      .filter((t) => t.transactionType === TransactionType.OPEN_CASE)
       .reduce((sum, t) => sum + Math.abs(t.amountUsd), 0);
 
     const totalEarned = transactions
-      .filter(t => t.transactionType === TransactionType.BUYBACK)
+      .filter((t) => t.transactionType === TransactionType.BUYBACK)
       .reduce((sum, t) => sum + t.amountUsd, 0);
 
-    const casesOpened = transactions
-      .filter(t => t.transactionType === TransactionType.OPEN_CASE)
-      .length;
+    const casesOpened = transactions.filter(
+      (t) => t.transactionType === TransactionType.OPEN_CASE
+    ).length;
 
-    const skinsSold = transactions
-      .filter(t => t.transactionType === TransactionType.BUYBACK)
-      .length;
+    const skinsSold = transactions.filter(
+      (t) => t.transactionType === TransactionType.BUYBACK
+    ).length;
 
     // Note: skinsOwned would need to be calculated from UserSkin table
     const skinsOwned = 0; // Placeholder
@@ -179,7 +181,7 @@ export class TransactionRepository {
   async findPendingTransactions(): Promise<Transaction[]> {
     return this.repository.find({
       where: { status: TransactionStatus.PENDING },
-      relations: ['user'],
+      relations: ["user"],
     });
   }
 
@@ -190,7 +192,7 @@ export class TransactionRepository {
   }> {
     // Simple approach: get all transactions and calculate in memory
     const whereCondition: any = { status: TransactionStatus.CONFIRMED };
-    
+
     if (days) {
       const date = new Date();
       date.setDate(date.getDate() - days);
@@ -202,11 +204,11 @@ export class TransactionRepository {
     });
 
     const totalSol = transactions
-      .filter(t => t.amountSol > 0)
-      .reduce((sum, t) => sum + t.amountSol, 0);
+      .filter((t) => t.amountSol && t.amountSol > 0)
+      .reduce((sum, t) => sum + (t.amountSol || 0), 0);
 
     const totalUsd = transactions
-      .filter(t => t.amountUsd > 0)
+      .filter((t) => t.amountUsd > 0)
       .reduce((sum, t) => sum + t.amountUsd, 0);
 
     return {

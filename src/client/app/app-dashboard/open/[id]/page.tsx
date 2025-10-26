@@ -14,10 +14,13 @@ import { LootBoxTypeDetails, CaseOpening } from "@/lib/types/api";
 import { formatSOL, getRarityColor, getRarityBgColor } from "@/lib/utils";
 import { toast } from "react-hot-toast";
 import { useUser } from "@/lib/contexts/UserContext";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { SolanaProgramService } from "@/lib/services";
 
 export default function OpenCasePage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
+  const wallet = useWallet();
   const [lootBox, setLootBox] = useState<LootBoxTypeDetails | null>(null);
   const [caseOpening, setCaseOpening] = useState<CaseOpening | null>(null);
   const [isOpening, setIsOpening] = useState(false);
@@ -29,6 +32,7 @@ export default function OpenCasePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { isConnected } = useUser();
+  const [onchainSig, setOnchainSig] = useState<string | null>(null);
 
   // Load loot box details
   useEffect(() => {
@@ -92,7 +96,7 @@ export default function OpenCasePage() {
 
   const openCase = async () => {
     if (!lootBox) return;
-    if (!isConnected) {
+    if (!isConnected || !wallet.publicKey) {
       toast.error("Please connect your wallet first");
       return;
     }
@@ -101,35 +105,28 @@ export default function OpenCasePage() {
       setIsOpening(true);
       setAnimationPhase("spinning");
       setError(null);
+      // On-chain flow
+      const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
+      const pid = process.env.NEXT_PUBLIC_PROGRAM_ID as string;
+      const programService = new SolanaProgramService(rpc, pid);
 
-      const response = await casesService.openCase({
-        lootBoxTypeId: lootBox.id,
-        paymentMethod: "SOL", // Default to SOL for now
-      });
+      // Derive batch id from lootBox (for demo, use numeric id or timestamp)
+      const batchId = Number.parseInt((lootBox as any).batchId || `${Date.now()}`);
 
-      // Create a case opening object for the UI
-      const newOpening: CaseOpening = {
-        id: response.data.caseOpeningId,
-        status: "pending",
-        vrfRequestId: response.data.vrfRequestId,
-        openedAt: new Date().toISOString(),
-        estimatedCompletionTime: response.data.estimatedCompletionTime,
-      };
+      // 1) open_box
+      const sigOpen = await programService.openBox(wallet, { batchId, poolSize: 1 });
+      setOnchainSig(sigOpen);
 
-      setCaseOpening(newOpening);
-      toast.success("Case opening initiated!");
+      // 2) reveal_and_claim (direct, no VRF)
+      const { signature } = await programService.revealAndClaim(wallet, { batchId });
+      setOnchainSig(signature);
 
-      // Animation sequence
-      setTimeout(() => {
-        setAnimationPhase("slowing");
-      }, 2000);
-
-      // Since we're simulating, we need to get the result
-      // In production, this would be VRF callback
+      // Animation sequence to show roulette
+      setTimeout(() => setAnimationPhase("slowing"), 1200);
       setTimeout(async () => {
-        // Simulate result
+        // For now, simulate result card; later we can fetch Core asset and show metadata
         simulateResult();
-      }, 5000);
+      }, 2400);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to open case");
       setIsOpening(false);

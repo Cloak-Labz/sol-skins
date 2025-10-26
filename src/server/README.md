@@ -110,7 +110,7 @@ npm run schema:sync         # Sincronizar schema (dev only)
 
 ## Documentação
 
-- **Swagger UI**: http://localhost:3001/api-docs
+- **Swagger UI**: http://localhost:4000/api-docs
 - **API Testing Guide**: `docs/api-testing-guide.md`
 - **Backend Knowledge Base**: `docs/backend-knowledge-base.md`
 
