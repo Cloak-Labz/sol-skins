@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build --prefix src/client",
-  "devCommand": "npm run dev --prefix src/client",
-  "installCommand": "npm install --prefix src/client",
+  "buildCommand": "pnpm run build",
+  "devCommand": "pnpm run dev",
+  "installCommand": "pnpm install --no-frozen-lockfile",
   "framework": "nextjs",
-  "outputDirectory": "src/client/.next",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./src/client"
+  "outputDirectory": ".next",
+  "ignoreCommand": "bash -c 'exit 1'"
 }
