@@ -38,6 +38,11 @@ const envSchema = Joi.object({
   PROGRAM_ID: Joi.string().required(),
   ORACLE_PRIVATE_KEY: Joi.string().allow('').default(''),
   
+  // Buyback Program
+  BUYBACK_PROGRAM_ID: Joi.string().required(),
+  ADMIN_WALLET_PRIVATE_KEY: Joi.string().required(),
+  BUYBACK_RATE: Joi.number().default(0.85),
+  
   // External APIs
   STEAM_API_KEY: Joi.string().allow('').default(''),
   CSGOFLOAT_API_KEY: Joi.string().allow('').default(''),
@@ -96,6 +101,12 @@ export const config = {
     rpcUrl: envVars.SOLANA_RPC_URL,
     wsUrl: envVars.SOLANA_WS_URL,
     programId: envVars.PROGRAM_ID,
+  },
+  
+  buyback: {
+    programId: envVars.BUYBACK_PROGRAM_ID,
+    adminWalletPrivateKey: envVars.ADMIN_WALLET_PRIVATE_KEY,
+    buybackRate: envVars.BUYBACK_RATE,
   },
   
   externalApis: {
