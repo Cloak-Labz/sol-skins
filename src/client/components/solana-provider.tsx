@@ -10,6 +10,8 @@ import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import { toast } from "react-hot-toast";
+import { PhantomWalletAdapter } from "@solana/wallet-adapter-phantom";
+import { SolflareWalletAdapter } from "@solana/wallet-adapter-solflare";
 
 interface SolanaProviderProps {
   children: ReactNode;
@@ -20,14 +22,18 @@ export const SolanaProvider: FC<SolanaProviderProps> = ({ children }) => {
   const network = WalletAdapterNetwork.Devnet;
 
   // Custom RPC endpoint via env or default devnet
-  const endpoint = useMemo(
-    () => process.env.NEXT_PUBLIC_SOLANA_RPC || clusterApiUrl(network),
+  const endpoint = useMemo(() => {
+    const envRpc =
+      process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
+      process.env.NEXT_PUBLIC_SOLANA_RPC;
+    return envRpc || clusterApiUrl(network);
+  }, [network]);
+
+  // Explicitly register common wallets to avoid "connecting" hangs
+  const wallets = useMemo(
+    () => [new PhantomWalletAdapter(), new SolflareWalletAdapter({ network })],
     [network]
   );
-
-  // Don't manually add Phantom/Solflare - they're auto-detected as Standard Wallets
-  // This prevents the duplicate wallet warning
-  const wallets = useMemo(() => [], []);
 
   // Error handler for wallet errors
   const onError = useCallback((error: WalletError) => {
