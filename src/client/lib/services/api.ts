@@ -6,9 +6,12 @@ class ApiClient {
   private walletAddress: string | null = null;
 
   constructor() {
+    // Handle both cases: with and without /api/v1 suffix
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+    const normalizedBaseUrl = baseUrl.endsWith('/api/v1') ? baseUrl : `${baseUrl}/api/v1`;
+    
     this.client = axios.create({
-      baseURL:
-        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1",
+      baseURL: normalizedBaseUrl,
       timeout: 30000,
       headers: {
         "Content-Type": "application/json",
@@ -63,7 +66,7 @@ class ApiClient {
 
     // Response interceptor for error handling
     this.client.interceptors.response.use(
-      (response: AxiosResponse<ApiResponse>) => {
+      (response: AxiosResponse<ApiResponse<any>>) => {
         console.log("API Response:", response.status, response.data);
         return response; // Return the full response to maintain structure
       },
@@ -148,7 +151,11 @@ class ApiClient {
     timestamp: string;
     version: string;
   }> {
-    return this.get("/health");
+    // Health endpoint is at root level, not under /api/v1
+    const baseUrl = this.client.defaults.baseURL || '';
+    const healthUrl = baseUrl.replace('/api/v1', '') + '/health';
+    const response = await axios.get(healthUrl);
+    return response.data.data;
   }
 }
 
