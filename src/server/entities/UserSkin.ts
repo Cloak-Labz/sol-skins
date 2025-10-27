@@ -19,8 +19,8 @@ export class UserSkin {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('uuid')
-  userId: string;
+  @Column('uuid', { nullable: true })
+  userId?: string;
 
   @Column('uuid', { nullable: true })
   skinTemplateId?: string;
@@ -28,12 +28,17 @@ export class UserSkin {
   @Column({ type: 'varchar', unique: true, length: 44 })
   nftMintAddress: string;
 
+  // Alias for compatibility with buyback service
+  get nftMint(): string {
+    return this.nftMintAddress;
+  }
+
   // Opening data
   @Column('uuid', { nullable: true })
   lootBoxTypeId?: string;
 
-  @Column({ type: 'timestamp' })
-  openedAt: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  openedAt?: Date;
 
   // Status
   @Column({ type: 'boolean', default: true })
@@ -42,11 +47,23 @@ export class UserSkin {
   @Column({ type: 'boolean', default: false })
   soldViaBuyback: boolean;
 
+  // Alias for compatibility with buyback service
+  get isBurnedBack(): boolean {
+    return this.soldViaBuyback;
+  }
+
+  set isBurnedBack(value: boolean) {
+    this.soldViaBuyback = value;
+  }
+
   @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
   buybackAmount?: number;
 
   @Column({ type: 'timestamp', nullable: true })
   buybackAt?: Date;
+
+  @Column({ type: 'varchar', length: 88, nullable: true })
+  buybackTxSignature?: string;
 
   // NFT data
   @Column({ type: 'varchar', length: 500, nullable: true })

@@ -31,6 +31,10 @@ export class Box {
   @Index()
   collectionMint!: string;
 
+  // Hidden Settings URI for placeholder metadata
+  @Column({ type: 'text', nullable: true })
+  hiddenSettingsUri?: string;
+
   // Box name/title
   @Column({ type: 'varchar', length: 255 })
   name!: string;

@@ -23,6 +23,7 @@ import {
   updateCandyMachine,
   deleteCandyMachine,
   deleteCandyGuard,
+  mintV2,
   mplCandyMachine
 } from '@metaplex-foundation/mpl-candy-machine';
 import { 
@@ -285,6 +286,44 @@ export class UmiCandyMachineClient {
     } catch (error) {
       console.error("❌ Failed to delete Candy Machine:", error);
       throw new Error(`Deletion failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Mint an NFT from a Candy Machine
+   */
+  async mintFromCandyMachine(
+    candyMachineAddress: string
+  ): Promise<{ nftMint: string; signature: string }> {
+    console.log(`🎁 Minting from Candy Machine: ${candyMachineAddress}`);
+
+    try {
+      // Fetch Candy Machine
+      const candyMachine = await fetchCandyMachine(this.umi, publicKey(candyMachineAddress));
+      
+      // Generate NFT mint signer
+      const nftMint = generateSigner(this.umi);
+      
+      // Mint NFT
+      const result = await mintV2(this.umi, {
+        candyMachine: candyMachine.publicKey,
+        nftMint,
+        collectionMint: candyMachine.collectionMint,
+        collectionUpdateAuthority: candyMachine.authority,
+      }).sendAndConfirm(this.umi);
+
+      console.log(`✅ NFT minted successfully!`);
+      console.log(`📝 NFT Mint: ${nftMint.publicKey}`);
+      console.log(`📝 Transaction signature: ${result.signature}`);
+
+      return {
+        nftMint: nftMint.publicKey.toString(),
+        signature: result.signature.toString(),
+      };
+      
+    } catch (error) {
+      console.error("❌ Failed to mint from Candy Machine:", error);
+      throw new Error(`Minting failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

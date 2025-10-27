@@ -29,7 +29,7 @@ import {
   Box,
   Sparkles,
 } from "lucide-react";
-import { inventoryService, authService } from "@/lib/services";
+import { inventoryService, authService, buybackService } from "@/lib/services";
 import { MOCK_CONFIG } from "@/lib/config/mock";
 import { UserSkin } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
@@ -37,9 +37,12 @@ import { toast } from "react-hot-toast";
 import { formatCurrency } from "@/lib/utils";
 import { discordService } from "@/lib/services/discord.service";
 import { pendingSkinsService, PendingSkin } from "@/lib/services/pending-skins.service";
+import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 
 export default function InventoryPage() {
   const { isConnected, walletAddress } = useUser();
+  const wallet = useWallet();
+  const { connection } = useConnection();
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("date");
   const [filterBy, setFilterBy] = useState("all");
@@ -51,6 +54,7 @@ export default function InventoryPage() {
   const [totalValue, setTotalValue] = useState(0);
   const [pendingSkin, setPendingSkin] = useState<PendingSkin | null>(null);
   const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
+  const [buybackAmount, setBuybackAmount] = useState<number | null>(null);
 
   // Load inventory from backend
   useEffect(() => {
@@ -212,30 +216,56 @@ export default function InventoryPage() {
     });
   }, [inventorySkins, searchTerm]);
 
-  const handleSellSkin = (skin: UserSkin) => {
+  const handleSellSkin = async (skin: UserSkin) => {
     setSelectedSkin(skin);
     setIsSellingDialogOpen(true);
+    
+    // Calculate buyback amount
+    try {
+      if (skin.nftMintAddress) {
+        const calculation = await buybackService.calculateBuyback(skin.nftMintAddress);
+        setBuybackAmount(calculation.buybackAmount);
+      }
+    } catch (error) {
+      console.error('Failed to calculate buyback:', error);
+      setBuybackAmount(null);
+    }
   };
 
   const confirmSell = async () => {
-    if (!selectedSkin) return;
+    if (!selectedSkin || !selectedSkin.nftMintAddress) {
+      toast.error('Invalid NFT');
+      return;
+    }
+
+    if (!wallet.connected || !wallet.publicKey) {
+      toast.error('Please connect your wallet');
+      return;
+    }
 
     try {
       setSelling(true);
-      const response = await inventoryService.sellSkin(selectedSkin.id, {});
+      
+      // Execute buyback through the new service
+      const result = await buybackService.executeBuyback(
+        selectedSkin.nftMintAddress,
+        wallet,
+        connection
+      );
 
-      if (response.success) {
-        toast.success(
-          `Sold for ${formatCurrency(response.data.payoutAmount)}!`
-        );
-        setIsSellingDialogOpen(false);
-        setSelectedSkin(null);
-        // Reload inventory
-        loadInventory();
-      }
+      toast.success(
+        `Buyback complete! Received ${result.amountPaid.toFixed(4)} SOL`
+      );
+      
+      setIsSellingDialogOpen(false);
+      setSelectedSkin(null);
+      setBuybackAmount(null);
+      
+      // Reload inventory
+      loadInventory();
     } catch (err) {
-      console.error("Failed to sell skin:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to sell skin");
+      console.error("Failed to execute buyback:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to execute buyback");
     } finally {
       setSelling(false);
     }
@@ -557,13 +587,16 @@ export default function InventoryPage() {
                 <div className="p-4 rounded-lg border border-zinc-800 bg-zinc-950">
                   <div className="flex justify-between items-center">
                     <span className="text-foreground">Buyback Price:</span>
-                    <span className="text-2xl font-bold text-foreground">
-                      {formatCurrency(selectedSkin.currentPrice * 0.85)}
-                    </span>
+                    {buybackAmount !== null ? (
+                      <span className="text-2xl font-bold text-foreground">
+                        {buybackAmount.toFixed(4)} SOL
+                      </span>
+                    ) : (
+                      <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    85% of market value (
-                    {formatCurrency(selectedSkin.currentPrice)})
+                    85% of market value
                   </p>
                 </div>
 

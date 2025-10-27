@@ -11,7 +11,7 @@ programs = "Bwx4dpTtC72nyzTwdCH3rRJVvFg1SatKqgrFNcqNFSAJ"
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "devnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

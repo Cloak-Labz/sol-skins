@@ -35,6 +35,7 @@ export const corsOptions = {
     'Accept',
     'Authorization',
     'X-Correlation-ID',
+    'x-wallet-address',
   ],
   exposedHeaders: ['X-Correlation-ID'],
 };

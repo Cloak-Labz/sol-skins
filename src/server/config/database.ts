@@ -15,6 +15,7 @@ import { Inventory } from "../entities/Inventory";
 import { Box } from "../entities/Box";
 import { Metadata } from "../entities/Metadata";
 import { PendingSkin } from "../entities/PendingSkin";
+import { BuybackRecord } from "../entities/BuybackRecord";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -41,6 +42,7 @@ export const AppDataSource = new DataSource({
     Box,
     Metadata,
     PendingSkin,
+    BuybackRecord,
   ],
   // migrations: ["src/database/migrations/*.ts"],
   // subscribers: ["src/database/subscribers/*.ts"],
