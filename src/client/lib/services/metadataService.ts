@@ -127,20 +127,37 @@ export class MetadataService {
   }
 
   /**
-   * Upload metadata to a storage service (like Arweave, IPFS, etc.)
-   * For now, this is a placeholder - you'll need to implement actual upload
+   * Upload metadata to Arweave via Irys
+   * Uses server-side upload endpoint to avoid wallet signing requirements
    */
   static async uploadMetadata(metadata: NFTMetadata): Promise<string> {
-    // TODO: Implement actual upload to Arweave, IPFS, or other storage
-    // For now, return a placeholder URI
-    console.log("Metadata to upload:", metadata);
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/v1/irys/upload`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ metadata }),
+        }
+      );
 
-    // This should be replaced with actual upload logic
-    return `https://arweave.net/placeholder-${Date.now()}`;
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.error?.message || 'Failed to upload metadata to Irys');
+      }
+
+      console.log('Metadata uploaded to Irys:', result.data);
+      return result.data.uri;
+    } catch (error) {
+      console.error('Error uploading metadata to Irys:', error);
+      throw error;
+    }
   }
 
   /**
    * Create a batch of metadata URIs for a collection
+   * Uses Irys for permanent Arweave storage
    */
   static async createBatchMetadata(
     items: Array<{
@@ -155,8 +172,11 @@ export class MetadataService {
   ): Promise<string[]> {
     const metadataUris: string[] = [];
 
-    for (const item of items) {
-      const metadata = this.createNFTMetadata(item);
+    // Create all metadata objects first
+    const metadataObjects = items.map(item => this.createNFTMetadata(item));
+
+    // Upload all metadata to Irys (can be optimized with parallel uploads)
+    for (const metadata of metadataObjects) {
       const uri = await this.uploadMetadata(metadata);
       metadataUris.push(uri);
     }

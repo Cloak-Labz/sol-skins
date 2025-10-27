@@ -29,9 +29,7 @@ import {
   useConnection,
 } from "@solana/wallet-adapter-react";
 import { mintCoreNft } from "@/lib/solana/core-nft";
-// import { getWalrusClient } from "@/lib/walrus/upload";
-// import { uploadJsonToIrys } from "@/lib/irys-upload";
-// import { irysService } from "@/lib/services/irys.service";
+import { irysService } from "@/lib/services/irys.service";
 import { metadataService } from "@/lib/services/metadata.service";
 
 interface MintedNFT {
@@ -155,22 +153,22 @@ export default function AdminInventoryPage() {
         },
       };
 
-      console.log("Saving metadata to DB:", metadata);
+      console.log("Uploading metadata to Irys/Arweave:", metadata);
 
-      // Save metadata JSON to server DB
-      const stored = await metadataService.upload(metadata);
+      // Upload metadata to Irys (Arweave) for permanent storage
+      const irysResult = await irysService.uploadMetadata(metadata);
 
       toast.success(
-        `Metadata saved! ID: ${stored.id.slice(0, 8)}...`,
+        `Metadata uploaded to Arweave! URI: ${irysResult.uri.slice(0, 30)}...`,
         { id: "upload" }
       );
-      console.log("Metadata store result:", stored);
+      console.log("Irys upload result:", irysResult);
 
-      // Mint Core NFT on-chain
+      // Mint Core NFT on-chain with the Arweave URI
       toast.loading("Minting Core NFT...", { id: "mint" });
       const result = await mintCoreNft({
         name: nftName,
-        uri: stored.uri,
+        uri: irysResult.uri,
         walletAdapter: walletCtx as any,
         connection,
       });
@@ -191,7 +189,7 @@ export default function AdminInventoryPage() {
             name: nftName,
             description: nftDescription,
             imageUrl: nftImageUrl,
-            metadataUri: stored.uri,
+            metadataUri: irysResult.uri,
             rarity: nftRarity,
             attributes: metadata.attributes,
             mintedAsset: result.assetAddress,
