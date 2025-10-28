@@ -423,7 +423,7 @@ export default function PacksPage() {
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
   };
 
   // Fetch a single metadata JSON and map to CSGOSkin
@@ -555,8 +555,6 @@ export default function PacksPage() {
       }, 3000);
     }
   };
-
-  // Auto-buyback removed by request
   const handleOpenPack = async () => {
     if (!connected) {
       toast.error("Connect your wallet first!");
@@ -1151,8 +1149,8 @@ export default function PacksPage() {
               </>
             )}
 
-            {/* FASE 2: FLASH BRANCO */}
-            {openingPhase === "flash" && (
+            {/* FASE 2: INTRO FLASH */}
+            {openingPhase === "intro-flash" && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: [0, 1, 1, 0] }}
@@ -1606,8 +1604,18 @@ export default function PacksPage() {
                 onClick={handleCloseResult}
                 className="absolute -top-16 right-0 text-white/80 hover:text-white transition-colors z-10"
               >
-                <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="w-12 h-12"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
 
@@ -1619,18 +1627,19 @@ export default function PacksPage() {
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.2 }}
                     className="text-4xl md:text-5xl font-black text-white tracking-wider mb-2"
-                    style={{ fontFamily: 'monospace, sans-serif' }}
+                    style={{ fontFamily: "monospace, sans-serif" }}
                   >
-                    {wonSkin.name.split(' | ')[0]}
+                    {wonSkin.name.split(" | ")[0]}
                   </motion.h2>
                   <motion.p
                     initial={{ y: -20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.3 }}
                     className="text-2xl md:text-3xl font-bold text-[#E99500] tracking-wide"
-                    style={{ fontFamily: 'monospace, sans-serif' }}
+                    style={{ fontFamily: "monospace, sans-serif" }}
                   >
-                    {wonSkin.name.split(' | ')[1] || wonSkin.rarity.toUpperCase()}
+                    {wonSkin.name.split(" | ")[1] ||
+                      wonSkin.rarity.toUpperCase()}
                   </motion.p>
                 </div>
 
@@ -1642,14 +1651,16 @@ export default function PacksPage() {
                     transition={{ delay: 0.4 }}
                     className="relative w-full h-80 flex items-center justify-center"
                     style={{
-                      background: 'radial-gradient(ellipse at center, rgba(233, 149, 0, 0.15) 0%, transparent 70%)',
+                      background:
+                        "radial-gradient(ellipse at center, rgba(233, 149, 0, 0.15) 0%, transparent 70%)",
                     }}
                   >
                     {/* Glow effect */}
                     <div
                       className="absolute inset-0 blur-3xl opacity-40"
                       style={{
-                        background: 'radial-gradient(ellipse at center, #E99500 0%, transparent 60%)',
+                        background:
+                          "radial-gradient(ellipse at center, #E99500 0%, transparent 60%)",
                       }}
                     />
 
@@ -1658,7 +1669,7 @@ export default function PacksPage() {
                       alt={wonSkin.name}
                       className="relative z-10 max-w-full max-h-full object-contain drop-shadow-2xl"
                       style={{
-                        filter: 'drop-shadow(0 0 40px rgba(233, 149, 0, 0.5))',
+                        filter: "drop-shadow(0 0 40px rgba(233, 149, 0, 0.5))",
                       }}
                     />
                   </motion.div>
@@ -1672,12 +1683,26 @@ export default function PacksPage() {
                   className="mx-6 mb-6 bg-gradient-to-r from-red-900/30 to-orange-900/30 border border-red-700/50 rounded-lg p-4"
                 >
                   <div className="flex items-center justify-center gap-3 text-center">
-                    <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg
+                      className="w-5 h-5 text-red-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
                       <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6l4 2"
+                      />
                     </svg>
                     <p className="text-red-200 text-sm font-semibold">
-                      Auto-buyback in <span className="text-[#E99500] font-black text-lg mx-1">{formatTime(timeRemaining)}</span> if not claimed
+                      Auto-buyback in{" "}
+                      <span className="text-[#E99500] font-black text-lg mx-1">
+                        {formatTime(timeRemaining)}
+                      </span>{" "}
+                      if not claimed
                     </p>
                   </div>
                 </motion.div>
@@ -1693,10 +1718,15 @@ export default function PacksPage() {
                     <div className="flex items-start gap-3 text-yellow-200 text-sm">
                       <Lock className="w-5 h-5 mt-0.5 flex-shrink-0" />
                       <div>
-                        <p className="font-bold mb-1">Steam Trade URL Required</p>
+                        <p className="font-bold mb-1">
+                          Steam Trade URL Required
+                        </p>
                         <p className="text-yellow-100/80 text-xs">
-                          Set up your Steam Trade URL to claim this skin.{' '}
-                          <Link href="/app-dashboard/profile" className="underline hover:text-yellow-100">
+                          Set up your Steam Trade URL to claim this skin.{" "}
+                          <Link
+                            href="/app-dashboard/profile"
+                            className="underline hover:text-yellow-100"
+                          >
                             Go to Profile →
                           </Link>
                         </p>
@@ -1718,25 +1748,40 @@ export default function PacksPage() {
                       onClick={async () => {
                         try {
                           const userProfile = await authService.getProfile();
-                          if (!userProfile.tradeUrl || userProfile.tradeUrl.trim() === '') {
-                            toast.error("Please set up your Steam Trade URL in your profile before claiming skins!");
+                          if (
+                            !userProfile.tradeUrl ||
+                            userProfile.tradeUrl.trim() === ""
+                          ) {
+                            toast.error(
+                              "Please set up your Steam Trade URL in your profile before claiming skins!"
+                            );
                             return;
                           }
 
                           if (wonSkin) {
-                            console.log('Creating Discord ticket for claimed skin:', wonSkin);
+                            console.log(
+                              "Creating Discord ticket for claimed skin:",
+                              wonSkin
+                            );
                             await discordService.createSkinClaimTicket({
-                              userId: walletCtx.publicKey?.toString() || 'unknown',
-                              walletAddress: walletCtx.publicKey?.toString() || 'unknown',
+                              userId:
+                                walletCtx.publicKey?.toString() || "unknown",
+                              walletAddress:
+                                walletCtx.publicKey?.toString() || "unknown",
                               steamTradeUrl: userProfile.tradeUrl,
                               skinName: wonSkin.name,
                               skinRarity: wonSkin.rarity,
-                              skinWeapon: wonSkin.name.split(' | ')[0] || 'Unknown',
-                              nftMintAddress: lastPackResult?.asset || 'unknown',
+                              skinWeapon:
+                                wonSkin.name.split(" | ")[0] || "Unknown",
+                              nftMintAddress:
+                                lastPackResult?.asset || "unknown",
                               openedAt: new Date(),
                               caseOpeningId: `pack-${Date.now()}`,
                             });
-                            console.log('Discord ticket created successfully for:', wonSkin.name);
+                            console.log(
+                              "Discord ticket created successfully for:",
+                              wonSkin.name
+                            );
                           }
 
                           toast.success("Skin claimed to inventory!");
@@ -1751,7 +1796,9 @@ export default function PacksPage() {
                       Keep it
                     </Button>
 
-                    <span className="text-white/60 text-lg font-semibold">or</span>
+                    <span className="text-white/60 text-lg font-semibold">
+                      or
+                    </span>
 
                     <Button
                       onClick={handleBuyback}
