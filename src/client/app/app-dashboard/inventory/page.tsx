@@ -202,15 +202,51 @@ export default function InventoryPage() {
   };
 
   const filteredSkins = useMemo(() => {
-    return inventorySkins.filter((skin) => {
-      if (!searchTerm) return true;
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        skin.name.toLowerCase().includes(searchLower) ||
-        skin.name.toLowerCase().includes(searchLower)
-      );
+    const filtered = inventorySkins.filter((skin) => {
+      // Filter by search term
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = (
+          skin.name.toLowerCase().includes(searchLower) ||
+          skin.skinTemplate?.skinName?.toLowerCase().includes(searchLower) ||
+          skin.skinTemplate?.weapon?.toLowerCase().includes(searchLower)
+        );
+        if (!matchesSearch) return false;
+      }
+
+      // Filter by rarity
+      if (filterBy !== "all") {
+        const skinRarity = skin.skinTemplate?.rarity?.toLowerCase() || 'unknown';
+        if (skinRarity !== filterBy.toLowerCase()) return false;
+      }
+
+      return true;
     });
-  }, [inventorySkins, searchTerm]);
+
+    // Sort the filtered results
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return a.name.localeCompare(b.name);
+        case "price-high":
+          const valueA = parseFloat(a.currentPriceUsd || a.skinTemplate?.basePriceUsd || '0');
+          const valueB = parseFloat(b.currentPriceUsd || b.skinTemplate?.basePriceUsd || '0');
+          return valueB - valueA; // Descending order (highest first)
+        case "price-low":
+          const valueA2 = parseFloat(a.currentPriceUsd || a.skinTemplate?.basePriceUsd || '0');
+          const valueB2 = parseFloat(b.currentPriceUsd || b.skinTemplate?.basePriceUsd || '0');
+          return valueA2 - valueB2; // Ascending order (lowest first)
+        case "rarity":
+          const rarityOrder = { legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
+          const rarityA = rarityOrder[a.skinTemplate?.rarity?.toLowerCase() as keyof typeof rarityOrder] || 0;
+          const rarityB = rarityOrder[b.skinTemplate?.rarity?.toLowerCase() as keyof typeof rarityOrder] || 0;
+          return rarityB - rarityA; // Descending order (highest rarity first)
+        case "date":
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // Newest first
+      }
+    });
+  }, [inventorySkins, searchTerm, filterBy, sortBy]);
 
   const handleSellSkin = async (skin: UserSkin) => {
     setSelectedSkin(skin);
