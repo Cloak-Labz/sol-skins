@@ -79,16 +79,18 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  // Load dashboard data when user is available
+  // Load dashboard data when user and wallet are available
   useEffect(() => {
-    if (user) {
+    if (user && walletAddress) {
       loadDashboardData();
     }
-  }, [user]);
+  }, [user, walletAddress]);
 
   const loadDashboardData = async () => {
     try {
       setIsLoadingData(true);
+      
+      console.log('Profile: Loading dashboard data, walletAddress:', walletAddress);
       
       // Load all dashboard data in parallel
       const [
@@ -105,7 +107,10 @@ export default function ProfilePage() {
 
       // Set inventory summary
       if (inventoryData.status === 'fulfilled' && inventoryData.value) {
+        console.log('Profile: Inventory data received:', inventoryData.value);
         setInventorySummary(inventoryData.value);
+      } else {
+        console.log('Profile: Inventory data failed:', inventoryData);
       }
 
       // Set recent transactions

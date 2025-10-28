@@ -94,7 +94,7 @@ export class BoxService {
 
   async getActiveBoxes(): Promise<any[]> {
     try {
-      return await this.boxRepository.findActive();
+      return await this.boxRepository.findAll();
     } catch (error) {
       logger.error('Error fetching active boxes:', error);
       throw new AppError('Failed to fetch active boxes', 500);

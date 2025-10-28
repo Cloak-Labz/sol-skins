@@ -458,57 +458,35 @@ export default function PacksPage() {
         image: result.skin.imageUrl || '/assets/skins/img1.png'
       };
 
-      setWonSkin(winnerSkin);
-      
-                // Store the won skin in database as pending (smart logic)
-                // Store as pending if: user doesn't have Steam trade URL OR user doesn't click buyback
-                // This allows user to claim later from inventory if they set up Steam URL later
-                try {
-                  if (walletCtx.publicKey) {
-                    await pendingSkinsService.createPendingSkin({
-                      userId: walletCtx.publicKey.toString(),
-                      skinName: result.skin.name,
-                      skinRarity: result.skin.rarity,
-                      skinWeapon: result.skin.weapon,
-                      skinValue: result.skin.basePriceUsd,
-                      skinImage: result.skin.imageUrl || '',
-                      nftMintAddress: result.nftMint,
-                      transactionHash: result.signature,
-                      caseOpeningId: `pack-${Date.now()}`,
-                    });
-                    console.log('💾 Stored pending skin in database:', winnerSkin.name);
-                  }
-                } catch (error) {
-                  console.error('Failed to store pending skin in database:', error);
-                }
-
-                // Create case opening record for activity tracking
-                try {
-                  if (walletCtx.publicKey) {
-                    await packOpeningService.createCaseOpeningRecord({
-                      userId: walletCtx.publicKey.toString(),
-                      boxId: selectedPack.id,
-                      nftMint: result.nftMint,
-                      skinName: result.skin.name,
-                      skinRarity: result.skin.rarity,
-                      skinWeapon: result.skin.weapon,
-                      skinValue: result.skin.basePriceUsd,
-                      skinImage: result.skin.imageUrl || '',
-                      transactionHash: result.signature,
-                    });
-                    console.log('📊 Created case opening record for activity tracking');
-                  }
-                } catch (error) {
-                  console.error('Failed to create case opening record:', error);
-                }
-
-      // Show result modal directly (no duplicate reveal animation)
-      setShowResult(true);
-      setOpeningPhase(null);
-      toast.success(`You won ${winnerSkin.name}!`, {
-        icon: "🎉",
-        duration: 4000,
-      });
+        setWonSkin(winnerSkin);
+        
+        // Create case opening record for activity tracking
+        try {
+          if (walletCtx.publicKey) {
+            await packOpeningService.createCaseOpeningRecord({
+              userId: walletCtx.publicKey.toString(),
+              boxId: selectedPack.id,
+              nftMint: result.nftMint,
+              skinName: result.skin.name,
+              skinRarity: result.skin.rarity,
+              skinWeapon: result.skin.weapon,
+              skinValue: result.skin.basePriceUsd,
+              skinImage: result.skin.imageUrl || '',
+              transactionHash: result.signature,
+            });
+            console.log('📊 Created case opening record for activity tracking');
+          }
+        } catch (error) {
+          console.error('Failed to create case opening record:', error);
+        }
+        
+        // Show result modal directly (no duplicate reveal animation)
+        setShowResult(true);
+        setOpeningPhase(null);
+        toast.success(`You won ${winnerSkin.name}!`, {
+          icon: "🎉",
+          duration: 4000,
+        });
 
     } catch (error) {
       console.error("Error opening pack:", error);
@@ -517,6 +495,32 @@ export default function PacksPage() {
     } finally {
       isOpeningRef.current = false;
     }
+  };
+
+  const handleCloseResult = async () => {
+    // If user closes modal without buying back, create pending skin
+    if (lastPackResult && wonSkin && walletCtx.publicKey) {
+      try {
+        await pendingSkinsService.createPendingSkin({
+          userId: walletCtx.publicKey.toString(),
+          skinName: wonSkin.name,
+          skinRarity: wonSkin.rarity,
+          skinWeapon: wonSkin.name.split(' | ')[0] || 'Unknown',
+          skinValue: wonSkin.value,
+          skinImage: wonSkin.image,
+          nftMintAddress: lastPackResult.asset,
+          transactionHash: lastPackResult.signature,
+          caseOpeningId: `pack-${Date.now()}`,
+        });
+        console.log('💾 Created pending skin for:', wonSkin.name);
+      } catch (error) {
+        console.error('Failed to create pending skin:', error);
+      }
+    }
+    
+    setShowResult(false);
+    setWonSkin(null);
+    setLastPackResult(null);
   };
 
   const handleBuyback = async () => {
@@ -623,23 +627,6 @@ export default function PacksPage() {
           toast.success("NFT successfully bought back!", { id: "buyback-confirm" });
           console.log("Buyback confirmed:", confirmData.data);
           
-          // Remove pending skin from database since NFT was bought back
-          try {
-            if (walletCtx.publicKey && lastPackResult) {
-              // Delete pending skin since NFT was burned
-              await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/pending-skins/by-nft/${lastPackResult.asset}`, {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  walletAddress: walletCtx.publicKey.toString(),
-                }),
-              });
-              console.log('🗑️ Removed pending skin from database after buyback');
-            }
-          } catch (error) {
-            console.error('Failed to remove pending skin after buyback:', error);
-          }
-          
           setLastPackResult(null);
           setShowResult(false);
           setWonSkin(null);
@@ -654,26 +641,10 @@ export default function PacksPage() {
           toast.success("NFT successfully bought back! (Transaction confirmed on-chain)", { id: "buyback-confirm" });
           console.log("Buyback transaction successful on-chain, proceeding despite timeout");
           
-          // Remove pending skin from database since NFT was bought back
-          try {
-            if (walletCtx.publicKey && lastPackResult) {
-              await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/pending-skins/by-nft/${lastPackResult.asset}`, {
-                method: "DELETE",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  walletAddress: walletCtx.publicKey.toString(),
-                }),
-              });
-              console.log('🗑️ Removed pending skin from database after buyback');
-            }
-          } catch (error) {
-            console.error('Failed to remove pending skin after buyback:', error);
-          }
-          
           setLastPackResult(null);
           setShowResult(false);
           setWonSkin(null);
-        } else {
+          } else {
           toast.error(`Buyback confirmation failed: ${fetchError.message}`, { id: "buyback-confirm" });
         }
         console.error("Buyback confirmation error:", fetchError);
@@ -1076,7 +1047,7 @@ export default function PacksPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowResult(false)}
+            onClick={handleCloseResult}
           >
             <motion.div
               initial={{ scale: 0.5, opacity: 0, rotateY: -180 }}
@@ -1207,23 +1178,6 @@ export default function PacksPage() {
                           }
                           
                           toast.success("Skin claimed to inventory!");
-                          
-                          // Remove pending skin from database since it was claimed
-                          try {
-                            if (walletCtx.publicKey && lastPackResult) {
-                              await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/pending-skins/by-nft/${lastPackResult.asset}`, {
-                                method: "DELETE",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({
-                                  walletAddress: walletCtx.publicKey.toString(),
-                                }),
-                              });
-                              console.log('🗑️ Removed pending skin from database after claim');
-                            }
-                          } catch (error) {
-                            console.error('Failed to remove pending skin after claim:', error);
-                          }
-                          
                           setShowResult(false);
                         } catch (error) {
                           console.error("Failed to claim skin:", error);

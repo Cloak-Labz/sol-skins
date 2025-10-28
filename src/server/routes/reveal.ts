@@ -22,13 +22,13 @@ revealRoutes.get('/status/:nftMint', catchAsync(async (req: Request, res: Respon
 // POST /reveal/:nftMint - Manually trigger reveal (public for testing)
 revealRoutes.post('/:nftMint', catchAsync(async (req: Request, res: Response) => {
   const { nftMint } = req.params;
-  const { boxId } = req.body;
+  const { boxId, walletAddress } = req.body;
 
   if (!boxId) {
     return ResponseUtil.error(res, 'boxId is required', 400);
   }
 
-  const result = await revealService.revealNFT(nftMint, boxId);
+  const result = await revealService.revealNFT(nftMint, boxId, walletAddress);
 
   ResponseUtil.success(res, result);
 }));

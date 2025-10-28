@@ -66,7 +66,7 @@ class InventoryService {
       return mockInventoryService.getInventoryValue();
     }
 
-    const response = await apiClient.get("/inventory/stats");
+    const response = await apiClient.get("/inventory/value");
 
     // Check if response is already the data object (from interceptor) or if it's the full response
     if (response && !response.success && !response.data) {

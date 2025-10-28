@@ -112,7 +112,34 @@ export class PackOpeningService {
       throw new Error(revealData.error?.message || "Failed to reveal skin");
     }
 
-    // Step 5: Use the skin data from the reveal service
+    // Step 5: Create pack opening transaction in backend
+    const transactionResponse = await fetch(`${this.baseUrl}/api/v1/pack-opening/transaction`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: wallet.publicKey.toString(), // Will be resolved to user ID by backend
+        boxId: boxId,
+        nftMint: nftMintAddress,
+        signature: signature,
+        skinData: {
+          name: revealData.data.skinName,
+          weapon: revealData.data.skinName.split(' | ')[0] || 'Unknown',
+          rarity: revealData.data.skinRarity,
+          basePriceUsd: 0, // Will be calculated from rarity
+          metadataUri: revealData.data.metadataUri,
+        },
+      }),
+    });
+
+    const transactionData = await transactionResponse.json();
+    
+    if (!transactionData.success) {
+      console.warn('Failed to create pack opening transaction:', transactionData.error);
+    }
+
+    // Step 6: Use the skin data from the reveal service
     // The reveal service already selected and updated the NFT metadata
     return {
       nftMint: nftMintAddress,

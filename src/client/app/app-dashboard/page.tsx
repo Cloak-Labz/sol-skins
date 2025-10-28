@@ -59,7 +59,7 @@ export default function DashboardPage() {
                 <div>Nothing here yet</div>
               </div>
             )}
-            {pulls.map((p) => (
+            {pulls.slice(0, 6).map((p) => (
               <div
                 key={p.id}
                 className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden"
@@ -144,24 +144,6 @@ export default function DashboardPage() {
             ))}
           </div>
         </section>
-
-        {/* Stats */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: "Packs Opened", value: "1,284" },
-            { label: "Total Won (USDC)", value: "$32,910" },
-            { label: "Buybacks Processed", value: "742" },
-            { label: "Avg. Confirmation", value: "1.6s" },
-          ].map((s) => (
-            <div
-              key={s.label}
-              className="group rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-5 transition-transform duration-200 hover:scale-[1.015] hover:border-zinc-700"
-            >
-              <div className="text-zinc-400 text-sm">{s.label}</div>
-              <div className="text-white text-2xl font-bold">{s.value}</div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

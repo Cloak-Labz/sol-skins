@@ -5,6 +5,7 @@ import { publicKey, createSignerFromKeypair } from '@metaplex-foundation/umi';
 import { config } from '../config/env';
 import { AppDataSource } from '../config/database';
 import { UserSkin } from '../entities/UserSkin';
+import { User } from '../entities/User';
 import { SkinRarity, SkinTemplate } from '../entities/SkinTemplate';
 import { Box } from '../entities/Box';
 import { CaseOpening } from '../entities/CaseOpening';
@@ -79,7 +80,7 @@ export class RevealService {
   /**
    * Reveal an NFT by updating its metadata
    */
-  async revealNFT(nftMint: string, boxId: string): Promise<RevealResult> {
+  async revealNFT(nftMint: string, boxId: string, walletAddress?: string): Promise<RevealResult> {
     try {
       // Roll rarity
       const rarity = this.rollRarity(boxId);
@@ -111,25 +112,56 @@ export class RevealService {
 
       const txSignature = Buffer.from(tx.signature).toString('base64');
 
+      // Create or update user skin with proper user association
       const userSkinRepo = AppDataSource.getRepository(UserSkin);
+      const userRepo = AppDataSource.getRepository(User);
+      
       let userSkin = await userSkinRepo.findOne({
         where: { nftMintAddress: nftMint },
       });
 
+      // Find user by wallet address if provided
+      let userId: string | undefined;
+      if (walletAddress) {
+        const user = await userRepo.findOne({
+          where: { walletAddress },
+        });
+        userId = user?.id;
+      }
+
       if (userSkin) {
+        // Update existing user skin
         userSkin.skinTemplateId = skin.id;
         userSkin.name = skinFullName;
         userSkin.metadataUri = metadataUri;
+        if (userId) {
+          userSkin.userId = userId;
+        }
         await userSkinRepo.save(userSkin);
       } else {
+        // Create new user skin
         userSkin = userSkinRepo.create({
           nftMintAddress: nftMint,
           skinTemplateId: skin.id,
           name: skinFullName,
           metadataUri: metadataUri,
           openedAt: new Date(),
+          userId: userId,
+          currentPriceUsd: skin.basePriceUsd,
+          lastPriceUpdate: new Date(),
+          isInInventory: true,
+          symbol: 'SKIN',
         });
         await userSkinRepo.save(userSkin);
+      }
+
+      // Update user stats if we have a user
+      if (userId) {
+        const user = await userRepo.findOne({ where: { id: userId } });
+        if (user) {
+          user.casesOpened = (user.casesOpened || 0) + 1;
+          await userRepo.save(user);
+        }
       }
 
       return {

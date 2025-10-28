@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { InventoryRepository } from "../repositories/InventoryRepository";
+import { AppDataSource } from "../config/database";
+import { UserSkin } from "../entities/UserSkin";
 
 export type InventoryItem = {
   id: string;
@@ -108,10 +110,86 @@ export class InventoryController {
     res: Response
   ): Promise<Response> => {
     try {
-      const search =
-        typeof req.query?.search === "string" ? req.query.search : "";
-      const items = search ? await repo.search(search) : await repo.findAll();
-      return res.json({ success: true, data: items });
+      const userId = req.user!.id;
+      const search = typeof req.query?.search === "string" ? req.query.search : "";
+      const sortBy = typeof req.query?.sortBy === "string" ? req.query.sortBy : "date";
+      const filterBy = typeof req.query?.filterBy === "string" ? req.query.filterBy : "all";
+      const page = parseInt(req.query?.page as string) || 1;
+      const limit = parseInt(req.query?.limit as string) || 20;
+      
+      // Get user's skins from the database
+      const userSkinRepo = AppDataSource.getRepository(UserSkin);
+      const queryBuilder = userSkinRepo.createQueryBuilder('userSkin')
+        .leftJoinAndSelect('userSkin.skinTemplate', 'skinTemplate')
+        .where('userSkin.userId = :userId', { userId })
+        .andWhere('userSkin.isInInventory = :inInventory', { inInventory: true });
+
+      if (search) {
+        queryBuilder.andWhere(
+          '(skinTemplate.weapon ILIKE :search OR skinTemplate.skinName ILIKE :search)',
+          { search: `%${search}%` }
+        );
+      }
+
+      if (filterBy !== 'all') {
+        queryBuilder.andWhere('skinTemplate.rarity = :rarity', { rarity: filterBy });
+      }
+
+      // Sorting
+      switch (sortBy) {
+        case 'date':
+          queryBuilder.orderBy('userSkin.openedAt', 'DESC');
+          break;
+        case 'price-high':
+          queryBuilder.orderBy('userSkin.currentPriceUsd', 'DESC');
+          break;
+        case 'price-low':
+          queryBuilder.orderBy('userSkin.currentPriceUsd', 'ASC');
+          break;
+        case 'name':
+          queryBuilder.orderBy('skinTemplate.weapon', 'ASC').addOrderBy('skinTemplate.skinName', 'ASC');
+          break;
+        case 'rarity':
+          queryBuilder.orderBy('skinTemplate.rarity', 'ASC');
+          break;
+        default:
+          queryBuilder.orderBy('userSkin.openedAt', 'DESC');
+      }
+
+      queryBuilder.skip((page - 1) * limit).take(limit);
+
+      const [userSkins, total] = await queryBuilder.getManyAndCount();
+
+      // Calculate summary
+      const totalValue = userSkins.reduce((sum, skin) => {
+        return sum + (skin.currentPriceUsd || skin.skinTemplate?.basePriceUsd || 0);
+      }, 0);
+
+      const rarityBreakdown = userSkins.reduce((acc, skin) => {
+        const rarity = skin.skinTemplate?.rarity || 'Unknown';
+        acc[rarity.toLowerCase()] = (acc[rarity.toLowerCase()] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
+      const summary = {
+        totalValue,
+        totalItems: total,
+        rarityBreakdown,
+      };
+
+      const pagination = {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      };
+
+      return res.json({ 
+        success: true, 
+        data: userSkins,
+        summary,
+        pagination
+      });
     } catch (e: any) {
       return res
         .status(500)
@@ -120,14 +198,41 @@ export class InventoryController {
   };
 
   public getInventoryValue = async (
-    _req: Request,
+    req: Request,
     res: Response
   ): Promise<Response> => {
     try {
-      const items = await repo.findAll();
+      const userId = req.user!.id;
+      
+      // Get user's skins from the database
+      const userSkinRepo = AppDataSource.getRepository(UserSkin);
+      const userSkins = await userSkinRepo.find({
+        where: { userId },
+        relations: ['skinTemplate'],
+      });
+
+      // Calculate real inventory stats
+      const totalItems = userSkins.length;
+      const totalValue = userSkins.reduce((sum, skin) => {
+        const price = parseFloat(skin.currentPriceUsd || skin.skinTemplate?.basePriceUsd || '0');
+        return sum + price;
+      }, 0);
+
+      // Calculate rarity breakdown
+      const rarityBreakdown = userSkins.reduce((acc, skin) => {
+        const rarity = skin.skinTemplate?.rarity || 'Unknown';
+        acc[rarity.toLowerCase()] = (acc[rarity.toLowerCase()] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
       return res.json({
         success: true,
-        data: { totalItems: items.length, totalValue: 0, currency: "USD" },
+        data: {
+          totalValue,
+          totalItems,
+          rarityBreakdown,
+          currency: "USD"
+        },
       });
     } catch (e: any) {
       return res
@@ -137,11 +242,26 @@ export class InventoryController {
   };
 
   public getInventoryStats = async (
-    _req: Request,
+    req: Request,
     res: Response
   ): Promise<Response> => {
     try {
-      const byRarity = await repo.countByRarity();
+      const userId = req.user!.id;
+      
+      // Get user's skins from the database
+      const userSkinRepo = AppDataSource.getRepository(UserSkin);
+      const userSkins = await userSkinRepo.find({
+        where: { userId },
+        relations: ['skinTemplate'],
+      });
+
+      // Calculate rarity breakdown
+      const byRarity = userSkins.reduce((acc, skin) => {
+        const rarity = skin.skinTemplate?.rarity || 'Unknown';
+        acc[rarity.toLowerCase()] = (acc[rarity.toLowerCase()] || 0) + 1;
+        return acc;
+      }, {} as Record<string, number>);
+
       return res.json({ success: true, data: { byRarity } });
     } catch (e: any) {
       return res

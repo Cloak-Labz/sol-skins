@@ -252,7 +252,7 @@ export default function PackManagerPage() {
       }
 
       return data.data;
-    } catch (error) {
+      } catch (error) {
       console.error("Failed to generate collection files:", error);
       throw error;
     }
@@ -420,10 +420,10 @@ export default function PackManagerPage() {
     setDraftSkins([...draftSkins, newSkin]);
     setSkinForm({
       name: "",
-      weapon: "",
+            weapon: "",
       rarity: "common",
       condition: "factory_new",
-      imageUrl: "",
+            imageUrl: "",
       basePriceUsd: 0,
       metadataUri: "",
       weight: 1,
@@ -461,8 +461,8 @@ export default function PackManagerPage() {
 
       if (skinsData.length === 0) {
         toast.error("JSON array is empty");
-        return;
-      }
+      return;
+    }
 
       // Validate each skin object
       const validSkins: DraftSkin[] = [];
@@ -725,7 +725,7 @@ export default function PackManagerPage() {
           );
           
           toast.success(`Uploaded ${skin.name} (${i + 1}/${unuploadedSkins.length})`, { id: "upload-all" });
-        } catch (error) {
+      } catch (error) {
           console.error(`Failed to upload ${skin.name}:`, error);
           toast.error(`Failed to upload ${skin.name}`, { id: "upload-all" });
         }
@@ -912,7 +912,7 @@ export default function PackManagerPage() {
                       <X className="h-4 w-4 mr-2" />
                       Cancel Draft
                     </Button>
-                    <Button 
+                  <Button
                       onClick={createBoxFromDraft}
                       disabled={creatingBox || draftSkins.length === 0 || draftSkins.some(s => !s.uploadedToArweave)}
                     >
@@ -927,11 +927,11 @@ export default function PackManagerPage() {
                           Create Box ({draftSkins.filter(s => s.uploadedToArweave).length}/{draftSkins.length} skins ready)
                         </>
                       )}
-                    </Button>
-                  </div>
+                  </Button>
+                </div>
                 </div>
               </CardHeader>
-            </Card>
+              </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Left Column - Draft Box Form */}
@@ -953,7 +953,7 @@ export default function PackManagerPage() {
                           onChange={(e) => setDraftBox({ ...draftBox, name: e.target.value })}
                           placeholder="Enter box name"
                         />
-                      </div>
+                </div>
                       <div>
                         <Label htmlFor="draft-box-symbol">Symbol</Label>
                         <Input
@@ -962,8 +962,8 @@ export default function PackManagerPage() {
                           onChange={(e) => setDraftBox({ ...draftBox, symbol: e.target.value })}
                           placeholder="SKIN"
                         />
-                      </div>
-                    </div>
+                  </div>
+                </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -999,35 +999,35 @@ export default function PackManagerPage() {
                       />
                     </div>
 
-                    <div>
+                        <div>
                       <Label htmlFor="draft-box-image">Image URL</Label>
-                      <Input
+                          <Input
                         id="draft-box-image"
                         value={draftBox.imageUrl}
                         onChange={(e) => setDraftBox({ ...draftBox, imageUrl: e.target.value })}
                         placeholder="https://example.com/box-image.png"
-                      />
-                    </div>
+                          />
+                        </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
+                        <div>
                         <Label htmlFor="draft-candy-machine">Candy Machine ID</Label>
-                        <Input
+                          <Input
                           id="draft-candy-machine"
                           value={draftBox.candyMachine}
                           onChange={(e) => setDraftBox({ ...draftBox, candyMachine: e.target.value })}
                           placeholder="Candy Machine address"
-                        />
-                      </div>
-                      <div>
+                          />
+                        </div>
+                        <div>
                         <Label htmlFor="draft-collection-mint">Collection Mint</Label>
                         <Input
                           id="draft-collection-mint"
                           value={draftBox.collectionMint}
                           onChange={(e) => setDraftBox({ ...draftBox, collectionMint: e.target.value })}
                           placeholder="Collection mint address"
-                        />
-                      </div>
+                          />
+                        </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -1044,7 +1044,7 @@ export default function PackManagerPage() {
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div>
+                        <div>
                       <Label htmlFor="json-skins">Skins JSON</Label>
                       <Textarea
                         id="json-skins"
@@ -1070,8 +1070,8 @@ export default function PackManagerPage() {
 ]`}
                         className="min-h-[200px] font-mono text-sm"
                         onChange={(e) => setJsonSkinsInput(e.target.value)}
-                      />
-                    </div>
+                          />
+                        </div>
                     <div className="flex gap-2">
                       <Button 
                         onClick={addSkinsFromJson}
@@ -1098,8 +1098,8 @@ export default function PackManagerPage() {
                         <X className="h-4 w-4 mr-2" />
                         Clear
                       </Button>
-                    </div>
-                    
+                      </div>
+
                     <div className="flex gap-2">
                       <Button 
                         variant="secondary"
@@ -1131,9 +1131,9 @@ export default function PackManagerPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
+                        <div>
                         <Label htmlFor="draft-skin-name">Skin Name</Label>
-                        <Input 
+                          <Input
                           id="draft-skin-name"
                           value={skinForm.name}
                           onChange={(e) => setSkinForm({ ...skinForm, name: e.target.value })}
@@ -1149,10 +1149,10 @@ export default function PackManagerPage() {
                           placeholder="AK-47"
                         />
                       </div>
-                    </div>
-                    
+                        </div>
+
                     <div className="grid grid-cols-2 gap-4">
-                      <div>
+                        <div>
                         <Label htmlFor="draft-skin-rarity">Rarity</Label>
                         <Select
                           value={skinForm.rarity}
@@ -1172,20 +1172,20 @@ export default function PackManagerPage() {
                       </div>
                       <div>
                         <Label htmlFor="draft-skin-weight">Weight</Label>
-                        <Input 
+                          <Input
                           id="draft-skin-weight"
-                          type="number"
+                            type="number"
                           min="1"
                           value={skinForm.weight}
                           onChange={(e) => setSkinForm({ ...skinForm, weight: parseInt(e.target.value) || 1 })}
                           placeholder="1"
                         />
+                        </div>
                       </div>
-                    </div>
 
-                    <div>
+                        <div>
                       <Label htmlFor="draft-skin-price">Base Price (USD)</Label>
-                      <Input 
+                          <Input
                         id="draft-skin-price"
                         type="number"
                         step="0.01"
@@ -1193,26 +1193,26 @@ export default function PackManagerPage() {
                         onChange={(e) => setSkinForm({ ...skinForm, basePriceUsd: parseFloat(e.target.value) || 0 })}
                         placeholder="0.00"
                       />
-                    </div>
+                        </div>
 
-                    <div>
+                        <div>
                       <Label htmlFor="draft-skin-image">Image URL</Label>
-                      <Input 
+                          <Input
                         id="draft-skin-image"
                         value={skinForm.imageUrl}
                         onChange={(e) => setSkinForm({ ...skinForm, imageUrl: e.target.value })}
                         placeholder="https://example.com/skin-image.png"
                       />
-                    </div>
+                      </div>
 
-                    <Button
+                        <Button
                       onClick={addDraftSkin}
                       disabled={!skinForm.name || !skinForm.weapon}
                       className="w-full"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Skin to Draft
-                    </Button>
+                        </Button>
                   </CardContent>
                 </Card>
               </div>
@@ -1227,9 +1227,9 @@ export default function PackManagerPage() {
                         Draft Skins ({draftSkins.length})
                       </CardTitle>
                       {draftSkins.some(s => !s.uploadedToArweave) && (
-                        <Button 
-                          variant="outline" 
-                          size="sm"
+                  <Button
+                    variant="outline"
+                    size="sm"
                           onClick={uploadAllSkinsToArweave}
                           disabled={uploadingToArweave !== null}
                         >
@@ -1243,28 +1243,28 @@ export default function PackManagerPage() {
                               <Upload className="h-4 w-4 mr-2" />
                               Upload All to Arweave
                             </>
-                          )}
-                        </Button>
+                    )}
+                  </Button>
                       )}
-                    </div>
+                </div>
                   </CardHeader>
                   <CardContent>
                     {draftSkins.length === 0 ? (
-                      <div className="text-center py-8">
+                  <div className="text-center py-8">
                         <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                         <h3 className="text-lg font-semibold mb-2">No Skins Added</h3>
                         <p className="text-muted-foreground">
                           Add skins to your draft box using the form on the left.
-                        </p>
-                      </div>
-                    ) : (
+                    </p>
+                  </div>
+                ) : (
                       <div className="space-y-2">
                         {draftSkins.map((skin) => (
-                          <div
+                      <div
                             key={skin.id}
                             className="flex items-center justify-between p-3 bg-zinc-900 rounded-lg border border-zinc-700"
-                          >
-                            <div className="flex-1">
+                      >
+                          <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <h4 className="font-medium">{skin.name}</h4>
                                 <Badge 
@@ -1273,7 +1273,7 @@ export default function PackManagerPage() {
                                 >
                                   {skin.uploadedToArweave ? "Uploaded" : "Pending"}
                                 </Badge>
-                              </div>
+                            </div>
                               <p className="text-sm text-muted-foreground">
                                 {skin.weapon} • {skin.rarity} • Weight: {skin.weight} • ${skin.basePriceUsd}
                               </p>
@@ -1282,7 +1282,7 @@ export default function PackManagerPage() {
                                   Arweave: {skin.metadataUri}
                                 </p>
                               )}
-                            </div>
+                              </div>
                             <div className="flex items-center gap-1">
                               {!skin.uploadedToArweave && (
                                 <Button
@@ -1305,16 +1305,16 @@ export default function PackManagerPage() {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                            </div>
-                          </div>
+                              </div>
+                              </div>
                         ))}
-                      </div>
+                              </div>
                     )}
                   </CardContent>
                 </Card>
-              </div>
-            </div>
-          </div>
+                            </div>
+                                </div>
+                              </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column - Boxes List */}
@@ -1347,7 +1347,7 @@ export default function PackManagerPage() {
                             ? "bg-primary/20 border-primary"
                             : "bg-zinc-900 border-zinc-700 hover:bg-zinc-800"
                         }`}
-                        onClick={() => {
+                                    onClick={() => {
                           setSelectedBox(box);
                           loadBoxSkins(box.id);
                         }}
@@ -1362,7 +1362,7 @@ export default function PackManagerPage() {
                               >
                                 {collectionFilesStatus[box.id]?.exists ? "Files Ready" : "No Files"}
                               </Badge>
-                            </div>
+                                </div>
                             <p className="text-sm text-muted-foreground">
                               {box.itemsAvailable} available • {box.priceSol} SOL • {box.symbol}
                             </p>
@@ -1371,7 +1371,7 @@ export default function PackManagerPage() {
                                 {box.description}
                               </p>
                             )}
-                          </div>
+                              </div>
                           <div className="flex items-center gap-1">
                             {!collectionFilesStatus[box.id]?.exists && (
                   <Button
@@ -1396,17 +1396,17 @@ export default function PackManagerPage() {
                             >
                               <Trash2 className="h-4 w-4" />
                       </Button>
-                    </div>
+                          </div>
                         </div>
-                        </div>
+                      </div>
                     ))}
-                        </div>
+                  </div>
                 )}
               </CardContent>
-            </Card>
+              </Card>
 
-              </div>
-
+                </div>
+                
           {/* Right Column - Selected Box Skins */}
                   <div className="space-y-4">
             {selectedBox ? (
@@ -1419,7 +1419,7 @@ export default function PackManagerPage() {
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="space-y-2">
+                  <div className="space-y-2">
                       {boxSkins.map((skin) => (
                         <div
                           key={skin.id}
@@ -1430,19 +1430,19 @@ export default function PackManagerPage() {
                             <p className="text-sm text-muted-foreground">
                               {skin.weapon} • {skin.rarity} • Weight: {skin.weight}
                                 </p>
-                              </div>
-                          <Button
+                    </div>
+                  <Button 
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteSkin(skin.id)}
                           >
                             <Trash2 className="h-4 w-4" />
-                          </Button>
-                      </div>
+                  </Button>
+                </div>
                     ))}
-                  </div>
+              </div>
                   </CardContent>
-              </Card>
+            </Card>
 
                 {/* Add Skin Form */}
                 <Card className="bg-zinc-950 border-zinc-800">
@@ -1454,7 +1454,7 @@ export default function PackManagerPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                  <div>
+                    <div>
                         <Label htmlFor="skin-name">Skin Name</Label>
                     <Input 
                           id="skin-name"
@@ -1462,8 +1462,8 @@ export default function PackManagerPage() {
                           onChange={(e) => setSkinForm({ ...skinForm, name: e.target.value })}
                           placeholder="AK-47 | Redline"
                     />
-                  </div>
-                  <div>
+                    </div>
+                    <div>
                         <Label htmlFor="skin-weapon">Weapon</Label>
                     <Input 
                           id="skin-weapon"
@@ -1471,11 +1471,11 @@ export default function PackManagerPage() {
                           onChange={(e) => setSkinForm({ ...skinForm, weapon: e.target.value })}
                           placeholder="AK-47"
                     />
+                    </div>
                   </div>
-                </div>
                 
                     <div className="grid grid-cols-2 gap-4">
-                <div>
+                  <div>
                         <Label htmlFor="skin-rarity">Rarity</Label>
                         <Select
                           value={skinForm.rarity}
@@ -1492,8 +1492,8 @@ export default function PackManagerPage() {
                             <SelectItem value="legendary">Legendary</SelectItem>
                           </SelectContent>
                         </Select>
-                </div>
-                    <div>
+                  </div>
+                  <div>
                         <Label htmlFor="skin-weight">Weight</Label>
                     <Input 
                           id="skin-weight"
@@ -1548,9 +1548,9 @@ export default function PackManagerPage() {
                   </p>
                 </CardContent>
               </Card>
-            )}
-          </div>
-        </div>
+                                      )}
+                                    </div>
+                  </div>
         )}
       </div>
     </div>

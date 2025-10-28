@@ -437,10 +437,10 @@ export default function InventoryPage() {
                   <div className="flex items-center justify-between mb-2">
                     <Badge
                       className={`${getRarityColor(
-                        skin.rarity
+                        skin.skinTemplate?.rarity || 'Unknown'
                       )} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}
                     >
-                      {skin.rarity}
+                      {skin.skinTemplate?.rarity || 'Unknown'}
                     </Badge>
                     <Badge
                       variant="outline"
@@ -565,10 +565,10 @@ export default function InventoryPage() {
                     </p>
                     <Badge
                       className={`${getRarityColor(
-                        selectedSkin.rarity
+                        selectedSkin.skinTemplate?.rarity || 'Unknown'
                       )} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}
                     >
-                      {selectedSkin.rarity}
+                      {selectedSkin.skinTemplate?.rarity || 'Unknown'}
                     </Badge>
                   </div>
                 </div>

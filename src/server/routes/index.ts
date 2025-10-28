@@ -16,6 +16,7 @@ import irysRoutes from "./irys";
 import metadataRoutes from "./metadata";
 import discordRoutes from "./discord";
 import pendingSkinsRoutes from "./pending-skins";
+import { packOpeningRoutes } from "./pack-opening";
 
 export async function createRoutes(): Promise<Router> {
   const router = Router();
@@ -38,6 +39,7 @@ export async function createRoutes(): Promise<Router> {
   router.use("/metadata", metadataRoutes);
   router.use("/discord", discordRoutes);
   router.use("/pending-skins", pendingSkinsRoutes);
+  router.use("/pack-opening", packOpeningRoutes);
 
   return router;
 }
