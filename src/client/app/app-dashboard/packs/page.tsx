@@ -548,10 +548,8 @@ export default function PacksPage() {
         return;
       }
 
-      toast.success(`Buyback: ${calcData.data.buybackAmount} SOL`, { id: "buyback" });
+      toast.loading(`Buyback: ${calcData.data.buybackAmount} SOL - Requesting transaction...`, { id: "buyback" });
       console.log("Buyback calculation:", calcData.data);
-
-      toast.loading("Requesting buyback transaction...", { id: "buyback-tx" });
       
       const walletAddress = publicKey.toBase58();
       console.log("Sending buyback request with wallet:", walletAddress);
@@ -573,25 +571,25 @@ export default function PacksPage() {
       const txData = await txResponse.json();
 
       if (!txData.success) {
-        toast.error("Failed to create buyback transaction", { id: "buyback-tx" });
+        toast.error("Failed to create buyback transaction", { id: "buyback" });
         return;
       }
 
       const transaction = txData.data.transaction;
       
       if (!signTransaction) {
-        toast.error("Wallet does not support signing transactions.", { id: "buyback-tx" });
+        toast.error("Wallet does not support signing transactions.", { id: "buyback" });
         return;
       }
 
       const { Transaction } = await import("@solana/web3.js");
       const recoveredTransaction = Transaction.from(Buffer.from(transaction, 'base64'));
       
-      toast.loading("Please sign the transaction in your wallet...", { id: "buyback-sign" });
+      toast.loading("Please sign the transaction in your wallet...", { id: "buyback" });
       const signedTx = await signTransaction(recoveredTransaction);
       const rawTransaction = signedTx.serialize();
 
-      toast.loading("Confirming buyback...", { id: "buyback-confirm" });
+      toast.loading("Confirming buyback...", { id: "buyback" });
       
       // Add timeout to prevent hanging
       const controller = new AbortController();
@@ -624,35 +622,35 @@ export default function PacksPage() {
         const confirmData = await confirmResponse.json();
 
         if (confirmData.success) {
-          toast.success("NFT successfully bought back!", { id: "buyback-confirm" });
+          toast.success("NFT successfully bought back!", { id: "buyback" });
           console.log("Buyback confirmed:", confirmData.data);
           
           setLastPackResult(null);
           setShowResult(false);
           setWonSkin(null);
         } else {
-          toast.error(confirmData.error?.message || "Failed to confirm buyback", { id: "buyback-confirm" });
+          toast.error(confirmData.error?.message || "Failed to confirm buyback", { id: "buyback" });
         }
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
         if (fetchError.name === 'AbortError') {
           // Transaction was successful on-chain but backend confirmation timed out
           // Show success message and proceed anyway
-          toast.success("NFT successfully bought back! (Transaction confirmed on-chain)", { id: "buyback-confirm" });
+          toast.success("NFT successfully bought back! (Transaction confirmed on-chain)", { id: "buyback" });
           console.log("Buyback transaction successful on-chain, proceeding despite timeout");
           
           setLastPackResult(null);
           setShowResult(false);
           setWonSkin(null);
           } else {
-          toast.error(`Buyback confirmation failed: ${fetchError.message}`, { id: "buyback-confirm" });
+          toast.error(`Buyback confirmation failed: ${fetchError.message}`, { id: "buyback" });
         }
         console.error("Buyback confirmation error:", fetchError);
       }
 
     } catch (error: any) {
       console.error("Buyback failed:", error);
-      toast.error(error.message || "Failed to buyback NFT");
+      toast.error(error.message || "Failed to buyback NFT", { id: "buyback" });
     }
   };
 

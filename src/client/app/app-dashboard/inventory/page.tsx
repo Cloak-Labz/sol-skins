@@ -425,91 +425,115 @@ export default function InventoryPage() {
           </div>
         )}
 
-        {/* Inventory Grid */}
+        {/* Inventory Grid with Card Template */}
         {filteredSkins.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredSkins.map((skin) => (
-              <Card
+              <div
                 key={skin.id}
-                className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.015] hover:border-zinc-700"
+                className="group relative transition-transform duration-200 hover:scale-[1.015] cursor-pointer"
+                onClick={() => setSelectedSkin(skin)}
               >
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge
-                      className={`${getRarityColor(
-                        skin.skinTemplate?.rarity || 'Unknown'
-                      )} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}
-                    >
-                      {skin.skinTemplate?.rarity || 'Unknown'}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className="text-xs bg-zinc-900 text-zinc-300 border border-zinc-800"
-                    >
-                      Owned
-                    </Badge>
-                  </div>
-                  <div className="aspect-square rounded-lg flex items-center justify-center mb-4 animate-float border border-zinc-800 bg-zinc-950">
-                    {skin.imageUrl ? (
-                      <img
-                        src={skin.imageUrl}
-                        alt={skin.name}
-                        className="w-full h-full object-contain rounded-lg"
-                      />
-                    ) : (
-                      <Package className="w-16 h-16 text-muted-foreground" />
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <CardTitle className="text-lg mb-1">
-                    {skin.name}
-                  </CardTitle>
-                  <p className="text-foreground font-semibold mb-1">
-                    {skin.description || skin.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {skin.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
-                  </p>
-
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-2xl font-bold text-foreground">
-                      {skin.attributes?.find(attr => attr.trait_type === 'Float')?.value || 'N/A'}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(skin.mintedAt).toLocaleDateString()}
-                    </span>
+                {/* Card Template Background */}
+                <div className="relative w-full h-full rounded-lg overflow-hidden">
+                  <img
+                    src="/assets/card.jpeg"
+                    alt="Skin Card Template"
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  {/* Top Section - Skin Name, Rarity and Status */}
+                  <div className="absolute top-5 left-6 right-4 h-23 w-52 bg-black/20 rounded-lg backdrop-blur-sm border border-orange-400/30 p-3">
+                    <div className="h-full flex flex-col justify-between">
+                      {/* Skin Name */}
+                      <h3 className="text-orange-400 font-bold text-sm mb-2 truncate">
+                        {skin.name}
+                      </h3>
+                      
+                      {/* Rarity and Status */}
+                      <div className="flex items-center justify-between">
+                        <Badge
+                          className={`${getRarityColor(
+                            skin.skinTemplate?.rarity || 'Unknown'
+                          )} text-xs px-2 py-1`}
+                        >
+                          {skin.skinTemplate?.rarity || 'Unknown'}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-orange-400/20 text-orange-400 border-orange-400/50"
+                        >
+                          Owned
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    {skin.mintedAsset && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-zinc-100 bg-transparent hover:bg-zinc-900 transition-transform duration-150 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-zinc-600"
-                        onClick={() =>
-                          window.open(
-                            `https://explorer.solana.com/address/${skin.mintedAsset}`,
-                            "_blank"
-                          )
-                        }
-                      >
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        View NFT
-                      </Button>
-                    )}
+                  {/* Bottom Section - Skin Image and Stats */}
+                  <div className="absolute bottom-6 left-6 right-4 h-78 w-52 bg-black/30 rounded-lg backdrop-blur-sm border border-orange-400/30 p-4">
+                    <div className="h-full flex flex-col">
+                      {/* Skin Image */}
+                      <div className="flex items-center justify-center h-20 mb-3">
+                        {skin.imageUrl ? (
+                          <img
+                            src={skin.imageUrl}
+                            alt={skin.name}
+                            className="max-h-16 max-w-16 object-contain"
+                          />
+                        ) : (
+                          <Package className="w-12 h-12 text-orange-400" />
+                        )}
+                      </div>
 
-                      <Button
-                        size="sm"
-                        className="w-full bg-zinc-100 text-black hover:bg-white transition-transform duration-150 hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-1 focus-visible:ring-zinc-600"
-                        onClick={() => handleSellSkin(skin)}
-                      >
-                        <Coins className="w-4 h-4 mr-2" />
-                        Sell via Buyback
-                      </Button>
+                      {/* Skin Stats */}
+                      <div className="space-y-1 flex-1 pt-10">
+                        <div className="flex justify-between items-center">
+                          <span className="text-orange-300 text-xs">Wear:</span>
+                          <span className="text-orange-400 text-xs font-semibold">
+                            {skin.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-orange-300 text-xs">Float:</span>
+                          <span className="text-orange-400 text-xs font-semibold">
+                            {skin.attributes?.find(attr => attr.trait_type === 'Float')?.value || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-orange-300 text-xs">Value:</span>
+                          <span className="text-orange-400 text-sm font-bold">
+                            ${skin.currentPriceUsd || skin.skinTemplate?.basePriceUsd || '0.00'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-orange-300 text-xs">Minted:</span>
+                          <span className="text-orange-400 text-xs">
+                            {new Date(skin.mintedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Sell Button */}
+                      <div className="mt-2">
+                        <Button
+                          size="sm"
+                          className="w-full bg-orange-500 hover:bg-orange-600 text-black text-xs font-semibold"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSellSkin(skin);
+                          }}
+                        >
+                          <Coins className="w-3 h-3 mr-1" />
+                          Sell via Buyback
+                        </Button>
+                      </div>
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-orange-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg" />
+                </div>
+              </div>
             ))}
           </div>
         ) : (
