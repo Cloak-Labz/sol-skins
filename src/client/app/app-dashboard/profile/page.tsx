@@ -71,6 +71,8 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
+      console.log('Profile: User object updated:', user);
+      console.log('Profile: User tradeUrl:', (user as any).tradeUrl);
       setFormData({
         username: user.username || "",
         email: user.email || "",
@@ -184,8 +186,13 @@ export default function ProfilePage() {
         return;
       }
 
+      console.log('Profile: Updating profile with:', updates);
       await authService.updateProfile(updates);
+      
+      console.log('Profile: Refreshing user after update');
       await refreshUser();
+      
+      console.log('Profile: User after refresh:', user);
 
       toast.success("Profile updated successfully!");
       setIsEditing(false);
@@ -203,6 +210,7 @@ export default function ProfilePage() {
     setFormData({
       username: user?.username || "",
       email: user?.email || "",
+      tradeUrl: (user as any)?.tradeUrl || "",
     });
     setIsEditing(false);
   };
