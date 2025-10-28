@@ -588,39 +588,6 @@ export default function ProfilePage() {
                   )}
                 </CardContent>
               </Card>
-
-              {/* Performance Overview */}
-              <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
-                    Performance Overview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center p-4 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
-                      <p className="text-2xl font-bold text-foreground">
-                        {formatCurrency(totalSpentNum)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Total Spent</p>
-                    </div>
-                    <div className="text-center p-4 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
-                      <p className="text-2xl font-bold text-foreground">
-                        {formatCurrency(totalEarnedNum)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Total Earned</p>
-                    </div>
-                    <div className="text-center p-4 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
-                      <p className={`text-2xl font-bold text-foreground`}>
-                        {totalEarnedNum - totalSpentNum >= 0 ? '+' : ''}
-                        {formatCurrency(totalEarnedNum - totalSpentNum)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Net Profit</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
             </div>
           </div>
         </div>

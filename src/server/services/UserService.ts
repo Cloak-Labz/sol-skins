@@ -83,7 +83,7 @@ export class UserService {
       }
 
       // Prevent updating sensitive fields
-      const allowedUpdates = ['username', 'email'];
+      const allowedUpdates = ['username', 'email', 'tradeUrl'];
       const filteredUpdates = Object.keys(updates)
         .filter(key => allowedUpdates.includes(key))
         .reduce((obj, key) => {
