@@ -17,6 +17,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Search,
@@ -28,6 +29,7 @@ import {
   Lock,
   Box,
   Sparkles,
+  Zap,
 } from "lucide-react";
 import { inventoryService, authService, buybackService } from "@/lib/services";
 import { MOCK_CONFIG } from "@/lib/config/mock";
@@ -54,7 +56,7 @@ export default function InventoryPage() {
   const [totalValue, setTotalValue] = useState(0);
   const [pendingSkin, setPendingSkin] = useState<PendingSkin | null>(null);
   const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
-  const [buybackAmount, setBuybackAmount] = useState<number | null>(null);
+  const [payoutAmount, setPayoutAmount] = useState<number | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
 
   // Load inventory from backend
@@ -276,15 +278,16 @@ export default function InventoryPage() {
     setSelectedSkin(skin);
     setIsSellingDialogOpen(true);
     
-    // Calculate buyback amount
+    // Calculate payout amount
     try {
       if (skin.nftMintAddress) {
         const calculation = await buybackService.calculateBuyback(skin.nftMintAddress);
-        setBuybackAmount(calculation.buybackAmount);
+        console.log('Payout calculation response:', calculation);
+        setPayoutAmount(calculation?.buybackAmount || 0);
       }
     } catch (error) {
-      console.error('Failed to calculate buyback:', error);
-      setBuybackAmount(null);
+      console.error('Failed to calculate payout:', error);
+      setPayoutAmount(null);
     }
   };
 
@@ -302,7 +305,7 @@ export default function InventoryPage() {
     try {
       setSelling(true);
       
-      // Execute buyback through the new service
+      // Execute payout through the new service
       const result = await buybackService.executeBuyback(
         selectedSkin.nftMintAddress,
         wallet,
@@ -310,18 +313,18 @@ export default function InventoryPage() {
       );
 
       toast.success(
-        `Buyback complete! Received ${result.amountPaid.toFixed(4)} SOL`
+        `Payout complete! Received ${result.amountPaid.toFixed(4)} SOL`
       );
       
       setIsSellingDialogOpen(false);
       setSelectedSkin(null);
-      setBuybackAmount(null);
+      setPayoutAmount(null);
       
       // Reload inventory
       loadInventory();
     } catch (err) {
-      console.error("Failed to execute buyback:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to execute buyback");
+      console.error("Failed to execute payout:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to execute payout");
     } finally {
       setSelling(false);
     }
@@ -633,7 +636,7 @@ export default function InventoryPage() {
                           }}
                         >
                           <Coins className="w-3 h-3 mr-1" />
-                          Sell via Buyback
+                          Take Payout
                         </Button>
                       </div>
                     </div>
@@ -673,82 +676,100 @@ export default function InventoryPage() {
           open={isSellingDialogOpen}
           onOpenChange={setIsSellingDialogOpen}
         >
-          <DialogContent className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800">
-            <DialogHeader>
-              <DialogTitle className="text-foreground">
-                Confirm Buyback Sale
-              </DialogTitle>
+          <DialogContent className="bg-[#0b0b0b] border border-white/10 p-0 max-w-2xl">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Confirm Payout</DialogTitle>
+              <DialogDescription>Review the payout amount and confirm the sale of your skin</DialogDescription>
             </DialogHeader>
             {selectedSkin && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 p-4 rounded-lg border border-zinc-800 bg-zinc-950">
-                  <div className="w-16 h-16 flex items-center justify-center">
-                    {selectedSkin.imageUrl ? (
-                      <img
-                        src={selectedSkin.imageUrl}
-                        alt={selectedSkin.name}
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                    ) : (
-                      <Package className="w-12 h-12 text-muted-foreground" />
-                    )}
+              <div className="relative">
+                {/* Top area - simple layout like before */}
+                <div className="p-6">
+                  <div className="flex items-center gap-4 p-4 rounded-lg border border-zinc-800 bg-zinc-950">
+                    <div className="w-16 h-16 flex items-center justify-center">
+                      {selectedSkin.imageUrl ? (
+                        <img
+                          src={selectedSkin.imageUrl}
+                          alt={selectedSkin.name}
+                          className="w-16 h-16 object-cover rounded"
+                        />
+                      ) : (
+                        <Package className="w-12 h-12 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">
+                        {selectedSkin.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedSkin.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
+                      </p>
+                      <Badge
+                        className={`${getRarityColor(
+                          selectedSkin.skinTemplate?.rarity || 'Unknown'
+                        )} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}
+                      >
+                        {selectedSkin.skinTemplate?.rarity || 'Unknown'}
+                      </Badge>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">
-                      {selectedSkin.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedSkin.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
-                    </p>
-                    <Badge
-                      className={`${getRarityColor(
-                        selectedSkin.skinTemplate?.rarity || 'Unknown'
-                      )} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}
+                </div>
+
+                {/* Bottom action area (fixed bg) */}
+                <div className="mt-6 p-6 bg-[#0d0d0d] border-t border-white/10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Payout box */}
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-white font-semibold">Receive a payout</div>
+                          <div className="text-white/60 text-sm">85% of market value</div>
+                        </div>
+                      </div>
+                      <div className="mt-4 text-right">
+                        {payoutAmount !== null ? (
+                          <div className="text-3xl font-bold text-white">
+                            {payoutAmount.toFixed(4)} SOL
+                          </div>
+                        ) : (
+                          <Loader2 className="w-8 h-8 animate-spin text-white/50 mx-auto" />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Action box */}
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
+                      <div className="text-white font-semibold">Confirm Payout</div>
+                      <div className="text-white/60 text-sm">Sell this skin for SOL</div>
+                      <Button
+                        onClick={confirmSell}
+                        disabled={selling || payoutAmount === null}
+                        className="mt-4 w-full bg-[#E99500] hover:bg-[#f0a116] text-black font-bold"
+                      >
+                        {selling ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-4 h-4 mr-2" />
+                            Take Payout
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="text-center mt-4">
+                    <Button 
+                      variant="ghost" 
+                      className="text-white/70 hover:text-white" 
+                      onClick={() => setIsSellingDialogOpen(false)}
                     >
-                      {selectedSkin.skinTemplate?.rarity || 'Unknown'}
-                    </Badge>
+                      Cancel
+                    </Button>
                   </div>
-                </div>
-
-                <div className="p-4 rounded-lg border border-zinc-800 bg-zinc-950">
-                  <div className="flex justify-between items-center">
-                    <span className="text-foreground">Buyback Price:</span>
-                    {buybackAmount !== null ? (
-                      <span className="text-2xl font-bold text-foreground">
-                        {buybackAmount.toFixed(4)} SOL
-                      </span>
-                    ) : (
-                      <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    85% of market value
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsSellingDialogOpen(false)}
-                    className="flex-1 border-zinc-800 hover:bg-zinc-900 transition-transform duration-150 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-zinc-600"
-                    disabled={selling}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={confirmSell}
-                    className="flex-1 bg-zinc-100 text-black hover:bg-white transition-transform duration-150 hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-1 focus-visible:ring-zinc-600"
-                    disabled={selling}
-                  >
-                    {selling ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Selling...
-                      </>
-                    ) : (
-                      "Confirm Sale"
-                    )}
-                  </Button>
                 </div>
               </div>
             )}

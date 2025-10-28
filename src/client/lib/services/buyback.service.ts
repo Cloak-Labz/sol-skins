@@ -48,7 +48,8 @@ class BuybackService {
       const response = await apiClient.post<BuybackRequestResponse>('/buyback/request', {
         nftMint,
       });
-      return response.data;
+      console.log('Request buyback response:', response);
+      return response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to request buyback';
       toast.error(message);
@@ -98,7 +99,8 @@ class BuybackService {
         txSignature,
         nftMint,
       });
-      return response.data;
+      console.log('Confirm buyback response:', response);
+      return response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to confirm buyback';
       toast.error(message);
@@ -112,7 +114,7 @@ class BuybackService {
   async getStatus(): Promise<BuybackStatus> {
     try {
       const response = await apiClient.get<BuybackStatus>('/buyback/status');
-      return response.data;
+      return response;
     } catch (error: any) {
       console.error('Error fetching buyback status:', error);
       throw error;
@@ -127,7 +129,8 @@ class BuybackService {
       const response = await apiClient.get<BuybackCalculation>(
         `/buyback/calculate/${nftMint}`
       );
-      return response.data;
+      console.log('Buyback calculation response:', response);
+      return response;
     } catch (error: any) {
       console.error('Error calculating buyback:', error);
       throw error;
@@ -140,7 +143,7 @@ class BuybackService {
   async getHistory(): Promise<BuybackHistoryRecord[]> {
     try {
       const response = await apiClient.get<BuybackHistoryRecord[]>('/buyback/history');
-      return response.data;
+      return response;
     } catch (error: any) {
       console.error('Error fetching buyback history:', error);
       return [];
