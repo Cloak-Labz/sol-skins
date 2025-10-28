@@ -75,8 +75,8 @@ export default function AdminInventoryPage() {
 
   // Check if connected wallet is admin
   useEffect(() => {
-    const adminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
-    if (publicKey && adminWallet) {
+    const adminWallet = "v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs";
+    if (publicKey) {
       const isAdminWallet = publicKey.toBase58() === adminWallet;
       setIsAdmin(isAdminWallet);
       if (!isAdminWallet) {

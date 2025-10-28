@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { BoxService, CreateBoxDTO, UpdateBoxDTO } from '../services/BoxService';
+import { collectionFileService } from '../services/CollectionFileService';
 import { ResponseUtil } from '../utils/response';
 import { catchAsync } from '../middlewares/errorHandler';
 
@@ -67,8 +68,38 @@ export class BoxController {
   // DELETE /boxes/:id - Delete box
   deleteBox = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
+    
+    // Delete collection files first
+    try {
+      await collectionFileService.deleteCollectionFiles(id);
+    } catch (error) {
+      // Log error but don't fail the deletion
+      console.error('Failed to delete collection files:', error);
+    }
+    
     await this.boxService.deleteBox(id);
     ResponseUtil.success(res, null, 204);
+  });
+
+  // GET /boxes/:id/collection-files - Get collection files status
+  getCollectionFiles = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    
+    const result = await collectionFileService.getCollectionFiles(id);
+    ResponseUtil.success(res, result);
+  });
+
+  // POST /boxes/generate-collection-files - Generate collection.json and collection.png files
+  generateCollectionFiles = catchAsync(async (req: Request, res: Response) => {
+    const { boxId, collectionData, imageUrl } = req.body;
+    
+    const result = await collectionFileService.generateCollectionFiles(
+      boxId,
+      collectionData,
+      imageUrl
+    );
+    
+    ResponseUtil.success(res, result);
   });
 
   // GET /boxes/stats - Get box statistics

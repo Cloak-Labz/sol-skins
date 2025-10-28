@@ -7,6 +7,11 @@ export interface CreateBoxDTO {
   batchId?: number;
   candyMachine?: string;
   collectionMint?: string;
+  candyGuard?: string;
+  treasuryAddress?: string;
+  symbol?: string;
+  sellerFeeBasisPoints?: number;
+  isMutable?: boolean;
   name: string;
   description?: string;
   imageUrl?: string;
@@ -110,10 +115,16 @@ export class BoxService {
         ...data,
         candyMachine: data.candyMachine || '11111111111111111111111111111111',
         collectionMint: data.collectionMint || '11111111111111111111111111111111',
+        candyGuard: data.candyGuard,
+        treasuryAddress: data.treasuryAddress,
+        symbol: data.symbol || 'SKIN',
+        sellerFeeBasisPoints: data.sellerFeeBasisPoints || 500,
+        isMutable: data.isMutable || false,
         imageUrl: data.imageUrl || '',
         priceSol: data.priceSol || 0,
         priceUsdc: data.priceUsdc || 0,
         merkleRoot: data.merkleRoot || '',
+        metadataUris: data.metadataUris || [], // Add default empty array for metadataUris
         snapshotTime: data.snapshotTime || Math.floor(Date.now() / 1000),
         itemsAvailable: data.itemsAvailable || data.totalItems,
         itemsOpened: data.itemsOpened || 0,

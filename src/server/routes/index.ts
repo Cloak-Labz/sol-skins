@@ -9,6 +9,7 @@ import { leaderboardRoutes } from "./leaderboard";
 import { activityRoutes } from "./activity";
 import { adminRoutes } from "./admin";
 import { boxRoutes } from "./boxes";
+import { boxSkinRoutes } from "./boxSkins";
 import { buybackRoutes } from "./buyback";
 import { revealRoutes } from "./reveal";
 import irysRoutes from "./irys";
@@ -30,6 +31,7 @@ export async function createRoutes(): Promise<Router> {
   router.use("/activity", activityRoutes);
   router.use("/admin", adminRoutes);
   router.use("/boxes", boxRoutes);
+  router.use("/box-skins", boxSkinRoutes);
   router.use("/buyback", buybackRoutes);
   router.use("/reveal", revealRoutes);
   router.use("/irys", irysRoutes);

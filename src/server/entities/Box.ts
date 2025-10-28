@@ -104,6 +104,27 @@ export class Box {
   @Column({ type: 'text', nullable: true })
   syncError?: string;
 
+  // Candy Machine specific fields
+  @Column({ type: 'varchar', length: 88, nullable: true })
+  @Index()
+  candyGuard?: string;
+
+  @Column({ type: 'varchar', length: 88, nullable: true })
+  @Index()
+  treasuryAddress?: string;
+
+  @Column({ type: 'integer', nullable: true })
+  itemsRedeemed?: number;
+
+  @Column({ type: 'boolean', default: false })
+  isMutable!: boolean;
+
+  @Column({ type: 'integer', default: 500 })
+  sellerFeeBasisPoints!: number;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  symbol?: string;
+
   @CreateDateColumn()
   createdAt!: Date;
 

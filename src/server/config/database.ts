@@ -13,6 +13,7 @@ import { SkinListing } from "../entities/SkinListing";
 import { SteamInventory } from "../entities/SteamInventory";
 import { Inventory } from "../entities/Inventory";
 import { Box } from "../entities/Box";
+import { BoxSkin } from "../entities/BoxSkin";
 import { Metadata } from "../entities/Metadata";
 import { PendingSkin } from "../entities/PendingSkin";
 import { BuybackRecord } from "../entities/BuybackRecord";
@@ -40,6 +41,7 @@ export const AppDataSource = new DataSource({
     SteamInventory,
     Inventory,
     Box,
+    BoxSkin,
     Metadata,
     PendingSkin,
     BuybackRecord,

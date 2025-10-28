@@ -38,7 +38,8 @@ class ApiClient {
             url.includes("/cases/opening") ||
             url.includes("/cases/openings") ||
             url.startsWith("/inventory") ||
-            url.startsWith("/history");
+            url.startsWith("/history") ||
+            url.startsWith("/auth/profile");
 
           if (config.data && method !== "get") {
             // Add wallet address to request body for POST/PUT requests

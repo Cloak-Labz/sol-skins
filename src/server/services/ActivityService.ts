@@ -21,31 +21,65 @@ export class ActivityService {
     const recentOpenings = await this.caseOpeningRepository.getRecentActivity(limit);
 
     const activities = recentOpenings
-      .filter(opening => opening.completedAt && opening.skinTemplate && opening.user)
-      .map(opening => ({
-        id: opening.id,
-        type: 'case_opened' as const,
-        user: {
-          id: opening.user!.id,
-          username: opening.user!.username || `User${opening.user!.id.slice(0, 8)}`,
-          walletAddress: opening.user!.walletAddress.slice(0, 8) + '...',
-        },
-        skin: {
-          id: opening.skinTemplate!.id,
-          weapon: opening.skinTemplate!.weapon,
-          skinName: opening.skinTemplate!.skinName,
-          rarity: opening.skinTemplate!.rarity,
-          condition: opening.skinTemplate!.condition,
-          imageUrl: opening.skinTemplate!.imageUrl,
-          valueUsd: opening.userSkin?.currentPriceUsd || opening.skinTemplate!.basePriceUsd,
-        },
-        lootBox: {
-          id: opening.lootBoxType!.id,
-          name: opening.lootBoxType!.name,
-          rarity: opening.lootBoxType!.rarity,
-        },
-        timestamp: opening.completedAt!,
-      }));
+      .filter(opening => opening.completedAt && opening.user)
+      .map(opening => {
+        // Handle both case openings and pack openings
+        const isPackOpening = opening.isPackOpening;
+        
+        if (isPackOpening) {
+          // Pack opening data
+          return {
+            id: opening.id,
+            type: 'case_opened' as const,
+            user: {
+              id: opening.user!.id,
+              username: opening.user!.username || `User${opening.user!.id.slice(0, 8)}`,
+              walletAddress: opening.user!.walletAddress.slice(0, 8) + '...',
+            },
+            skin: {
+              id: opening.nftMintAddress || opening.id,
+              weapon: opening.skinWeapon || 'Unknown',
+              skinName: opening.skinName || 'Unknown',
+              rarity: opening.skinRarity || 'Common',
+              condition: 'Field-Tested', // Default for pack openings
+              imageUrl: opening.skinImage || '',
+              valueUsd: opening.skinValue || 0,
+            },
+            lootBox: {
+              id: opening.lootBoxTypeId,
+              name: 'Pack', // Default name for pack openings
+              rarity: 'Common', // Default rarity
+            },
+            timestamp: opening.completedAt!,
+          };
+        } else {
+          // Case opening data (existing logic)
+          return {
+            id: opening.id,
+            type: 'case_opened' as const,
+            user: {
+              id: opening.user!.id,
+              username: opening.user!.username || `User${opening.user!.id.slice(0, 8)}`,
+              walletAddress: opening.user!.walletAddress.slice(0, 8) + '...',
+            },
+            skin: {
+              id: opening.skinTemplate!.id,
+              weapon: opening.skinTemplate!.weapon,
+              skinName: opening.skinTemplate!.skinName,
+              rarity: opening.skinTemplate!.rarity,
+              condition: opening.skinTemplate!.condition,
+              imageUrl: opening.skinTemplate!.imageUrl,
+              valueUsd: opening.userSkin?.currentPriceUsd || opening.skinTemplate!.basePriceUsd,
+            },
+            lootBox: {
+              id: opening.lootBoxType!.id,
+              name: opening.lootBoxType!.name,
+              rarity: opening.lootBoxType!.rarity,
+            },
+            timestamp: opening.completedAt!,
+          };
+        }
+      });
 
     // Sort by timestamp descending
     activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());

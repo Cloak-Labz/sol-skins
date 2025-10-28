@@ -1,23 +1,34 @@
 import { Router } from 'express';
 import { PendingSkinController } from '../controllers/PendingSkinController';
-import { catchAsync } from '../middlewares/errorHandler';
 
 const router = Router();
 const pendingSkinController = new PendingSkinController();
 
-// Create a new pending skin
-router.post('/', catchAsync(pendingSkinController.createPendingSkin));
+// POST /pending-skins - Create new pending skin
+router.post('/', pendingSkinController.createPendingSkin);
 
-// Get user's pending skins
-router.get('/user/:userId', catchAsync(pendingSkinController.getUserPendingSkins));
+// GET /pending-skins/user/:userId - Get pending skins for a user
+router.get('/user/:userId', pendingSkinController.getPendingSkinsByUserId);
 
-// Get a specific pending skin
-router.get('/:id', catchAsync(pendingSkinController.getPendingSkinById));
+// GET /pending-skins/:id - Get pending skin by ID
+router.get('/:id', pendingSkinController.getPendingSkinById);
 
-// Claim a pending skin
-router.post('/:pendingSkinId/claim', catchAsync(pendingSkinController.claimPendingSkin));
+// PUT /pending-skins/:id - Update pending skin
+router.put('/:id', pendingSkinController.updatePendingSkin);
 
-// Cleanup expired skins (admin endpoint)
-router.post('/cleanup', catchAsync(pendingSkinController.cleanupExpiredSkins));
+// POST /pending-skins/:id/claim - Claim pending skin
+router.post('/:id/claim', pendingSkinController.claimPendingSkin);
+
+// DELETE /pending-skins/:id - Delete pending skin
+router.delete('/:id', pendingSkinController.deletePendingSkin);
+
+// DELETE /pending-skins/by-nft/:nftMint - Delete pending skin by NFT mint address
+router.delete('/by-nft/:nftMint', pendingSkinController.deletePendingSkinByNftMint);
+
+// GET /pending-skins/expired - Get expired pending skins
+router.get('/expired', pendingSkinController.getExpiredPendingSkins);
+
+// POST /pending-skins/mark-expired - Mark expired skins
+router.post('/mark-expired', pendingSkinController.markExpiredSkins);
 
 export default router;

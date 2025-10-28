@@ -13,8 +13,14 @@ boxRoutes.get("/active", boxController.getActiveBoxes);
 // GET /boxes/stats - Get box statistics
 boxRoutes.get("/stats", boxController.getBoxStats);
 
+// POST /boxes/generate-collection-files - Generate collection files
+boxRoutes.post("/generate-collection-files", boxController.generateCollectionFiles);
+
 // GET /boxes/:id - Get box by ID
 boxRoutes.get("/:id", boxController.getBoxById);
+
+// GET /boxes/:id/collection-files - Get collection files status
+boxRoutes.get("/:id/collection-files", boxController.getCollectionFiles);
 
 // GET /boxes/batch/:batchId - Get box by batch ID
 boxRoutes.get("/batch/:batchId", boxController.getBoxByBatchId);

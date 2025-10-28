@@ -64,7 +64,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="pointer-events-none select-none">
           <div className="absolute inset-0 opacity-20">
             <img
-              src="/assets/dust3.jpeg"
+              src="/dust3.jpeg"
               alt="Dust3 background"
               className="w-full h-full object-cover"
             />

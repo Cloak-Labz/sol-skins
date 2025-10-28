@@ -36,11 +36,11 @@ import { useUser } from "@/lib/contexts/UserContext";
 import { toast } from "react-hot-toast";
 import { formatCurrency } from "@/lib/utils";
 import { discordService } from "@/lib/services/discord.service";
-import { pendingSkinsService, PendingSkin } from "@/lib/services/pending-skins.service";
+import { pendingSkinsService, PendingSkin } from "@/lib/services/pendingSkins.service";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 
 export default function InventoryPage() {
-  const { isConnected, walletAddress } = useUser();
+  const { isConnected, walletAddress, user } = useUser();
   const wallet = useWallet();
   const { connection } = useConnection();
   const [searchTerm, setSearchTerm] = useState("");
@@ -72,13 +72,13 @@ export default function InventoryPage() {
   useEffect(() => {
     const checkPendingSkin = async () => {
       try {
-        if (isConnected && walletAddress) {
-          console.log('🔍 Checking for pending skins with wallet:', walletAddress);
+        if (isConnected && user?.id) {
+          console.log('🔍 Checking for pending skins with user ID:', user.id);
           
-          // Fetch pending skins from API using wallet address
+          // Fetch pending skins from API using user ID
           try {
-            console.log('🔍 Fetching pending skins for wallet:', walletAddress);
-            const pendingSkins = await pendingSkinsService.getUserPendingSkins(walletAddress);
+            console.log('🔍 Fetching pending skins for user:', user.id);
+            const pendingSkins = await pendingSkinsService.getPendingSkinsByUserId(user.id);
             console.log('📦 Pending skins from API:', pendingSkins);
             if (pendingSkins.length > 0) {
               setPendingSkin(pendingSkins[0]); // Show the first pending skin
@@ -112,7 +112,7 @@ export default function InventoryPage() {
     };
 
     checkPendingSkin();
-  }, [isConnected, walletAddress]);
+  }, [isConnected, user?.id]);
 
   // Claim pending skin
   const claimPendingSkin = async () => {
@@ -125,24 +125,13 @@ export default function InventoryPage() {
         return;
       }
 
-      // Claim the pending skin via API
-      const claimedSkin = await pendingSkinsService.claimPendingSkin(pendingSkin.id, pendingSkin.userId);
+      // Claim the pending skin via API (Discord ticket will be created automatically)
+      const claimedSkin = await pendingSkinsService.claimPendingSkin(
+        pendingSkin.id,
+        walletAddress || undefined,
+        userTradeUrl || undefined
+      );
       console.log('✅ Pending skin claimed successfully:', claimedSkin.id);
-
-      // Create Discord ticket for skin claim
-      console.log('🎫 Creating Discord ticket for claimed skin:', pendingSkin);
-      await discordService.createSkinClaimTicket({
-        userId: pendingSkin.userId,
-        walletAddress: pendingSkin.userId, // Using userId as wallet address for now
-        steamTradeUrl: userTradeUrl,
-        skinName: pendingSkin.skinName,
-        skinRarity: pendingSkin.skinRarity,
-        skinWeapon: pendingSkin.skinWeapon,
-        nftMintAddress: pendingSkin.nftMintAddress || 'unknown',
-        openedAt: new Date(),
-        caseOpeningId: pendingSkin.caseOpeningId || `pending-${Date.now()}`,
-      });
-      console.log('✅ Discord ticket created successfully for:', pendingSkin.skinName);
 
       // Clear the pending skin from state and localStorage
       setPendingSkin(null);

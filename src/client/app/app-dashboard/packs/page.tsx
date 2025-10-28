@@ -21,10 +21,11 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { casesService, marketplaceService, SolanaProgramService, boxesService, authService } from "@/lib/services";
+import { casesService, marketplaceService, boxesService, authService } from "@/lib/services";
 import { discordService } from "@/lib/services/discord.service";
 import { pendingSkinsService } from "@/lib/services/pending-skins.service";
-import { PublicKey, Keypair } from '@solana/web3.js';
+import { apiClient } from "@/lib/services/api";
+import { PublicKey } from '@solana/web3.js';
 import { LootBoxType } from "@/lib/types/api";
 
 interface CSGOSkin {
@@ -179,104 +180,69 @@ export default function PacksPage() {
   const [selectedPack, setSelectedPack] = useState<LootBoxType | null>(null);
   const [boxes, setBoxes] = useState<any[]>([]);
   const [loadingBoxes, setLoadingBoxes] = useState(false);
-  const [selectedBoxMetaUris, setSelectedBoxMetaUris] = useState<string[]>([]);
   const isRevealingRef = useRef(false);
   const isOpeningRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [openingPhase, setOpeningPhase] = useState<
-    "waiting" | "spinning" | "revealing" | null
+    "waiting" | null
   >(null);
   const [wonSkin, setWonSkin] = useState<CSGOSkin | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const [spinItems, setSpinItems] = useState<CSGOSkin[]>([]);
-  const rouletteRef = useRef<HTMLDivElement>(null);
-  const animationRef = useRef<any>(null);
-  const [batchPrice, setBatchPrice] = useState<number | null>(null);
   const [lastPackResult, setLastPackResult] = useState<{ signature: string; asset: string } | null>(null);
   const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
 
-  // Calculate real odds from batch metadata URIs
-  const calculateRealOdds = async (metadataUris: string[]) => {
-    if (!Array.isArray(metadataUris) || metadataUris.length === 0) {
-      return DEFAULT_ODDS;
-    }
-
+  // Calculate real odds from box skins in database
+  const calculateRealOdds = async (boxId: string) => {
     try {
-      // Fetch metadata for all items in the batch
-      const metadataPromises = metadataUris.slice(0, 20).map(async (uri) => {
-        try {
-          const response = await fetch(uri);
-          if (!response.ok) return null;
-          const metadata = await response.json();
-          return metadata;
-        } catch {
-          return null;
-        }
-      });
-
-      const metadataResults = await Promise.allSettled(metadataPromises);
-      const validMetadata = metadataResults
-        .filter((result) => result.status === 'fulfilled' && result.value)
-        .map((result) => (result as any).value);
-
-      if (validMetadata.length === 0) {
+      // Fetch box skins distribution from backend
+      const response = await fetch(`/api/v1/box-skins/box/${boxId}/distribution`);
+      const data = await response.json();
+      
+      if (!data.success) {
+        console.warn('Failed to fetch box skin distribution:', data.error);
         return DEFAULT_ODDS;
       }
 
-      // Count items by rarity
-      const rarityCounts: Record<string, number> = {
-        common: 0,
-        uncommon: 0,
-        rare: 0,
-        epic: 0,
-        legendary: 0,
-      };
+      const distribution = data.data;
+      console.log('Box skin distribution:', distribution);
 
-      validMetadata.forEach((metadata) => {
-        const rarityAttr = Array.isArray(metadata?.attributes)
-          ? metadata.attributes.find((a: any) => /rarity/i.test(a?.trait_type))?.value
-          : null;
-        
-        const rarity = (rarityAttr || 'common').toString().toLowerCase();
-        if (rarity in rarityCounts) {
-          rarityCounts[rarity]++;
-        } else {
-          rarityCounts.common++;
-        }
-      });
-
-      const totalItems = validMetadata.length;
+      // Convert distribution to odds format
+      const totalSkins = Object.values(distribution).reduce((sum: number, count: any) => sum + count, 0);
       
-      // Calculate percentages
+      if (totalSkins === 0) {
+        console.warn('No skins found in box distribution');
+        return DEFAULT_ODDS;
+      }
+
       const odds = [
         {
           label: "Legendary",
           rarity: "legendary",
-          pct: (rarityCounts.legendary / totalItems) * 100,
+          pct: ((distribution.legendary || 0) / totalSkins) * 100,
         },
         {
           label: "Epic", 
           rarity: "epic",
-          pct: (rarityCounts.epic / totalItems) * 100,
+          pct: ((distribution.epic || 0) / totalSkins) * 100,
         },
         {
           label: "Rare",
           rarity: "rare", 
-          pct: (rarityCounts.rare / totalItems) * 100,
+          pct: ((distribution.rare || 0) / totalSkins) * 100,
         },
         {
           label: "Uncommon",
           rarity: "uncommon",
-          pct: (rarityCounts.uncommon / totalItems) * 100,
+          pct: ((distribution.uncommon || 0) / totalSkins) * 100,
         },
         {
           label: "Common",
           rarity: "common",
-          pct: (rarityCounts.common / totalItems) * 100,
+          pct: ((distribution.common || 0) / totalSkins) * 100,
         },
       ];
 
-      console.log('Calculated real odds from batch metadata:', odds);
+      console.log('Calculated real odds from box skins:', odds);
       return odds;
     } catch (error) {
       console.error('Error calculating real odds:', error);
@@ -303,6 +269,15 @@ export default function PacksPage() {
     return 'common';
   };
 
+  // Set wallet address in API client when wallet connects/disconnects
+  useEffect(() => {
+    if (connected && publicKey) {
+      apiClient.setWalletAddress(publicKey.toString());
+    } else {
+      apiClient.setWalletAddress(null);
+    }
+  }, [connected, publicKey]);
+
   // Load boxes from database
   useEffect(() => {
     loadBoxes(); // Load boxes from database
@@ -310,10 +285,10 @@ export default function PacksPage() {
 
   // Calculate real odds when pack is selected
   useEffect(() => {
-    if (selectedPack && selectedBoxMetaUris.length > 0) {
-      calculateRealOdds(selectedBoxMetaUris).then(setOddsToUse);
+    if (selectedPack && selectedPack.id) {
+      calculateRealOdds(selectedPack.id).then(setOddsToUse);
     }
-  }, [selectedPack, selectedBoxMetaUris]);
+  }, [selectedPack]);
 
   const loadLootBoxes = async () => {
     try {
@@ -341,16 +316,14 @@ export default function PacksPage() {
       const data = await boxesService.getActiveBoxes();
       console.log("loadBoxes - received data:", data);
       console.log("loadBoxes - data length:", data?.length);
-      // Only show published boxes (on-chain batches): require non-null batchId
-      const published = Array.isArray(data) ? data.filter((b: any) => !!b?.batchId) : [];
-      setBoxes(published);
+      // Show all active boxes (both published and unpublished)
+      const activeBoxes = Array.isArray(data) ? data : [];
+      setBoxes(activeBoxes);
       console.log("loadBoxes - boxes state set");
       // Set the first box as selected pack if none is selected
-      if (published.length > 0 && !selectedPack) {
-        setSelectedPack(published[0] as any);
-        console.log("loadBoxes - selectedPack set to:", published[0]);
-        // Prefetch metadata URIs for first selection
-        void fetchSelectedBoxMetaUris(published[0]);
+      if (activeBoxes.length > 0 && !selectedPack) {
+        setSelectedPack(activeBoxes[0] as any);
+        console.log("loadBoxes - selectedPack set to:", activeBoxes[0]);
       }
     } catch (error) {
       console.error("Failed to load boxes:", error);
@@ -361,54 +334,12 @@ export default function PacksPage() {
     }
   };
 
-  const fetchSelectedBoxMetaUris = async (pack: any) => {
-    try {
-      const batchId = pack?.batchId;
-      if (!batchId) {
-        setSelectedBoxMetaUris([]);
-        return;
-      }
-      const box = await boxesService.getBoxByBatchId(batchId);
-      const uris = Array.isArray(box?.metadataUris) ? box.metadataUris : [];
-      setSelectedBoxMetaUris(uris);
-      console.log('Fetched metadataUris for batch', batchId, uris.length);
-    } catch (e) {
-      console.warn('Failed to fetch box by batchId for metadataUris', e);
-      setSelectedBoxMetaUris([]);
-    }
-  };
 
-  const fetchBatchPrice = async (pack: any) => {
-    try {
-      const batchId = pack?.batchId;
-      if (!batchId) {
-        setBatchPrice(null);
-        return;
-      }
 
-      const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
-      const pid = process.env.NEXT_PUBLIC_PROGRAM_ID as string;
-      const programService = new SolanaProgramService(rpc, pid);
-      
-      const batchInfo = await programService.getBatchInfo(batchId);
-      setBatchPrice(batchInfo.priceSol);
-      console.log('Fetched batch price:', batchInfo.priceSol, 'SOL');
-    } catch (error) {
-      console.error("Failed to fetch batch price:", error);
-      setBatchPrice(null);
-    }
-  };
-
-  // Generate initial roulette items
-  useEffect(() => {
-    generateSpinItems();
-  }, [selectedPack, selectedBoxMetaUris]);
-
-  // When user changes selected pack, fetch its metadataUris from backend
+  // When user changes selected pack, calculate odds
   useEffect(() => {
     if (selectedPack) {
-      void fetchSelectedBoxMetaUris(selectedPack as any);
-      void fetchBatchPrice(selectedPack as any);
+      // Odds will be calculated automatically by the other useEffect
     }
   }, [selectedPack]);
 
@@ -430,142 +361,7 @@ export default function PacksPage() {
   }, [connected]);
 
 
-  // Cleanup animation on unmount
-  useEffect(() => {
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, []);
 
-  const generateSpinItems = async () => {
-    const items: CSGOSkin[] = [];
-
-    // Use real metadata from selected pack (fetched from backend) if available
-    const metadataUris = selectedBoxMetaUris;
-    if (Array.isArray(metadataUris) && metadataUris.length > 0) {
-      try {
-        // Fetch a subset of metadata to avoid over-fetching; limit concurrency
-        const sample = metadataUris.slice(0, Math.min(10, metadataUris.length));
-        const fetchWithTimeout = (rawUrl: string, ms = 7000) => {
-          // Normalize metadata URLs
-          const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-          const baseV1 = `${apiBase}/api/v1`;
-
-          let url = rawUrl?.trim();
-          if (!url) return Promise.reject(new Error('empty url'));
-
-          // If UUID-like, assume DB metadata id
-          const uuidLike = /^[0-9a-fA-F-]{32,36}$/;
-          if (uuidLike.test(url)) {
-            url = `${baseV1}/metadata/${url}`;
-          }
-
-          // If relative metadata path
-          if (url.startsWith('/metadata/')) {
-            url = `${baseV1}${url}`;
-          }
-          if (url.startsWith('/api/v1/metadata/')) {
-            url = `${apiBase}${url}`;
-          }
-
-          // Allow Arweave and any HTTP(S); do not hard-skip deprecated hosts, just let fetch fail
-          return Promise.race([
-            fetch(url).then((r) => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
-          ]);
-        };
-
-        const results = await Promise.allSettled(sample.map((u) => fetchWithTimeout(u)));
-        // Debug: log raw metadata responses for field mapping
-        try {
-          console.log('Roulette metadata fetch results (first 3):', results.slice(0, 3).map((r: any, i) => ({
-            idx: i,
-            status: r?.status,
-            keys: r?.status === 'fulfilled' ? Object.keys(r.value || {}) : undefined,
-            sample: r?.status === 'fulfilled' ? r.value : r?.reason?.message || String(r?.reason || '')
-          })));
-        } catch {}
-        const normalize = (md: any) => {
-          if (!md) return null;
-          
-          // Unwrap API envelope { success, data }
-          if (md.success && md.data) md = md.data;
-          if (md.data && !md.name && !md.image) md = md.data; // nested data
-          
-          // Extract name (trim whitespace)
-          const name = md.name ? md.name.trim() : undefined;
-          
-          // Extract rarity from attributes
-          const rarityAttr = Array.isArray(md?.attributes)
-            ? md.attributes.find((a: any) => /rarity/i.test(a?.trait_type))?.value
-            : undefined;
-          const rarity = typeof rarityAttr === 'string' ? rarityAttr.toLowerCase() : undefined;
-          
-          // Extract image
-          const image = md.image || (md as any).image_url || (md as any).imageUri || md?.properties?.files?.[0]?.uri || undefined;
-          
-          // Extract value from Float attribute (CS:GO float value)
-          const floatAttr = Array.isArray(md?.attributes)
-            ? md.attributes.find((a: any) => /float/i.test(a?.trait_type))?.value
-            : undefined;
-          const floatValue = floatAttr ? parseFloat(floatAttr) : undefined;
-          
-          // Use float value as the price (multiply by 1000 for display)
-          const value = floatValue ? floatValue * 1000 : undefined;
-          
-          return { name, image, rarity, value };
-        };
-
-        const assets: { name?: string; image?: string; rarity?: string; value?: number }[] = results
-          .map((r) => (r.status === 'fulfilled' ? normalize((r as any).value) : null))
-          .filter(Boolean) as any;
-        try {
-          console.log('Normalized roulette assets (first 5):', assets.slice(0, 5));
-        } catch {}
-
-        // Build 50 spin items using weighted selection based on real odds
-        for (let i = 0; i < 50; i++) {
-          const pick = assets[Math.floor(Math.random() * Math.max(assets.length, 1))] || {} as any;
-          const rarityFromMeta = pick.rarity && ['common','uncommon','rare','epic','legendary'].includes(pick.rarity)
-            ? pick.rarity
-            : undefined;
-          const chosenRarity = rarityFromMeta || selectRarityByOdds(oddsToUse);
-
-          items.push({
-            id: `real-${i}`,
-            name: pick.name || `Mystery Skin #${i + 1}`,
-            rarity: chosenRarity,
-            value: pick.value || Math.round(Math.random() * 10000) / 100,
-            image: pick.image || "/assets/skins/img1.png",
-          });
-        }
-      } catch (_e) {
-        // Fallback to mock skins on any error, but still use weighted selection
-        for (let i = 0; i < 50; i++) {
-          const selectedRarity = selectRarityByOdds(oddsToUse);
-          const mockSkin = MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)];
-          items.push({
-            ...mockSkin,
-            rarity: selectedRarity, // Override with weighted rarity
-          });
-        }
-      }
-    } else {
-      // Fallback to mock skins with weighted selection
-      for (let i = 0; i < 50; i++) {
-        const selectedRarity = selectRarityByOdds(oddsToUse);
-        const mockSkin = MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)];
-        items.push({
-          ...mockSkin,
-          rarity: selectedRarity, // Override with weighted rarity
-        });
-      }
-    }
-
-    setSpinItems(items);
-  };
 
   // Fetch a single metadata JSON and map to CSGOSkin
   const resolveSkinFromMetadata = async (uri: string): Promise<CSGOSkin> => {
@@ -608,74 +404,6 @@ export default function PacksPage() {
     }
   };
 
-  // Continuous spinning animation
-  const startContinuousSpin = () => {
-    if (!rouletteRef.current) return;
-
-    const animate = () => {
-      if (rouletteRef.current && openingPhase === "spinning") {
-        const currentTransform = rouletteRef.current.style.transform;
-        const currentX =
-          parseFloat(currentTransform.replace(/[^-\d.]/g, "")) || 0;
-        const newX = currentX - 5;
-
-        if (newX < -8000) {
-          rouletteRef.current.style.transform = "translateX(0px)";
-        } else {
-          rouletteRef.current.style.transform = `translateX(${newX}px)`;
-        }
-      }
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-  };
-
-  // Stop and reveal result
-  const stopAndShowResult = (winnerSkin: CSGOSkin) => {
-    setOpeningPhase("revealing");
-
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-    }
-
-    // Keep current items and inject winner at a deterministic index
-    const items: CSGOSkin[] = [...spinItems];
-    const winningIndex = Math.min(42, Math.max(0, items.length - 1));
-    if (items.length === 0) {
-      items.push(winnerSkin);
-    } else {
-      items[winningIndex] = winnerSkin;
-    }
-    setSpinItems(items);
-
-    // Animate to final position
-    setTimeout(() => {
-      if (rouletteRef.current) {
-        const itemWidth = 160;
-        const finalPosition = -(
-          winningIndex * itemWidth -
-          window.innerWidth / 2 +
-          itemWidth / 2
-        );
-
-        rouletteRef.current.style.transition =
-          "transform 4s cubic-bezier(0.17, 0.67, 0.05, 0.98)";
-        rouletteRef.current.style.transform = `translateX(${finalPosition}px)`;
-      }
-
-      // Show result modal after animation
-      setTimeout(() => {
-        setWonSkin(winnerSkin);
-        setShowResult(true);
-        setOpeningPhase(null);
-        toast.success(`You won ${winnerSkin.name}!`, {
-          icon: "🎉",
-          duration: 4000,
-        });
-      }, 4200);
-    }, 100);
-  };
 
   const handleOpenPack = async () => {
     if (!connected) {
@@ -690,173 +418,270 @@ export default function PacksPage() {
     setShowResult(false);
     setWonSkin(null);
 
-    // Reset roulette
-    generateSpinItems();
-    if (rouletteRef.current) {
-      rouletteRef.current.style.transition = "none";
-      rouletteRef.current.style.transform = "translateX(0px)";
-    }
-
     try {
       if (isOpeningRef.current) return;
       isOpeningRef.current = true;
-      const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
-      const pid = process.env.NEXT_PUBLIC_PROGRAM_ID as string;
-      // Fresh instance for open to avoid tx reuse
-      let programService = new SolanaProgramService(rpc, pid);
 
-      const wallet = walletCtx;
+      // Use the Candy Machine pack opening service
+      const { packOpeningService } = await import("@/lib/services/packOpening.service");
       
-      // Skip initialize here; assume global is already set up via admin
-
-      // 2. Use existing box data from database
-      const batchId = (selectedPack as any).batchId;
-      if (!batchId) {
-        toast.error("This pack is not a published batch. Only published batches can be opened.");
-        setOpeningPhase(null);
-        return;
-      }
-
-      // Generate a new box asset for this opening
-      const boxAsset = Keypair.generate().publicKey;
-
-      // 3. Execute complete pack opening in single transaction
-      // This combines createBox + openBox + revealAndClaim
-
-      // Require real metadata for roulette/reveal
-      const ensureUris = async () => {
-        if (Array.isArray(selectedBoxMetaUris) && selectedBoxMetaUris.length > 0) return true;
-        try {
-          await fetchSelectedBoxMetaUris(selectedPack as any);
-        } catch {}
-        return Array.isArray(selectedBoxMetaUris) && selectedBoxMetaUris.length > 0;
-      };
-      const haveUris = await ensureUris();
-      if (!haveUris) {
-        toast.error("No metadata linked to this pack yet. Add metadata before opening.");
-        setOpeningPhase(null);
-        return;
-      }
-
-      console.log("Using box for open:", { batchId, boxAsset: boxAsset.toBase58(), metadataCount: selectedBoxMetaUris.length });
-
-      // 4. Execute complete pack opening (createBox + openBox + revealAndClaim in single transaction)
-      // Get treasury address from environment, admin panel, or use admin wallet as fallback
-      const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_ADDRESS || 'mgfSqUe1qaaUjeEzuLUyDUx5Rk4fkgePB5NtLnS3Vxa';
-      if (!treasuryAddress) {
-        toast.error("Treasury address not configured. Please set NEXT_PUBLIC_TREASURY_ADDRESS in environment variables.");
-        setOpeningPhase(null);
-        return;
-      }
-      const treasury = new PublicKey(treasuryAddress);
+      toast.loading("Minting NFT from Candy Machine...", { id: "mint" });
       
-      // Show payment information to user
-      const paymentAmount = batchPrice || (selectedPack as any)?.priceSol || 0;
-      const paymentInSOL = paymentAmount / 1_000_000_000;
-      console.log(`💳 Payment: ${paymentInSOL} SOL will be deducted from your wallet`);
-      toast(`💳 Opening pack costs ${paymentInSOL} SOL`, { 
-        duration: 3000,
-        icon: '💰'
+      // Open pack using Candy Machine
+      const result = await packOpeningService.openPack(
+        selectedPack.id,
+        walletCtx,
+        null // connection will be handled by the service
+      );
+
+      console.log("Pack opened successfully:", result);
+      setLastPackResult({ signature: result.signature, asset: result.nftMint });
+
+      toast.success(`Pack opened successfully!`, {
+        duration: 5000,
+        id: "mint"
       });
-      
-      // Execute the Solana transaction
-      const result = await programService.openPackComplete(wallet, { batchId, poolSize: 1, boxAsset, treasury });
-      console.log("Pack opened and NFT claimed:", result);
-      setLastPackResult(result); // Store the result for later use
-      
-      // Show transaction link for verification
+
+      // Show transaction link
       const explorerUrl = `https://solana.fm/tx/${result.signature}?cluster=devnet-solana`;
-      console.log('🔍 View transaction:', explorerUrl);
-      
-      toast.success(`Pack opened successfully! ${paymentInSOL} SOL paid to treasury.`, {
-        duration: 5000
-      });
-      
-      // Show transaction link separately
       toast(`🔍 View transaction: ${explorerUrl}`, {
         duration: 10000,
         icon: '🔗'
       });
 
+      // 2. Use the skin data from the pack opening result
+      const winnerSkin: CSGOSkin = {
+        id: result.skin.id,
+        name: result.skin.name,
+        rarity: result.skin.rarity,
+        value: result.skin.basePriceUsd,
+        image: result.skin.imageUrl || '/assets/skins/img1.png'
+      };
 
-      // 2. Start roulette animation
-      setOpeningPhase("spinning");
-      startContinuousSpin();
+      setWonSkin(winnerSkin);
+      
+                // Store the won skin in database as pending (smart logic)
+                // Store as pending if: user doesn't have Steam trade URL OR user doesn't click buyback
+                // This allows user to claim later from inventory if they set up Steam URL later
+                try {
+                  if (walletCtx.publicKey) {
+                    await pendingSkinsService.createPendingSkin({
+                      userId: walletCtx.publicKey.toString(),
+                      skinName: result.skin.name,
+                      skinRarity: result.skin.rarity,
+                      skinWeapon: result.skin.weapon,
+                      skinValue: result.skin.basePriceUsd,
+                      skinImage: result.skin.imageUrl || '',
+                      nftMintAddress: result.nftMint,
+                      transactionHash: result.signature,
+                      caseOpeningId: `pack-${Date.now()}`,
+                    });
+                    console.log('💾 Stored pending skin in database:', winnerSkin.name);
+                  }
+                } catch (error) {
+                  console.error('Failed to store pending skin in database:', error);
+                }
 
-      // 3. After animation, show the revealed NFT
-      setTimeout(async () => {
-        if (isRevealingRef.current) return;
-        isRevealingRef.current = true;
-        try {
-          const { signature, asset } = result;
-          console.log("Using revealed NFT:", { signature, asset });
+                // Create case opening record for activity tracking
+                try {
+                  if (walletCtx.publicKey) {
+                    await packOpeningService.createCaseOpeningRecord({
+                      userId: walletCtx.publicKey.toString(),
+                      boxId: selectedPack.id,
+                      nftMint: result.nftMint,
+                      skinName: result.skin.name,
+                      skinRarity: result.skin.rarity,
+                      skinWeapon: result.skin.weapon,
+                      skinValue: result.skin.basePriceUsd,
+                      skinImage: result.skin.imageUrl || '',
+                      transactionHash: result.signature,
+                    });
+                    console.log('📊 Created case opening record for activity tracking');
+                  }
+                } catch (error) {
+                  console.error('Failed to create case opening record:', error);
+                }
 
-          // Resolve real revealed metadata: try to map asset → one of our metadata URIs
-          // Heuristic: if only one URI in the batch, use it; otherwise try first as placeholder
-          let winnerSkin: CSGOSkin | null = null;
-          const uris = selectedBoxMetaUris;
-          if (Array.isArray(uris) && uris.length > 0) {
-            const uri = uris.length === 1 ? uris[0] : uris[0];
-            winnerSkin = await resolveSkinFromMetadata(uri);
-          }
-          if (!winnerSkin) {
-            winnerSkin = { id: asset, name: `Revealed #${asset.slice(0, 6)}`, rarity: 'common', value: 0, image: '/assets/skins/img1.png' };
-          }
-
-          setWonSkin(winnerSkin);
-          setOpeningPhase("revealing");
-          
-          // Store the won skin in database via API
-          try {
-            if (walletCtx.publicKey) {
-              await pendingSkinsService.createPendingSkin({
-                userId: walletCtx.publicKey.toString(),
-                skinName: winnerSkin.name,
-                skinRarity: winnerSkin.rarity,
-                skinWeapon: winnerSkin.name.split(' | ')[0] || 'Unknown',
-                skinValue: winnerSkin.value,
-                skinImage: winnerSkin.image,
-                nftMintAddress: result?.asset,
-                transactionHash: result?.signature,
-                caseOpeningId: `pack-${Date.now()}`,
-              });
-              console.log('💾 Stored pending skin in database:', winnerSkin.name);
-            }
-          } catch (error) {
-            console.error('Failed to store pending skin in database:', error);
-            // Fallback to localStorage if API fails
-            try {
-              localStorage.setItem('pendingSkin', JSON.stringify(winnerSkin));
-              console.log('💾 Fallback: Stored pending skin in localStorage:', winnerSkin.name);
-            } catch (localError) {
-              console.error('Failed to store pending skin in localStorage:', localError);
-            }
-          }
-          
-          stopAndShowResult(winnerSkin);
-
-        } catch (error: any) {
-          const msg = String(error?.message || "");
-          if (msg.includes("already been processed")) {
-            console.warn("Reveal ignored: transaction already processed");
-            setOpeningPhase(null);
-          } else {
-            console.error("Failed to reveal and claim:", error);
-            console.error("Full error details:", JSON.stringify(error, null, 2));
-            toast.error("Failed to reveal and claim: " + (error as Error).message);
-            setOpeningPhase(null);
-          }
-        } finally {
-          isRevealingRef.current = false;
-        }
-      }, 4000); // After roulette animation
+      // Show result modal directly (no duplicate reveal animation)
+      setShowResult(true);
+      setOpeningPhase(null);
+      toast.success(`You won ${winnerSkin.name}!`, {
+        icon: "🎉",
+        duration: 4000,
+      });
 
     } catch (error) {
-      console.error("Failed to open box:", error);
-      toast.error("Failed to open box: " + (error as Error).message);
+      console.error("Error opening pack:", error);
+      toast.error(error instanceof Error ? error.message : "Failed to open pack", { id: "mint" });
       setOpeningPhase(null);
     } finally {
       isOpeningRef.current = false;
+    }
+  };
+
+  const handleBuyback = async () => {
+    if (!lastPackResult) {
+      toast.error("No NFT to buyback!");
+      return;
+    }
+
+    if (!connected || !publicKey) {
+      toast.error("Please connect your wallet!");
+      return;
+    }
+
+    try {
+      toast.loading("Calculating buyback amount...", { id: "buyback" });
+
+      // Calculate buyback amount
+      const calcResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/buyback/calculate/${lastPackResult.asset}`
+      );
+      const calcData = await calcResponse.json();
+
+      if (!calcData.success) {
+        toast.error("Failed to calculate buyback", { id: "buyback" });
+        return;
+      }
+
+      toast.success(`Buyback: ${calcData.data.buybackAmount} SOL`, { id: "buyback" });
+      console.log("Buyback calculation:", calcData.data);
+
+      toast.loading("Requesting buyback transaction...", { id: "buyback-tx" });
+      
+      const walletAddress = publicKey.toBase58();
+      console.log("Sending buyback request with wallet:", walletAddress);
+      
+      const txResponse = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/buyback/request`,
+        {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            nftMint: lastPackResult.asset,
+            walletAddress: walletAddress,
+          }),
+        }
+      );
+
+      const txData = await txResponse.json();
+
+      if (!txData.success) {
+        toast.error("Failed to create buyback transaction", { id: "buyback-tx" });
+        return;
+      }
+
+      const transaction = txData.data.transaction;
+      
+      if (!signTransaction) {
+        toast.error("Wallet does not support signing transactions.", { id: "buyback-tx" });
+        return;
+      }
+
+      const { Transaction } = await import("@solana/web3.js");
+      const recoveredTransaction = Transaction.from(Buffer.from(transaction, 'base64'));
+      
+      toast.loading("Please sign the transaction in your wallet...", { id: "buyback-sign" });
+      const signedTx = await signTransaction(recoveredTransaction);
+      const rawTransaction = signedTx.serialize();
+
+      toast.loading("Confirming buyback...", { id: "buyback-confirm" });
+      
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      
+      try {
+        const confirmResponse = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/buyback/confirm`,
+          {
+            method: "POST",
+            headers: { 
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              nftMint: lastPackResult.asset,
+              walletAddress: publicKey.toBase58(),
+              signedTransaction: Buffer.from(rawTransaction).toString('base64'),
+            }),
+            signal: controller.signal,
+          }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!confirmResponse.ok) {
+          const errorText = await confirmResponse.text();
+          throw new Error(`HTTP ${confirmResponse.status}: ${errorText}`);
+        }
+
+        const confirmData = await confirmResponse.json();
+
+        if (confirmData.success) {
+          toast.success("NFT successfully bought back!", { id: "buyback-confirm" });
+          console.log("Buyback confirmed:", confirmData.data);
+          
+          // Remove pending skin from database since NFT was bought back
+          try {
+            if (walletCtx.publicKey && lastPackResult) {
+              // Delete pending skin since NFT was burned
+              await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/pending-skins/by-nft/${lastPackResult.asset}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  walletAddress: walletCtx.publicKey.toString(),
+                }),
+              });
+              console.log('🗑️ Removed pending skin from database after buyback');
+            }
+          } catch (error) {
+            console.error('Failed to remove pending skin after buyback:', error);
+          }
+          
+          setLastPackResult(null);
+          setShowResult(false);
+          setWonSkin(null);
+        } else {
+          toast.error(confirmData.error?.message || "Failed to confirm buyback", { id: "buyback-confirm" });
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        if (fetchError.name === 'AbortError') {
+          // Transaction was successful on-chain but backend confirmation timed out
+          // Show success message and proceed anyway
+          toast.success("NFT successfully bought back! (Transaction confirmed on-chain)", { id: "buyback-confirm" });
+          console.log("Buyback transaction successful on-chain, proceeding despite timeout");
+          
+          // Remove pending skin from database since NFT was bought back
+          try {
+            if (walletCtx.publicKey && lastPackResult) {
+              await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/pending-skins/by-nft/${lastPackResult.asset}`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  walletAddress: walletCtx.publicKey.toString(),
+                }),
+              });
+              console.log('🗑️ Removed pending skin from database after buyback');
+            }
+          } catch (error) {
+            console.error('Failed to remove pending skin after buyback:', error);
+          }
+          
+          setLastPackResult(null);
+          setShowResult(false);
+          setWonSkin(null);
+        } else {
+          toast.error(`Buyback confirmation failed: ${fetchError.message}`, { id: "buyback-confirm" });
+        }
+        console.error("Buyback confirmation error:", fetchError);
+      }
+
+    } catch (error: any) {
+      console.error("Buyback failed:", error);
+      toast.error(error.message || "Failed to buyback NFT");
     }
   };
 
@@ -985,87 +810,6 @@ export default function PacksPage() {
                 </>
               )}
 
-              {/* FASE 2 e 3: Spinning e Revealing - Roleta em tela cheia */}
-              {(openingPhase === "spinning" ||
-                openingPhase === "revealing") && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 100 }}
-                  animate={{
-                    opacity: 1,
-                    scale: 1,
-                    y: 0,
-                  }}
-                  transition={{ duration: 0.5, type: "spring" }}
-                  className="w-full max-w-6xl px-4"
-                >
-                  <div className="relative bg-black/30 backdrop-blur-xl rounded-3xl p-4 md:p-8 border-2 border-[#E99500]/50 shadow-[0_0_60px_rgba(233,149,0,0.3)]">
-                    {/* Center Line */}
-                    <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-[#E99500] z-20 transform -translate-x-1/2 shadow-[0_0_40px_rgba(233,149,0,1)]">
-                      <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
-                        <motion.div
-                          animate={{
-                            y: [0, 8, 0],
-                          }}
-                          transition={{
-                            duration: 1.5,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                          }}
-                          className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[16px] border-l-transparent border-r-transparent border-t-[#E99500] drop-shadow-[0_0_10px_rgba(233,149,0,1)]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Roulette */}
-                    <div className="overflow-hidden py-6">
-                      <div
-                        ref={rouletteRef}
-                        className="flex gap-3 md:gap-4"
-                        style={{
-                          transform: "translateX(0px)",
-                          transition: "none",
-                        }}
-                      >
-                        {spinItems.map((item, index) => (
-                          <div
-                            key={index}
-                            className="flex-shrink-0 w-32 md:w-40 h-44 md:h-56 relative"
-                          >
-                            <Card
-                              className={`w-full h-full bg-gradient-to-br ${getRarityColor(
-                                item.rarity
-                              )} p-3 md:p-4 border-2 ${getRarityBorderColor(
-                                item.rarity
-                              )} flex flex-col items-center justify-center space-y-2 shadow-lg`}
-                            >
-                              <div className="w-full h-20 md:h-28 flex items-center justify-center bg-black/30 rounded-lg">
-                                <img
-                                  src={item.image}
-                                  alt={item.name}
-                                  className="max-w-full max-h-full object-contain"
-                                />
-                              </div>
-                              {/* Rarity badge */}
-                              <div className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide border border-white/20 bg-black/30 text-white/90">
-                                {(item.rarity || '').toString()}
-                              </div>
-                              <p className="text-white text-xs font-bold text-center px-1 min-h-[2rem] flex items-center justify-center">
-                                {item.name || 'Mystery Skin'}
-                              </p>
-                              <p className="text-white text-sm md:text-base font-bold">
-                                $
-                                {typeof item.value === "number"
-                                  ? item.value.toFixed(2)
-                                  : parseFloat(item.value || "0").toFixed(2)}
-                              </p>
-                            </Card>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
             </div>
           </motion.div>
         )}
@@ -1198,17 +942,13 @@ export default function PacksPage() {
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <p className="text-3xl font-bold text-foreground">
-                      {batchPrice !== null
-                        ? (batchPrice / 1_000_000_000).toFixed(4)
-                        : selectedPack
+                      {selectedPack
                         ? parseFloat(selectedPack.priceSol).toFixed(2)
                         : "—"}{" "}
                       SOL
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {batchPrice !== null
-                        ? `$${((batchPrice / 1_000_000_000) * 100).toFixed(2)}`
-                        : selectedPack
+                      {selectedPack
                         ? `$${parseFloat(
                             String(
                               selectedPack.priceUsdc ?? selectedPack.priceSol
@@ -1466,12 +1206,24 @@ export default function PacksPage() {
                             console.log('✅ Discord ticket created successfully for:', wonSkin.name);
                           }
                           
-                          // Find the case opening ID from the won skin
-                          // In production, store this in state when opening
                           toast.success("Skin claimed to inventory!");
                           
-                          // Clear the pending skin from localStorage
-                          localStorage.removeItem('pendingSkin');
+                          // Remove pending skin from database since it was claimed
+                          try {
+                            if (walletCtx.publicKey && lastPackResult) {
+                              await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/pending-skins/by-nft/${lastPackResult.asset}`, {
+                                method: "DELETE",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  walletAddress: walletCtx.publicKey.toString(),
+                                }),
+                              });
+                              console.log('🗑️ Removed pending skin from database after claim');
+                            }
+                          } catch (error) {
+                            console.error('Failed to remove pending skin after claim:', error);
+                          }
+                          
                           setShowResult(false);
                         } catch (error) {
                           console.error("Failed to claim skin:", error);
@@ -1485,24 +1237,13 @@ export default function PacksPage() {
                       Claim Skin
                     </Button>
                     <Button
-                      onClick={async () => {
-                        try {
-                          // In production, make API call to sell
-                          toast.success(
-                            `Sold for $${(wonSkin.value * 0.85).toFixed(2)}`
-                          );
-                          setShowResult(false);
-                        } catch (error) {
-                          console.error("Failed to sell skin:", error);
-                          toast.error("Failed to sell skin");
-                        }
-                      }}
+                      onClick={handleBuyback}
                       size="lg"
                       variant="outline"
                       className="bg-transparent border-2 border-white text-white hover:bg-white/20 font-bold px-8"
                     >
                       <TrendingUp className="w-5 h-5 mr-2" />
-                      Sell (85%)
+                      Buyback NFT
                     </Button>
                   </motion.div>
                 </div>

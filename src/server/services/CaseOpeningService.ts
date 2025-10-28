@@ -294,4 +294,57 @@ export class CaseOpeningService {
       console.error('Error in VRF simulation:', error);
     }
   }
+
+  // Create a case opening record for pack openings (for activity tracking)
+  async createPackOpeningRecord(data: {
+    userId: string;
+    lootBoxTypeId: string;
+    nftMintAddress: string;
+    transactionId: string;
+    skinName: string;
+    skinRarity: string;
+    skinWeapon: string;
+    skinValue: number;
+    skinImage: string;
+    isPackOpening: boolean;
+  }) {
+    try {
+      // Create a case opening record for activity tracking
+      const caseOpening = this.caseOpeningRepository.create({
+        userId: data.userId,
+        lootBoxTypeId: data.lootBoxTypeId,
+        nftMintAddress: data.nftMintAddress,
+        transactionId: data.transactionId,
+        skinName: data.skinName,
+        skinRarity: data.skinRarity,
+        skinWeapon: data.skinWeapon,
+        skinValue: data.skinValue,
+        skinImage: data.skinImage,
+        isPackOpening: data.isPackOpening,
+        openedAt: new Date(),
+        completedAt: new Date(), // Pack openings are immediately completed
+        userDecision: 'keep', // Default to keep for pack openings
+        decisionAt: new Date(),
+      });
+
+      const savedCaseOpening = await this.caseOpeningRepository.save(caseOpening);
+
+      return {
+        caseOpeningId: savedCaseOpening.id,
+        nftMintAddress: data.nftMintAddress,
+        transactionId: data.transactionId,
+        skinName: data.skinName,
+        skinRarity: data.skinRarity,
+        skinWeapon: data.skinWeapon,
+        skinValue: data.skinValue,
+        skinImage: data.skinImage,
+        isPackOpening: data.isPackOpening,
+        openedAt: savedCaseOpening.openedAt,
+        completedAt: savedCaseOpening.completedAt,
+      };
+    } catch (error) {
+      console.error('Error creating pack opening record:', error);
+      throw new AppError('Failed to create pack opening record', 500);
+    }
+  }
 } 

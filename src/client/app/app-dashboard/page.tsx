@@ -1,23 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { marketplaceService } from "@/lib/services/marketplace";
+import { boxesService, type Box } from "@/lib/services/boxes.service";
 import { activityService } from "@/lib/services/activity";
-import type { LootBoxType, ActivityItem } from "@/lib/types/api";
+import type { ActivityItem } from "@/lib/types/api";
 // Using keyboard emoticon instead of an icon
 
 export default function DashboardPage() {
   const [pulls, setPulls] = useState<ActivityItem[]>([]);
-  const [packs, setPacks] = useState<LootBoxType[]>([]);
+  const [packs, setPacks] = useState<Box[]>([]);
 
   useEffect(() => {
     activityService
       .getRecent(12)
       .then(setPulls)
       .catch(() => setPulls([]));
-    marketplaceService
-      .getLootBoxes({ filterBy: "all", limit: 6 })
-      .then((r) => setPacks(r.data))
+    boxesService
+      .getActiveBoxes()
+      .then(setPacks)
       .catch(() => setPacks([]));
   }, []);
   return (
@@ -121,7 +121,7 @@ export default function DashboardPage() {
                   {p.name}
                 </div>
                 <div className="text-zinc-400 text-sm">
-                  ${p.priceUsdc || p.priceSol}
+                  {Number(p.priceSol).toFixed(1)} SOL
                 </div>
                 <div className="mt-3 flex items-center gap-2">
                   <button className="h-8 w-8 rounded bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700 transition-colors">

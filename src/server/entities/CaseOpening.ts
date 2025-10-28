@@ -42,6 +42,31 @@ export class CaseOpening {
   @Column('uuid', { nullable: true })
   userSkinId?: string;
 
+  // Pack opening specific fields
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  nftMintAddress?: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  transactionId?: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  skinName?: string;
+
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  skinRarity?: string;
+
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  skinWeapon?: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  skinValue?: number;
+
+  @Column({ type: 'text', nullable: true })
+  skinImage?: string;
+
+  @Column({ type: 'boolean', default: false })
+  isPackOpening: boolean;
+
   // User decision
   @Column({
     type: 'enum',
