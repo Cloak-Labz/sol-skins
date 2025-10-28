@@ -14,6 +14,8 @@ import {
   Package,
   Gem,
   Crown,
+  X,
+  ImageIcon,
 } from "lucide-react";
 import Link from "next/link";
 import React from "react";
@@ -192,6 +194,8 @@ export default function PacksPage() {
   const [showResult, setShowResult] = useState(false);
   const [lastPackResult, setLastPackResult] = useState<{ signature: string; asset: string } | null>(null);
   const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
+  const [showBuybackModal, setShowBuybackModal] = useState(false);
+  const [buybackAmountSol, setBuybackAmountSol] = useState<number | null>(null);
   
 
   // Calculate real odds from box skins in database
@@ -454,13 +458,29 @@ export default function PacksPage() {
         icon: '🔗'
       });
 
-      // 2. Use the skin data from the pack opening result
+      // 2. Use real image metadata with graceful fallback
+      let resolvedImage = result.skin.imageUrl as string | undefined;
+      if (!resolvedImage && result.skin.id && /^https?:\/\//.test(result.skin.id)) {
+        try {
+          const metaResp = await fetch(result.skin.id);
+          if (metaResp.ok) {
+            const meta = await metaResp.json();
+            let img = meta.image as string | undefined;
+            if (img && img.startsWith('ipfs://')) {
+              img = `https://ipfs.io/ipfs/${img.replace('ipfs://', '')}`;
+            }
+            resolvedImage = img || undefined;
+          }
+        } catch (_) {
+          // ignore, will fallback
+        }
+      }
       const winnerSkin: CSGOSkin = {
         id: result.skin.id,
         name: result.skin.name,
         rarity: result.skin.rarity,
         value: result.skin.basePriceUsd,
-        image: result.skin.imageUrl || '/assets/skins/img1.png'
+        image: resolvedImage || 'icon-fallback'
       };
 
         setWonSkin(winnerSkin);
@@ -631,9 +651,14 @@ export default function PacksPage() {
           toast.success("NFT successfully bought back!", { id: "buyback" });
           console.log("Buyback confirmed:", confirmData.data);
           
-          setLastPackResult(null);
+          // Show summary modal
+          const packPrice = selectedPack ? parseFloat(String((selectedPack as any).priceSol)) : 0;
+          const payout = Number((confirmData.data?.amountPaid ?? confirmData.data?.buybackAmount ?? confirmData.data?.amount ?? 0));
+          setBuybackAmountSol(payout);
           setShowResult(false);
           setWonSkin(null);
+          setLastPackResult(null);
+          setShowBuybackModal(true);
         } else {
           toast.error(confirmData.error?.message || "Failed to confirm buyback", { id: "buyback" });
         }
@@ -645,9 +670,21 @@ export default function PacksPage() {
           toast.success("NFT successfully bought back! (Transaction confirmed on-chain)", { id: "buyback" });
           console.log("Buyback transaction successful on-chain, proceeding despite timeout");
           
-          setLastPackResult(null);
+          const packPrice = selectedPack ? parseFloat(String((selectedPack as any).priceSol)) : 0;
+          // When timing out, use last calculated buyback if available (calcData in upper scope), otherwise 0
+          try {
+            // Best-effort: refetch last calculation quickly
+            const calcFallbackResp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/buyback/calculate/${lastPackResult!.asset}`);
+            const calcFallback = await calcFallbackResp.json();
+            const payout = calcFallback?.data?.buybackAmount ?? 0;
+            setBuybackAmountSol(Number(payout));
+          } catch (_) {
+            setBuybackAmountSol(0);
+          }
           setShowResult(false);
           setWonSkin(null);
+          setLastPackResult(null);
+          setShowBuybackModal(true);
           } else {
           toast.error(`Buyback confirmation failed: ${fetchError.message}`, { id: "buyback" });
         }
@@ -786,6 +823,74 @@ export default function PacksPage() {
               )}
 
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Buyback Summary Modal */}
+      <AnimatePresence>
+        {showBuybackModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0, rotateY: -180 }}
+              animate={{ scale: 1, opacity: 1, rotateY: 0 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.8, bounce: 0.4 }}
+              className="relative max-w-2xl w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden">
+                {/* Top area */}
+                <div className="relative p-6 pb-0">
+                  <div className="pointer-events-none absolute -inset-40 bg-[radial-gradient(circle,rgba(255,170,0,0.3)_0%,rgba(0,0,0,0)_60%)]" />
+
+                  <div className="relative w-full h-[220px] rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
+                    <div className="text-center space-y-2">
+                      <div className="text-zinc-300 text-sm uppercase tracking-wider">Payout received</div>
+                      <div className="text-5xl font-extrabold text-white">
+                        {buybackAmountSol !== null ? `+${Number(buybackAmountSol).toFixed(2)} SOL` : `+0.00 SOL`}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom area */}
+                <div className="mt-6 p-6 bg-[#0d0d0d] border-t border-white/10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Pack Price */}
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
+                      <div className="text-white/70 text-sm">Pack Price</div>
+                      <div className="text-white font-semibold text-2xl mt-1">
+                        {selectedPack ? `${parseFloat(String((selectedPack as any).priceSol)).toFixed(2)} SOL` : '—'}
+                      </div>
+                    </div>
+
+                    {/* Payout */}
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
+                      <div className="text-white/70 text-sm">Payout</div>
+                      <div className="text-white font-semibold text-2xl mt-1">
+                        {buybackAmountSol !== null ? `${Number(buybackAmountSol).toFixed(2)} SOL` : '—'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6">
+                    <Button
+                      onClick={() => setShowBuybackModal(false)}
+                      className="w-full bg-zinc-100 text-black hover:bg-white font-bold py-6"
+                    >
+                      Buy Another Pack
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -1069,10 +1174,13 @@ export default function PacksPage() {
                   {/* Inventory-like card frame */}
                   <div className="relative w-full h-[360px] rounded-lg overflow-hidden border border-white/10 bg-black/40">
                     <img src="/assets/card.jpeg" alt="Skin Card Template" className="w-full h-full object-cover opacity-100" />
-                    {/* (rarity moved below name) */}
                     {/* Image */}
                     <div className="absolute top-24 left-0 right-0 flex items-center justify-center">
-                      <img src={wonSkin.image} alt={wonSkin.name} className="h-40 w-40 object-contain drop-shadow-[0_0_30px_rgba(255,200,0,0.5)]" />
+                      {wonSkin.image === 'icon-fallback' ? (
+                        <ImageIcon className="h-40 w-40 text-white/50 drop-shadow-[0_0_30px_rgba(255,200,0,0.5)]" />
+                      ) : (
+                        <img src={wonSkin.image} alt={wonSkin.name} className="h-40 w-40 object-contain drop-shadow-[0_0_30px_rgba(255,200,0,0.5)]" />
+                      )}
                     </div>
                     {/* Name + rarity under image */}
                     <div className="absolute bottom-5 left-0 right-0 text-center px-6 space-y-1">
