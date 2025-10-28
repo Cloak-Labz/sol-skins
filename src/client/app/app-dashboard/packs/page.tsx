@@ -193,7 +193,16 @@ export default function PacksPage() {
   const isOpeningRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [openingPhase, setOpeningPhase] = useState<
-    "waiting" | "flash" | "video" | null
+    | "waiting"
+    | "intro-flash"
+    | "video"
+    | "card-intro"
+    | "card-selection"
+    | "card-reveal"
+    | "flashbang"
+    | "revealing"
+    | "dissolve"
+    | null
   >(null);
   const [wonSkin, setWonSkin] = useState<CSGOSkin | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -204,6 +213,13 @@ export default function PacksPage() {
   const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
   const [showBuybackModal, setShowBuybackModal] = useState(false);
   const [buybackAmountSol, setBuybackAmountSol] = useState<number | null>(null);
+  const [selectedCard, setSelectedCard] = useState<number | null>(null);
+  const [revealedSkin, setRevealedSkin] = useState<CSGOSkin | null>(null);
+  const [particles, setParticles] = useState<
+    Array<{ id: number; x: number; y: number }>
+  >([]);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoTimeoutRef = useRef<number | null>(null);
 
   // Calculate real odds from box skins in database
   const calculateRealOdds = async (boxId: string) => {
@@ -425,8 +441,89 @@ export default function PacksPage() {
     }
   };
 
-  // Auto-buyback removed by request
+  // Função para iniciar a animação
+  const startBoxOpening = () => {
+    // Pequeno flash/introdução antes do vídeo começar
+    setOpeningPhase("intro-flash");
+    window.setTimeout(() => {
+      setOpeningPhase("video");
+    }, 700);
+  };
 
+  // Ao entrar no vídeo, aguardar o fim real; fallback longo para garantir tempo de exibição
+  useEffect(() => {
+    if (openingPhase !== "video") return;
+    if (videoTimeoutRef.current) {
+      window.clearTimeout(videoTimeoutRef.current);
+    }
+    videoTimeoutRef.current = window.setTimeout(() => {
+      setOpeningPhase("card-intro");
+      // Após card-intro, mostrar seleção de cartas
+      setTimeout(() => {
+        setOpeningPhase("card-selection");
+      }, 2000);
+    }, 6000); // 6 segundos para o vídeo
+  }, [openingPhase]);
+
+  // Função para selecionar carta
+  const selectCard = (cardIndex: number) => {
+    setSelectedCard(cardIndex);
+    setOpeningPhase("card-reveal");
+
+    // Após 1 segundo, mostrar flashbang
+    setTimeout(() => {
+      setOpeningPhase("flashbang");
+
+      // Após flashbang, revelar skin
+      setTimeout(() => {
+        // Use the revealed skin from the blockchain transaction
+        const skinToShow =
+          revealedSkin ||
+          wonSkin ||
+          MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)];
+        setRevealedSkin(skinToShow);
+        setOpeningPhase("revealing");
+
+        // Mostrar modal de resultado após 2 segundos
+        setTimeout(() => {
+          setShowResult(true);
+        }, 2000);
+      }, 1000);
+    }, 1000);
+  };
+
+  // Função para claim ou sell
+  const handleAction = (action: "claim" | "sell") => {
+    if (action === "claim") {
+      // Use the existing claim logic from the result modal
+      setShowResult(false);
+      setOpeningPhase(null);
+      setSelectedCard(null);
+      setRevealedSkin(null);
+      setParticles([]);
+    } else {
+      setOpeningPhase("dissolve");
+
+      // Criar partículas
+      const newParticles = Array.from({ length: 20 }, (_, i) => ({
+        id: i,
+        x: Math.random() * window.innerWidth,
+        y: window.innerHeight / 2,
+      }));
+      setParticles(newParticles);
+
+      // Reset após animação
+      setTimeout(() => {
+        setOpeningPhase(null);
+        setSelectedCard(null);
+        setRevealedSkin(null);
+        setParticles([]);
+        setShowResult(false);
+      }, 3000);
+    }
+  };
+
+  // Auto-buyback removed by request
   const handleOpenPack = async () => {
     if (!connected) {
       toast.error("Connect your wallet first!");
@@ -439,6 +536,9 @@ export default function PacksPage() {
     setOpeningPhase("waiting");
     setShowResult(false);
     setWonSkin(null);
+    setSelectedCard(null);
+    setRevealedSkin(null);
+    setParticles([]);
 
     try {
       if (isOpeningRef.current) return;
@@ -524,23 +624,21 @@ export default function PacksPage() {
         console.error("Failed to create case opening record:", error);
       }
 
-      // Transition to flash animation
-      setOpeningPhase("flash");
+      // 2. Start new animation sequence
+      startBoxOpening();
 
-      // After flash, show video
-      setTimeout(() => {
-        setOpeningPhase("video");
+      // 3. After animation, show the revealed NFT
+      setTimeout(async () => {
+        if (isRevealingRef.current) return;
+        isRevealingRef.current = true;
 
-        // After video duration, show result modal
-        setTimeout(() => {
-          setShowResult(true);
-          setOpeningPhase(null);
-          toast.success(`You won ${winnerSkin.name}!`, {
-            icon: "🎉",
-            duration: 4000,
-          });
-        }, 6000); // 6 seconds for video
-      }, 800); // 800ms for flash
+        // Set the revealed skin for the new animation
+        setRevealedSkin(winnerSkin);
+        setWonSkin(winnerSkin);
+
+        // The animation will continue through the phases automatically
+        // The result modal will be shown when the animation completes
+      }, 8000); // After new animation sequence
     } catch (error) {
       console.error("Error opening pack:", error);
       toast.error(
@@ -615,7 +713,6 @@ export default function PacksPage() {
         { id: "buyback" }
       );
       console.log("Buyback calculation:", calcData.data);
-
       const walletAddress = publicKey.toBase58();
       console.log("Sending buyback request with wallet:", walletAddress);
 
@@ -836,6 +933,32 @@ export default function PacksPage() {
                   ))}
                 </div>
 
+                {/* Flash lights ambiente */}
+                {[...Array(5)].map((_, i) => (
+                  <motion.div
+                    key={`flash-light-${i}`}
+                    animate={{
+                      opacity: [0, 0.4, 0],
+                      scale: [0.8, 1.8, 0.8],
+                    }}
+                    transition={{
+                      duration: 2.5,
+                      repeat: Infinity,
+                      delay: i * 0.5,
+                    }}
+                    className="absolute w-96 h-96 rounded-full blur-3xl pointer-events-none"
+                    style={{
+                      background: `radial-gradient(circle, ${
+                        i % 2 === 0
+                          ? "rgba(233, 149, 0, 0.3)"
+                          : "rgba(255, 215, 0, 0.3)"
+                      }, transparent)`,
+                      left: `${(i * 20) % 100}%`,
+                      top: `${(i * 30) % 100}%`,
+                    }}
+                  />
+                ))}
+
                 {/* Centro da tela */}
                 <div className="relative z-10 flex flex-col items-center justify-center h-full space-y-8">
                   {/* Box girando com efeitos */}
@@ -1009,7 +1132,7 @@ export default function PacksPage() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute inset-0 flex items-center justify-center"
+                className="absolute inset-0 flex items-center justify-center bg-black"
               >
                 {/* Vinheta preta nas bordas */}
                 <div
@@ -1019,17 +1142,45 @@ export default function PacksPage() {
                   }}
                 />
 
-                {/* Vídeo */}
-                <video
-                  autoPlay
-                  muted
-                  className="w-full h-full object-cover"
-                  onEnded={() => {
-                    // Fallback caso o timeout não funcione
-                  }}
-                >
-                  <source src="/video.mp4" type="video/mp4" />
-                </video>
+                {/* Container do vídeo com menos zoom */}
+                <div className="w-full h-full flex items-center justify-center">
+                  <video
+                    autoPlay
+                    muted
+                    className="w-[70%] h-[70%] object-contain"
+                    onEnded={() => {
+                      // Fallback caso o timeout não funcione
+                    }}
+                  >
+                    <source src="/video.mp4" type="video/mp4" />
+                  </video>
+                </div>
+
+                {/* Flash lights pulsantes */}
+                {[...Array(4)].map((_, i) => (
+                  <motion.div
+                    key={`flash-${i}`}
+                    animate={{
+                      opacity: [0, 0.6, 0],
+                      scale: [0.8, 1.5, 0.8],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      delay: i * 0.375,
+                    }}
+                    className="absolute w-64 h-64 rounded-full blur-3xl z-5"
+                    style={{
+                      background: `radial-gradient(circle, ${
+                        i % 2 === 0
+                          ? "rgba(233, 149, 0, 0.4)"
+                          : "rgba(255, 215, 0, 0.4)"
+                      }, transparent)`,
+                      left: i % 2 === 0 ? "10%" : "80%",
+                      top: i < 2 ? "10%" : "80%",
+                    }}
+                  />
+                ))}
 
                 {/* Texto sobre o vídeo */}
                 <motion.div
@@ -1041,6 +1192,11 @@ export default function PacksPage() {
                   <motion.h3
                     animate={{
                       scale: [1, 1.05, 1],
+                      textShadow: [
+                        "0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(233, 149, 0, 0.5)",
+                        "0 0 30px rgba(0, 0, 0, 0.9), 0 0 60px rgba(233, 149, 0, 0.8)",
+                        "0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(233, 149, 0, 0.5)",
+                      ],
                     }}
                     transition={{
                       duration: 2,
@@ -1444,7 +1600,7 @@ export default function PacksPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.3, opacity: 0 }}
               transition={{ type: "spring", duration: 0.6, bounce: 0.3 }}
-              className="relative max-w-3xl w-full"
+              className="relative max-w-2xl w-full"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Container com brilho externo pulsante */}
@@ -1474,8 +1630,37 @@ export default function PacksPage() {
                 <Card
                   className={`bg-gradient-to-br ${getRarityColor(
                     wonSkin.rarity
-                  )} p-10 border-4 border-white/40 shadow-2xl relative overflow-hidden backdrop-blur-sm`}
+                  )} p-6 border-4 border-white/40 shadow-2xl relative overflow-hidden backdrop-blur-sm`}
                 >
+                  {/* Flash lights nos cantos */}
+                  {[...Array(6)].map((_, i) => (
+                    <motion.div
+                      key={`corner-flash-${i}`}
+                      animate={{
+                        opacity: [0, 0.8, 0],
+                        scale: [0.5, 1.2, 0.5],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        delay: i * 0.33,
+                      }}
+                      className="absolute w-32 h-32 rounded-full blur-3xl pointer-events-none"
+                      style={{
+                        background: `radial-gradient(circle, ${
+                          i % 3 === 0
+                            ? "rgba(255, 215, 0, 0.5)"
+                            : i % 3 === 1
+                            ? "rgba(233, 149, 0, 0.5)"
+                            : "rgba(255, 255, 255, 0.4)"
+                        }, transparent)`,
+                        left:
+                          i % 3 === 0 ? "-10%" : i % 3 === 1 ? "50%" : "110%",
+                        top: i < 3 ? "-10%" : "110%",
+                      }}
+                    />
+                  ))}
+
                   {/* Efeito de brilho deslizante */}
                   <motion.div
                     animate={{
@@ -1588,7 +1773,7 @@ export default function PacksPage() {
                           rotate: 0,
                         }}
                         transition={{ delay: 0.3, type: "spring", bounce: 0.5 }}
-                        className="w-80 h-80 mx-auto flex items-center justify-center bg-black/40 rounded-2xl border-2 border-white/20 backdrop-blur-md relative overflow-hidden"
+                        className="w-64 h-64 mx-auto flex items-center justify-center bg-black/40 rounded-2xl border-2 border-white/20 backdrop-blur-md relative overflow-hidden"
                       >
                         {/* Brilho interno */}
                         <motion.div
@@ -1602,7 +1787,7 @@ export default function PacksPage() {
                         <img
                           src={wonSkin.image}
                           alt={wonSkin.name}
-                          className="max-w-full max-h-full object-contain drop-shadow-2xl p-6 relative z-10"
+                          className="max-w-full max-h-full object-contain drop-shadow-2xl p-4 relative z-10"
                         />
                       </motion.div>
                     </motion.div>
@@ -1623,7 +1808,7 @@ export default function PacksPage() {
                           ],
                         }}
                         transition={{ duration: 2, repeat: Infinity }}
-                        className="text-4xl font-black text-white px-4"
+                        className="text-3xl font-black text-white px-4"
                       >
                         {wonSkin.name}
                       </motion.h2>
@@ -1638,7 +1823,7 @@ export default function PacksPage() {
                         }}
                         className="inline-block"
                       >
-                        <div className="text-6xl font-black text-white bg-black/30 px-8 py-3 rounded-2xl border-2 border-white/20">
+                        <div className="text-5xl font-black text-white bg-black/30 px-6 py-2 rounded-2xl border-2 border-white/20">
                           ${wonSkin.value.toFixed(2)}
                         </div>
                       </motion.div>
