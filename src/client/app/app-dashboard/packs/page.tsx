@@ -198,6 +198,7 @@ export default function PacksPage() {
     asset: string;
   } | null>(null);
   const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState(300); // 5 minutes in seconds
 
   // Calculate real odds from box skins in database
   const calculateRealOdds = async (boxId: string) => {
@@ -370,6 +371,38 @@ export default function PacksPage() {
       void fetchUserTradeUrl();
     }
   }, [connected]);
+
+  // Timer countdown for auto-buyback
+  useEffect(() => {
+    if (showResult && timeRemaining > 0) {
+      const timer = setInterval(() => {
+        setTimeRemaining((prev) => {
+          if (prev <= 1) {
+            // Auto buyback when timer reaches 0
+            handleBuyback();
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [showResult, timeRemaining]);
+
+  // Reset timer when showing new result
+  useEffect(() => {
+    if (showResult) {
+      setTimeRemaining(300); // Reset to 5 minutes
+    }
+  }, [showResult]);
+
+  // Format time as MM:SS
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Fetch a single metadata JSON and map to CSGOSkin
   const resolveSkinFromMetadata = async (uri: string): Promise<CSGOSkin> => {
@@ -750,7 +783,8 @@ export default function PacksPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] bg-black"
+            className="fixed inset-0 bg-black"
+            style={{ zIndex: 999999 }}
           >
             {/* FASE 1: WAITING - Gamificação completa */}
             {openingPhase === "waiting" && (
@@ -1312,14 +1346,15 @@ export default function PacksPage() {
         </div>
       </div>
 
-      {/* Result Modal - Design Sóbrio Inspirado */}
+      {/* Result Modal - Design Preto/Laranja CS:GO Style */}
       <AnimatePresence>
         {showResult && wonSkin && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/95 backdrop-blur-sm flex items-center justify-center p-4"
+            style={{ zIndex: 999999 }}
             onClick={handleCloseResult}
           >
             <motion.div
@@ -1327,153 +1362,170 @@ export default function PacksPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
-              className="relative w-full max-w-md"
+              className="relative w-full max-w-4xl"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Close Button */}
               <button
                 onClick={handleCloseResult}
-                className="absolute -top-12 right-0 text-white/60 hover:text-white transition-colors"
+                className="absolute -top-16 right-0 text-white/80 hover:text-white transition-colors z-10"
               >
-                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <svg className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
 
-              <Card className="bg-[#1a1a2e] border-4 border-[#16213e] rounded-3xl overflow-hidden shadow-2xl">
-                {/* Header com borda colorida baseada na raridade */}
-                <div
-                  className={`border-4 rounded-2xl m-4 bg-gradient-to-br ${getRarityColor(wonSkin.rarity)} p-[3px]`}
-                >
-                  <div className="bg-[#1a1a2e] rounded-xl p-6">
-                    {/* Título e Badge */}
-                    <div className="text-center mb-4">
-                      <h3 className="text-white font-bold text-lg mb-2">{wonSkin.name}</h3>
-                      <Badge className={`bg-gradient-to-r ${getRarityColor(wonSkin.rarity)} text-white text-xs px-3 py-1 uppercase font-bold border-0`}>
-                        #{wonSkin.rarity}
-                      </Badge>
-                    </div>
-
-                    {/* Imagem da Skin */}
-                    <motion.div
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: 0.2 }}
-                      className="relative w-full h-48 bg-gradient-to-br from-pink-200 to-pink-100 rounded-xl flex items-center justify-center overflow-hidden"
-                    >
-                      <img
-                        src={wonSkin.image}
-                        alt={wonSkin.name}
-                        className="max-w-full max-h-full object-contain p-4"
-                      />
-                    </motion.div>
-
-                    {/* Floor Price */}
-                    <div className="mt-4 flex items-center justify-between text-sm">
-                      <span className="text-gray-400">Floor:</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-white font-bold text-lg">${wonSkin.value.toFixed(2)}</span>
-                        <span className="text-gray-400">SOL</span>
-                        <Badge className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 border-0">
-                          70%
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
+              <div className="bg-gradient-to-b from-zinc-900 to-black border-2 border-zinc-800 rounded-2xl overflow-hidden">
+                {/* Header com nome da skin */}
+                <div className="text-center py-8 px-6">
+                  <motion.h2
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-4xl md:text-5xl font-black text-white tracking-wider mb-2"
+                    style={{ fontFamily: 'monospace, sans-serif' }}
+                  >
+                    {wonSkin.name.split(' | ')[0]}
+                  </motion.h2>
+                  <motion.p
+                    initial={{ y: -20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-2xl md:text-3xl font-bold text-[#E99500] tracking-wide"
+                    style={{ fontFamily: 'monospace, sans-serif' }}
+                  >
+                    {wonSkin.name.split(' | ')[1] || wonSkin.rarity.toUpperCase()}
+                  </motion.p>
                 </div>
 
-                {/* Actions Section */}
-                <div className="px-6 pb-6 space-y-4">
-                  {/* Steam Trade URL Warning */}
-                  {userTradeUrl === null && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.3 }}
-                      className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3"
-                    >
-                      <div className="flex items-start gap-2 text-yellow-200 text-xs">
-                        <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                        <div>
-                          <p className="font-semibold mb-1">Steam Trade URL Required</p>
-                          <p className="text-yellow-100/80">
-                            Set up your Steam Trade URL in your profile to claim this skin.
-                          </p>
-                          <Link
-                            href="/app-dashboard/profile"
-                            className="text-yellow-200 underline hover:text-yellow-100 mt-1 inline-block"
-                          >
+                {/* Container da Skin com glow laranja */}
+                <div className="relative px-6 pb-8">
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="relative w-full h-80 flex items-center justify-center"
+                    style={{
+                      background: 'radial-gradient(ellipse at center, rgba(233, 149, 0, 0.15) 0%, transparent 70%)',
+                    }}
+                  >
+                    {/* Glow effect */}
+                    <div
+                      className="absolute inset-0 blur-3xl opacity-40"
+                      style={{
+                        background: 'radial-gradient(ellipse at center, #E99500 0%, transparent 60%)',
+                      }}
+                    />
+
+                    <img
+                      src={wonSkin.image}
+                      alt={wonSkin.name}
+                      className="relative z-10 max-w-full max-h-full object-contain drop-shadow-2xl"
+                      style={{
+                        filter: 'drop-shadow(0 0 40px rgba(233, 149, 0, 0.5))',
+                      }}
+                    />
+                  </motion.div>
+                </div>
+
+                {/* Timer Warning */}
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.6 }}
+                  className="mx-6 mb-6 bg-gradient-to-r from-red-900/30 to-orange-900/30 border border-red-700/50 rounded-lg p-4"
+                >
+                  <div className="flex items-center justify-center gap-3 text-center">
+                    <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2" />
+                    </svg>
+                    <p className="text-red-200 text-sm font-semibold">
+                      Auto-buyback in <span className="text-[#E99500] font-black text-lg mx-1">{formatTime(timeRemaining)}</span> if not claimed
+                    </p>
+                  </div>
+                </motion.div>
+
+                {/* Steam Trade URL Warning */}
+                {userTradeUrl === null && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7 }}
+                    className="mx-6 mb-6 bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-4"
+                  >
+                    <div className="flex items-start gap-3 text-yellow-200 text-sm">
+                      <Lock className="w-5 h-5 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="font-bold mb-1">Steam Trade URL Required</p>
+                        <p className="text-yellow-100/80 text-xs">
+                          Set up your Steam Trade URL to claim this skin.{' '}
+                          <Link href="/app-dashboard/profile" className="underline hover:text-yellow-100">
                             Go to Profile →
                           </Link>
-                        </div>
+                        </p>
                       </div>
-                    </motion.div>
-                  )}
+                    </div>
+                  </motion.div>
+                )}
 
-                  {/* Action Buttons Grid */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
-                    >
-                      <Button
-                        disabled={userTradeUrl === null}
-                        onClick={async () => {
-                          try {
-                            const userProfile = await authService.getProfile();
-                            if (!userProfile.tradeUrl || userProfile.tradeUrl.trim() === '') {
-                              toast.error("Please set up your Steam Trade URL in your profile before claiming skins!");
-                              return;
-                            }
-
-                            if (wonSkin) {
-                              console.log('Creating Discord ticket for claimed skin:', wonSkin);
-                              await discordService.createSkinClaimTicket({
-                                userId: walletCtx.publicKey?.toString() || 'unknown',
-                                walletAddress: walletCtx.publicKey?.toString() || 'unknown',
-                                steamTradeUrl: userProfile.tradeUrl,
-                                skinName: wonSkin.name,
-                                skinRarity: wonSkin.rarity,
-                                skinWeapon: wonSkin.name.split(' | ')[0] || 'Unknown',
-                                nftMintAddress: lastPackResult?.asset || 'unknown',
-                                openedAt: new Date(),
-                                caseOpeningId: `pack-${Date.now()}`,
-                              });
-                              console.log('Discord ticket created successfully for:', wonSkin.name);
-                            }
-
-                            toast.success("Skin claimed to inventory!");
-                            setShowResult(false);
-                          } catch (error) {
-                            console.error("Failed to claim skin:", error);
-                            toast.error("Failed to claim skin");
+                {/* Action Buttons */}
+                <div className="px-6 pb-8">
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8 }}
+                    className="flex items-center justify-center gap-6"
+                  >
+                    <Button
+                      disabled={userTradeUrl === null}
+                      onClick={async () => {
+                        try {
+                          const userProfile = await authService.getProfile();
+                          if (!userProfile.tradeUrl || userProfile.tradeUrl.trim() === '') {
+                            toast.error("Please set up your Steam Trade URL in your profile before claiming skins!");
+                            return;
                           }
-                        }}
-                        className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                      >
-                        <Unlock className="w-4 h-4" />
-                        Claim
-                      </Button>
-                    </motion.div>
 
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.4 }}
+                          if (wonSkin) {
+                            console.log('Creating Discord ticket for claimed skin:', wonSkin);
+                            await discordService.createSkinClaimTicket({
+                              userId: walletCtx.publicKey?.toString() || 'unknown',
+                              walletAddress: walletCtx.publicKey?.toString() || 'unknown',
+                              steamTradeUrl: userProfile.tradeUrl,
+                              skinName: wonSkin.name,
+                              skinRarity: wonSkin.rarity,
+                              skinWeapon: wonSkin.name.split(' | ')[0] || 'Unknown',
+                              nftMintAddress: lastPackResult?.asset || 'unknown',
+                              openedAt: new Date(),
+                              caseOpeningId: `pack-${Date.now()}`,
+                            });
+                            console.log('Discord ticket created successfully for:', wonSkin.name);
+                          }
+
+                          toast.success("Skin claimed to inventory!");
+                          setShowResult(false);
+                        } catch (error) {
+                          console.error("Failed to claim skin:", error);
+                          toast.error("Failed to claim skin");
+                        }
+                      }}
+                      className="bg-[#E99500] hover:bg-[#ff9f00] text-black font-black text-lg px-12 py-4 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-600 shadow-lg shadow-[#E99500]/50"
                     >
-                      <Button
-                        onClick={handleBuyback}
-                        variant="outline"
-                        className="w-full bg-transparent border-2 border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-500/50 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
-                      >
-                        <TrendingUp className="w-4 h-4" />
-                        Sell
-                      </Button>
-                    </motion.div>
-                  </div>
+                      Keep it
+                    </Button>
+
+                    <span className="text-white/60 text-lg font-semibold">or</span>
+
+                    <Button
+                      onClick={handleBuyback}
+                      className="bg-[#E99500] hover:bg-[#ff9f00] text-black font-black text-lg px-12 py-4 rounded-lg transition-all shadow-lg shadow-[#E99500]/50"
+                    >
+                      Sell for: ${wonSkin.value.toFixed(3)}
+                    </Button>
+                  </motion.div>
                 </div>
-              </Card>
+              </div>
             </motion.div>
           </motion.div>
         )}
