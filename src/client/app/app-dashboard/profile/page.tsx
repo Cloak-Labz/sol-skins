@@ -12,7 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUser } from "@/lib/contexts/UserContext";
-import { authService, inventoryService, historyService, casesService } from "@/lib/services";
+import { authService, inventoryService, historyService, casesService, socialService } from "@/lib/services";
+import { ActivityItem } from "@/lib/types/api";
 import { toast } from "react-hot-toast";
 import {
   ArrowLeft,
@@ -64,7 +65,7 @@ export default function ProfilePage() {
 
   // Dashboard data state
   const [inventorySummary, setInventorySummary] = useState<InventorySummary | null>(null);
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<ActivityItem[]>([]);
   const [recentCaseOpenings, setRecentCaseOpenings] = useState<CaseOpening[]>([]);
   const [transactionSummary, setTransactionSummary] = useState<TransactionSummary | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -102,7 +103,7 @@ export default function ProfilePage() {
         transactionSummaryData
       ] = await Promise.allSettled([
         inventoryService.getInventoryValue(),
-        historyService.getTransactions({ limit: 5, sortBy: 'date' }),
+        socialService.getRecentActivity(5),
         casesService.getUserCaseOpenings(),
         historyService.getTransactionSummary()
       ]);
@@ -115,12 +116,12 @@ export default function ProfilePage() {
         console.log('Profile: Inventory data failed:', inventoryData);
       }
 
-      // Set recent transactions
+      // Set recent transactions (now using activity data)
       if (transactionsData.status === 'fulfilled') {
-        console.log('Profile: Transactions data received:', transactionsData.value);
-        setRecentTransactions(transactionsData.value.transactions || []);
+        console.log('Profile: Activity data received:', transactionsData.value);
+        setRecentTransactions(transactionsData.value || []);
       } else {
-        console.log('Profile: Transactions data failed:', transactionsData);
+        console.log('Profile: Activity data failed:', transactionsData);
       }
 
       // Set recent case openings
@@ -531,59 +532,57 @@ export default function ProfilePage() {
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="w-6 h-6 animate-spin" />
                     </div>
-                  ) : (recentTransactions.length > 0 || recentCaseOpenings.length > 0) ? (
+                  ) : recentTransactions.length > 0 ? (
                     <div className="space-y-3">
-                      {[
-                        // Combine transactions and case openings
-                        ...recentTransactions.map(t => ({ ...t, type: 'transaction' as const })),
-                        ...recentCaseOpenings.map(c => ({ ...c, type: 'case_opening' as const }))
-                      ]
-                        .sort((a, b) => new Date(b.createdAt || b.openedAt || 0).getTime() - new Date(a.createdAt || a.openedAt || 0).getTime())
+                      {recentTransactions
                         .slice(0, 5)
                         .map((item) => (
                         <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-md bg-zinc-800`}>
-                              {item.type === 'transaction' ? (
-                                item.type === 'open_case' ? (
-                                  <Package className="w-4 h-4 text-zinc-400" />
-                                ) : item.type === 'buyback' ? (
-                                  <DollarSign className="w-4 h-4 text-zinc-400" />
-                                ) : (
-                                  <Activity className="w-4 h-4 text-zinc-400" />
-                                )
-                              ) : (
+                              {item.type === 'case_opened' ? (
                                 <Package className="w-4 h-4 text-zinc-400" />
+                              ) : item.type === 'payout' ? (
+                                <DollarSign className="w-4 h-4 text-zinc-400" />
+                              ) : item.type === 'skin_claimed' ? (
+                                <Package className="w-4 h-4 text-zinc-400" />
+                              ) : (
+                                <Activity className="w-4 h-4 text-zinc-400" />
                               )}
                             </div>
                             <div>
                               <p className="font-medium text-foreground">
-                                {item.type === 'transaction' ? (
-                                  item.type === 'open_case' ? 'Case Opened' :
-                                  item.type === 'buyback' ? 'Skin Sold' :
-                                  'Transaction'
-                                ) : 'Pack Opened'}
+                                {item.type === 'case_opened' ? 'Case Opened' :
+                                 item.type === 'payout' ? 'Skin Sold' :
+                                 item.type === 'skin_claimed' ? 'Skin Claimed' :
+                                 'Activity'}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                {item.type === 'transaction' ? (
-                                  item.resultSkin ? 
-                                    `${item.resultSkin.weapon} ${item.resultSkin.skinName}` :
-                                    item.lootBoxType?.name || 'Unknown'
-                                ) : (
-                                  item.skinName ? item.skinName : 'Unknown Skin'
-                                )}
+                                {item.skin ? 
+                                  (item.skin.skinName.includes(item.skin.weapon) ? 
+                                    item.skin.skinName : 
+                                    `${item.skin.weapon} | ${item.skin.skinName}`) :
+                                  item.lootBox?.name || 'Unknown'
+                                }
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
                             <p className={`font-bold text-foreground`}>
-                              {item.type === 'transaction' ? (
-                                item.type === 'buyback' ? '+' : '-'
-                              ) : ''}
-                              {item.type === 'transaction' ? formatCurrency(item.amountUsd) : ''}
+                              {(() => {
+                                if (item.type === 'payout') {
+                                  return '+' + formatCurrency(item.amount?.usd || 0);
+                                } else if (item.type === 'case_opened') {
+                                  return '-' + (item.amount?.sol ? `${parseFloat(item.amount.sol.toString()).toFixed(2)} SOL` : '0 SOL');
+                                } else if (item.type === 'skin_claimed') {
+                                  return ''; // No amount for skin claims
+                                } else {
+                                  return '';
+                                }
+                              })()}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {new Date(item.createdAt || item.openedAt || 0).toLocaleDateString()}
+                              {new Date(item.timestamp).toLocaleDateString()}
                             </p>
                           </div>
                         </div>

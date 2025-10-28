@@ -111,11 +111,13 @@ export default function ActivityPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-foreground font-bold">
-                    {activity.amount ? 
-                      `${parseFloat(activity.amount.sol.toString()).toFixed(4)} SOL` :
-                      activity.type === "case_opened" ? 
-                        `${parseFloat(activity.skin?.valueUsd || "0").toFixed(4)} SOL` :
-                        formatCurrency(parseFloat(activity.skin?.valueUsd || "0"))
+                    {activity.type === "case_opened" ? 
+                      `-${activity.amount?.sol ? parseFloat(activity.amount.sol.toString()).toFixed(2) : '0'} SOL` :
+                      activity.type === "payout" ? 
+                        `+${formatCurrency(activity.amount?.usd || 0)}` :
+                        activity.amount ? 
+                          `${parseFloat(activity.amount.sol.toString()).toFixed(2)} SOL` :
+                          formatCurrency(parseFloat(activity.skin?.valueUsd || "0"))
                     }
                   </p>
                   <Badge

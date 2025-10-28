@@ -79,6 +79,10 @@ export class ActivityService {
               name: 'Pack', // Default name for pack openings
               rarity: 'Common', // Default rarity
             },
+            amount: {
+              sol: opening.boxPriceSol || 0, // SOL amount for pack openings
+              usd: 0, // Will be calculated on frontend
+            },
             timestamp: opening.completedAt!,
           };
         } else {
@@ -104,6 +108,10 @@ export class ActivityService {
               id: opening.lootBoxType!.id,
               name: opening.lootBoxType!.name,
               rarity: opening.lootBoxType!.rarity,
+            },
+            amount: {
+              sol: opening.lootBoxType?.priceSol || 0, // SOL amount for case openings
+              usd: 0, // Will be calculated on frontend
             },
             timestamp: opening.completedAt!,
           };
