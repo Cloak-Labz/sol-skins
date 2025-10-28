@@ -115,12 +115,18 @@ export default function ProfilePage() {
 
       // Set recent transactions
       if (transactionsData.status === 'fulfilled') {
+        console.log('Profile: Transactions data received:', transactionsData.value);
         setRecentTransactions(transactionsData.value.transactions || []);
+      } else {
+        console.log('Profile: Transactions data failed:', transactionsData);
       }
 
       // Set recent case openings
       if (caseOpeningsData.status === 'fulfilled') {
+        console.log('Profile: Case openings data received:', caseOpeningsData.value);
         setRecentCaseOpenings(caseOpeningsData.value.data || []);
+      } else {
+        console.log('Profile: Case openings data failed:', caseOpeningsData);
       }
 
       // Set transaction summary
@@ -517,41 +523,59 @@ export default function ProfilePage() {
                     <div className="flex items-center justify-center py-8">
                       <Loader2 className="w-6 h-6 animate-spin" />
                     </div>
-                  ) : recentTransactions.length > 0 ? (
+                  ) : (recentTransactions.length > 0 || recentCaseOpenings.length > 0) ? (
                     <div className="space-y-3">
-                      {recentTransactions.slice(0, 5).map((transaction) => (
-                        <div key={transaction.id} className="flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
+                      {[
+                        // Combine transactions and case openings
+                        ...recentTransactions.map(t => ({ ...t, type: 'transaction' as const })),
+                        ...recentCaseOpenings.map(c => ({ ...c, type: 'case_opening' as const }))
+                      ]
+                        .sort((a, b) => new Date(b.createdAt || b.openedAt || 0).getTime() - new Date(a.createdAt || a.openedAt || 0).getTime())
+                        .slice(0, 5)
+                        .map((item) => (
+                        <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-md bg-zinc-800`}>
-                              {transaction.type === 'open_case' ? (
-                                <Package className="w-4 h-4 text-zinc-400" />
-                              ) : transaction.type === 'buyback' ? (
-                                <DollarSign className="w-4 h-4 text-zinc-400" />
+                              {item.type === 'transaction' ? (
+                                item.type === 'open_case' ? (
+                                  <Package className="w-4 h-4 text-zinc-400" />
+                                ) : item.type === 'buyback' ? (
+                                  <DollarSign className="w-4 h-4 text-zinc-400" />
+                                ) : (
+                                  <Activity className="w-4 h-4 text-zinc-400" />
+                                )
                               ) : (
-                                <Activity className="w-4 h-4 text-zinc-400" />
+                                <Package className="w-4 h-4 text-zinc-400" />
                               )}
                             </div>
                             <div>
                               <p className="font-medium text-foreground">
-                                {transaction.type === 'open_case' ? 'Case Opened' :
-                                 transaction.type === 'buyback' ? 'Skin Sold' :
-                                 'Transaction'}
+                                {item.type === 'transaction' ? (
+                                  item.type === 'open_case' ? 'Case Opened' :
+                                  item.type === 'buyback' ? 'Skin Sold' :
+                                  'Transaction'
+                                ) : 'Pack Opened'}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                {transaction.resultSkin ? 
-                                  `${transaction.resultSkin.weapon} ${transaction.resultSkin.skinName}` :
-                                  transaction.lootBoxType?.name || 'Unknown'
-                                }
+                                {item.type === 'transaction' ? (
+                                  item.resultSkin ? 
+                                    `${item.resultSkin.weapon} ${item.resultSkin.skinName}` :
+                                    item.lootBoxType?.name || 'Unknown'
+                                ) : (
+                                  item.skinName ? item.skinName : 'Unknown Skin'
+                                )}
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
                             <p className={`font-bold text-foreground`}>
-                              {transaction.type === 'buyback' ? '+' : '-'}
-                              {formatCurrency(transaction.amountUsd)}
+                              {item.type === 'transaction' ? (
+                                item.type === 'buyback' ? '+' : '-'
+                              ) : ''}
+                              {item.type === 'transaction' ? formatCurrency(item.amountUsd) : ''}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {new Date(transaction.createdAt).toLocaleDateString()}
+                              {new Date(item.createdAt || item.openedAt || 0).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
