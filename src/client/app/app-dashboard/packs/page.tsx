@@ -1548,403 +1548,197 @@ export default function PacksPage() {
         </div>
       </div>
 
-      {/* Result Modal - Reestilizado com mistério */}
+      {/* Result Modal - Design Sóbrio Inspirado */}
       <AnimatePresence>
         {showResult && wonSkin && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4 overflow-hidden"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
             onClick={handleCloseResult}
           >
-            {/* Partículas de fundo */}
-            <div className="absolute inset-0">
-              {[...Array(30)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute w-1 h-1 bg-white rounded-full"
-                  style={{
-                    left: `${Math.random() * 100}%`,
-                    top: `${Math.random() * 100}%`,
-                  }}
-                  animate={{
-                    opacity: [0, 1, 0],
-                    scale: [0, 2, 0],
-                  }}
-                  transition={{
-                    duration: 3 + Math.random() * 2,
-                    repeat: Infinity,
-                    delay: Math.random() * 3,
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Raios de luz rotativos */}
             <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="absolute inset-0"
-              style={{
-                background: `conic-gradient(from 0deg, transparent 0%, ${
-                  getRarityColor(wonSkin.rarity).split(" ")[1]
-                }/20 10%, transparent 20%, transparent 80%, ${
-                  getRarityColor(wonSkin.rarity).split(" ")[1]
-                }/20 90%, transparent 100%)`,
-              }}
-            />
-
-            <motion.div
-              initial={{ scale: 0.3, opacity: 0 }}
+              initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.3, opacity: 0 }}
-              transition={{ type: "spring", duration: 0.6, bounce: 0.3 }}
-              className="relative max-w-2xl w-full"
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.5, bounce: 0.2 }}
+              className="relative w-full max-w-md"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Container com brilho externo pulsante */}
-              <motion.div
-                animate={{
-                  boxShadow: [
-                    `0 0 40px 10px ${
-                      getRarityColor(wonSkin.rarity).includes("yellow")
-                        ? "rgba(234, 179, 8, 0.4)"
-                        : "rgba(168, 85, 247, 0.4)"
-                    }`,
-                    `0 0 80px 20px ${
-                      getRarityColor(wonSkin.rarity).includes("yellow")
-                        ? "rgba(234, 179, 8, 0.6)"
-                        : "rgba(168, 85, 247, 0.6)"
-                    }`,
-                    `0 0 40px 10px ${
-                      getRarityColor(wonSkin.rarity).includes("yellow")
-                        ? "rgba(234, 179, 8, 0.4)"
-                        : "rgba(168, 85, 247, 0.4)"
-                    }`,
-                  ],
-                }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="relative"
+              {/* Close Button */}
+              <button
+                onClick={handleCloseResult}
+                className="absolute -top-12 right-0 text-white/60 hover:text-white transition-colors"
               >
-                <Card
-                  className={`bg-gradient-to-br ${getRarityColor(
-                    wonSkin.rarity
-                  )} p-6 border-4 border-white/40 shadow-2xl relative overflow-hidden backdrop-blur-sm`}
+                <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              <Card className="bg-[#1a1a2e] border-4 border-[#16213e] rounded-3xl overflow-hidden shadow-2xl">
+                {/* Header com borda colorida baseada na raridade */}
+                <div
+                  className={`border-4 rounded-2xl m-4 bg-gradient-to-br ${getRarityColor(wonSkin.rarity)} p-[3px]`}
                 >
-                  {/* Flash lights nos cantos */}
-                  {[...Array(6)].map((_, i) => (
-                    <motion.div
-                      key={`corner-flash-${i}`}
-                      animate={{
-                        opacity: [0, 0.8, 0],
-                        scale: [0.5, 1.2, 0.5],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        delay: i * 0.33,
-                      }}
-                      className="absolute w-32 h-32 rounded-full blur-3xl pointer-events-none"
-                      style={{
-                        background: `radial-gradient(circle, ${
-                          i % 3 === 0
-                            ? "rgba(255, 215, 0, 0.5)"
-                            : i % 3 === 1
-                            ? "rgba(233, 149, 0, 0.5)"
-                            : "rgba(255, 255, 255, 0.4)"
-                        }, transparent)`,
-                        left:
-                          i % 3 === 0 ? "-10%" : i % 3 === 1 ? "50%" : "110%",
-                        top: i < 3 ? "-10%" : "110%",
-                      }}
-                    />
-                  ))}
-
-                  {/* Efeito de brilho deslizante */}
-                  <motion.div
-                    animate={{
-                      x: ["-100%", "200%"],
-                    }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      repeatDelay: 1,
-                      ease: "easeInOut",
-                    }}
-                    className="absolute inset-0 w-1/3"
-                    style={{
-                      background:
-                        "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)",
-                    }}
-                  />
-
-                  {/* Ondas de energia */}
-                  {[...Array(3)].map((_, i) => (
-                    <motion.div
-                      key={i}
-                      animate={{
-                        scale: [1, 2.5],
-                        opacity: [0.3, 0],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        delay: i * 0.7,
-                      }}
-                      className="absolute inset-0 border-4 border-white/30 rounded-xl"
-                    />
-                  ))}
-
-                  <div className="text-center space-y-6 relative z-10">
-                    {/* Badge de raridade com animação */}
-                    <motion.div
-                      initial={{ y: -50, opacity: 0 }}
-                      animate={{ y: 0, opacity: 1 }}
-                      transition={{ delay: 0.2, type: "spring" }}
-                    >
-                      <Badge className="bg-black/50 text-white border-white/30 text-xl px-6 py-2 uppercase font-black backdrop-blur-sm">
-                        <motion.span
-                          animate={{
-                            textShadow: [
-                              "0 0 5px rgba(255,255,255,0.5)",
-                              "0 0 20px rgba(255,255,255,0.8)",
-                              "0 0 5px rgba(255,255,255,0.5)",
-                            ],
-                          }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        >
-                          {wonSkin.rarity}
-                        </motion.span>
+                  <div className="bg-[#1a1a2e] rounded-xl p-6">
+                    {/* Título e Badge */}
+                    <div className="text-center mb-4">
+                      <h3 className="text-white font-bold text-lg mb-2">{wonSkin.name}</h3>
+                      <Badge className={`bg-gradient-to-r ${getRarityColor(wonSkin.rarity)} text-white text-xs px-3 py-1 uppercase font-bold border-0`}>
+                        #{wonSkin.rarity}
                       </Badge>
-                    </motion.div>
+                    </div>
 
-                    {/* Container da skin com efeito de levitação */}
+                    {/* Imagem da Skin */}
                     <motion.div
-                      animate={{
-                        y: [0, -15, 0],
-                      }}
-                      transition={{
-                        duration: 3,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                      className="relative"
+                      initial={{ scale: 0.8, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                      className="relative w-full h-64 bg-gradient-to-br from-pink-200 to-pink-100 rounded-xl flex items-center justify-center overflow-hidden"
                     >
-                      {/* Círculos de energia ao redor */}
-                      {[...Array(6)].map((_, i) => (
-                        <motion.div
-                          key={i}
-                          animate={{
-                            rotate: 360,
-                            scale: [1, 1.2, 1],
-                          }}
-                          transition={{
-                            rotate: {
-                              duration: 10,
-                              repeat: Infinity,
-                              ease: "linear",
-                            },
-                            scale: {
-                              duration: 2,
-                              repeat: Infinity,
-                              delay: i * 0.3,
-                            },
-                          }}
-                          className="absolute"
-                          style={{
-                            left: "50%",
-                            top: "50%",
-                            marginLeft: `${
-                              Math.cos((i * Math.PI) / 3) * 160
-                            }px`,
-                            marginTop: `${Math.sin((i * Math.PI) / 3) * 160}px`,
-                          }}
-                        >
-                          <div className="w-3 h-3 bg-white/60 rounded-full blur-sm" />
-                        </motion.div>
-                      ))}
-
-                      {/* Imagem da skin */}
-                      <motion.div
-                        initial={{ scale: 0, rotate: -180 }}
-                        animate={{
-                          scale: 1,
-                          rotate: 0,
-                        }}
-                        transition={{ delay: 0.3, type: "spring", bounce: 0.5 }}
-                        className="w-64 h-64 mx-auto flex items-center justify-center bg-black/40 rounded-2xl border-2 border-white/20 backdrop-blur-md relative overflow-hidden"
-                      >
-                        {/* Brilho interno */}
-                        <motion.div
-                          animate={{
-                            opacity: [0.2, 0.5, 0.2],
-                          }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                          className="absolute inset-0 bg-gradient-to-t from-transparent via-white/10 to-transparent"
-                        />
-
-                        <img
-                          src={wonSkin.image}
-                          alt={wonSkin.name}
-                          className="max-w-full max-h-full object-contain drop-shadow-2xl p-4 relative z-10"
-                        />
-                      </motion.div>
+                      <img
+                        src={wonSkin.image}
+                        alt={wonSkin.name}
+                        className="max-w-full max-h-full object-contain p-6"
+                      />
                     </motion.div>
 
-                    {/* Nome e valor */}
+                    {/* Floor Price */}
+                    <div className="mt-4 flex items-center justify-between text-sm">
+                      <span className="text-gray-400">Floor:</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-bold text-lg">${wonSkin.value.toFixed(2)}</span>
+                        <span className="text-gray-400">SOL</span>
+                        <Badge className="bg-green-500/20 text-green-400 text-xs px-2 py-0.5 border-0">
+                          70%
+                        </Badge>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Actions Section */}
+                <div className="px-6 pb-6 space-y-4">
+                  {/* Steam Trade URL Warning */}
+                  {userTradeUrl === null && (
                     <motion.div
-                      initial={{ opacity: 0, y: 30 }}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.3 }}
+                      className="bg-yellow-500/10 border border-yellow-500/30 rounded-xl p-3"
+                    >
+                      <div className="flex items-start gap-2 text-yellow-200 text-xs">
+                        <Lock className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                        <div>
+                          <p className="font-semibold mb-1">Steam Trade URL Required</p>
+                          <p className="text-yellow-100/80">
+                            Set up your Steam Trade URL in your profile to claim this skin.
+                          </p>
+                          <Link
+                            href="/app-dashboard/profile"
+                            className="text-yellow-200 underline hover:text-yellow-100 mt-1 inline-block"
+                          >
+                            Go to Profile →
+                          </Link>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {/* Action Buttons Grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4 }}
+                      className="col-span-2"
+                    >
+                      <Button
+                        disabled={userTradeUrl === null}
+                        onClick={async () => {
+                          try {
+                            const userProfile = await authService.getProfile();
+                            if (!userProfile.tradeUrl || userProfile.tradeUrl.trim() === '') {
+                              toast.error("Please set up your Steam Trade URL in your profile before claiming skins!");
+                              return;
+                            }
+
+                            if (wonSkin) {
+                              console.log('Creating Discord ticket for claimed skin:', wonSkin);
+                              await discordService.createSkinClaimTicket({
+                                userId: walletCtx.publicKey?.toString() || 'unknown',
+                                walletAddress: walletCtx.publicKey?.toString() || 'unknown',
+                                steamTradeUrl: userProfile.tradeUrl,
+                                skinName: wonSkin.name,
+                                skinRarity: wonSkin.rarity,
+                                skinWeapon: wonSkin.name.split(' | ')[0] || 'Unknown',
+                                nftMintAddress: lastPackResult?.asset || 'unknown',
+                                openedAt: new Date(),
+                                caseOpeningId: `pack-${Date.now()}`,
+                              });
+                              console.log('Discord ticket created successfully for:', wonSkin.name);
+                            }
+
+                            toast.success("Skin claimed to inventory!");
+                            setShowResult(false);
+                          } catch (error) {
+                            console.error("Failed to claim skin:", error);
+                            toast.error("Failed to claim skin");
+                          }
+                        }}
+                        className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      >
+                        <Unlock className="w-5 h-5" />
+                        Claim Skin
+                      </Button>
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.5 }}
-                      className="space-y-3"
                     >
-                      <motion.h2
-                        animate={{
-                          textShadow: [
-                            "0 0 10px rgba(255,255,255,0.3)",
-                            "0 0 20px rgba(255,255,255,0.6)",
-                            "0 0 10px rgba(255,255,255,0.3)",
-                          ],
-                        }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                        className="text-3xl font-black text-white px-4"
+                      <Button
+                        onClick={handleBuyback}
+                        variant="outline"
+                        className="w-full bg-transparent border-2 border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-500/50 font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
                       >
-                        {wonSkin.name}
-                      </motion.h2>
-
-                      <motion.div
-                        animate={{
-                          scale: [1, 1.05, 1],
-                        }}
-                        transition={{
-                          duration: 1.5,
-                          repeat: Infinity,
-                        }}
-                        className="inline-block"
-                      >
-                        <div className="text-5xl font-black text-white bg-black/30 px-6 py-2 rounded-2xl border-2 border-white/20">
-                          ${wonSkin.value.toFixed(2)}
-                        </div>
-                      </motion.div>
+                        <TrendingUp className="w-4 h-4" />
+                        Sell NFT
+                      </Button>
                     </motion.div>
 
-                    {/* Steam Trade URL Warning */}
-                    {userTradeUrl === null && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: 0.7 }}
-                        className="bg-yellow-500/20 border-2 border-yellow-500/40 rounded-xl p-5 backdrop-blur-sm"
-                      >
-                        <div className="flex items-center gap-3 text-yellow-200 justify-center">
-                          <Lock className="w-6 h-6" />
-                          <span className="font-bold text-lg">
-                            Steam Trade URL Required
-                          </span>
-                        </div>
-                        <p className="text-yellow-100 mt-2">
-                          You need to set up your Steam Trade URL in your
-                          profile to claim this skin. Your skin will be saved
-                          and waiting for you!
-                        </p>
-                        <Link
-                          href="/app-dashboard/profile"
-                          className="text-yellow-200 underline font-semibold hover:text-yellow-100 mt-3 inline-block"
-                        >
-                          Go to Profile Settings →
-                        </Link>
-                      </motion.div>
-                    )}
-
-                    {/* Botões de ação */}
                     <motion.div
-                      initial={{ opacity: 0, y: 20 }}
+                      initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.8 }}
-                      className="flex gap-4 justify-center pt-6"
+                      transition={{ delay: 0.5 }}
                     >
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                      <Button
+                        onClick={handleCloseResult}
+                        variant="outline"
+                        className="w-full bg-transparent border-2 border-gray-600 text-gray-400 hover:bg-gray-600/10 hover:border-gray-500 font-bold py-4 rounded-xl transition-all"
                       >
-                        <Button
-                          disabled={userTradeUrl === null}
-                          onClick={async () => {
-                            try {
-                              const userProfile =
-                                await authService.getProfile();
-                              if (
-                                !userProfile.tradeUrl ||
-                                userProfile.tradeUrl.trim() === ""
-                              ) {
-                                toast.error(
-                                  "Please set up your Steam Trade URL in your profile before claiming skins!"
-                                );
-                                return;
-                              }
-
-                              if (wonSkin) {
-                                console.log(
-                                  "🎫 Creating Discord ticket for claimed skin:",
-                                  wonSkin
-                                );
-                                await discordService.createSkinClaimTicket({
-                                  userId:
-                                    walletCtx.publicKey?.toString() ||
-                                    "unknown",
-                                  walletAddress:
-                                    walletCtx.publicKey?.toString() ||
-                                    "unknown",
-                                  steamTradeUrl: userProfile.tradeUrl,
-                                  skinName: wonSkin.name,
-                                  skinRarity: wonSkin.rarity,
-                                  skinWeapon:
-                                    wonSkin.name.split(" | ")[0] || "Unknown",
-                                  nftMintAddress:
-                                    lastPackResult?.asset || "unknown",
-                                  openedAt: new Date(),
-                                  caseOpeningId: `pack-${Date.now()}`,
-                                });
-                                console.log(
-                                  "✅ Discord ticket created successfully for:",
-                                  wonSkin.name
-                                );
-                              }
-
-                              toast.success("Skin claimed to inventory!");
-                              setShowResult(false);
-                            } catch (error) {
-                              console.error("Failed to claim skin:", error);
-                              toast.error("Failed to claim skin");
-                            }
-                          }}
-                          size="lg"
-                          className="bg-white text-black hover:bg-gray-100 font-black px-10 py-6 text-lg rounded-xl shadow-lg"
-                        >
-                          <Unlock className="w-6 h-6 mr-2" />
-                          Claim Skin
-                        </Button>
-                      </motion.div>
-
-                      <motion.div
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                      >
-                        <Button
-                          onClick={handleBuyback}
-                          size="lg"
-                          variant="outline"
-                          className="bg-black/30 border-3 border-white/40 text-white hover:bg-white/10 font-black px-10 py-6 text-lg rounded-xl backdrop-blur-sm shadow-lg"
-                        >
-                          <TrendingUp className="w-6 h-6 mr-2" />
-                          Buyback NFT
-                        </Button>
-                      </motion.div>
+                        Close
+                      </Button>
                     </motion.div>
                   </div>
-                </Card>
-              </motion.div>
+
+                  {/* Auto-accept Timer */}
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.6 }}
+                    className="flex items-center justify-center gap-2 text-gray-400 text-xs pt-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2" />
+                    </svg>
+                    <span>Make your choice to proceed</span>
+                  </motion.div>
+                </div>
+              </Card>
             </motion.div>
           </motion.div>
         )}
