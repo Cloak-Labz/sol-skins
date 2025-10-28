@@ -575,7 +575,7 @@ export default function ProfilePage() {
                                 } else if (item.type === 'case_opened') {
                                   return '-' + (item.amount?.sol ? `${parseFloat(item.amount.sol.toString()).toFixed(2)} SOL` : '0 SOL');
                                 } else if (item.type === 'skin_claimed') {
-                                  return ''; // No amount for skin claims
+                                  return '0 SOL'; // Show 0 SOL for skin claims
                                 } else {
                                   return '';
                                 }
