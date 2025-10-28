@@ -13,8 +13,14 @@ class IrysService {
    */
   async uploadMetadata(metadata: any): Promise<IrysUploadResult> {
     try {
-      const response = await apiClient.post('/irys/upload', { metadata });
-      return response;
+      const response = await apiClient.post<any>('/irys/upload', { metadata });
+      // Handle nested response structure
+      const result = response?.data || response;
+      return {
+        id: result.id,
+        uri: result.uri,
+        size: result.size || 0,
+      };
     } catch (error) {
       console.error('Irys upload failed:', error);
       throw new Error(`Failed to upload metadata to Irys: ${error instanceof Error ? error.message : 'Unknown error'}`);

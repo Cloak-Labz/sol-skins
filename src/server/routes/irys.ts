@@ -79,8 +79,13 @@ router.post('/upload', async (req, res) => {
       },
     };
 
+    // Determine Irys node based on environment
+    // Use devnet Irys for devnet Solana, mainnet Irys for mainnet Solana
+    const isDevnet = rpcUrl.includes('devnet');
+    const irysNode = isDevnet ? 'https://devnet.irys.xyz' : 'https://node1.irys.xyz';
+    
     const irys = new WebIrys({
-      url: 'https://node1.irys.xyz',
+      url: irysNode,
       token: 'solana',
       wallet: walletAdapter,
     });
