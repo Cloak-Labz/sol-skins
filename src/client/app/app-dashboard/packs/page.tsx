@@ -1234,6 +1234,7 @@ export default function PacksPage() {
                               return;
                             }
                             if (wonSkin) {
+                              // Send Discord ticket directly and create SKIN_CLAIMED activity
                               await discordService.createSkinClaimTicket({
                                 userId: walletCtx.publicKey?.toString() || 'unknown',
                                 walletAddress: walletCtx.publicKey?.toString() || 'unknown',
@@ -1244,6 +1245,15 @@ export default function PacksPage() {
                                 nftMintAddress: lastPackResult?.asset || 'unknown',
                                 openedAt: new Date(),
                                 caseOpeningId: `pack-${Date.now()}`,
+                              });
+                              
+                              // Create SKIN_CLAIMED transaction directly
+                              await pendingSkinsService.createSkinClaimedActivity({
+                                userId: user?.id || '',
+                                skinName: wonSkin.name,
+                                skinRarity: wonSkin.rarity,
+                                skinWeapon: wonSkin.name.split(' | ')[0] || 'Unknown',
+                                nftMintAddress: lastPackResult?.asset || '',
                               });
                             }
                             toast.success('Skin claimed to inventory!');

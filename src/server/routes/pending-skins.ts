@@ -31,4 +31,7 @@ router.get('/expired', pendingSkinController.getExpiredPendingSkins);
 // POST /pending-skins/mark-expired - Mark expired skins
 router.post('/mark-expired', pendingSkinController.markExpiredSkins);
 
+// POST /pending-skins/claim-activity - Create skin claimed activity
+router.post('/claim-activity', pendingSkinController.createSkinClaimedActivity);
+
 export default router;

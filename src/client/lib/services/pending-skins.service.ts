@@ -39,12 +39,18 @@ export class PendingSkinsService {
       console.log('🔍 Response type:', typeof response);
       console.log('🔍 Response keys:', Object.keys(response || {}));
       
-      // The API client returns the extracted data directly: { pendingSkin: {...} }
+      // The API client returns the extracted data directly
       const apiResponse = response as any;
       console.log('🔍 API response structure:', apiResponse);
+      
+      // Handle both wrapped and unwrapped responses
       if (apiResponse.pendingSkin) {
         console.log('✅ Pending skin created successfully:', apiResponse.pendingSkin.id);
         return apiResponse.pendingSkin;
+      } else if (apiResponse.id) {
+        // Direct response without wrapping
+        console.log('✅ Pending skin created successfully (direct):', apiResponse.id);
+        return apiResponse;
       }
       
       throw new Error('Invalid API response structure');
@@ -98,6 +104,22 @@ export class PendingSkinsService {
       throw new Error('Invalid API response structure');
     } catch (error) {
       console.error('❌ Failed to fetch pending skin:', error);
+      throw error;
+    }
+  }
+
+  async createSkinClaimedActivity(data: {
+    userId: string;
+    skinName: string;
+    skinRarity: string;
+    skinWeapon: string;
+    nftMintAddress: string;
+  }): Promise<void> {
+    try {
+      const response = await apiClient.post('/pending-skins/claim-activity', data);
+      console.log('✅ Skin claimed activity created successfully');
+    } catch (error) {
+      console.error('Failed to create skin claimed activity:', error);
       throw error;
     }
   }

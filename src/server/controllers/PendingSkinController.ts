@@ -83,4 +83,11 @@ export class PendingSkinController {
     const count = await this.pendingSkinService.markExpiredSkins();
     ResponseUtil.success(res, { count });
   });
+
+  // POST /pending-skins/claim-activity - Create skin claimed activity
+  createSkinClaimedActivity = catchAsync(async (req: Request, res: Response) => {
+    const data = req.body;
+    await this.pendingSkinService.createSkinClaimedActivity(data);
+    ResponseUtil.success(res, { message: 'Skin claimed activity created' }, 201);
+  });
 }

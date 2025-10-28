@@ -34,7 +34,8 @@ export class TransactionRepository {
       .createQueryBuilder("transaction")
       .leftJoinAndSelect("transaction.user", "user")
       .leftJoinAndSelect("transaction.lootBoxType", "lootBoxType")
-      .leftJoinAndSelect("transaction.userSkin", "userSkin");
+      .leftJoinAndSelect("transaction.userSkin", "userSkin")
+      .leftJoinAndSelect("userSkin.skinTemplate", "skinTemplate");
 
     if (options.search) {
       queryBuilder.andWhere(

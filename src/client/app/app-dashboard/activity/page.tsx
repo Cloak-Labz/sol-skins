@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Box, Coins, Sparkles } from "lucide-react";
+import { Loader2, Box, Coins, Sparkles, CheckCircle, DollarSign } from "lucide-react";
 import { socialService } from "@/lib/services";
 import { ActivityItem } from "@/lib/types/api";
 import { formatCurrency } from "@/lib/utils";
@@ -79,6 +79,10 @@ export default function ActivityPage() {
                   <div className="w-10 h-10 rounded-md flex items-center justify-center text-sm bg-zinc-800 text-zinc-400">
                     {activity.type === "case_opened" ? (
                       <Box className="w-4 h-4" />
+                    ) : activity.type === "skin_claimed" ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : activity.type === "payout" ? (
+                      <DollarSign className="w-4 h-4" />
                     ) : (
                       <Coins className="w-4 h-4" />
                     )}
@@ -90,12 +94,14 @@ export default function ActivityPage() {
                           `${activity.user.walletAddress.slice(0, 4)}...${activity.user.walletAddress.slice(-4)}`}
                       </span>
                       <span className="text-muted-foreground mx-2">
-                        {activity.type === "case_opened" ? "opened" : "sold"}
+                        {activity.type === "case_opened" ? "opened" : 
+                         activity.type === "skin_claimed" ? "claimed" :
+                         activity.type === "payout" ? "received payout for" : "sold"}
                       </span>
                       <span className="font-medium">
                         {activity.skin
-                          ? `${activity.skin.weapon} | ${activity.skin.skinName}`
-                          : activity.lootBox?.name}
+                          ? activity.skin.skinName
+                          : activity.lootBox?.name || (activity.type === "payout" ? "sold skin" : "skin")}
                       </span>
                     </p>
                     <p className="text-muted-foreground text-sm">
@@ -105,13 +111,20 @@ export default function ActivityPage() {
                 </div>
                 <div className="text-right">
                   <p className="text-foreground font-bold">
-                    {formatCurrency(parseFloat(activity.skin?.valueUsd || "0"))}
+                    {activity.amount ? 
+                      `${parseFloat(activity.amount.sol.toString()).toFixed(4)} SOL` :
+                      activity.type === "case_opened" ? 
+                        `${parseFloat(activity.skin?.valueUsd || "0").toFixed(4)} SOL` :
+                        formatCurrency(parseFloat(activity.skin?.valueUsd || "0"))
+                    }
                   </p>
                   <Badge
                     variant="secondary"
                     className="text-xs bg-zinc-900 text-zinc-300 border border-zinc-800"
                   >
-                    {activity.type === "case_opened" ? "open" : "buyback"}
+                    {activity.type === "case_opened" ? "open" : 
+                     activity.type === "skin_claimed" ? "claim" :
+                     activity.type === "payout" ? "payout" : "buyback"}
                   </Badge>
                 </div>
               </div>

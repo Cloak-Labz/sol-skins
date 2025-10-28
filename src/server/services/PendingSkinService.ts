@@ -4,6 +4,8 @@ import { PendingSkin } from '../entities/PendingSkin';
 import { AppError } from '../middlewares/errorHandler';
 import { logger } from '../middlewares/logger';
 import { discordService, DiscordTicketData } from './DiscordService';
+import { TransactionRepository } from '../repositories/TransactionRepository';
+import { TransactionType, TransactionStatus } from '../entities/Transaction';
 
 export interface CreatePendingSkinDTO {
   userId: string;
@@ -25,9 +27,11 @@ export interface UpdatePendingSkinDTO {
 
 export class PendingSkinService {
   private repository: Repository<PendingSkin>;
+  private transactionRepository: TransactionRepository;
 
   constructor() {
     this.repository = AppDataSource.getRepository(PendingSkin);
+    this.transactionRepository = new TransactionRepository();
   }
 
   async createPendingSkin(data: CreatePendingSkinDTO): Promise<PendingSkin> {
@@ -120,6 +124,20 @@ export class PendingSkinService {
       
       const updated = await this.repository.save(pendingSkin);
       logger.info('PendingSkin claimed:', { id, userId: pendingSkin.userId });
+
+      // Create transaction record for activity tracking
+      try {
+        await this.transactionRepository.create({
+          userId: pendingSkin.userId,
+          transactionType: TransactionType.SKIN_CLAIMED,
+          status: TransactionStatus.CONFIRMED,
+          confirmedAt: new Date(),
+        });
+        logger.info('Transaction record created for skin claim:', { id, userId: pendingSkin.userId });
+      } catch (transactionError) {
+        logger.error('Failed to create transaction record for skin claim:', transactionError);
+        // Don't fail the claim if transaction creation fails
+      }
 
       // Send Discord ticket for skin claim
       if (userWalletAddress && pendingSkin.nftMintAddress) {
@@ -230,6 +248,37 @@ export class PendingSkinService {
     } catch (error) {
       logger.error('Error marking expired skins:', error);
       throw new AppError('Failed to mark expired skins', 500);
+    }
+  }
+
+  async createSkinClaimedActivity(data: {
+    userId: string;
+    skinName: string;
+    skinRarity: string;
+    skinWeapon: string;
+    nftMintAddress: string;
+  }): Promise<void> {
+    try {
+      // Create SKIN_CLAIMED transaction directly with skin data
+      await this.transactionRepository.create({
+        userId: data.userId,
+        transactionType: TransactionType.SKIN_CLAIMED,
+        amountUsd: 0, // Required field, set to 0 for skin claims
+        status: TransactionStatus.CONFIRMED,
+        confirmedAt: new Date(),
+        // Store skin data in the transaction for activity display
+        metadata: JSON.stringify({
+          skinName: data.skinName,
+          skinRarity: data.skinRarity,
+          skinWeapon: data.skinWeapon,
+          nftMintAddress: data.nftMintAddress,
+        }),
+      });
+      
+      logger.info('Skin claimed activity created:', { userId: data.userId, skinName: data.skinName });
+    } catch (error) {
+      logger.error('Error creating skin claimed activity:', error);
+      throw new AppError('Failed to create skin claimed activity', 500);
     }
   }
 }

@@ -67,6 +67,10 @@ export class CaseOpening {
   @Column({ type: 'boolean', default: false })
   isPackOpening: boolean;
 
+  // Box price for pack openings
+  @Column({ type: 'decimal', precision: 10, scale: 4, nullable: true })
+  boxPriceSol?: number;
+
   // User decision
   @Column({
     type: 'enum',

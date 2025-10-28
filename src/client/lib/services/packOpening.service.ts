@@ -248,6 +248,36 @@ export class PackOpeningService {
     skinImage: string;
     transactionHash: string;
   }): Promise<void> {
+    // First create the UserSkin record via pack opening transaction
+    try {
+      const transactionResponse = await fetch(`${this.baseUrl}/api/v1/pack-opening/transaction`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          userId: data.userId,
+          boxId: data.boxId,
+          nftMint: data.nftMint,
+          signature: data.transactionHash,
+          skinData: {
+            name: data.skinName,
+            weapon: data.skinWeapon,
+            rarity: data.skinRarity,
+            basePriceUsd: data.skinValue,
+            metadataUri: `https://arweave.net/${data.nftMint.slice(0, 32)}`,
+          },
+        }),
+      });
+
+      if (!transactionResponse.ok) {
+        console.warn('Failed to create pack opening transaction:', await transactionResponse.text());
+      }
+    } catch (error) {
+      console.warn('Failed to create pack opening transaction:', error);
+    }
+
+    // Then create the case opening record for activity tracking
     const response = await fetch(`${this.baseUrl}/api/v1/cases/pack-opening`, {
       method: "POST",
       headers: {

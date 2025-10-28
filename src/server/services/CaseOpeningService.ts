@@ -6,6 +6,8 @@ import { UserRepository } from '../repositories/UserRepository';
 import { AppError } from '../middlewares/errorHandler';
 import { TransactionType, TransactionStatus } from '../entities/Transaction';
 import { UserDecision } from '../entities/CaseOpening';
+import { Box } from '../entities/Box';
+import { AppDataSource } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import { discordService } from './DiscordService';
 
@@ -372,6 +374,14 @@ export class CaseOpeningService {
 
       // Create a case opening record for activity tracking
       // For pack openings, we'll use a default loot box type ID since pack openings
+      // Get box price for pack openings
+      let boxPriceSol = 0;
+      if (data.isPackOpening) {
+        const boxRepository = AppDataSource.getRepository(Box);
+        const box = await boxRepository.findOne({ where: { id: data.lootBoxTypeId } });
+        boxPriceSol = box?.priceSol || 0;
+      }
+
       // use the boxes table but CaseOpening expects a lootBoxTypeId
       const defaultLootBoxTypeId = '014dfab9-73ca-4701-988c-19e30fda8141'; // Use first available loot box type
       
@@ -386,6 +396,7 @@ export class CaseOpeningService {
         skinValue: data.skinValue,
         skinImage: data.skinImage,
         isPackOpening: data.isPackOpening,
+        boxPriceSol: boxPriceSol, // Store box price for pack openings
         openedAt: new Date(),
         completedAt: new Date(), // Pack openings are immediately completed
         userDecision: UserDecision.KEEP, // Default to keep for pack openings

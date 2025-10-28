@@ -6,14 +6,19 @@ import { Connection } from '@solana/web3.js';
 import { config } from '../config/env';
 import { AppDataSource } from '../config/database';
 import { BuybackRecord } from '../entities/BuybackRecord';
+import { TransactionRepository } from '../repositories/TransactionRepository';
+import { TransactionType, TransactionStatus } from '../entities/Transaction';
+import { UserSkin } from '../entities/UserSkin';
 
 export class BuybackController {
   private buybackService: BuybackService;
   private connection: Connection;
+  private transactionRepository: TransactionRepository;
 
   constructor() {
     this.buybackService = new BuybackService();
     this.connection = new Connection(config.solana.rpcUrl, 'confirmed');
+    this.transactionRepository = new TransactionRepository();
   }
 
   requestBuyback = catchAsync(async (req: Request, res: Response) => {
@@ -78,6 +83,12 @@ export class BuybackController {
       const buybackCalc = await this.buybackService.calculateBuyback(nftMint);
       await this.buybackService.markNFTAsBurned(nftMint, txSignature);
 
+      // Find the userSkin to get the userSkinId for the transaction
+      const userSkinRepo = AppDataSource.getRepository(UserSkin);
+      const userSkin = await userSkinRepo.findOne({
+        where: { nftMintAddress: nftMint, userId: req.user?.id }
+      });
+
       const buybackRecordRepo = AppDataSource.getRepository(BuybackRecord);
       const buybackRecord = buybackRecordRepo.create({
         userId: req.user?.id,
@@ -87,6 +98,25 @@ export class BuybackController {
         txSignature,
       });
       await buybackRecordRepo.save(buybackRecord);
+
+      // Create PAYOUT transaction record for activity tracking
+      if (req.user?.id) {
+        try {
+          await this.transactionRepository.create({
+            userId: req.user.id,
+            transactionType: TransactionType.PAYOUT,
+            amountSol: buybackCalc.buybackAmount,
+            amountUsd: buybackCalc.buybackAmount * 100, // Approximate SOL to USD
+            userSkinId: userSkin?.id,
+            txHash: txSignature,
+            status: TransactionStatus.CONFIRMED,
+            confirmedAt: new Date(),
+          });
+        } catch (transactionError) {
+          console.error('Failed to create payout transaction record:', transactionError);
+          // Don't fail the buyback if transaction creation fails
+        }
+      }
 
       ResponseUtil.success(res, {
         message: 'Buyback completed successfully',
