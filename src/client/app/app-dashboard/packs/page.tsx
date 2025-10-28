@@ -750,7 +750,7 @@ export default function PacksPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black"
+            className="fixed inset-0 z-[9999] bg-black"
           >
             {/* FASE 1: WAITING - Gamificação completa */}
             {openingPhase === "waiting" && (
@@ -1319,7 +1319,7 @@ export default function PacksPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/80 backdrop-blur-md z-[9999] flex items-center justify-center p-4"
             onClick={handleCloseResult}
           >
             <motion.div
@@ -1359,12 +1359,12 @@ export default function PacksPage() {
                       initial={{ scale: 0.8, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
                       transition={{ delay: 0.2 }}
-                      className="relative w-full h-64 bg-gradient-to-br from-pink-200 to-pink-100 rounded-xl flex items-center justify-center overflow-hidden"
+                      className="relative w-full h-48 bg-gradient-to-br from-pink-200 to-pink-100 rounded-xl flex items-center justify-center overflow-hidden"
                     >
                       <img
                         src={wonSkin.image}
                         alt={wonSkin.name}
-                        className="max-w-full max-h-full object-contain p-6"
+                        className="max-w-full max-h-full object-contain p-4"
                       />
                     </motion.div>
 
@@ -1416,7 +1416,6 @@ export default function PacksPage() {
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: 0.4 }}
-                      className="col-span-2"
                     >
                       <Button
                         disabled={userTradeUrl === null}
@@ -1451,56 +1450,28 @@ export default function PacksPage() {
                             toast.error("Failed to claim skin");
                           }
                         }}
-                        className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-4 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                        className="w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-500 hover:to-purple-600 text-white font-bold py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       >
-                        <Unlock className="w-5 h-5" />
-                        Claim Skin
+                        <Unlock className="w-4 h-4" />
+                        Claim
                       </Button>
                     </motion.div>
 
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5 }}
+                      transition={{ delay: 0.4 }}
                     >
                       <Button
                         onClick={handleBuyback}
                         variant="outline"
-                        className="w-full bg-transparent border-2 border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-500/50 font-bold py-4 rounded-xl transition-all flex items-center justify-center gap-2"
+                        className="w-full bg-transparent border-2 border-purple-500/30 text-purple-300 hover:bg-purple-500/10 hover:border-purple-500/50 font-bold py-3 rounded-xl transition-all flex items-center justify-center gap-2"
                       >
                         <TrendingUp className="w-4 h-4" />
-                        Sell NFT
-                      </Button>
-                    </motion.div>
-
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.5 }}
-                    >
-                      <Button
-                        onClick={handleCloseResult}
-                        variant="outline"
-                        className="w-full bg-transparent border-2 border-gray-600 text-gray-400 hover:bg-gray-600/10 hover:border-gray-500 font-bold py-4 rounded-xl transition-all"
-                      >
-                        Close
+                        Sell
                       </Button>
                     </motion.div>
                   </div>
-
-                  {/* Auto-accept Timer */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.6 }}
-                    className="flex items-center justify-center gap-2 text-gray-400 text-xs pt-2"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6l4 2" />
-                    </svg>
-                    <span>Make your choice to proceed</span>
-                  </motion.div>
                 </div>
               </Card>
             </motion.div>
