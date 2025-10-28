@@ -31,7 +31,12 @@ export class PendingSkinsService {
       throw new Error(data.error?.message || "Failed to fetch pending skins");
     }
 
-    return data.data;
+    const normalize = (p: any): PendingSkin => ({
+      ...p,
+      skinValue: typeof p.skinValue === 'string' ? parseFloat(p.skinValue) : p.skinValue,
+    });
+
+    return (data.data || []).map(normalize);
   }
 
   async getPendingSkinById(id: string): Promise<PendingSkin> {
@@ -42,11 +47,22 @@ export class PendingSkinsService {
       throw new Error(data.error?.message || "Failed to fetch pending skin");
     }
 
-    return data.data;
+    const normalize = (p: any): PendingSkin => ({
+      ...p,
+      skinValue: typeof p.skinValue === 'string' ? parseFloat(p.skinValue) : p.skinValue,
+    });
+    return normalize(data.data);
   }
 
   async claimPendingSkin(id: string, walletAddress?: string, tradeUrl?: string): Promise<PendingSkin> {
-    const response = await fetch(`${this.baseUrl}/pending-skins/${id}/claim`, {
+    // Allow calling with either a plain ID (UUID) or an absolute URL that already points to a resource
+    // This prevents accidental double-base URL concatenation when older localStorage entries store full URLs.
+    const isAbsolute = /^https?:\/\//i.test(id);
+    const url = isAbsolute
+      ? (id.endsWith('/claim') ? id : `${id}/claim`)
+      : `${this.baseUrl}/pending-skins/${id}/claim`;
+
+    const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -63,7 +79,11 @@ export class PendingSkinsService {
       throw new Error(data.error?.message || "Failed to claim pending skin");
     }
 
-    return data.data;
+    const normalize = (p: any): PendingSkin => ({
+      ...p,
+      skinValue: typeof p.skinValue === 'string' ? parseFloat(p.skinValue) : p.skinValue,
+    });
+    return normalize(data.data);
   }
 
   async deletePendingSkin(id: string): Promise<void> {
@@ -98,12 +118,22 @@ export class PendingSkinsService {
     });
 
     const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.error?.message || "Failed to create pending skin");
+
+    // Our backend returns { success, data }, but apiClient may unwrap it.
+    const raw = (result && typeof result === 'object' && 'success' in result)
+      ? (result.success ? result.data : null)
+      : result;
+
+    // Some middlewares log the inner object to console (what you saw), so ensure id exists.
+    if (!raw || !raw.id) {
+      throw new Error((result && result.error?.message) || 'Invalid API response structure');
     }
 
-    return result.data;
+    const normalize = (p: any): PendingSkin => ({
+      ...p,
+      skinValue: typeof p.skinValue === 'string' ? parseFloat(p.skinValue) : p.skinValue,
+    });
+    return normalize(raw);
   }
 }
 

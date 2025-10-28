@@ -32,6 +32,21 @@ export class PendingSkinService {
 
   async createPendingSkin(data: CreatePendingSkinDTO): Promise<PendingSkin> {
     try {
+      // Idempotency: if there's already a pending record for this user + nft mint, return it
+      if (data.userId && data.nftMintAddress) {
+        const existing = await this.repository.findOne({
+          where: {
+            userId: data.userId,
+            nftMintAddress: data.nftMintAddress,
+            status: 'pending',
+          },
+        });
+        if (existing) {
+          logger.info('PendingSkin already exists (idempotent return):', { id: existing.id, userId: existing.userId, nft: existing.nftMintAddress });
+          return existing;
+        }
+      }
+
       const pendingSkin = this.repository.create({
         ...data,
         expiresAt: data.expiresAt || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days default

@@ -55,6 +55,7 @@ export default function InventoryPage() {
   const [pendingSkin, setPendingSkin] = useState<PendingSkin | null>(null);
   const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
   const [buybackAmount, setBuybackAmount] = useState<number | null>(null);
+  const [isClaiming, setIsClaiming] = useState(false);
 
   // Load inventory from backend
   useEffect(() => {
@@ -81,8 +82,9 @@ export default function InventoryPage() {
             const pendingSkins = await pendingSkinsService.getPendingSkinsByUserId(user.id);
             console.log('📦 Pending skins from API:', pendingSkins);
             if (pendingSkins.length > 0) {
+              console.log('🔄 Found pending skin in database:', pendingSkins[0]);
+              console.log('🔄 Pending skin ID:', pendingSkins[0].id);
               setPendingSkin(pendingSkins[0]); // Show the first pending skin
-              console.log('🔄 Found pending skin in database:', pendingSkins[0].skinName);
             } else {
               console.log('📭 No pending skins found in database');
             }
@@ -92,8 +94,15 @@ export default function InventoryPage() {
             const stored = localStorage.getItem('pendingSkin');
             if (stored) {
               const pendingSkinData = JSON.parse(stored);
-              setPendingSkin(pendingSkinData);
-              console.log('🔄 Fallback: Found pending skin in localStorage:', pendingSkinData.name);
+              // Old format stored the metadata URL in `id`. That cannot be claimed.
+              const looksLikeUrl = typeof pendingSkinData.id === 'string' && /^https?:\/\//i.test(pendingSkinData.id);
+              if (looksLikeUrl) {
+                console.warn('Ignoring legacy localStorage pending skin with URL id. Clearing.');
+                localStorage.removeItem('pendingSkin');
+              } else {
+                setPendingSkin(pendingSkinData);
+                console.log('🔄 Fallback: Found pending skin in localStorage:', pendingSkinData.name);
+              }
             }
           }
 
@@ -119,9 +128,21 @@ export default function InventoryPage() {
     if (!pendingSkin) return;
 
     try {
+      if (isClaiming) return;
+      setIsClaiming(true);
+      console.log('🎯 Claiming pending skin:', pendingSkin);
+      console.log('🎯 Pending skin ID:', pendingSkin.id);
+      // Guard against legacy objects where id is a metadata URL
+      if (typeof pendingSkin.id === 'string' && /^https?:\/\//i.test(pendingSkin.id)) {
+        toast.error('This pending record is from an older format. Please open a new pack or refresh.', { id: 'claim' });
+        setIsClaiming(false);
+        return;
+      }
+      toast.loading("Submitting claim...", { id: "claim" });
       // Check if user has Steam Trade URL set up
       if (!userTradeUrl || userTradeUrl.trim() === '') {
-        toast.error("Please set up your Steam Trade URL in your profile before claiming skins!");
+        toast.error("Please set your Steam Trade URL in profile first", { id: "claim" });
+        setIsClaiming(false);
         return;
       }
 
@@ -136,11 +157,14 @@ export default function InventoryPage() {
       // Clear the pending skin from state and localStorage
       setPendingSkin(null);
       localStorage.removeItem('pendingSkin');
-      
-      toast.success("Skin claimed to inventory!");
+      // Give user clear success feedback, same flow as reveal
+      toast.success("Claim submitted! We'll DM you on Discord.", { id: "claim" });
     } catch (error) {
       console.error("Failed to claim pending skin:", error);
-      toast.error("Failed to claim skin");
+      toast.error("Failed to claim skin", { id: "claim" });
+    }
+    finally {
+      setIsClaiming(false);
     }
   };
 
@@ -477,11 +501,12 @@ export default function InventoryPage() {
                         {userTradeUrl ? (
                           <Button
                             size="sm"
-                            className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-xs font-semibold"
+                            disabled={isClaiming}
+                            className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:opacity-70 text-black text-xs font-semibold"
                             onClick={claimPendingSkin}
                           >
                             <Sparkles className="w-3 h-3 mr-1" />
-                            Claim Skin
+                            {isClaiming ? 'Claiming...' : 'Claim Skin'}
                           </Button>
                         ) : (
                           <Button
@@ -497,8 +522,8 @@ export default function InventoryPage() {
                     </div>
                   </div>
 
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-yellow-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg" />
+                  {/* Hover Overlay (don't block clicks) */}
+                  <div className="absolute inset-0 bg-yellow-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg pointer-events-none" />
                 </div>
               </div>
             </div>
@@ -614,8 +639,8 @@ export default function InventoryPage() {
                     </div>
                   </div>
 
-                  {/* Hover Overlay */}
-                  <div className="absolute inset-0 bg-orange-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg" />
+                  {/* Hover Overlay (don't block clicks) */}
+                  <div className="absolute inset-0 bg-orange-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg pointer-events-none" />
                 </div>
               </div>
             ))}
