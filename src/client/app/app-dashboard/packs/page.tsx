@@ -21,11 +21,16 @@ import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { casesService, marketplaceService, boxesService, authService } from "@/lib/services";
+import {
+  casesService,
+  marketplaceService,
+  boxesService,
+  authService,
+} from "@/lib/services";
 import { discordService } from "@/lib/services/discord.service";
 import { pendingSkinsService } from "@/lib/services/pending-skins.service";
 import { apiClient } from "@/lib/services/api";
-import { PublicKey } from '@solana/web3.js';
+import { PublicKey } from "@solana/web3.js";
 import { LootBoxType } from "@/lib/types/api";
 
 interface CSGOSkin {
@@ -188,29 +193,37 @@ export default function PacksPage() {
   >(null);
   const [wonSkin, setWonSkin] = useState<CSGOSkin | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const [lastPackResult, setLastPackResult] = useState<{ signature: string; asset: string } | null>(null);
+  const [lastPackResult, setLastPackResult] = useState<{
+    signature: string;
+    asset: string;
+  } | null>(null);
   const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
 
   // Calculate real odds from box skins in database
   const calculateRealOdds = async (boxId: string) => {
     try {
       // Fetch box skins distribution from backend
-      const response = await fetch(`/api/v1/box-skins/box/${boxId}/distribution`);
+      const response = await fetch(
+        `/api/v1/box-skins/box/${boxId}/distribution`
+      );
       const data = await response.json();
-      
+
       if (!data.success) {
-        console.warn('Failed to fetch box skin distribution:', data.error);
+        console.warn("Failed to fetch box skin distribution:", data.error);
         return DEFAULT_ODDS;
       }
 
       const distribution = data.data;
-      console.log('Box skin distribution:', distribution);
+      console.log("Box skin distribution:", distribution);
 
       // Convert distribution to odds format
-      const totalSkins = Object.values(distribution).reduce((sum: number, count: any) => sum + count, 0);
-      
+      const totalSkins = Object.values(distribution).reduce(
+        (sum: number, count: any) => sum + count,
+        0
+      );
+
       if (totalSkins === 0) {
-        console.warn('No skins found in box distribution');
+        console.warn("No skins found in box distribution");
         return DEFAULT_ODDS;
       }
 
@@ -221,13 +234,13 @@ export default function PacksPage() {
           pct: ((distribution.legendary || 0) / totalSkins) * 100,
         },
         {
-          label: "Epic", 
+          label: "Epic",
           rarity: "epic",
           pct: ((distribution.epic || 0) / totalSkins) * 100,
         },
         {
           label: "Rare",
-          rarity: "rare", 
+          rarity: "rare",
           pct: ((distribution.rare || 0) / totalSkins) * 100,
         },
         {
@@ -242,10 +255,10 @@ export default function PacksPage() {
         },
       ];
 
-      console.log('Calculated real odds from box skins:', odds);
+      console.log("Calculated real odds from box skins:", odds);
       return odds;
     } catch (error) {
-      console.error('Error calculating real odds:', error);
+      console.error("Error calculating real odds:", error);
       return DEFAULT_ODDS;
     }
   };
@@ -257,16 +270,16 @@ export default function PacksPage() {
   const selectRarityByOdds = (odds: typeof DEFAULT_ODDS) => {
     const random = Math.random() * 100;
     let cumulative = 0;
-    
+
     for (const odd of odds) {
       cumulative += odd.pct;
       if (random <= cumulative) {
         return odd.rarity;
       }
     }
-    
+
     // Fallback to common if no match
-    return 'common';
+    return "common";
   };
 
   // Set wallet address in API client when wallet connects/disconnects
@@ -334,8 +347,6 @@ export default function PacksPage() {
     }
   };
 
-
-
   // When user changes selected pack, calculate odds
   useEffect(() => {
     if (selectedPack) {
@@ -350,7 +361,7 @@ export default function PacksPage() {
         const userProfile = await authService.getProfile();
         setUserTradeUrl(userProfile.tradeUrl || null);
       } catch (error) {
-        console.error('Failed to fetch user profile:', error);
+        console.error("Failed to fetch user profile:", error);
         setUserTradeUrl(null);
       }
     };
@@ -360,50 +371,53 @@ export default function PacksPage() {
     }
   }, [connected]);
 
-
-
-
   // Fetch a single metadata JSON and map to CSGOSkin
   const resolveSkinFromMetadata = async (uri: string): Promise<CSGOSkin> => {
     try {
-      console.log('DEBUG: Fetching metadata from URI:', uri);
+      console.log("DEBUG: Fetching metadata from URI:", uri);
       const r = await fetch(uri);
       const j = await r.json();
-      console.log('DEBUG: Raw metadata response:', j);
-      
+      console.log("DEBUG: Raw metadata response:", j);
+
       // Unwrap API envelope { success, data }
       const md = j.success && j.data ? j.data : j;
-      
+
       // Extract name (trim whitespace)
-      const name = md.name ? md.name.trim() : 'Mystery Skin';
-      
+      const name = md.name ? md.name.trim() : "Mystery Skin";
+
       // Extract rarity from attributes
       const rarityAttr = Array.isArray(md?.attributes)
         ? md.attributes.find((a: any) => /rarity/i.test(a?.trait_type))?.value
         : undefined;
-      const rarity = typeof rarityAttr === 'string' ? rarityAttr.toLowerCase() : 'common';
-      
+      const rarity =
+        typeof rarityAttr === "string" ? rarityAttr.toLowerCase() : "common";
+
       // Extract image
-      const image = md.image || '/assets/skins/img1.png';
-      
+      const image = md.image || "/assets/skins/img1.png";
+
       // Extract value from Float attribute (CS:GO float value)
       const floatAttr = Array.isArray(md?.attributes)
         ? md.attributes.find((a: any) => /float/i.test(a?.trait_type))?.value
         : undefined;
       const floatValue = floatAttr ? parseFloat(floatAttr) : undefined;
-      
+
       // Use float value as the price (multiply by 1000 for display)
       const value = floatValue ? floatValue * 1000 : 0;
-      
+
       const result = { id: uri, name, rarity, value, image };
-      console.log('DEBUG: Resolved skin:', result);
+      console.log("DEBUG: Resolved skin:", result);
       return result;
     } catch (error) {
-      console.error('DEBUG: Failed to resolve metadata:', error);
-      return { id: uri, name: 'Mystery Skin', rarity: 'common', value: 0, image: '/assets/skins/img1.png' };
+      console.error("DEBUG: Failed to resolve metadata:", error);
+      return {
+        id: uri,
+        name: "Mystery Skin",
+        rarity: "common",
+        value: 0,
+        image: "/assets/skins/img1.png",
+      };
     }
   };
-
 
   const handleOpenPack = async () => {
     if (!connected) {
@@ -423,10 +437,12 @@ export default function PacksPage() {
       isOpeningRef.current = true;
 
       // Use the Candy Machine pack opening service
-      const { packOpeningService } = await import("@/lib/services/packOpening.service");
-      
+      const { packOpeningService } = await import(
+        "@/lib/services/packOpening.service"
+      );
+
       toast.loading("Minting NFT from Candy Machine...", { id: "mint" });
-      
+
       // Open pack using Candy Machine
       const result = await packOpeningService.openPack(
         selectedPack.id,
@@ -439,14 +455,14 @@ export default function PacksPage() {
 
       toast.success(`Pack opened successfully!`, {
         duration: 5000,
-        id: "mint"
+        id: "mint",
       });
 
       // Show transaction link
       const explorerUrl = `https://solana.fm/tx/${result.signature}?cluster=devnet-solana`;
       toast(`🔍 View transaction: ${explorerUrl}`, {
         duration: 10000,
-        icon: '🔗'
+        icon: "🔗",
       });
 
       // 2. Use the skin data from the pack opening result
@@ -455,52 +471,54 @@ export default function PacksPage() {
         name: result.skin.name,
         rarity: result.skin.rarity,
         value: result.skin.basePriceUsd,
-        image: result.skin.imageUrl || '/assets/skins/img1.png'
+        image: result.skin.imageUrl || "/assets/skins/img1.png",
       };
 
-        setWonSkin(winnerSkin);
+      setWonSkin(winnerSkin);
 
-        // Create case opening record for activity tracking
-        try {
-          if (walletCtx.publicKey) {
-            await packOpeningService.createCaseOpeningRecord({
-              userId: walletCtx.publicKey.toString(),
-              boxId: selectedPack.id,
-              nftMint: result.nftMint,
-              skinName: result.skin.name,
-              skinRarity: result.skin.rarity,
-              skinWeapon: result.skin.weapon,
-              skinValue: result.skin.basePriceUsd,
-              skinImage: result.skin.imageUrl || '',
-              transactionHash: result.signature,
-            });
-            console.log('📊 Created case opening record for activity tracking');
-          }
-        } catch (error) {
-          console.error('Failed to create case opening record:', error);
+      // Create case opening record for activity tracking
+      try {
+        if (walletCtx.publicKey) {
+          await packOpeningService.createCaseOpeningRecord({
+            userId: walletCtx.publicKey.toString(),
+            boxId: selectedPack.id,
+            nftMint: result.nftMint,
+            skinName: result.skin.name,
+            skinRarity: result.skin.rarity,
+            skinWeapon: result.skin.weapon,
+            skinValue: result.skin.basePriceUsd,
+            skinImage: result.skin.imageUrl || "",
+            transactionHash: result.signature,
+          });
+          console.log("📊 Created case opening record for activity tracking");
         }
+      } catch (error) {
+        console.error("Failed to create case opening record:", error);
+      }
 
-        // Transition to flash animation
-        setOpeningPhase("flash");
+      // Transition to flash animation
+      setOpeningPhase("flash");
 
-        // After flash, show video
+      // After flash, show video
+      setTimeout(() => {
+        setOpeningPhase("video");
+
+        // After video duration, show result modal
         setTimeout(() => {
-          setOpeningPhase("video");
-
-          // After video duration, show result modal
-          setTimeout(() => {
-            setShowResult(true);
-            setOpeningPhase(null);
-            toast.success(`You won ${winnerSkin.name}!`, {
-              icon: "🎉",
-              duration: 4000,
-            });
-          }, 6000); // 6 seconds for video
-        }, 800); // 800ms for flash
-
+          setShowResult(true);
+          setOpeningPhase(null);
+          toast.success(`You won ${winnerSkin.name}!`, {
+            icon: "🎉",
+            duration: 4000,
+          });
+        }, 6000); // 6 seconds for video
+      }, 800); // 800ms for flash
     } catch (error) {
       console.error("Error opening pack:", error);
-      toast.error(error instanceof Error ? error.message : "Failed to open pack", { id: "mint" });
+      toast.error(
+        error instanceof Error ? error.message : "Failed to open pack",
+        { id: "mint" }
+      );
       setOpeningPhase(null);
     } finally {
       isOpeningRef.current = false;
@@ -515,19 +533,19 @@ export default function PacksPage() {
           userId: walletCtx.publicKey.toString(),
           skinName: wonSkin.name,
           skinRarity: wonSkin.rarity,
-          skinWeapon: wonSkin.name.split(' | ')[0] || 'Unknown',
+          skinWeapon: wonSkin.name.split(" | ")[0] || "Unknown",
           skinValue: wonSkin.value,
           skinImage: wonSkin.image,
           nftMintAddress: lastPackResult.asset,
           transactionHash: lastPackResult.signature,
           caseOpeningId: `pack-${Date.now()}`,
         });
-        console.log('💾 Created pending skin for:', wonSkin.name);
+        console.log("💾 Created pending skin for:", wonSkin.name);
       } catch (error) {
-        console.error('Failed to create pending skin:', error);
+        console.error("Failed to create pending skin:", error);
       }
     }
-    
+
     setShowResult(false);
     setWonSkin(null);
     setLastPackResult(null);
@@ -549,7 +567,9 @@ export default function PacksPage() {
 
       // Calculate buyback amount
       const calcResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/buyback/calculate/${lastPackResult.asset}`
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+        }/api/v1/buyback/calculate/${lastPackResult.asset}`
       );
       const calcData = await calcResponse.json();
 
@@ -558,19 +578,23 @@ export default function PacksPage() {
         return;
       }
 
-      toast.success(`Buyback: ${calcData.data.buybackAmount} SOL`, { id: "buyback" });
+      toast.success(`Buyback: ${calcData.data.buybackAmount} SOL`, {
+        id: "buyback",
+      });
       console.log("Buyback calculation:", calcData.data);
 
       toast.loading("Requesting buyback transaction...", { id: "buyback-tx" });
-      
+
       const walletAddress = publicKey.toBase58();
       console.log("Sending buyback request with wallet:", walletAddress);
-      
+
       const txResponse = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/buyback/request`,
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+        }/api/v1/buyback/request`,
         {
           method: "POST",
-          headers: { 
+          headers: {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -583,42 +607,52 @@ export default function PacksPage() {
       const txData = await txResponse.json();
 
       if (!txData.success) {
-        toast.error("Failed to create buyback transaction", { id: "buyback-tx" });
+        toast.error("Failed to create buyback transaction", {
+          id: "buyback-tx",
+        });
         return;
       }
 
       const transaction = txData.data.transaction;
-      
+
       if (!signTransaction) {
-        toast.error("Wallet does not support signing transactions.", { id: "buyback-tx" });
+        toast.error("Wallet does not support signing transactions.", {
+          id: "buyback-tx",
+        });
         return;
       }
 
       const { Transaction } = await import("@solana/web3.js");
-      const recoveredTransaction = Transaction.from(Buffer.from(transaction, 'base64'));
-      
-      toast.loading("Please sign the transaction in your wallet...", { id: "buyback-sign" });
+      const recoveredTransaction = Transaction.from(
+        Buffer.from(transaction, "base64")
+      );
+
+      toast.loading("Please sign the transaction in your wallet...", {
+        id: "buyback-sign",
+      });
       const signedTx = await signTransaction(recoveredTransaction);
       const rawTransaction = signedTx.serialize();
 
       toast.loading("Confirming buyback...", { id: "buyback-confirm" });
-      
+
       // Add timeout to prevent hanging
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-      
+
       try {
         const confirmResponse = await fetch(
-          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/buyback/confirm`,
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+          }/api/v1/buyback/confirm`,
           {
             method: "POST",
-            headers: { 
+            headers: {
               "Content-Type": "application/json",
             },
             body: JSON.stringify({
               nftMint: lastPackResult.asset,
               walletAddress: publicKey.toBase58(),
-              signedTransaction: Buffer.from(rawTransaction).toString('base64'),
+              signedTransaction: Buffer.from(rawTransaction).toString("base64"),
             }),
             signal: controller.signal,
           }
@@ -634,32 +668,43 @@ export default function PacksPage() {
         const confirmData = await confirmResponse.json();
 
         if (confirmData.success) {
-          toast.success("NFT successfully bought back!", { id: "buyback-confirm" });
+          toast.success("NFT successfully bought back!", {
+            id: "buyback-confirm",
+          });
           console.log("Buyback confirmed:", confirmData.data);
-          
+
           setLastPackResult(null);
           setShowResult(false);
           setWonSkin(null);
         } else {
-          toast.error(confirmData.error?.message || "Failed to confirm buyback", { id: "buyback-confirm" });
+          toast.error(
+            confirmData.error?.message || "Failed to confirm buyback",
+            { id: "buyback-confirm" }
+          );
         }
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
-        if (fetchError.name === 'AbortError') {
+        if (fetchError.name === "AbortError") {
           // Transaction was successful on-chain but backend confirmation timed out
           // Show success message and proceed anyway
-          toast.success("NFT successfully bought back! (Transaction confirmed on-chain)", { id: "buyback-confirm" });
-          console.log("Buyback transaction successful on-chain, proceeding despite timeout");
-          
+          toast.success(
+            "NFT successfully bought back! (Transaction confirmed on-chain)",
+            { id: "buyback-confirm" }
+          );
+          console.log(
+            "Buyback transaction successful on-chain, proceeding despite timeout"
+          );
+
           setLastPackResult(null);
           setShowResult(false);
           setWonSkin(null);
-          } else {
-          toast.error(`Buyback confirmation failed: ${fetchError.message}`, { id: "buyback-confirm" });
+        } else {
+          toast.error(`Buyback confirmation failed: ${fetchError.message}`, {
+            id: "buyback-confirm",
+          });
         }
         console.error("Buyback confirmation error:", fetchError);
       }
-
     } catch (error: any) {
       console.error("Buyback failed:", error);
       toast.error(error.message || "Failed to buyback NFT");
@@ -734,6 +779,32 @@ export default function PacksPage() {
                   ))}
                 </div>
 
+                {/* Flash lights ambiente */}
+                {[...Array(5)].map((_, i) => (
+                  <motion.div
+                    key={`flash-light-${i}`}
+                    animate={{
+                      opacity: [0, 0.4, 0],
+                      scale: [0.8, 1.8, 0.8],
+                    }}
+                    transition={{
+                      duration: 2.5,
+                      repeat: Infinity,
+                      delay: i * 0.5,
+                    }}
+                    className="absolute w-96 h-96 rounded-full blur-3xl pointer-events-none"
+                    style={{
+                      background: `radial-gradient(circle, ${
+                        i % 2 === 0
+                          ? "rgba(233, 149, 0, 0.3)"
+                          : "rgba(255, 215, 0, 0.3)"
+                      }, transparent)`,
+                      left: `${(i * 20) % 100}%`,
+                      top: `${(i * 30) % 100}%`,
+                    }}
+                  />
+                ))}
+
                 {/* Centro da tela */}
                 <div className="relative z-10 flex flex-col items-center justify-center h-full space-y-8">
                   {/* Box girando com efeitos */}
@@ -741,7 +812,11 @@ export default function PacksPage() {
                     {/* Anéis orbitais */}
                     <motion.div
                       animate={{ rotate: 360 }}
-                      transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                      transition={{
+                        duration: 8,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
                       className="absolute inset-0 w-64 h-64 -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2"
                     >
                       <div className="absolute inset-0 border-2 border-[#E99500]/30 rounded-full" />
@@ -750,7 +825,11 @@ export default function PacksPage() {
 
                     <motion.div
                       animate={{ rotate: -360 }}
-                      transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                      transition={{
+                        duration: 6,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
                       className="absolute inset-0 w-64 h-64 -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2"
                     >
                       <div className="absolute inset-4 border-2 border-purple-500/30 rounded-full border-dashed" />
@@ -763,18 +842,30 @@ export default function PacksPage() {
                         scale: [1, 1.1, 1],
                       }}
                       transition={{
-                        rotateY: { duration: 4, repeat: Infinity, ease: "easeInOut" },
-                        scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                        rotateY: {
+                          duration: 4,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        },
+                        scale: {
+                          duration: 2,
+                          repeat: Infinity,
+                          ease: "easeInOut",
+                        },
                       }}
                       className="relative w-40 h-40 bg-gradient-to-br from-[#E99500] via-[#ff8800] to-[#E99500] rounded-3xl flex items-center justify-center shadow-2xl"
                       style={{
-                        boxShadow: '0 0 60px rgba(233, 149, 0, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.2)',
+                        boxShadow:
+                          "0 0 60px rgba(233, 149, 0, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.2)",
                       }}
                     >
                       {selectedPack &&
-                        React.createElement(getPackIcon((selectedPack as any).rarity), {
-                          className: "w-20 h-20 text-black drop-shadow-lg",
-                        })}
+                        React.createElement(
+                          getPackIcon((selectedPack as any).rarity),
+                          {
+                            className: "w-20 h-20 text-black drop-shadow-lg",
+                          }
+                        )}
 
                       {/* Brilho interno */}
                       <motion.div
@@ -799,7 +890,7 @@ export default function PacksPage() {
                       animate={{ opacity: 1, y: 0 }}
                       className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#E99500] via-yellow-400 to-[#E99500] drop-shadow-lg"
                       style={{
-                        textShadow: '0 0 30px rgba(233, 149, 0, 0.5)',
+                        textShadow: "0 0 30px rgba(233, 149, 0, 0.5)",
                       }}
                     >
                       OPENING PACK
@@ -815,12 +906,14 @@ export default function PacksPage() {
                         transition={{ duration: 0.5 }}
                         className="text-xl md:text-3xl font-bold text-white"
                       >
-                        {[
-                          '✨ Creating your box...',
-                          '🎲 Rolling the dice...',
-                          '🔮 Choosing your destiny...',
-                          '⚡ Preparing your reward...',
-                        ][Math.floor(Date.now() / 2000) % 4]}
+                        {
+                          [
+                            "Creating your box...",
+                            "Rolling the dice...",
+                            "Choosing your destiny...",
+                            "Preparing your reward...",
+                          ][Math.floor(Date.now() / 2000) % 4]
+                        }
                       </motion.div>
                     </AnimatePresence>
 
@@ -829,7 +922,7 @@ export default function PacksPage() {
                       <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-[#E99500]/30">
                         <motion.div
                           animate={{
-                            x: ['-100%', '100%'],
+                            x: ["-100%", "100%"],
                           }}
                           transition={{
                             duration: 1.5,
@@ -848,12 +941,12 @@ export default function PacksPage() {
                       key={`particle-${i}`}
                       className="absolute w-4 h-4"
                       style={{
-                        left: '50%',
-                        top: '50%',
+                        left: "50%",
+                        top: "50%",
                       }}
                       animate={{
-                        x: [0, Math.cos(i * Math.PI / 4) * 150],
-                        y: [0, Math.sin(i * Math.PI / 4) * 150],
+                        x: [0, Math.cos((i * Math.PI) / 4) * 150],
+                        y: [0, Math.sin((i * Math.PI) / 4) * 150],
                         opacity: [1, 0],
                         scale: [0.5, 1.5],
                       }}
@@ -885,27 +978,55 @@ export default function PacksPage() {
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
-                className="absolute inset-0 flex items-center justify-center"
+                className="absolute inset-0 flex items-center justify-center bg-black"
               >
                 {/* Vinheta preta nas bordas */}
                 <div
                   className="absolute inset-0 pointer-events-none z-10"
                   style={{
-                    boxShadow: 'inset 0 0 150px 60px rgba(0, 0, 0, 0.9)',
+                    boxShadow: "inset 0 0 200px 80px rgba(0, 0, 0, 0.95)",
                   }}
                 />
 
-                {/* Vídeo */}
-                <video
-                  autoPlay
-                  muted
-                  className="w-full h-full object-cover"
-                  onEnded={() => {
-                    // Fallback caso o timeout não funcione
-                  }}
-                >
-                  <source src="/video.mp4" type="video/mp4" />
-                </video>
+                {/* Container do vídeo com menos zoom */}
+                <div className="w-full h-full flex items-center justify-center">
+                  <video
+                    autoPlay
+                    muted
+                    className="w-[70%] h-[70%] object-contain"
+                    onEnded={() => {
+                      // Fallback caso o timeout não funcione
+                    }}
+                  >
+                    <source src="/video.mp4" type="video/mp4" />
+                  </video>
+                </div>
+
+                {/* Flash lights pulsantes */}
+                {[...Array(4)].map((_, i) => (
+                  <motion.div
+                    key={`flash-${i}`}
+                    animate={{
+                      opacity: [0, 0.6, 0],
+                      scale: [0.8, 1.5, 0.8],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      repeat: Infinity,
+                      delay: i * 0.375,
+                    }}
+                    className="absolute w-64 h-64 rounded-full blur-3xl z-5"
+                    style={{
+                      background: `radial-gradient(circle, ${
+                        i % 2 === 0
+                          ? "rgba(233, 149, 0, 0.4)"
+                          : "rgba(255, 215, 0, 0.4)"
+                      }, transparent)`,
+                      left: i % 2 === 0 ? "10%" : "80%",
+                      top: i < 2 ? "10%" : "80%",
+                    }}
+                  />
+                ))}
 
                 {/* Texto sobre o vídeo */}
                 <motion.div
@@ -917,15 +1038,17 @@ export default function PacksPage() {
                   <motion.h3
                     animate={{
                       scale: [1, 1.05, 1],
+                      textShadow: [
+                        "0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(233, 149, 0, 0.5)",
+                        "0 0 30px rgba(0, 0, 0, 0.9), 0 0 60px rgba(233, 149, 0, 0.8)",
+                        "0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(233, 149, 0, 0.5)",
+                      ],
                     }}
                     transition={{
                       duration: 2,
                       repeat: Infinity,
                     }}
                     className="text-4xl md:text-6xl font-black text-white drop-shadow-2xl"
-                    style={{
-                      textShadow: '0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(233, 149, 0, 0.5)',
-                    }}
                   >
                     YOUR REWARD AWAITS...
                   </motion.h3>
@@ -1228,7 +1351,11 @@ export default function PacksPage() {
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
               className="absolute inset-0"
               style={{
-                background: `conic-gradient(from 0deg, transparent 0%, ${getRarityColor(wonSkin.rarity).split(' ')[1]}/20 10%, transparent 20%, transparent 80%, ${getRarityColor(wonSkin.rarity).split(' ')[1]}/20 90%, transparent 100%)`,
+                background: `conic-gradient(from 0deg, transparent 0%, ${
+                  getRarityColor(wonSkin.rarity).split(" ")[1]
+                }/20 10%, transparent 20%, transparent 80%, ${
+                  getRarityColor(wonSkin.rarity).split(" ")[1]
+                }/20 90%, transparent 100%)`,
               }}
             />
 
@@ -1237,16 +1364,28 @@ export default function PacksPage() {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.3, opacity: 0 }}
               transition={{ type: "spring", duration: 0.6, bounce: 0.3 }}
-              className="relative max-w-3xl w-full"
+              className="relative max-w-2xl w-full"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Container com brilho externo pulsante */}
               <motion.div
                 animate={{
                   boxShadow: [
-                    `0 0 40px 10px ${getRarityColor(wonSkin.rarity).includes('yellow') ? 'rgba(234, 179, 8, 0.4)' : 'rgba(168, 85, 247, 0.4)'}`,
-                    `0 0 80px 20px ${getRarityColor(wonSkin.rarity).includes('yellow') ? 'rgba(234, 179, 8, 0.6)' : 'rgba(168, 85, 247, 0.6)'}`,
-                    `0 0 40px 10px ${getRarityColor(wonSkin.rarity).includes('yellow') ? 'rgba(234, 179, 8, 0.4)' : 'rgba(168, 85, 247, 0.4)'}`,
+                    `0 0 40px 10px ${
+                      getRarityColor(wonSkin.rarity).includes("yellow")
+                        ? "rgba(234, 179, 8, 0.4)"
+                        : "rgba(168, 85, 247, 0.4)"
+                    }`,
+                    `0 0 80px 20px ${
+                      getRarityColor(wonSkin.rarity).includes("yellow")
+                        ? "rgba(234, 179, 8, 0.6)"
+                        : "rgba(168, 85, 247, 0.6)"
+                    }`,
+                    `0 0 40px 10px ${
+                      getRarityColor(wonSkin.rarity).includes("yellow")
+                        ? "rgba(234, 179, 8, 0.4)"
+                        : "rgba(168, 85, 247, 0.4)"
+                    }`,
                   ],
                 }}
                 transition={{ duration: 2, repeat: Infinity }}
@@ -1255,12 +1394,41 @@ export default function PacksPage() {
                 <Card
                   className={`bg-gradient-to-br ${getRarityColor(
                     wonSkin.rarity
-                  )} p-10 border-4 border-white/40 shadow-2xl relative overflow-hidden backdrop-blur-sm`}
+                  )} p-6 border-4 border-white/40 shadow-2xl relative overflow-hidden backdrop-blur-sm`}
                 >
+                  {/* Flash lights nos cantos */}
+                  {[...Array(6)].map((_, i) => (
+                    <motion.div
+                      key={`corner-flash-${i}`}
+                      animate={{
+                        opacity: [0, 0.8, 0],
+                        scale: [0.5, 1.2, 0.5],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        delay: i * 0.33,
+                      }}
+                      className="absolute w-32 h-32 rounded-full blur-3xl pointer-events-none"
+                      style={{
+                        background: `radial-gradient(circle, ${
+                          i % 3 === 0
+                            ? "rgba(255, 215, 0, 0.5)"
+                            : i % 3 === 1
+                            ? "rgba(233, 149, 0, 0.5)"
+                            : "rgba(255, 255, 255, 0.4)"
+                        }, transparent)`,
+                        left:
+                          i % 3 === 0 ? "-10%" : i % 3 === 1 ? "50%" : "110%",
+                        top: i < 3 ? "-10%" : "110%",
+                      }}
+                    />
+                  ))}
+
                   {/* Efeito de brilho deslizante */}
                   <motion.div
                     animate={{
-                      x: ['-100%', '200%'],
+                      x: ["-100%", "200%"],
                     }}
                     transition={{
                       duration: 3,
@@ -1270,7 +1438,8 @@ export default function PacksPage() {
                     }}
                     className="absolute inset-0 w-1/3"
                     style={{
-                      background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)',
+                      background:
+                        "linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)",
                     }}
                   />
 
@@ -1302,9 +1471,9 @@ export default function PacksPage() {
                         <motion.span
                           animate={{
                             textShadow: [
-                              '0 0 5px rgba(255,255,255,0.5)',
-                              '0 0 20px rgba(255,255,255,0.8)',
-                              '0 0 5px rgba(255,255,255,0.5)',
+                              "0 0 5px rgba(255,255,255,0.5)",
+                              "0 0 20px rgba(255,255,255,0.8)",
+                              "0 0 5px rgba(255,255,255,0.5)",
                             ],
                           }}
                           transition={{ duration: 2, repeat: Infinity }}
@@ -1335,15 +1504,25 @@ export default function PacksPage() {
                             scale: [1, 1.2, 1],
                           }}
                           transition={{
-                            rotate: { duration: 10, repeat: Infinity, ease: "linear" },
-                            scale: { duration: 2, repeat: Infinity, delay: i * 0.3 },
+                            rotate: {
+                              duration: 10,
+                              repeat: Infinity,
+                              ease: "linear",
+                            },
+                            scale: {
+                              duration: 2,
+                              repeat: Infinity,
+                              delay: i * 0.3,
+                            },
                           }}
                           className="absolute"
                           style={{
-                            left: '50%',
-                            top: '50%',
-                            marginLeft: `${Math.cos(i * Math.PI / 3) * 160}px`,
-                            marginTop: `${Math.sin(i * Math.PI / 3) * 160}px`,
+                            left: "50%",
+                            top: "50%",
+                            marginLeft: `${
+                              Math.cos((i * Math.PI) / 3) * 160
+                            }px`,
+                            marginTop: `${Math.sin((i * Math.PI) / 3) * 160}px`,
                           }}
                         >
                           <div className="w-3 h-3 bg-white/60 rounded-full blur-sm" />
@@ -1358,7 +1537,7 @@ export default function PacksPage() {
                           rotate: 0,
                         }}
                         transition={{ delay: 0.3, type: "spring", bounce: 0.5 }}
-                        className="w-80 h-80 mx-auto flex items-center justify-center bg-black/40 rounded-2xl border-2 border-white/20 backdrop-blur-md relative overflow-hidden"
+                        className="w-64 h-64 mx-auto flex items-center justify-center bg-black/40 rounded-2xl border-2 border-white/20 backdrop-blur-md relative overflow-hidden"
                       >
                         {/* Brilho interno */}
                         <motion.div
@@ -1372,7 +1551,7 @@ export default function PacksPage() {
                         <img
                           src={wonSkin.image}
                           alt={wonSkin.name}
-                          className="max-w-full max-h-full object-contain drop-shadow-2xl p-6 relative z-10"
+                          className="max-w-full max-h-full object-contain drop-shadow-2xl p-4 relative z-10"
                         />
                       </motion.div>
                     </motion.div>
@@ -1387,13 +1566,13 @@ export default function PacksPage() {
                       <motion.h2
                         animate={{
                           textShadow: [
-                            '0 0 10px rgba(255,255,255,0.3)',
-                            '0 0 20px rgba(255,255,255,0.6)',
-                            '0 0 10px rgba(255,255,255,0.3)',
+                            "0 0 10px rgba(255,255,255,0.3)",
+                            "0 0 20px rgba(255,255,255,0.6)",
+                            "0 0 10px rgba(255,255,255,0.3)",
                           ],
                         }}
                         transition={{ duration: 2, repeat: Infinity }}
-                        className="text-4xl font-black text-white px-4"
+                        className="text-3xl font-black text-white px-4"
                       >
                         {wonSkin.name}
                       </motion.h2>
@@ -1408,7 +1587,7 @@ export default function PacksPage() {
                         }}
                         className="inline-block"
                       >
-                        <div className="text-6xl font-black text-white bg-black/30 px-8 py-3 rounded-2xl border-2 border-white/20">
+                        <div className="text-5xl font-black text-white bg-black/30 px-6 py-2 rounded-2xl border-2 border-white/20">
                           ${wonSkin.value.toFixed(2)}
                         </div>
                       </motion.div>
@@ -1424,10 +1603,14 @@ export default function PacksPage() {
                       >
                         <div className="flex items-center gap-3 text-yellow-200 justify-center">
                           <Lock className="w-6 h-6" />
-                          <span className="font-bold text-lg">Steam Trade URL Required</span>
+                          <span className="font-bold text-lg">
+                            Steam Trade URL Required
+                          </span>
                         </div>
                         <p className="text-yellow-100 mt-2">
-                          You need to set up your Steam Trade URL in your profile to claim this skin. Your skin will be saved and waiting for you!
+                          You need to set up your Steam Trade URL in your
+                          profile to claim this skin. Your skin will be saved
+                          and waiting for you!
                         </p>
                         <Link
                           href="/app-dashboard/profile"
@@ -1453,26 +1636,44 @@ export default function PacksPage() {
                           disabled={userTradeUrl === null}
                           onClick={async () => {
                             try {
-                              const userProfile = await authService.getProfile();
-                              if (!userProfile.tradeUrl || userProfile.tradeUrl.trim() === '') {
-                                toast.error("Please set up your Steam Trade URL in your profile before claiming skins!");
+                              const userProfile =
+                                await authService.getProfile();
+                              if (
+                                !userProfile.tradeUrl ||
+                                userProfile.tradeUrl.trim() === ""
+                              ) {
+                                toast.error(
+                                  "Please set up your Steam Trade URL in your profile before claiming skins!"
+                                );
                                 return;
                               }
 
                               if (wonSkin) {
-                                console.log('🎫 Creating Discord ticket for claimed skin:', wonSkin);
+                                console.log(
+                                  "🎫 Creating Discord ticket for claimed skin:",
+                                  wonSkin
+                                );
                                 await discordService.createSkinClaimTicket({
-                                  userId: walletCtx.publicKey?.toString() || 'unknown',
-                                  walletAddress: walletCtx.publicKey?.toString() || 'unknown',
+                                  userId:
+                                    walletCtx.publicKey?.toString() ||
+                                    "unknown",
+                                  walletAddress:
+                                    walletCtx.publicKey?.toString() ||
+                                    "unknown",
                                   steamTradeUrl: userProfile.tradeUrl,
                                   skinName: wonSkin.name,
                                   skinRarity: wonSkin.rarity,
-                                  skinWeapon: wonSkin.name.split(' | ')[0] || 'Unknown',
-                                  nftMintAddress: lastPackResult?.asset || 'unknown',
+                                  skinWeapon:
+                                    wonSkin.name.split(" | ")[0] || "Unknown",
+                                  nftMintAddress:
+                                    lastPackResult?.asset || "unknown",
                                   openedAt: new Date(),
                                   caseOpeningId: `pack-${Date.now()}`,
                                 });
-                                console.log('✅ Discord ticket created successfully for:', wonSkin.name);
+                                console.log(
+                                  "✅ Discord ticket created successfully for:",
+                                  wonSkin.name
+                                );
                               }
 
                               toast.success("Skin claimed to inventory!");
