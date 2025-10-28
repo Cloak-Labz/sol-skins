@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Box, Coins, Sparkles, CheckCircle, DollarSign } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Loader2, Box, Coins, Sparkles, CheckCircle, DollarSign, Search, Filter, X } from "lucide-react";
 import { socialService } from "@/lib/services";
 import { ActivityItem } from "@/lib/types/api";
 import { formatCurrency } from "@/lib/utils";
@@ -12,6 +15,11 @@ import { toast } from "react-hot-toast";
 export default function ActivityPage() {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
+  const [selectedTypes, setSelectedTypes] = useState<string[]>([]);
 
   useEffect(() => {
     loadActivity();
@@ -33,6 +41,35 @@ export default function ActivityPage() {
     }
   };
 
+  // Filter and sort activities
+  const filteredActivities = useMemo(() => {
+    let filtered = [...activities];
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(activity => 
+        activity.skin?.skinName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity.skin?.weapon.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity.user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        activity.lootBox?.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Type filter
+    if (selectedTypes.length > 0) {
+      filtered = filtered.filter(activity => selectedTypes.includes(activity.type));
+    }
+
+    // Sort by date
+    filtered.sort((a, b) => {
+      const dateA = new Date(a.timestamp).getTime();
+      const dateB = new Date(b.timestamp).getTime();
+      return sortBy === "newest" ? dateB - dateA : dateA - dateB;
+    });
+
+    return filtered;
+  }, [activities, searchTerm, selectedTypes, sortBy]);
+
   const getTimeAgo = (timestamp: string) => {
     const now = new Date();
     const then = new Date(timestamp);
@@ -42,6 +79,20 @@ export default function ActivityPage() {
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
     return `${Math.floor(seconds / 86400)}d ago`;
+  };
+
+  const handleTypeToggle = (type: string) => {
+    setSelectedTypes(prev => 
+      prev.includes(type) 
+        ? prev.filter(t => t !== type)
+        : [...prev, type]
+    );
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedTypes([]);
+    setSortBy("newest");
   };
 
   if (loading && activities.length === 0) {
@@ -60,17 +111,73 @@ export default function ActivityPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-foreground mb-2">Activity Feed</h1>
-            <p className="text-muted-foreground text-lg">
-              Real-time activity from the Dust3 community
-            </p>
-          </div>
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-foreground mb-2">Activity Feed</h1>
+          <p className="text-muted-foreground text-lg">
+            Real-time activity from the Dust3 community
+          </p>
+        </div>
 
-      <Card className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-        <CardContent className="p-4">
-          {activities.length > 0 ? (
-            activities.map((activity) => (
+        {/* Filters */}
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+            <Input
+              placeholder="Search by skin name, weapon, or username..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 bg-zinc-950 border-zinc-800"
+            />
+          </div>
+          <Select value={sortBy} onValueChange={(value: "newest" | "oldest") => setSortBy(value)}>
+            <SelectTrigger className="w-full md:w-48 bg-zinc-950 border-zinc-800">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">Newest First</SelectItem>
+              <SelectItem value="oldest">Oldest First</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={selectedTypes.length === 0 ? "all" : selectedTypes[0]} onValueChange={(value) => {
+            if (value === "all") {
+              setSelectedTypes([]);
+            } else {
+              setSelectedTypes([value]);
+            }
+          }}>
+            <SelectTrigger className="w-full md:w-48 bg-zinc-950 border-zinc-800">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Filter by type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="case_opened">Case Opened</SelectItem>
+              <SelectItem value="skin_claimed">Skin Claimed</SelectItem>
+              <SelectItem value="payout">Payout</SelectItem>
+            </SelectContent>
+          </Select>
+          {(searchTerm || selectedTypes.length > 0 || sortBy !== "newest") && (
+            <Button
+              variant="outline"
+              onClick={clearFilters}
+              className="bg-zinc-950 border-zinc-800 hover:bg-zinc-900"
+            >
+              <X className="w-4 h-4 mr-2" />
+              Clear
+            </Button>
+          )}
+        </div>
+
+        {/* Results Count */}
+        <div className="text-sm text-muted-foreground mb-4">
+          Showing {filteredActivities.length} of {activities.length} activities
+        </div>
+
+        {/* Activity List */}
+        <Card className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
+          <CardContent className="p-4">
+            {filteredActivities.length > 0 ? (
+              filteredActivities.map((activity) => (
               <div
                 key={activity.id}
                 className="flex items-center justify-between p-4 mb-2 last:mb-0 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 transition-transform duration-150 hover:scale-[1.01] hover:border-zinc-700"
@@ -134,9 +241,23 @@ export default function ActivityPage() {
           ) : (
             <div className="p-12 text-center">
               <h3 className="text-xl font-semibold text-foreground mb-2">
-                No recent activity
+                {activities.length === 0 ? 'No recent activity' : 'No activities match your filters'}
               </h3>
-              <p className="text-muted-foreground">Be the first to open a case!</p>
+              <p className="text-muted-foreground">
+                {activities.length === 0 
+                  ? 'Be the first to open a case!' 
+                  : 'Try adjusting your search or filter criteria'
+                }
+              </p>
+              {activities.length > 0 && (
+                <Button
+                  variant="outline"
+                  onClick={clearFilters}
+                  className="mt-4 bg-zinc-800 border-zinc-700 hover:bg-zinc-700"
+                >
+                  Clear Filters
+                </Button>
+              )}
             </div>
           )}
         </CardContent>
