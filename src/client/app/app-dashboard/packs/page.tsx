@@ -184,7 +184,7 @@ export default function PacksPage() {
   const isOpeningRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [openingPhase, setOpeningPhase] = useState<
-    "waiting" | null
+    "waiting" | "flash" | "video" | null
   >(null);
   const [wonSkin, setWonSkin] = useState<CSGOSkin | null>(null);
   const [showResult, setShowResult] = useState(false);
@@ -459,7 +459,7 @@ export default function PacksPage() {
       };
 
         setWonSkin(winnerSkin);
-        
+
         // Create case opening record for activity tracking
         try {
           if (walletCtx.publicKey) {
@@ -479,14 +479,24 @@ export default function PacksPage() {
         } catch (error) {
           console.error('Failed to create case opening record:', error);
         }
-        
-        // Show result modal directly (no duplicate reveal animation)
-        setShowResult(true);
-        setOpeningPhase(null);
-        toast.success(`You won ${winnerSkin.name}!`, {
-          icon: "🎉",
-          duration: 4000,
-        });
+
+        // Transition to flash animation
+        setOpeningPhase("flash");
+
+        // After flash, show video
+        setTimeout(() => {
+          setOpeningPhase("video");
+
+          // After video duration, show result modal
+          setTimeout(() => {
+            setShowResult(true);
+            setOpeningPhase(null);
+            toast.success(`You won ${winnerSkin.name}!`, {
+              icon: "🎉",
+              duration: 4000,
+            });
+          }, 6000); // 6 seconds for video
+        }, 800); // 800ms for flash
 
     } catch (error) {
       console.error("Error opening pack:", error);
@@ -697,91 +707,231 @@ export default function PacksPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black"
           >
-            {/* Simplified Background - reduced animations */}
-            <div className="absolute inset-0 overflow-hidden">
-              {/* Static gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-radial from-[#E99500]/20 to-black" />
-            </div>
+            {/* FASE 1: WAITING - Gamificação completa */}
+            {openingPhase === "waiting" && (
+              <>
+                {/* Partículas flutuantes de fundo */}
+                <div className="absolute inset-0 overflow-hidden">
+                  {[...Array(20)].map((_, i) => (
+                    <motion.div
+                      key={i}
+                      className="absolute w-2 h-2 bg-[#E99500] rounded-full"
+                      style={{
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                      }}
+                      animate={{
+                        y: [0, -100, 0],
+                        opacity: [0, 1, 0],
+                        scale: [0, 1.5, 0],
+                      }}
+                      transition={{
+                        duration: 3 + Math.random() * 2,
+                        repeat: Infinity,
+                        delay: Math.random() * 2,
+                      }}
+                    />
+                  ))}
+                </div>
 
-            {/* Center Content */}
-            <div className="relative z-10 flex flex-col items-center justify-center h-full space-y-12">
-              {/* FASE 1: Waiting - Apenas texto e ícone */}
-              {openingPhase === "waiting" && (
-                <>
-                  {/* Animated Icon */}
-                  <motion.div
-                    animate={{
-                      scale: [1, 1.2, 1],
-                      rotateY: [0, 360],
-                    }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                    className="relative"
-                  >
-                    <div className="w-32 h-32 bg-gradient-to-br from-[#E99500] to-[#ff6b00] rounded-2xl flex items-center justify-center shadow-lg shadow-[#E99500]/50">
+                {/* Centro da tela */}
+                <div className="relative z-10 flex flex-col items-center justify-center h-full space-y-8">
+                  {/* Box girando com efeitos */}
+                  <div className="relative">
+                    {/* Anéis orbitais */}
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0 w-64 h-64 -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2"
+                    >
+                      <div className="absolute inset-0 border-2 border-[#E99500]/30 rounded-full" />
+                      <div className="absolute inset-8 border-2 border-[#E99500]/20 rounded-full" />
+                    </motion.div>
+
+                    <motion.div
+                      animate={{ rotate: -360 }}
+                      transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                      className="absolute inset-0 w-64 h-64 -translate-x-1/2 -translate-y-1/2 left-1/2 top-1/2"
+                    >
+                      <div className="absolute inset-4 border-2 border-purple-500/30 rounded-full border-dashed" />
+                    </motion.div>
+
+                    {/* Box central */}
+                    <motion.div
+                      animate={{
+                        rotateY: [0, 360],
+                        scale: [1, 1.1, 1],
+                      }}
+                      transition={{
+                        rotateY: { duration: 4, repeat: Infinity, ease: "easeInOut" },
+                        scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                      }}
+                      className="relative w-40 h-40 bg-gradient-to-br from-[#E99500] via-[#ff8800] to-[#E99500] rounded-3xl flex items-center justify-center shadow-2xl"
+                      style={{
+                        boxShadow: '0 0 60px rgba(233, 149, 0, 0.6), inset 0 0 30px rgba(255, 255, 255, 0.2)',
+                      }}
+                    >
                       {selectedPack &&
                         React.createElement(getPackIcon((selectedPack as any).rarity), {
-                          className: "w-16 h-16 text-black",
+                          className: "w-20 h-20 text-black drop-shadow-lg",
                         })}
-                    </div>
-                  </motion.div>
 
-                  {/* Status Text */}
-                  <div className="text-center space-y-4">
+                      {/* Brilho interno */}
+                      <motion.div
+                        animate={{
+                          opacity: [0.3, 0.8, 0.3],
+                          scale: [0.8, 1.2, 0.8],
+                        }}
+                        transition={{
+                          duration: 2,
+                          repeat: Infinity,
+                        }}
+                        className="absolute inset-0 bg-white/20 rounded-3xl blur-xl"
+                      />
+                    </motion.div>
+                  </div>
+
+                  {/* Textos lúdicos em sequência */}
+                  <div className="text-center space-y-4 min-h-[120px]">
                     <motion.h2
-                      animate={{
-                        opacity: [0.5, 1, 0.5],
+                      key="title"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#E99500] via-yellow-400 to-[#E99500] drop-shadow-lg"
+                      style={{
+                        textShadow: '0 0 30px rgba(233, 149, 0, 0.5)',
                       }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                      className="text-4xl md:text-6xl font-bold text-white"
                     >
-                      Opening Pack...
+                      OPENING PACK
                     </motion.h2>
 
-                    <motion.p
-                      animate={{
-                        opacity: [0.3, 0.7, 0.3],
-                      }}
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                      className="text-xl text-[#E99500]"
-                    >
-                      Processing transaction on blockchain
-                    </motion.p>
+                    {/* Textos que alternam */}
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={Math.floor(Date.now() / 2000) % 4}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ duration: 0.5 }}
+                        className="text-xl md:text-3xl font-bold text-white"
+                      >
+                        {[
+                          '✨ Creating your box...',
+                          '🎲 Rolling the dice...',
+                          '🔮 Choosing your destiny...',
+                          '⚡ Preparing your reward...',
+                        ][Math.floor(Date.now() / 2000) % 4]}
+                      </motion.div>
+                    </AnimatePresence>
 
-                    {/* Animated dots */}
-                    <div className="flex justify-center gap-2">
-                      {[0, 1, 2].map((i) => (
+                    {/* Barra de progresso fake com animação */}
+                    <div className="w-80 mx-auto mt-6">
+                      <div className="h-3 bg-black/40 rounded-full overflow-hidden border border-[#E99500]/30">
                         <motion.div
-                          key={i}
                           animate={{
-                            scale: [1, 1.5, 1],
-                            opacity: [0.3, 1, 0.3],
+                            x: ['-100%', '100%'],
                           }}
                           transition={{
                             duration: 1.5,
                             repeat: Infinity,
-                            delay: i * 0.2,
+                            ease: "easeInOut",
                           }}
-                          className="w-3 h-3 bg-[#E99500] rounded-full"
+                          className="h-full w-1/3 bg-gradient-to-r from-transparent via-[#E99500] to-transparent"
                         />
-                      ))}
+                      </div>
                     </div>
                   </div>
-                </>
-              )}
 
-            </div>
+                  {/* Partículas extras perto do box */}
+                  {[...Array(8)].map((_, i) => (
+                    <motion.div
+                      key={`particle-${i}`}
+                      className="absolute w-4 h-4"
+                      style={{
+                        left: '50%',
+                        top: '50%',
+                      }}
+                      animate={{
+                        x: [0, Math.cos(i * Math.PI / 4) * 150],
+                        y: [0, Math.sin(i * Math.PI / 4) * 150],
+                        opacity: [1, 0],
+                        scale: [0.5, 1.5],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        delay: i * 0.25,
+                      }}
+                    >
+                      <Sparkles className="w-4 h-4 text-[#E99500]" />
+                    </motion.div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* FASE 2: FLASH BRANCO */}
+            {openingPhase === "flash" && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 1, 0] }}
+                transition={{ duration: 0.8, times: [0, 0.1, 0.6, 1] }}
+                className="absolute inset-0 bg-white z-50"
+              />
+            )}
+
+            {/* FASE 3: VÍDEO COM VINHETA */}
+            {openingPhase === "video" && wonSkin && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="absolute inset-0 flex items-center justify-center"
+              >
+                {/* Vinheta preta nas bordas */}
+                <div
+                  className="absolute inset-0 pointer-events-none z-10"
+                  style={{
+                    boxShadow: 'inset 0 0 150px 60px rgba(0, 0, 0, 0.9)',
+                  }}
+                />
+
+                {/* Vídeo */}
+                <video
+                  autoPlay
+                  muted
+                  className="w-full h-full object-cover"
+                  onEnded={() => {
+                    // Fallback caso o timeout não funcione
+                  }}
+                >
+                  <source src="/video.mp4" type="video/mp4" />
+                </video>
+
+                {/* Texto sobre o vídeo */}
+                <motion.div
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 1 }}
+                  className="absolute bottom-20 text-center z-20"
+                >
+                  <motion.h3
+                    animate={{
+                      scale: [1, 1.05, 1],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                    }}
+                    className="text-4xl md:text-6xl font-black text-white drop-shadow-2xl"
+                    style={{
+                      textShadow: '0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(233, 149, 0, 0.5)',
+                    }}
+                  >
+                    YOUR REWARD AWAITS...
+                  </motion.h3>
+                </motion.div>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
@@ -1039,169 +1189,325 @@ export default function PacksPage() {
         </div>
       </div>
 
-      {/* Result Modal */}
+      {/* Result Modal - Reestilizado com mistério */}
       <AnimatePresence>
         {showResult && wonSkin && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black z-50 flex items-center justify-center p-4 overflow-hidden"
             onClick={handleCloseResult}
           >
-            <motion.div
-              initial={{ scale: 0.5, opacity: 0, rotateY: -180 }}
-              animate={{ scale: 1, opacity: 1, rotateY: 0 }}
-              exit={{ scale: 0.5, opacity: 0 }}
-              transition={{ type: "spring", duration: 0.8, bounce: 0.4 }}
-              className="relative max-w-2xl w-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Card
-                className={`bg-gradient-to-br ${getRarityColor(
-                  wonSkin.rarity
-                )} p-8 border-4 border-white/30 shadow-2xl relative overflow-hidden`}
-              >
-                {/* Animated background effect */}
+            {/* Partículas de fundo */}
+            <div className="absolute inset-0">
+              {[...Array(30)].map((_, i) => (
                 <motion.div
+                  key={i}
+                  className="absolute w-1 h-1 bg-white rounded-full"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: `${Math.random() * 100}%`,
+                  }}
                   animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [0.3, 0.6, 0.3],
+                    opacity: [0, 1, 0],
+                    scale: [0, 2, 0],
                   }}
                   transition={{
-                    duration: 3,
+                    duration: 3 + Math.random() * 2,
                     repeat: Infinity,
+                    delay: Math.random() * 3,
                   }}
-                  className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"
                 />
+              ))}
+            </div>
 
-                <div className="text-center space-y-6 relative z-10">
-                  {/* Skin Image */}
+            {/* Raios de luz rotativos */}
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0"
+              style={{
+                background: `conic-gradient(from 0deg, transparent 0%, ${getRarityColor(wonSkin.rarity).split(' ')[1]}/20 10%, transparent 20%, transparent 80%, ${getRarityColor(wonSkin.rarity).split(' ')[1]}/20 90%, transparent 100%)`,
+              }}
+            />
+
+            <motion.div
+              initial={{ scale: 0.3, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.3, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.6, bounce: 0.3 }}
+              className="relative max-w-3xl w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Container com brilho externo pulsante */}
+              <motion.div
+                animate={{
+                  boxShadow: [
+                    `0 0 40px 10px ${getRarityColor(wonSkin.rarity).includes('yellow') ? 'rgba(234, 179, 8, 0.4)' : 'rgba(168, 85, 247, 0.4)'}`,
+                    `0 0 80px 20px ${getRarityColor(wonSkin.rarity).includes('yellow') ? 'rgba(234, 179, 8, 0.6)' : 'rgba(168, 85, 247, 0.6)'}`,
+                    `0 0 40px 10px ${getRarityColor(wonSkin.rarity).includes('yellow') ? 'rgba(234, 179, 8, 0.4)' : 'rgba(168, 85, 247, 0.4)'}`,
+                  ],
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+                className="relative"
+              >
+                <Card
+                  className={`bg-gradient-to-br ${getRarityColor(
+                    wonSkin.rarity
+                  )} p-10 border-4 border-white/40 shadow-2xl relative overflow-hidden backdrop-blur-sm`}
+                >
+                  {/* Efeito de brilho deslizante */}
                   <motion.div
-                    initial={{ scale: 0 }}
                     animate={{
-                      scale: [0, 1.3, 1],
-                      rotateY: [0, 360, 360],
+                      x: ['-100%', '200%'],
                     }}
-                    transition={{ duration: 1, times: [0, 0.6, 1] }}
-                    className="w-64 h-64 mx-auto flex items-center justify-center bg-black/30 rounded-lg"
-                  >
-                    <img
-                      src={wonSkin.image}
-                      alt={wonSkin.name}
-                      className="max-w-full max-h-full object-contain drop-shadow-2xl p-4"
-                    />
-                  </motion.div>
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      repeatDelay: 1,
+                      ease: "easeInOut",
+                    }}
+                    className="absolute inset-0 w-1/3"
+                    style={{
+                      background: 'linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)',
+                    }}
+                  />
 
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="space-y-2"
-                  >
-                    <Badge className="bg-black/30 text-white border-white/20 text-lg px-4 py-1 uppercase">
-                      {wonSkin.rarity}
-                    </Badge>
-                    <h2 className="text-3xl font-bold text-white px-4">
-                      {wonSkin.name}
-                    </h2>
-                    <motion.p
+                  {/* Ondas de energia */}
+                  {[...Array(3)].map((_, i) => (
+                    <motion.div
+                      key={i}
                       animate={{
-                        scale: [1, 1.1, 1],
+                        scale: [1, 2.5],
+                        opacity: [0.3, 0],
                       }}
                       transition={{
                         duration: 2,
                         repeat: Infinity,
+                        delay: i * 0.7,
                       }}
-                      className="text-5xl font-bold text-white"
-                    >
-                      ${wonSkin.value.toFixed(2)}
-                    </motion.p>
-                  </motion.div>
+                      className="absolute inset-0 border-4 border-white/30 rounded-xl"
+                    />
+                  ))}
 
-                  {/* Steam Trade URL Warning */}
-                  {userTradeUrl === null && (
+                  <div className="text-center space-y-6 relative z-10">
+                    {/* Badge de raridade com animação */}
+                    <motion.div
+                      initial={{ y: -50, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      transition={{ delay: 0.2, type: "spring" }}
+                    >
+                      <Badge className="bg-black/50 text-white border-white/30 text-xl px-6 py-2 uppercase font-black backdrop-blur-sm">
+                        <motion.span
+                          animate={{
+                            textShadow: [
+                              '0 0 5px rgba(255,255,255,0.5)',
+                              '0 0 20px rgba(255,255,255,0.8)',
+                              '0 0 5px rgba(255,255,255,0.5)',
+                            ],
+                          }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
+                          {wonSkin.rarity}
+                        </motion.span>
+                      </Badge>
+                    </motion.div>
+
+                    {/* Container da skin com efeito de levitação */}
+                    <motion.div
+                      animate={{
+                        y: [0, -15, 0],
+                      }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "easeInOut",
+                      }}
+                      className="relative"
+                    >
+                      {/* Círculos de energia ao redor */}
+                      {[...Array(6)].map((_, i) => (
+                        <motion.div
+                          key={i}
+                          animate={{
+                            rotate: 360,
+                            scale: [1, 1.2, 1],
+                          }}
+                          transition={{
+                            rotate: { duration: 10, repeat: Infinity, ease: "linear" },
+                            scale: { duration: 2, repeat: Infinity, delay: i * 0.3 },
+                          }}
+                          className="absolute"
+                          style={{
+                            left: '50%',
+                            top: '50%',
+                            marginLeft: `${Math.cos(i * Math.PI / 3) * 160}px`,
+                            marginTop: `${Math.sin(i * Math.PI / 3) * 160}px`,
+                          }}
+                        >
+                          <div className="w-3 h-3 bg-white/60 rounded-full blur-sm" />
+                        </motion.div>
+                      ))}
+
+                      {/* Imagem da skin */}
+                      <motion.div
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{
+                          scale: 1,
+                          rotate: 0,
+                        }}
+                        transition={{ delay: 0.3, type: "spring", bounce: 0.5 }}
+                        className="w-80 h-80 mx-auto flex items-center justify-center bg-black/40 rounded-2xl border-2 border-white/20 backdrop-blur-md relative overflow-hidden"
+                      >
+                        {/* Brilho interno */}
+                        <motion.div
+                          animate={{
+                            opacity: [0.2, 0.5, 0.2],
+                          }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                          className="absolute inset-0 bg-gradient-to-t from-transparent via-white/10 to-transparent"
+                        />
+
+                        <img
+                          src={wonSkin.image}
+                          alt={wonSkin.name}
+                          className="max-w-full max-h-full object-contain drop-shadow-2xl p-6 relative z-10"
+                        />
+                      </motion.div>
+                    </motion.div>
+
+                    {/* Nome e valor */}
+                    <motion.div
+                      initial={{ opacity: 0, y: 30 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.5 }}
+                      className="space-y-3"
+                    >
+                      <motion.h2
+                        animate={{
+                          textShadow: [
+                            '0 0 10px rgba(255,255,255,0.3)',
+                            '0 0 20px rgba(255,255,255,0.6)',
+                            '0 0 10px rgba(255,255,255,0.3)',
+                          ],
+                        }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="text-4xl font-black text-white px-4"
+                      >
+                        {wonSkin.name}
+                      </motion.h2>
+
+                      <motion.div
+                        animate={{
+                          scale: [1, 1.05, 1],
+                        }}
+                        transition={{
+                          duration: 1.5,
+                          repeat: Infinity,
+                        }}
+                        className="inline-block"
+                      >
+                        <div className="text-6xl font-black text-white bg-black/30 px-8 py-3 rounded-2xl border-2 border-white/20">
+                          ${wonSkin.value.toFixed(2)}
+                        </div>
+                      </motion.div>
+                    </motion.div>
+
+                    {/* Steam Trade URL Warning */}
+                    {userTradeUrl === null && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.7 }}
+                        className="bg-yellow-500/20 border-2 border-yellow-500/40 rounded-xl p-5 backdrop-blur-sm"
+                      >
+                        <div className="flex items-center gap-3 text-yellow-200 justify-center">
+                          <Lock className="w-6 h-6" />
+                          <span className="font-bold text-lg">Steam Trade URL Required</span>
+                        </div>
+                        <p className="text-yellow-100 mt-2">
+                          You need to set up your Steam Trade URL in your profile to claim this skin. Your skin will be saved and waiting for you!
+                        </p>
+                        <Link
+                          href="/app-dashboard/profile"
+                          className="text-yellow-200 underline font-semibold hover:text-yellow-100 mt-3 inline-block"
+                        >
+                          Go to Profile Settings →
+                        </Link>
+                      </motion.div>
+                    )}
+
+                    {/* Botões de ação */}
                     <motion.div
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.6 }}
-                      className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 mb-4 mx-4"
+                      transition={{ delay: 0.8 }}
+                      className="flex gap-4 justify-center pt-6"
                     >
-                      <div className="flex items-center gap-2 text-yellow-200">
-                        <Lock className="w-5 h-5" />
-                        <span className="font-semibold">Steam Trade URL Required</span>
-                      </div>
-                      <p className="text-yellow-100 text-sm mt-1">
-                        You need to set up your Steam Trade URL in your profile to claim this skin. Your skin will be saved and waiting for you!
-                      </p>
-                      <Link 
-                        href="/app-dashboard/profile" 
-                        className="text-yellow-200 underline text-sm hover:text-yellow-100 mt-2 inline-block"
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                       >
-                        Go to Profile Settings →
-                      </Link>
+                        <Button
+                          disabled={userTradeUrl === null}
+                          onClick={async () => {
+                            try {
+                              const userProfile = await authService.getProfile();
+                              if (!userProfile.tradeUrl || userProfile.tradeUrl.trim() === '') {
+                                toast.error("Please set up your Steam Trade URL in your profile before claiming skins!");
+                                return;
+                              }
+
+                              if (wonSkin) {
+                                console.log('🎫 Creating Discord ticket for claimed skin:', wonSkin);
+                                await discordService.createSkinClaimTicket({
+                                  userId: walletCtx.publicKey?.toString() || 'unknown',
+                                  walletAddress: walletCtx.publicKey?.toString() || 'unknown',
+                                  steamTradeUrl: userProfile.tradeUrl,
+                                  skinName: wonSkin.name,
+                                  skinRarity: wonSkin.rarity,
+                                  skinWeapon: wonSkin.name.split(' | ')[0] || 'Unknown',
+                                  nftMintAddress: lastPackResult?.asset || 'unknown',
+                                  openedAt: new Date(),
+                                  caseOpeningId: `pack-${Date.now()}`,
+                                });
+                                console.log('✅ Discord ticket created successfully for:', wonSkin.name);
+                              }
+
+                              toast.success("Skin claimed to inventory!");
+                              setShowResult(false);
+                            } catch (error) {
+                              console.error("Failed to claim skin:", error);
+                              toast.error("Failed to claim skin");
+                            }
+                          }}
+                          size="lg"
+                          className="bg-white text-black hover:bg-gray-100 font-black px-10 py-6 text-lg rounded-xl shadow-lg"
+                        >
+                          <Unlock className="w-6 h-6 mr-2" />
+                          Claim Skin
+                        </Button>
+                      </motion.div>
+
+                      <motion.div
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Button
+                          onClick={handleBuyback}
+                          size="lg"
+                          variant="outline"
+                          className="bg-black/30 border-3 border-white/40 text-white hover:bg-white/10 font-black px-10 py-6 text-lg rounded-xl backdrop-blur-sm shadow-lg"
+                        >
+                          <TrendingUp className="w-6 h-6 mr-2" />
+                          Buyback NFT
+                        </Button>
+                      </motion.div>
                     </motion.div>
-                  )}
-
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.8 }}
-                    className="flex gap-4 justify-center pt-4"
-                  >
-                    <Button
-                      disabled={userTradeUrl === null}
-                      onClick={async () => {
-                        try {
-                          // Check if user has Steam Trade URL set up
-                          const userProfile = await authService.getProfile();
-                          if (!userProfile.tradeUrl || userProfile.tradeUrl.trim() === '') {
-                            toast.error("Please set up your Steam Trade URL in your profile before claiming skins!");
-                            return;
-                          }
-
-                          // Create Discord ticket for skin claim
-                          if (wonSkin) {
-                            console.log('🎫 Creating Discord ticket for claimed skin:', wonSkin);
-                            await discordService.createSkinClaimTicket({
-                              userId: walletCtx.publicKey?.toString() || 'unknown',
-                              walletAddress: walletCtx.publicKey?.toString() || 'unknown',
-                              steamTradeUrl: userProfile.tradeUrl,
-                              skinName: wonSkin.name,
-                              skinRarity: wonSkin.rarity,
-                              skinWeapon: wonSkin.name.split(' | ')[0] || 'Unknown',
-                              nftMintAddress: lastPackResult?.asset || 'unknown',
-                              openedAt: new Date(),
-                              caseOpeningId: `pack-${Date.now()}`,
-                            });
-                            console.log('✅ Discord ticket created successfully for:', wonSkin.name);
-                          }
-                          
-                          toast.success("Skin claimed to inventory!");
-                          setShowResult(false);
-                        } catch (error) {
-                          console.error("Failed to claim skin:", error);
-                          toast.error("Failed to claim skin");
-                        }
-                      }}
-                      size="lg"
-                      className="bg-white text-black hover:bg-gray-200 font-bold px-8"
-                    >
-                      <Unlock className="w-5 h-5 mr-2" />
-                      Claim Skin
-                    </Button>
-                    <Button
-                      onClick={handleBuyback}
-                      size="lg"
-                      variant="outline"
-                      className="bg-transparent border-2 border-white text-white hover:bg-white/20 font-bold px-8"
-                    >
-                      <TrendingUp className="w-5 h-5 mr-2" />
-                      Buyback NFT
-                    </Button>
-                  </motion.div>
-                </div>
-              </Card>
+                  </div>
+                </Card>
+              </motion.div>
             </motion.div>
           </motion.div>
         )}
