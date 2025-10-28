@@ -165,7 +165,14 @@ export default function InventoryPage() {
       }
       
       setInventorySkins(inventoryItems);
-      setTotalValue(Number(response?.summary?.totalValue ?? 0));
+      
+      // Calculate total value from individual skin prices
+      const calculatedTotalValue = inventoryItems.reduce((sum, skin) => {
+        const price = parseFloat(skin.currentPriceUsd || skin.skinTemplate?.basePriceUsd || '0');
+        return sum + price;
+      }, 0);
+      
+      setTotalValue(calculatedTotalValue);
     } catch (err) {
       console.error("Failed to load inventory:", err);
       toast.error("Failed to load inventory");
@@ -364,70 +371,111 @@ export default function InventoryPage() {
         {pendingSkin && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <Package className="w-5 h-5 text-yellow-500" />
-              <h3 className="text-lg font-semibold text-yellow-200">Pending Skin</h3>
+              <h3 className="text-lg font-semibold text-yellow-200">Pending Skins</h3>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              <Card className="group bg-gradient-to-b from-yellow-950/20 to-yellow-900/20 border border-yellow-500/30 transition-transform duration-200 hover:scale-[1.015] hover:border-yellow-400/50">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge className="bg-yellow-500/20 text-yellow-200 border-yellow-500/30">
-                      {pendingSkin.skinRarity}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs bg-yellow-900/20 text-yellow-300 border border-yellow-500/30">
-                      PENDING
-                    </Badge>
-                  </div>
-                  <div className="aspect-square bg-gradient-to-br from-yellow-900/20 to-yellow-800/20 rounded-lg flex items-center justify-center mb-3">
-                    <img
-                      src={pendingSkin.skinImage}
-                      alt={pendingSkin.skinName}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  </div>
-                  <CardTitle className="text-white text-lg leading-tight">
-                    {pendingSkin.skinName}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold text-yellow-200">
-                      ${Number(pendingSkin.skinValue).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {userTradeUrl ? (
-                      <Button
-                        onClick={claimPendingSkin}
-                        className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold"
-                      >
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Claim Skin
-                      </Button>
-                    ) : (
-                      <div className="space-y-2">
-                        <Button
-                          disabled
-                          className="w-full bg-gray-600 text-gray-300 font-semibold"
+              <div className="group relative transition-transform duration-200 hover:scale-[1.015] cursor-pointer">
+                {/* Card Template Background */}
+                <div className="relative w-full h-full rounded-lg overflow-hidden">
+                  <img
+                    src="/assets/card.jpeg"
+                    alt="Skin Card Template"
+                    className="w-full h-full object-cover"
+                  />
+                  
+                  {/* Top Section - Skin Name, Rarity and Status */}
+                  <div className="absolute top-5 left-6 right-4 h-23 w-52 bg-black/20 rounded-lg backdrop-blur-sm border border-yellow-400/30 p-3">
+                    <div className="h-full flex flex-col justify-between">
+                      {/* Skin Name */}
+                      <h3 className="text-yellow-400 font-bold text-sm mb-2 truncate">
+                        {pendingSkin.skinName}
+                      </h3>
+                      
+                      {/* Rarity and Status */}
+                      <div className="flex items-center justify-between">
+                        <Badge
+                          className="bg-yellow-500/20 text-yellow-200 border-yellow-500/30 text-xs px-2 py-1"
                         >
-                          <Lock className="w-4 h-4 mr-2" />
-                          Steam Trade URL Required
-                        </Button>
-                        <p className="text-xs text-yellow-300 text-center">
-                          Set up your Steam Trade URL in your profile to claim this skin
-                        </p>
+                          {pendingSkin.skinRarity}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-yellow-400/20 text-yellow-400 border-yellow-400/50"
+                        >
+                          PENDING
+                        </Badge>
                       </div>
-                    )}
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+
+                  {/* Bottom Section - Skin Image and Stats */}
+                  <div className="absolute bottom-6 left-6 right-4 h-78 w-52 bg-black/30 rounded-lg backdrop-blur-sm border border-yellow-400/30 p-4">
+                    <div className="h-full flex flex-col">
+                      {/* Skin Image */}
+                      <div className="flex items-center justify-center h-20 mb-3">
+                        <img
+                          src={pendingSkin.skinImage}
+                          alt={pendingSkin.skinName}
+                          className="max-h-16 max-w-16 object-contain"
+                        />
+                      </div>
+
+                      {/* Skin Stats */}
+                      <div className="space-y-1 flex-1 pt-10">
+                        <div className="flex justify-between items-center">
+                          <span className="text-yellow-300 text-xs">Value:</span>
+                          <span className="text-yellow-400 text-sm font-bold">
+                            ${Number(pendingSkin.skinValue).toFixed(2)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-yellow-300 text-xs">Status:</span>
+                          <span className="text-yellow-400 text-xs font-semibold">
+                            Awaiting Claim
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Claim Button */}
+                      <div className="mt-2">
+                        {userTradeUrl ? (
+                          <Button
+                            size="sm"
+                            className="w-full bg-yellow-500 hover:bg-yellow-600 text-black text-xs font-semibold"
+                            onClick={claimPendingSkin}
+                          >
+                            <Sparkles className="w-3 h-3 mr-1" />
+                            Claim Skin
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            disabled
+                            className="w-full bg-gray-600 text-gray-300 text-xs font-semibold"
+                          >
+                            <Lock className="w-3 h-3 mr-1" />
+                            Steam URL Required
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-yellow-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg" />
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Inventory Grid with Card Template */}
-        {filteredSkins.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {/* Owned Skins */}
+        {filteredSkins.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <h3 className="text-lg font-semibold text-orange-200">Owned Skins</h3>
+            </div>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredSkins.map((skin) => (
               <div
                 key={skin.id}
@@ -535,8 +583,12 @@ export default function InventoryPage() {
                 </div>
               </div>
             ))}
+            </div>
           </div>
-        ) : (
+        )}
+
+        {/* No Skins Found */}
+        {filteredSkins.length === 0 && (
           <div className="text-center py-12">
             <h3 className="text-xl font-semibold text-foreground mb-2">
               No skins found
