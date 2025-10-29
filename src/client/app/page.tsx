@@ -150,7 +150,7 @@ export default function LandingPage() {
             >
               <div className="aspect-square rounded-2xl overflow-hidden border border-[#333]">
                 <img
-                  src="/image.jpg"
+                  src="/assets/karambit.jpg"
                   alt="CS:GO Skin Showcase"
                   className="w-full h-full object-cover"
                 />

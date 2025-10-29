@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Box, Coins, Sparkles, CheckCircle, DollarSign, Search, Filter, X } from "lucide-react";
+import { Loader2, Box, Coins, CheckCircle, DollarSign, Search, Filter, X } from "lucide-react";
 import { socialService } from "@/lib/services";
 import { ActivityItem } from "@/lib/types/api";
 import { formatCurrency } from "@/lib/utils";

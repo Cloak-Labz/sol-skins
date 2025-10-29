@@ -2,15 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft,
   Zap,
   Loader2,
-  Sparkles,
-  TrendingUp,
   Lock,
-  Unlock,
   Package,
   Gem,
   Crown,
@@ -24,7 +19,6 @@ import { toast } from "react-hot-toast";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  casesService,
   marketplaceService,
   boxesService,
   authService,
@@ -33,7 +27,6 @@ import { useUser } from "@/lib/contexts/UserContext";
 import { discordService } from "@/lib/services/discord.service";
 import { pendingSkinsService } from "@/lib/services/pending-skins.service";
 import { apiClient } from "@/lib/services/api";
-import { PublicKey } from "@solana/web3.js";
 import { LootBoxType } from "@/lib/types/api";
 
 interface CSGOSkin {
@@ -43,46 +36,6 @@ interface CSGOSkin {
   value: number;
   image: string;
 }
-
-const getPackIcon = (rarity?: string) => {
-  if (!rarity) return Package;
-  switch (rarity.toLowerCase()) {
-    case "legendary":
-      return Crown;
-    case "premium":
-      return Gem;
-    default:
-      return Package;
-  }
-};
-
-const getPackColor = (rarity?: string) => {
-  if (!rarity) return "from-gray-600 to-gray-800";
-  switch (rarity.toLowerCase()) {
-    case "legendary":
-      return "from-yellow-500 to-orange-600";
-    case "premium":
-      return "from-blue-600 to-purple-600";
-    case "special":
-      return "from-purple-500 to-pink-600";
-    default:
-      return "from-gray-600 to-gray-800";
-  }
-};
-
-const getPackGlow = (rarity?: string) => {
-  if (!rarity) return "shadow-gray-500/50";
-  switch (rarity.toLowerCase()) {
-    case "legendary":
-      return "shadow-yellow-500/50";
-    case "premium":
-      return "shadow-blue-500/50";
-    case "special":
-      return "shadow-purple-500/50";
-    default:
-      return "shadow-gray-500/50";
-  }
-};
 
 // Default odds when API doesn't provide per-rarity probabilities
 const DEFAULT_ODDS: { label: string; rarity: string; pct: number }[] = [
@@ -811,7 +764,7 @@ export default function PacksPage() {
                   loop
                   className="max-w-[60vw] max-h-[60vh] w-auto h-auto object-contain"
                 >
-                  <source src="/video.mp4" type="video/mp4" />
+                  <source src="/assets/video.mp4" type="video/mp4" />
                 </video>
               </div>
             )}
@@ -885,7 +838,7 @@ export default function PacksPage() {
                   <div className="mt-6">
                     <Button
                       onClick={() => setShowBuybackModal(false)}
-                      className="w-full bg-zinc-100 text-black hover:bg-white font-bold py-6"
+                      className="w-full bg-zinc-100 text-black hover:bg-[#E99500] font-bold py-6"
                     >
                       Buy Another Pack
                     </Button>
@@ -908,7 +861,7 @@ export default function PacksPage() {
           {/* Hero */}
           <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
             <img
-              src="/assets/2.jpg"
+              src="/assets/banner3.png"
               alt="Dust3 Pack"
               className="w-full h-[220px] md:h-[320px] object-cover"
             />
@@ -932,7 +885,7 @@ export default function PacksPage() {
             <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 flex flex-col">
               <div className="relative w-full h-[260px] md:h-[320px] lg:h-[360px]">
                 <img
-                  src="/dust3.jpeg"
+                  src="/assets/machine.jpeg"
                   alt="Dust3 Pack Preview"
                   className="w-full h-full object-cover"
                 />

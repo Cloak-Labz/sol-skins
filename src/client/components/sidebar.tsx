@@ -71,7 +71,6 @@ function SidebarComponent() {
 
   const exploreItems = [
     { href: "/refer", label: "Refer and Earn", icon: Gift, soon: true },
-    { href: "/app-dashboard/about", label: "About", icon: Info },
   ];
 
   const adminItems = [
