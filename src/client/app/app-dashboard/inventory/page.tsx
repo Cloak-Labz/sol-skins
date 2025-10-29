@@ -444,40 +444,59 @@ export default function InventoryPage() {
                   topContent={
                     <div className="flex flex-col justify-between h-full">
                       {/* Skin Name */}
-                      <h3 className="text-yellow-400 font-bold text-sm mb-2 truncate">
+                      <h3 
+                        className="text-yellow-400 font-black text-lg mb-2 truncate uppercase tracking-wider"
+                        style={{ fontFamily: "monospace" }}
+                      >
                         {pendingSkin.skinName}
                       </h3>
-                      {/* Rarity Badge */}
-                      <div className="flex items-center justify-between">
-                        <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-400/30 text-xs px-2 py-1">
-                          {pendingSkin.skinRarity}
-                        </Badge>
-                        <div className="text-yellow-400 text-xs font-semibold">
-                          PENDING
+                        {/* Rarity Badge */}
+                        <div className="flex items-center justify-between">
+                          <div className="relative">
+                            <div className="absolute inset-0 bg-yellow-400/20 rounded-full blur-sm"></div>
+                            <div className="relative bg-gradient-to-r from-yellow-500/30 to-amber-500/30 border border-yellow-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(234,179,8,0.3)] flex items-center justify-center">
+                              <span 
+                                className="text-yellow-300 text-xs font-black uppercase tracking-wider"
+                                style={{ fontFamily: "monospace" }}
+                              >
+                                {pendingSkin.skinRarity}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="relative">
+                            <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-sm"></div>
+                            <div className="relative bg-gradient-to-r from-blue-500/30 to-cyan-500/30 border border-blue-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(59,130,246,0.3)] flex items-center justify-center">
+                              <span 
+                                className="text-blue-300 text-xs font-black uppercase tracking-wider"
+                                style={{ fontFamily: "monospace" }}
+                              >
+                                PENDING
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
                     </div>
                   }
                   bottomContent={
                     <div className="space-y-1 flex-1 pt-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-yellow-300 text-xs">Weapon:</span>
-                        <span className="text-yellow-400 text-xs font-semibold">
-                          {pendingSkin.skinWeapon}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-yellow-300 text-xs">Value:</span>
-                        <span className="text-yellow-400 text-sm font-bold">
-                          ${pendingSkin.skinValue?.toFixed(2) || '0.00'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-yellow-300 text-xs">Status:</span>
-                        <span className="text-yellow-400 text-xs">
-                          Awaiting Confirmation
-                        </span>
-                      </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-yellow-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Weapon:</span>
+                          <span className="text-yellow-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
+                            {pendingSkin.skinWeapon}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-yellow-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Value:</span>
+                          <span className="text-yellow-400 text-base font-black uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
+                            ${pendingSkin.skinValue?.toFixed(2) || '0.00'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-yellow-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Status:</span>
+                          <span className="text-yellow-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
+                            Awaiting Confirmation
+                          </span>
+                        </div>
                     </div>
                   }
                   className="h-48"
@@ -504,24 +523,36 @@ export default function InventoryPage() {
                   topContent={
                     <div className="flex flex-col justify-between h-full">
                       {/* Skin Name */}
-                      <h3 className="text-orange-400 font-bold text-sm mb-2 truncate">
+                      <h3 
+                        className="text-orange-400 font-black text-lg mb-2 truncate uppercase tracking-wider"
+                        style={{ fontFamily: "monospace" }}
+                      >
                         {skin.name}
                       </h3>
                       {/* Rarity and Status */}
                       <div className="flex items-center justify-between">
-                        <Badge
-                          className={`${getRarityColor(
-                            skin.skinTemplate?.rarity || 'Unknown'
-                          )} text-xs px-2 py-1`}
-                        >
-                          {skin.skinTemplate?.rarity || 'Unknown'}
-                        </Badge>
-                        <Badge
-                          variant="outline"
-                          className="text-xs bg-orange-400/20 text-orange-400 border-orange-400/50"
-                        >
-                          Owned
-                        </Badge>
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-orange-400/20 rounded-full blur-sm"></div>
+                          <div className="relative bg-gradient-to-r from-orange-500/30 to-amber-500/30 border border-orange-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(251,146,60,0.3)] flex items-center justify-center">
+                            <span 
+                              className="text-orange-300 text-xs font-black uppercase tracking-wider"
+                              style={{ fontFamily: "monospace" }}
+                            >
+                              {skin.skinTemplate?.rarity || 'Unknown'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-green-400/20 rounded-full blur-sm"></div>
+                          <div className="relative bg-gradient-to-r from-green-500/30 to-emerald-500/30 border border-green-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(34,197,94,0.3)] flex items-center justify-center">
+                            <span 
+                              className="text-green-300 text-xs font-black uppercase tracking-wider"
+                              style={{ fontFamily: "monospace" }}
+                            >
+                              OWNED
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   }
@@ -543,26 +574,20 @@ export default function InventoryPage() {
                       {/* Skin Stats */}
                       <div className="space-y-1 flex-1">
                         <div className="flex justify-between items-center">
-                          <span className="text-orange-300 text-xs">Wear:</span>
-                          <span className="text-orange-400 text-xs font-semibold">
+                          <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Wear:</span>
+                          <span className="text-orange-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
                             {skin.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-orange-300 text-xs">Float:</span>
-                          <span className="text-orange-400 text-xs font-semibold">
-                            {skin.attributes?.find(attr => attr.trait_type === 'Float')?.value || 'N/A'}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-orange-300 text-xs">Value:</span>
-                          <span className="text-orange-400 text-sm font-bold">
+                          <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Value:</span>
+                          <span className="text-orange-400 text-base font-black uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
                             ${skin.currentPriceUsd || skin.skinTemplate?.basePriceUsd || '0.00'}
                           </span>
                         </div>
                         <div className="flex justify-between items-center">
-                          <span className="text-orange-300 text-xs">Minted:</span>
-                          <span className="text-orange-400 text-xs">
+                          <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Minted At:</span>
+                          <span className="text-orange-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
                             {new Date(skin.mintedAt).toLocaleDateString()}
                           </span>
                         </div>
@@ -572,7 +597,8 @@ export default function InventoryPage() {
                       <div className="mt-6">
                         <Button
                           size="sm"
-                          className="w-full bg-orange-500 hover:bg-orange-600 text-black text-xs font-semibold"
+                          className="w-full bg-orange-500 hover:bg-orange-600 text-black text-xs font-black uppercase tracking-wide"
+                          style={{ fontFamily: "monospace" }}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSellSkin(skin);
