@@ -438,7 +438,7 @@ export default function InventoryPage() {
             <div className="flex items-center gap-2 mb-4">
               <h3 className="text-lg font-semibold text-yellow-200">Pending Skins</h3>
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
               <div className="group relative transition-transform duration-200 hover:scale-[1.015] cursor-pointer">
                 <NeonCard
                   topContent={
@@ -480,7 +480,7 @@ export default function InventoryPage() {
                       </div>
                     </div>
                   }
-                  className="h-40"
+                  className="h-48"
                 />
               </div>
             </div>
@@ -493,7 +493,7 @@ export default function InventoryPage() {
             <div className="flex items-center gap-2 mb-4">
               <h3 className="text-lg font-semibold text-orange-200">Owned Skins</h3>
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {filteredSkins.map((skin) => (
               <div
                 key={skin.id}
@@ -528,15 +528,15 @@ export default function InventoryPage() {
                   bottomContent={
                     <div className="space-y-1 flex-1 pt-2">
                       {/* Skin Image */}
-                      <div className="flex items-center justify-center h-8 mb-10 mt-2">
+                      <div className="flex items-center justify-center h-8 mb-20 mt-10">
                         {skin.imageUrl ? (
                           <img
                             src={skin.imageUrl}
                             alt={skin.name}
-                            className="max-h-8 max-w-8 object-contain"
+                            className="max-h-16 max-w-16 object-contain"
                           />
                         ) : (
-                          <Package className="w-6 h-6 text-orange-400" />
+                          <Package className="w-16 h-16 text-orange-400" />
                         )}
                       </div>
 
@@ -569,7 +569,7 @@ export default function InventoryPage() {
                       </div>
 
                       {/* Sell Button */}
-                      <div className="mt-2">
+                      <div className="mt-6">
                         <Button
                           size="sm"
                           className="w-full bg-orange-500 hover:bg-orange-600 text-black text-xs font-semibold"
@@ -584,7 +584,7 @@ export default function InventoryPage() {
                       </div>
                     </div>
                   }
-                  className="h-40"
+                  className="h-48"
                 />
               </div>
             ))}
