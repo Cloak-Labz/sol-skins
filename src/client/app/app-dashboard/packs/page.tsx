@@ -791,125 +791,16 @@ export default function PacksPage() {
 
             {/* FASE 2: Vídeo com fundo preto e efeitos de smoke */}
             {openingPhase === "video" && (
-              <div className="relative w-full h-full bg-black overflow-hidden">
-                {/* Vídeo centralizado com cobertura total */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <video
-                    ref={videoRef}
-                    autoPlay
-                    muted
-                    loop
-                    className="w-200 h-200 object-cover"
-                    onEnded={() => {
-                      // Vídeo em loop, não precisa fazer nada
-                    }}
-                  >
-                    <source src="/video.mp4" type="video/mp4" />
-                  </video>
-                </div>
-
-                {/* Overlay escuro para suavizar o vídeo */}
-                <div className="absolute inset-0 bg-black/30" />
-
-                {/* Efeitos de smoke/partículas que cobrem toda a tela */}
-                <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                  {/* Smoke particles */}
-                  {[...Array(20)].map((_, i) => (
-                    <motion.div
-                      key={`smoke-${i}`}
-                      animate={{
-                        opacity: [0, 0.8, 0],
-                        scale: [0.3, 1.2, 0.3],
-                        x: [0, Math.random() * 200 - 100],
-                        y: [0, Math.random() * 200 - 100],
-                      }}
-                      transition={{
-                        duration: 3 + Math.random() * 4,
-                        repeat: Infinity,
-                        delay: i * 0.2,
-                        ease: "easeInOut",
-                      }}
-                      className="absolute w-32 h-32 rounded-full blur-2xl"
-                      style={{
-                        background: `radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent)`,
-                        left: `${Math.random() * 100}%`,
-                        top: `${Math.random() * 100}%`,
-                      }}
-                    />
-                  ))}
-
-                  {/* Luzes douradas */}
-                  {[...Array(12)].map((_, i) => (
-                    <motion.div
-                      key={`light-${i}`}
-                      animate={{
-                        opacity: [0, 0.6, 0],
-                        scale: [0.5, 1.5, 0.5],
-                      }}
-                      transition={{
-                        duration: 2 + Math.random() * 3,
-                        repeat: Infinity,
-                        delay: i * 0.4,
-                      }}
-                      className="absolute w-64 h-64 rounded-full blur-3xl"
-                      style={{
-                        background: `radial-gradient(circle, ${
-                          i % 3 === 0
-                            ? "rgba(233, 149, 0, 0.3)"
-                            : i % 3 === 1
-                            ? "rgba(255, 215, 0, 0.2)"
-                            : "rgba(255, 140, 0, 0.25)"
-                        }, transparent)`,
-                        left: `${Math.random() * 100}%`,
-                        top: `${Math.random() * 100}%`,
-                      }}
-                    />
-                  ))}
-
-                  {/* Partículas flutuantes */}
-                  {[...Array(30)].map((_, i) => (
-                    <motion.div
-                      key={`particle-${i}`}
-                      animate={{
-                        opacity: [0, 1, 0],
-                        y: [0, -100],
-                        x: [0, Math.random() * 50 - 25],
-                      }}
-                      transition={{
-                        duration: 2 + Math.random() * 2,
-                        repeat: Infinity,
-                        delay: i * 0.1,
-                        ease: "easeOut",
-                      }}
-                      className="absolute w-2 h-2 rounded-full"
-                      style={{
-                        background: `rgba(255, 215, 0, ${0.3 + Math.random() * 0.4})`,
-                        left: `${Math.random() * 100}%`,
-                        top: `${100 + Math.random() * 20}%`,
-                        boxShadow: `0 0 10px rgba(255, 215, 0, 0.5)`,
-                      }}
-                    />
-                  ))}
-                </div>
-
-                {/* Efeito de brilho central */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <motion.div
-                    animate={{
-                      opacity: [0.3, 0.8, 0.3],
-                      scale: [0.8, 1.2, 0.8],
-                    }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                    className="w-96 h-96 rounded-full blur-3xl"
-                    style={{
-                      background: `radial-gradient(circle, rgba(255, 215, 0, 0.2), transparent)`,
-                    }}
-                  />
-                </div>
+              <div className="absolute inset-0 bg-black flex items-center justify-center">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  loop
+                  className="max-w-[60vw] max-h-[60vh] w-auto h-auto object-contain"
+                >
+                  <source src="/video.mp4" type="video/mp4" />
+                </video>
               </div>
             )}
           </motion.div>
@@ -1292,43 +1183,44 @@ export default function PacksPage() {
                   <div className="pointer-events-none absolute -inset-40 bg-[radial-gradient(circle,rgba(255,170,0,0.35)_0%,rgba(0,0,0,0)_60%)]" />
 
                   {/* Skin Display Area - Inspired by the reference image */}
-                  <div className="relative w-full h-[320px] md:h-[360px] rounded-lg overflow-hidden bg-black">
+                  <div className="relative w-full h-[180px] md:h-[200px] rounded-lg overflow-hidden bg-black">
                     {/* Background with central light effect */}
                     <div className="absolute inset-0 bg-gradient-to-b from-black via-gray-900 to-black" />
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center_bottom,rgba(255,140,0,0.4)_0%,rgba(0,0,0,0)_70%)]" />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center_bottom,rgba(255,140,0,0.2)_0%,rgba(0,0,0,0)_70%)]" />
 
                     {/* Central light platform effect */}
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-32 bg-gradient-to-t from-[#E99500]/20 to-transparent blur-xl" />
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[65%] h-14 bg-gradient-to-t from-[#E99500]/15 to-transparent blur-md" />
 
                     {/* Skin Image - Centered and elevated */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+                    <div className="absolute pt-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
                       {wonSkin.image === "icon-fallback" ? (
-                        <ImageIcon className="h-40 w-40 md:h-48 md:w-48 text-white/30 drop-shadow-[0_0_50px_rgba(255,140,0,0.8)]" />
+                        <ImageIcon className="h-24 w-24 md:h-28 md:w-28 text-white/30 drop-shadow-[0_0_30px_rgba(255,140,0,0.5)]" />
                       ) : (
                         <img
                           src={wonSkin.image}
                           alt={wonSkin.name}
-                          className="h-40 w-40 md:h-48 md:w-48 object-contain drop-shadow-[0_0_50px_rgba(255,140,0,0.8)]"
+                          className="h-24 w-24 md:h-28 md:w-28 object-contain drop-shadow-[0_0_30px_rgba(255,140,0,0.5)]"
                         />
                       )}
                     </div>
 
                     {/* Skin Name - Large and prominent like in reference */}
-                    <div className="absolute top-4 left-0 right-0 text-center px-4">
+                    <div className="absolute top-1 left-0 right-0 text-center px-4 pt-2">
                       <h1
-                        className="text-xl md:text-2xl lg:text-3xl font-black text-white uppercase tracking-wider mb-1"
+                        className="text-base md:text-lg lg:text-xl font-black text-white uppercase tracking-wider mb-0.5"
                         style={{ fontFamily: "monospace" }}
                       >
                         {wonSkin.name.split(" | ")[0]}
-                        <span className="text-white/60 mx-1 md:mx-2">|</span>
+                        <span className="text-white/60 mx-1">|</span>
                         {wonSkin.name.split(" | ")[1] ||
                           wonSkin.rarity.toUpperCase()}
                       </h1>
                       <p
-                        className="text-sm md:text-base lg:text-lg font-bold text-[#E99500] uppercase tracking-wide"
+                        className="text-[11px] md:text-xs lg:text-sm font-bold text-[#E99500] uppercase tracking-wide"
                         style={{ fontFamily: "monospace" }}
                       >
-                        {wonSkin.rarity.toUpperCase()}
+                        {wonSkin.rarity.toUpperCase()} • ${" "}
+                        {Number(wonSkin.value).toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -1444,17 +1336,7 @@ export default function PacksPage() {
                     </div>
                   </div>
 
-                  {userTradeUrl === null && (
-                    <div className="text-center mt-3">
-                      <Button
-                        variant="ghost"
-                        className="text-white/70 hover:text-white"
-                        onClick={() => setShowResult(false)}
-                      >
-                        Close
-                      </Button>
-                    </div>
-                  )}
+                  {wonSkin && null}
                 </div>
               </Card>
             </motion.div>
