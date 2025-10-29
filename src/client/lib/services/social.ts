@@ -26,13 +26,9 @@ class SocialService {
     const url = queryString ? `/leaderboard?${queryString}` : '/leaderboard';
     
     const response = await apiClient.get(url);
-    console.log('SocialService: Received response:', response);
-    console.log('SocialService: Response type:', typeof response);
-    console.log('SocialService: Full response structure:', JSON.stringify(response, null, 2));
     
     // Check if response is already the data array (from interceptor) or if it's the full response
     if (Array.isArray(response)) {
-      console.log('SocialService: Response is already an array, returning directly');
       return response;
     }
     
@@ -51,7 +47,6 @@ class SocialService {
     
     // Check if response is already the data object (from interceptor) or if it's the full response
     if (response && !response.success && !response.data) {
-      console.log('SocialService: Response is already the data object, returning directly');
       return response;
     }
     
@@ -86,7 +81,6 @@ class SocialService {
     
     // Check if response is already the data object (from interceptor) or if it's the full response
     if (response && !response.success && !response.data) {
-      console.log('SocialService: Response is already the data object, returning directly');
       return response;
     }
     

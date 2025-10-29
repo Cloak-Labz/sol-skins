@@ -61,8 +61,6 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (user) {
-      console.log('Profile: User object updated:', user);
-      console.log('Profile: User tradeUrl:', (user as any).tradeUrl);
       setFormData({
         username: user.username || "",
         email: user.email || "",
@@ -82,8 +80,6 @@ export default function ProfilePage() {
     try {
       setIsLoadingData(true);
       
-      console.log('Profile: Loading dashboard data, walletAddress:', walletAddress);
-      
       // Load all dashboard data in parallel
       const [
         inventoryData,
@@ -99,26 +95,23 @@ export default function ProfilePage() {
 
       // Set inventory summary
       if (inventoryData.status === 'fulfilled' && inventoryData.value) {
-        console.log('Profile: Inventory data received:', inventoryData.value);
         setInventorySummary(inventoryData.value);
       } else {
-        console.log('Profile: Inventory data failed:', inventoryData);
+        // ignore
       }
 
       // Set recent transactions (now using activity data)
       if (transactionsData.status === 'fulfilled') {
-        console.log('Profile: Activity data received:', transactionsData.value);
         setRecentTransactions(transactionsData.value || []);
       } else {
-        console.log('Profile: Activity data failed:', transactionsData);
+        // ignore
       }
 
       // Set recent case openings
       if (caseOpeningsData.status === 'fulfilled') {
-        console.log('Profile: Case openings data received:', caseOpeningsData.value);
         setRecentCaseOpenings(caseOpeningsData.value.data || []);
       } else {
-        console.log('Profile: Case openings data failed:', caseOpeningsData);
+        // ignore
       }
 
       // Set transaction summary
@@ -127,7 +120,6 @@ export default function ProfilePage() {
       }
 
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
       toast.error('Failed to load some dashboard data');
     } finally {
       setIsLoadingData(false);
@@ -176,18 +168,12 @@ export default function ProfilePage() {
         return;
       }
 
-      console.log('Profile: Updating profile with:', updates);
       await authService.updateProfile(updates);
-      
-      console.log('Profile: Refreshing user after update');
       await refreshUser();
-      
-      console.log('Profile: User after refresh:', user);
 
       toast.success("Profile updated successfully!");
       setIsEditing(false);
     } catch (err) {
-      console.error("Failed to update profile:", err);
       toast.error(
         err instanceof Error ? err.message : "Failed to update profile"
       );

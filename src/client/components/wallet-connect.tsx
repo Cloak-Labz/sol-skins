@@ -32,33 +32,24 @@ export function WalletConnect() {
 
       // Prevent rapid reconnection attempts (debounce)
       if (now - lastAttemptRef.current < 2000) {
-        console.log(
-          "Skipping connection attempt - too soon after last attempt"
-        );
         return;
       }
 
       lastAttemptRef.current = now;
       connectingRef.current = true;
 
-      console.log("Wallet connected, connecting to backend:", walletAddress);
-
       // Connect to backend with timeout
       const timeout = setTimeout(() => {
-        console.warn("Backend connection timeout");
         connectingRef.current = false;
       }, 10000); // 10s timeout
 
       connectWallet(walletAddress)
         .then(() => {
           clearTimeout(timeout);
-          console.log("Wallet connected successfully to backend");
           toast.success("Wallet connected!");
         })
         .catch((error) => {
           clearTimeout(timeout);
-          console.error("Failed to connect wallet to backend:", error);
-
           // Don't show error if it's just a network issue on devnet
           if (
             error.message?.includes("Network") ||
@@ -84,7 +75,6 @@ export function WalletConnect() {
       await disconnectWallet();
       toast.success("Wallet disconnected");
     } catch (error) {
-      console.error("Failed to disconnect wallet:", error);
       toast.error("Failed to disconnect wallet");
     }
   };

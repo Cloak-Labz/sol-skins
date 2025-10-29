@@ -42,7 +42,6 @@ export class SolanaProgramService {
         currentBatch: 0 // Default fallback
       };
     } catch (error) {
-      console.error('Error fetching global state:', error);
       throw error;
     }
   }
@@ -62,13 +61,11 @@ export class SolanaProgramService {
       const program = this.program(provider);
       
       const batchAccount = await program.account.batch.fetch(batchPDA);
-      console.log('Batch account data:', batchAccount);
       
       return {
         priceSol: batchAccount.priceSol.toNumber()
       };
     } catch (error) {
-      console.error('Error fetching batch info:', error);
       throw error;
     }
   }
@@ -103,25 +100,18 @@ export class SolanaProgramService {
   }
 
   private program(provider: AnchorProvider): Program {
-    console.log('Creating program with IDL:', this.idl);
-    console.log('Program ID from IDL:', this.idl.address);
-    console.log('IDL keys:', Object.keys(this.idl));
-    console.log('IDL instructions:', this.idl.instructions);
+    // Creating Anchor program instance
     
     try {
       // Try the new Anchor 0.31.x constructor format
       const program = new Program(this.idl, provider);
-      console.log('Program created successfully with new format');
       return program;
     } catch (error) {
-      console.error('Error creating program with new format:', error);
       try {
         // Fallback to old format
         const program = new Program(this.idl, this.programId, provider);
-        console.log('Program created successfully with old format');
         return program;
       } catch (fallbackError) {
-        console.error('Error creating program with old format:', fallbackError);
         throw fallbackError;
       }
     }
@@ -136,8 +126,6 @@ export class SolanaProgramService {
     const batchInfo = await this.getBatchInfo(params.batchId);
     const paymentAmount = batchInfo.priceSol;
     
-    console.log('Fetched batch info:', batchInfo);
-    console.log('Payment amount being sent:', paymentAmount);
 
     const [global] = this.getGlobalPDA();
     const [batch] = this.getBatchPDA(params.batchId);
@@ -254,16 +242,6 @@ export class SolanaProgramService {
     // Use a mock collection for now (can be made optional later)
     const collection = new PublicKey('11111111111111111111111111111111');
 
-    console.log('Reveal and claim accounts:', {
-      globalState: global.toString(),
-      batch: batch.toString(),
-      boxState: box.toString(),
-      asset: asset.publicKey.toString(),
-      collection: collection.toString(),
-      user: wallet.publicKey.toString(),
-      coreProgram: CORE_PROGRAM_ID.toString()
-    });
-
     try {
       const sig = await program.methods
         .revealAndClaim()
@@ -282,7 +260,6 @@ export class SolanaProgramService {
 
       return { signature: sig, asset: asset.publicKey.toBase58() };
     } catch (error) {
-      console.error('Reveal and claim error details:', error);
       throw error;
     }
   }
@@ -309,17 +286,6 @@ export class SolanaProgramService {
     const CORE_PROGRAM_ID = new PublicKey('CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d');
     const collection = new PublicKey('11111111111111111111111111111111');
 
-    console.log('Combined open pack accounts:', {
-      globalState: global.toString(),
-      batch: batch.toString(),
-      boxState: box.toString(),
-      vrfPending: vrfPending.toString(),
-      asset: asset.publicKey.toString(),
-      collection: collection.toString(),
-      user: wallet.publicKey.toString(),
-      treasury: params.treasury.toString(),
-      coreProgram: CORE_PROGRAM_ID.toString()
-    });
 
     try {
       // Build transaction with all 3 instructions
@@ -337,14 +303,6 @@ export class SolanaProgramService {
       // Get batch price from blockchain
       const batchInfo = await this.getBatchInfo(params.batchId);
       const paymentAmount = batchInfo.priceSol;
-      
-      console.log('💰 Payment Details:', {
-        batchId: params.batchId,
-        paymentAmount: paymentAmount,
-        paymentInSOL: paymentAmount / 1_000_000_000,
-        from: wallet.publicKey.toString(),
-        to: params.treasury.toString()
-      });
 
       const openTx = await program.methods
         .openBox(new BN(params.poolSize), new BN(paymentAmount))
@@ -403,12 +361,7 @@ export class SolanaProgramService {
           'confirmed'
         );
         
-        console.log('✅ Transaction confirmed:', {
-          signature: sig,
-          paymentAmount: paymentAmount,
-          paymentInSOL: paymentAmount / 1_000_000_000,
-          treasury: params.treasury.toString()
-        });
+        // Transaction confirmed
         
         return sig;
       };
@@ -425,13 +378,11 @@ export class SolanaProgramService {
         }
         // Attempt to simulate for better logs before throwing
         try {
-          const sim = await this.connection.simulateTransaction(combinedTx, { sigVerify: false });
-          console.error('Simulation logs:', sim?.value?.logs || []);
+          await this.connection.simulateTransaction(combinedTx, { sigVerify: false });
         } catch {}
         throw e;
       }
     } catch (error) {
-      console.error('Combined open pack error details:', error);
       throw error;
     }
   }

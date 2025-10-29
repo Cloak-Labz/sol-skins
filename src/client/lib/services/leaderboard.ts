@@ -28,9 +28,7 @@ class LeaderboardService {
     const queryString = params.toString();
     const url = queryString ? `/leaderboard?${queryString}` : "/leaderboard";
 
-    console.log("LeaderboardService: Making request to:", url);
     const response = await apiClient.get<LeaderboardEntry[]>(url);
-    console.log("LeaderboardService: Received response:", response);
     
     // apiClient.get already unwraps the response and returns just the data array
     return { success: true, data: response };

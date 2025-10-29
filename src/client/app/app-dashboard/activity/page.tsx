@@ -34,7 +34,6 @@ export default function ActivityPage() {
       const activities = await socialService.getRecentActivity(50);
       setActivities(activities);
     } catch (err) {
-      console.error("Failed to load activity:", err);
       toast.error("Failed to load activity feed");
     } finally {
       setLoading(false);

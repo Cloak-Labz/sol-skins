@@ -36,21 +36,10 @@ class InventoryService {
     const url = queryString ? `/inventory?${queryString}` : "/inventory";
 
     const response = await apiClient.get(url);
-    console.log("InventoryService: Received response:", response);
-    console.log("InventoryService: Response type:", typeof response);
-    console.log(
-      "InventoryService: Full response structure:",
-      JSON.stringify(response, null, 2)
-    );
-
-    // Check if response is already the data object (from interceptor) or if it's the full response
+    // If interceptor already returned unwrapped data, return it directly
     if (response && !response.success && !response.data) {
-      console.log(
-        "InventoryService: Response is already the data object, returning directly"
-      );
       return response;
     }
-
     return response.data;
   }
 
@@ -67,30 +56,18 @@ class InventoryService {
     }
 
     const response = await apiClient.get("/inventory/value");
-
-    // Check if response is already the data object (from interceptor) or if it's the full response
     if (response && !response.success && !response.data) {
-      console.log(
-        "InventoryService: Response is already the data object, returning directly"
-      );
       return response;
     }
-
     return response.data;
   }
 
   // Get specific skin details
   async getSkinDetails(skinId: string): Promise<UserSkin> {
     const response = await apiClient.get(`/inventory/${skinId}`);
-
-    // Check if response is already the data object (from interceptor) or if it's the full response
     if (response && !response.success && !response.data) {
-      console.log(
-        "InventoryService: Response is already the data object, returning directly"
-      );
       return response;
     }
-
     return response.data;
   }
 
@@ -123,14 +100,9 @@ class InventoryService {
       request
     );
 
-    // Check if response is already the data object (from interceptor) or if it's the full response
     if (response && !response.success && !response.data) {
-      console.log(
-        "InventoryService: Response is already the data object, returning directly"
-      );
       return response;
     }
-
     return response.data;
   }
 }

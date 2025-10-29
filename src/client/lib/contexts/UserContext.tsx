@@ -34,7 +34,6 @@ export function UserProvider({ children }: UserProviderProps) {
   const connectWallet = async (address: string, signature?: string, message?: string) => {
     // Prevent multiple simultaneous connection attempts
     if (isLoading) {
-      console.log('Connection already in progress, skipping...');
       return;
     }
     
@@ -42,19 +41,14 @@ export function UserProvider({ children }: UserProviderProps) {
       setIsLoading(true);
       setError(null);
       
-      console.log('Connecting wallet to backend:', address);
       const response = await authService.connectWallet(address, signature, message);
-      console.log('Backend response:', response);
       
       setUser(response.user);
       setWalletAddress(address);
       
       // Update API client with wallet address
       apiClient.setWalletAddress(address);
-      
-      console.log('Wallet connected successfully');
     } catch (err) {
-      console.error('Wallet connection error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet';
       setError(errorMessage);
       // Don't throw - just show error to user
@@ -88,16 +82,11 @@ export function UserProvider({ children }: UserProviderProps) {
     try {
       setIsLoading(true);
       setError(null);
-      
-      console.log('UserContext: Refreshing user data...');
       const userData = await authService.getProfile();
-      console.log('UserContext: Received user data:', userData);
       setUser(userData);
-      console.log('UserContext: User state updated');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load user data';
       setError(errorMessage);
-      console.error('UserContext: Error refreshing user:', err);
     } finally {
       setIsLoading(false);
     }

@@ -71,22 +71,20 @@ export default function InventoryPage() {
     const checkPendingSkin = async () => {
       try {
         if (isConnected && user?.id) {
-          console.log('Checking for pending skins with user ID:', user.id);
           
           // Fetch pending skins from API using user ID
           try {
-            console.log('Fetching pending skins for user:', user.id);
+            
             const pendingSkins = await pendingSkinsService.getPendingSkinsByUserId(user.id);
-            console.log('Pending skins from API:', pendingSkins);
+            
             if (pendingSkins.length > 0) {
-              console.log('Found pending skin in database:', pendingSkins[0]);
-              console.log('Pending skin ID:', pendingSkins[0].id);
+              
               setPendingSkin(pendingSkins[0]); // Show the first pending skin
             } else {
-              console.log('No pending skins found in database');
+              
             }
           } catch (apiError) {
-            console.error('Failed to fetch pending skins from API:', apiError);
+            
             // Fallback to localStorage
             const stored = localStorage.getItem('pendingSkin');
             if (stored) {
@@ -94,11 +92,11 @@ export default function InventoryPage() {
               // Old format stored the metadata URL in `id`. That cannot be claimed.
               const looksLikeUrl = typeof pendingSkinData.id === 'string' && /^https?:\/\//i.test(pendingSkinData.id);
               if (looksLikeUrl) {
-                console.warn('Ignoring legacy localStorage pending skin with URL id. Clearing.');
+                toast.warn('This pending record is from an older format. Please open a new pack or refresh.', { id: 'claim' });
                 localStorage.removeItem('pendingSkin');
               } else {
                 setPendingSkin(pendingSkinData);
-                console.log('Fallback: Found pending skin in localStorage:', pendingSkinData.name);
+                
               }
             }
           }
@@ -108,12 +106,12 @@ export default function InventoryPage() {
             const userProfile = await authService.getProfile();
             setUserTradeUrl(userProfile.tradeUrl || null);
           } catch (profileError) {
-            console.log('Could not fetch user profile, will try again later:', profileError);
+            
             // Don't fail the whole process if profile fetch fails
           }
         }
       } catch (error) {
-        console.error('Failed to check pending skin:', error);
+        
       }
     };
 
@@ -127,8 +125,7 @@ export default function InventoryPage() {
     try {
       if (isClaiming) return;
       setIsClaiming(true);
-      console.log('Claiming pending skin:', pendingSkin);
-      console.log('Pending skin ID:', pendingSkin.id);
+      
       // Guard against legacy objects where id is a metadata URL
       if (typeof pendingSkin.id === 'string' && /^https?:\/\//i.test(pendingSkin.id)) {
         toast.error('This pending record is from an older format. Please open a new pack or refresh.', { id: 'claim' });
@@ -149,15 +146,14 @@ export default function InventoryPage() {
         walletAddress || undefined,
         userTradeUrl || undefined
       );
-      console.log('Pending skin claimed successfully:', claimedSkin.id);
-
+      
       // Clear the pending skin from state and localStorage
       setPendingSkin(null);
       localStorage.removeItem('pendingSkin');
       // Give user clear success feedback, same flow as reveal
       toast.success("Claim submitted! We'll DM you on Discord.", { id: "claim" });
     } catch (error) {
-      console.error("Failed to claim pending skin:", error);
+      
       toast.error("Failed to claim skin", { id: "claim" });
     }
     finally {
@@ -195,7 +191,7 @@ export default function InventoryPage() {
       
       setTotalValue(calculatedTotalValue);
     } catch (err) {
-      console.error("Failed to load inventory:", err);
+      
       toast.error("Failed to load inventory");
       setInventorySkins([]);
       setTotalValue(0);
@@ -277,11 +273,11 @@ export default function InventoryPage() {
     try {
       if (skin.nftMintAddress) {
         const calculation = await buybackService.calculateBuyback(skin.nftMintAddress);
-        console.log('Payout calculation response:', calculation);
+        
         setPayoutAmount(calculation?.buybackAmount || 0);
       }
     } catch (error) {
-      console.error('Failed to calculate payout:', error);
+      
       setPayoutAmount(null);
     }
   };
@@ -318,7 +314,7 @@ export default function InventoryPage() {
       // Reload inventory
       loadInventory();
     } catch (err) {
-      console.error("Failed to execute payout:", err);
+      
       toast.error(err instanceof Error ? err.message : "Failed to execute payout");
     } finally {
       setSelling(false);

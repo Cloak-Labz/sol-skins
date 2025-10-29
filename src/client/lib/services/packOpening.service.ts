@@ -136,7 +136,6 @@ export class PackOpeningService {
     const transactionData = await transactionResponse.json();
     
     if (!transactionData.success) {
-      console.warn('Failed to create pack opening transaction:', transactionData.error);
     }
 
     // Step 6: Use the skin data from the reveal service
@@ -274,7 +273,6 @@ export class PackOpeningService {
         console.warn('Failed to create pack opening transaction:', await transactionResponse.text());
       }
     } catch (error) {
-      console.warn('Failed to create pack opening transaction:', error);
     }
 
     // Then create the case opening record for activity tracking

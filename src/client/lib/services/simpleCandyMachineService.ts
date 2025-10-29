@@ -29,31 +29,19 @@ export class SimpleCandyMachineService {
 
   setWallet(wallet: any) {
     this.wallet = wallet;
-    if (wallet?.publicKey) {
-      console.log("🔗 Wallet connected:", wallet.publicKey.toBase58());
-    } else {
-      console.warn("⚠️ No wallet connected or public key not available");
-    }
+    // Wallet set for simple service (no logs)
   }
 
   async createFullCandyMachine(config: CandyMachineConfig) {
     try {
-      console.log("🚀 Creating Candy Machine using simplified approach");
+      // Creating Candy Machine using simplified approach
 
       // Generate mock signers (same approach as working test)
       const collectionMintSigner = Keypair.generate();
       const candyMachineSigner = Keypair.generate();
       const candyGuardSigner = Keypair.generate();
 
-      console.log(
-        `✅ Collection simulated: ${collectionMintSigner.publicKey.toBase58()}`
-      );
-      console.log(
-        `✅ Candy Machine simulated: ${candyMachineSigner.publicKey.toBase58()}`
-      );
-      console.log(
-        `✅ Candy Guard simulated: ${candyGuardSigner.publicKey.toBase58()}`
-      );
+      // Simulated addresses prepared
 
       // Return mock addresses (same pattern as working test)
       return {
@@ -62,14 +50,12 @@ export class SimpleCandyMachineService {
         collectionUpdateAuthority: collectionMintSigner.publicKey.toBase58(),
       };
     } catch (error) {
-      console.error("Error creating full candy machine:", error);
       throw error;
     }
   }
 
   async fetchCandyMachine(candyMachineAddress: string) {
     try {
-      console.log("Fetching candy machine:", candyMachineAddress);
       // Return mock data
       return {
         address: candyMachineAddress,
@@ -78,7 +64,6 @@ export class SimpleCandyMachineService {
         isActive: true,
       };
     } catch (error) {
-      console.error("Error fetching candy machine:", error);
       throw error;
     }
   }

@@ -72,7 +72,7 @@ export default function DashboardPage() {
                     />
                   ) : (
                     <img
-                      src="/assets/pack-card.png"
+                      src="/assets/banner2.jpg"
                       alt="pull"
                       className="w-full h-full object-cover"
                     />

@@ -34,8 +34,6 @@ export default function TestMintPage() {
       // Create UMI instance with proper RPC URL
       const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.devnet.solana.com";
       
-      console.log("Using RPC URL:", rpcUrl);
-      
       const umi = createUmi(rpcUrl);
       umi.use(walletAdapterIdentity(wallet));
       umi.use(mplCandyMachine());
@@ -46,20 +44,14 @@ export default function TestMintPage() {
       
       // Fetch Candy Machine
       const candyMachine = await fetchCandyMachine(umi, publicKey(CANDY_MACHINE_ID));
-      
-      console.log("Candy Machine fetched:", {
-        address: candyMachine.publicKey,
-        itemsRedeemed: candyMachine.itemsRedeemed,
-        itemsAvailable: candyMachine.data.itemsAvailable,
-        mintAuthority: candyMachine.mintAuthority,
-      });
+      // Candy Machine fetched successfully
       
       // Generate NFT mint signer
       const nftMint = generateSigner(umi);
       
       const { setComputeUnitLimit } = await import("@metaplex-foundation/mpl-toolbox");
       
-      console.log("Sending mint transaction...");
+      // Sending mint transaction...
       const mintResult = await transactionBuilder()
         .add(setComputeUnitLimit(umi, { units: 800_000 }))
         .add(
@@ -76,15 +68,14 @@ export default function TestMintPage() {
         )
         .sendAndConfirm(umi, { confirm: { commitment: 'confirmed' } });
 
-      console.log("Mint transaction result:", mintResult);
+      // Mint transaction result ready
 
       const result = {
         nftMint: nftMint.publicKey.toString(),
         signature: Buffer.from(mintResult.signature).toString('base64'),
       };
 
-      console.log("✅ Minted NFT:", result);
-      console.log("🔗 Check on explorer:", `https://solana.fm/address/${result.nftMint}?cluster=devnet-solana`);
+      // Minted NFT result prepared
       setMintedNFT(result);
 
       toast.success("NFT minted successfully!", { id: "mint" });
@@ -109,13 +100,11 @@ export default function TestMintPage() {
 
       if (revealData.success) {
         toast.success(`Revealed: ${revealData.data.skinName} (${revealData.data.skinRarity})!`, { id: "reveal" });
-        console.log("✅ NFT Revealed:", revealData.data);
       } else {
         toast.error(revealData.error?.message || "Failed to reveal NFT. Try again in a few seconds.", { id: "reveal" });
       }
 
     } catch (error: any) {
-      console.error("Minting failed:", error);
       toast.error(error.message || "Failed to mint NFT", { id: "mint" });
     } finally {
       setMinting(false);
@@ -148,12 +137,10 @@ export default function TestMintPage() {
       }
 
       toast.success(`Buyback: ${calcData.data.buybackAmount} SOL`, { id: "buyback" });
-      console.log("Buyback calculation:", calcData.data);
 
       toast.loading("Requesting buyback transaction...", { id: "buyback-tx" });
       
       const walletAddress = wallet.publicKey.toBase58();
-      console.log("Sending buyback request with wallet:", walletAddress);
       
       const txResponse = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/buyback/request`,
@@ -208,16 +195,14 @@ export default function TestMintPage() {
 
       const confirmData = await confirmResponse.json();
 
-      if (confirmData.success) {
+    if (confirmData.success) {
         toast.success("NFT successfully bought back!", { id: "buyback-confirm" });
-        console.log("Buyback confirmed:", confirmData.data);
         setMintedNFT(null);
       } else {
         toast.error(confirmData.error?.message || "Failed to confirm buyback", { id: "buyback-confirm" });
       }
 
     } catch (error: any) {
-      console.error("Buyback failed:", error);
       toast.error(error.message || "Failed to buyback NFT");
     }
   };

@@ -22,8 +22,7 @@ class IrysService {
         size: result.size || 0,
       };
     } catch (error) {
-      console.error('Irys upload failed:', error);
-      throw new Error(`Failed to upload metadata to Irys: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error('Failed to upload metadata to Irys');
     }
   }
 
@@ -35,8 +34,7 @@ class IrysService {
       const promises = metadataList.map(metadata => this.uploadMetadata(metadata));
       return await Promise.all(promises);
     } catch (error) {
-      console.error('Irys batch upload failed:', error);
-      throw new Error(`Failed to upload metadata batch to Irys: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw new Error('Failed to upload metadata batch to Irys');
     }
   }
 }

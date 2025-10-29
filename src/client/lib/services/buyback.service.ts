@@ -48,7 +48,6 @@ class BuybackService {
       const response = await apiClient.post<BuybackRequestResponse>('/buyback/request', {
         nftMint,
       });
-      console.log('Request buyback response:', response);
       return response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to request buyback';
@@ -81,7 +80,6 @@ class BuybackService {
 
       return signature;
     } catch (error: any) {
-      console.error('Error signing/sending buyback transaction:', error);
       toast.error('Failed to send transaction');
       throw error;
     }
@@ -99,7 +97,6 @@ class BuybackService {
         txSignature,
         nftMint,
       });
-      console.log('Confirm buyback response:', response);
       return response;
     } catch (error: any) {
       const message = error.response?.data?.message || 'Failed to confirm buyback';
@@ -116,7 +113,6 @@ class BuybackService {
       const response = await apiClient.get<BuybackStatus>('/buyback/status');
       return response;
     } catch (error: any) {
-      console.error('Error fetching buyback status:', error);
       throw error;
     }
   }
@@ -129,10 +125,8 @@ class BuybackService {
       const response = await apiClient.get<BuybackCalculation>(
         `/buyback/calculate/${nftMint}`
       );
-      console.log('Buyback calculation response:', response);
       return response;
     } catch (error: any) {
-      console.error('Error calculating buyback:', error);
       throw error;
     }
   }
@@ -145,7 +139,6 @@ class BuybackService {
       const response = await apiClient.get<BuybackHistoryRecord[]>('/buyback/history');
       return response;
     } catch (error: any) {
-      console.error('Error fetching buyback history:', error);
       return [];
     }
   }

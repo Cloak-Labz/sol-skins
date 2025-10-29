@@ -95,12 +95,10 @@ export default function PacksPage() {
       const data = await response.json();
 
       if (!data.success) {
-        console.warn("Failed to fetch box skin distribution:", data.error);
         return DEFAULT_ODDS;
       }
 
       const distribution = data.data;
-      console.log("Box skin distribution:", distribution);
 
       // Convert distribution to odds format
       const totalSkins = Object.values(distribution).reduce(
@@ -109,7 +107,6 @@ export default function PacksPage() {
       );
 
       if (totalSkins === 0) {
-        console.warn("No skins found in box distribution");
         return DEFAULT_ODDS;
       }
 
@@ -141,10 +138,8 @@ export default function PacksPage() {
         },
       ];
 
-      console.log("Calculated real odds from box skins:", odds);
       return odds;
     } catch (error) {
-      console.error("Error calculating real odds:", error);
       return DEFAULT_ODDS;
     }
   };
@@ -201,7 +196,6 @@ export default function PacksPage() {
         setSelectedPack(boxes[0]);
       }
     } catch (error) {
-      console.error("Failed to load loot boxes:", error);
       toast.error("Failed to load packs");
     } finally {
       setLoading(false);
@@ -213,19 +207,14 @@ export default function PacksPage() {
       setLoading(true);
       setLoadingBoxes(true);
       const data = await boxesService.getActiveBoxes();
-      console.log("loadBoxes - received data:", data);
-      console.log("loadBoxes - data length:", data?.length);
       // Show all active boxes (both published and unpublished)
       const activeBoxes = Array.isArray(data) ? data : [];
       setBoxes(activeBoxes);
-      console.log("loadBoxes - boxes state set");
       // Set the first box as selected pack if none is selected
       if (activeBoxes.length > 0 && !selectedPack) {
         setSelectedPack(activeBoxes[0] as any);
-        console.log("loadBoxes - selectedPack set to:", activeBoxes[0]);
       }
     } catch (error) {
-      console.error("Failed to load boxes:", error);
       toast.error("Failed to load boxes");
     } finally {
       setLoading(false);
@@ -247,7 +236,6 @@ export default function PacksPage() {
         const userProfile = await authService.getProfile();
         setUserTradeUrl(userProfile.tradeUrl || null);
       } catch (error) {
-        console.error("Failed to fetch user profile:", error);
         setUserTradeUrl(null);
       }
     };
@@ -260,10 +248,8 @@ export default function PacksPage() {
   // Fetch a single metadata JSON and map to CSGOSkin
   const resolveSkinFromMetadata = async (uri: string): Promise<CSGOSkin> => {
     try {
-      console.log("DEBUG: Fetching metadata from URI:", uri);
       const r = await fetch(uri);
       const j = await r.json();
-      console.log("DEBUG: Raw metadata response:", j);
 
       // Unwrap API envelope { success, data }
       const md = j.success && j.data ? j.data : j;
@@ -291,10 +277,8 @@ export default function PacksPage() {
       const value = floatValue ? floatValue * 1000 : 0;
 
       const result = { id: uri, name, rarity, value, image };
-      console.log("DEBUG: Resolved skin:", result);
       return result;
     } catch (error) {
-      console.error("DEBUG: Failed to resolve metadata:", error);
       return {
         id: uri,
         name: "Mystery Skin",
@@ -382,7 +366,6 @@ export default function PacksPage() {
           null // connection will be handled by the service
         );
 
-        console.log("Pack opened successfully:", result);
         setLastPackResult({
           signature: result.signature,
           asset: result.nftMint,
@@ -446,12 +429,10 @@ export default function PacksPage() {
                   skinImage: result.skin.imageUrl || "",
                   transactionHash: result.signature,
                 });
-                console.log(
-                  "📊 Created case opening record for activity tracking"
-                );
+                // activity record created
               }
             } catch (error) {
-              console.error("Failed to create case opening record:", error);
+              // non-critical telemetry failure; ignore
             }
 
             // FASE 3: Flash + mostrar resultado (quando resultado estiver pronto)
@@ -466,18 +447,13 @@ export default function PacksPage() {
               });
             }, 300);
           } catch (error) {
-            console.error("Error processing result:", error);
             setOpeningPhase(null);
             setIsProcessing(false);
           }
         }, 8000); // 8 segundos total (6s vídeo + 2s espera)
       }
     } catch (error) {
-      console.error("Error opening pack:", error);
-      toast.error(
-        error instanceof Error ? error.message : "Failed to open pack",
-        { id: "mint" }
-      );
+      toast.error("Failed to open pack. Please try again.", { id: "mint" });
       setOpeningPhase(null);
       setIsProcessing(false);
     } finally {
@@ -500,13 +476,8 @@ export default function PacksPage() {
           transactionHash: lastPackResult.signature,
           caseOpeningId: `pack-${Date.now()}`,
         });
-        console.log("💾 Created pending skin for:", wonSkin.name);
       } catch (error: any) {
         // If pending already exists (e.g. duplicate close), don't block UX
-        console.warn(
-          "Pending creation issue (non-blocking):",
-          error?.message || error
-        );
       }
     }
 
@@ -546,10 +517,9 @@ export default function PacksPage() {
         `Buyback: ${calcData.data.buybackAmount} SOL - Requesting transaction...`,
         { id: "buyback" }
       );
-      console.log("Buyback calculation:", calcData.data);
+      // buyback calculation received
 
       const walletAddress = publicKey.toBase58();
-      console.log("Sending buyback request with wallet:", walletAddress);
 
       const txResponse = await fetch(
         `${
@@ -630,7 +600,6 @@ export default function PacksPage() {
 
         if (confirmData.success) {
           toast.success("NFT successfully bought back!", { id: "buyback" });
-          console.log("Buyback confirmed:", confirmData.data);
 
           // Show summary modal
           const packPrice = selectedPack
@@ -662,9 +631,6 @@ export default function PacksPage() {
             "NFT successfully bought back! (Transaction confirmed on-chain)",
             { id: "buyback" }
           );
-          console.log(
-            "Buyback transaction successful on-chain, proceeding despite timeout"
-          );
 
           const packPrice = selectedPack
             ? parseFloat(String((selectedPack as any).priceSol))
@@ -688,15 +654,13 @@ export default function PacksPage() {
           setLastPackResult(null);
           setShowBuybackModal(true);
         } else {
-          toast.error(`Buyback confirmation failed: ${fetchError.message}`, {
+          toast.error("Buyback confirmation failed. Please retry.", {
             id: "buyback",
           });
         }
-        console.error("Buyback confirmation error:", fetchError);
       }
     } catch (error: any) {
-      console.error("Buyback failed:", error);
-      toast.error(error.message || "Failed to buyback NFT", { id: "buyback" });
+      toast.error("Failed to buyback NFT", { id: "buyback" });
     }
   };
 
@@ -1315,7 +1279,6 @@ export default function PacksPage() {
                             toast.success("Skin claimed to inventory!");
                             setShowResult(false);
                           } catch (error) {
-                            console.error("Failed to claim skin:", error);
                             toast.error("Failed to claim skin");
                           }
                         }}

@@ -193,7 +193,6 @@ export default function PackManagerPage() {
       
       setCollectionFilesStatus(statusMap);
     } catch (error) {
-      console.error("Failed to load boxes:", error);
       toast.error("Failed to load boxes");
     } finally {
       setLoading(false);
@@ -208,7 +207,6 @@ export default function PackManagerPage() {
         setBoxSkins(data.data);
       }
       } catch (error) {
-      console.error("Failed to load box skins:", error);
       toast.error("Failed to load box skins");
     }
   };
@@ -253,7 +251,6 @@ export default function PackManagerPage() {
 
       return data.data;
       } catch (error) {
-      console.error("Failed to generate collection files:", error);
       throw error;
     }
   };
@@ -276,7 +273,6 @@ export default function PackManagerPage() {
           await generateCollectionFiles(data.data);
           toast.success("Collection files generated successfully");
         } catch (fileError) {
-          console.error("Failed to generate collection files:", fileError);
           toast.error("Box created but failed to generate collection files");
         }
         
@@ -300,7 +296,6 @@ export default function PackManagerPage() {
         throw new Error(data.error?.message || "Failed to create box");
       }
     } catch (error) {
-      console.error("Failed to create box:", error);
       toast.error("Failed to create box");
     } finally {
       setCreatingBox(false);
@@ -339,7 +334,6 @@ export default function PackManagerPage() {
         throw new Error(data.error?.message || "Failed to add skin");
       }
     } catch (error) {
-      console.error("Failed to add skin:", error);
       toast.error("Failed to add skin");
     } finally {
       setAddingSkin(false);
@@ -356,7 +350,6 @@ export default function PackManagerPage() {
       // Refresh collection files status
       loadBoxes();
     } catch (error: any) {
-      console.error("Failed to generate collection files:", error);
       toast.error(error.message || "Failed to generate collection files", { id: "generate-files" });
     }
   };
@@ -378,7 +371,6 @@ export default function PackManagerPage() {
         throw new Error("Failed to delete skin");
       }
     } catch (error) {
-      console.error("Failed to delete skin:", error);
       toast.error("Failed to delete skin");
     }
   };
@@ -499,7 +491,6 @@ export default function PackManagerPage() {
       toast.success(`Added ${validSkins.length} skins to draft!`);
       
     } catch (error) {
-      console.error("Failed to parse JSON:", error);
       toast.error(`Invalid JSON format: ${error.message}. Please check your syntax.`);
     }
   };
@@ -643,11 +634,10 @@ export default function PackManagerPage() {
         parsed = JSON.parse(cleanedJson);
       }
       
-      console.log('Parsed successfully:', parsed);
+      // parsed successfully
       toast.success(`JSON is valid! Found ${Array.isArray(parsed) ? parsed.length : 'unknown'} items`);
     } catch (error: any) {
-      toast.error(`JSON validation failed: ${error.message}`);
-      console.error("JSON validation error:", error);
+      toast.error(`JSON validation failed.`);
       
       // Offer to load clean JSON as fallback
       if (confirm("JSON parsing failed. Would you like to load the clean JSON with all 11 skins instead?")) {
@@ -689,7 +679,6 @@ export default function PackManagerPage() {
 
       toast.success(`${skin.name} uploaded to Arweave successfully!`, { id: `upload-${skinId}` });
     } catch (error) {
-      console.error("Failed to upload to Arweave:", error);
       toast.error(`Failed to upload ${skin.name} to Arweave`, { id: `upload-${skinId}` });
     } finally {
       setUploadingToArweave(null);
@@ -726,14 +715,12 @@ export default function PackManagerPage() {
           
           toast.success(`Uploaded ${skin.name} (${i + 1}/${unuploadedSkins.length})`, { id: "upload-all" });
       } catch (error) {
-          console.error(`Failed to upload ${skin.name}:`, error);
           toast.error(`Failed to upload ${skin.name}`, { id: "upload-all" });
         }
       }
       
       toast.success(`Successfully uploaded all ${unuploadedSkins.length} skins to Arweave!`, { id: "upload-all" });
     } catch (error) {
-      console.error("Failed to upload skins:", error);
       toast.error("Failed to upload skins to Arweave", { id: "upload-all" });
     } finally {
       setUploadingToArweave(null);
@@ -803,7 +790,6 @@ export default function PackManagerPage() {
         await generateCollectionFiles(createdBox);
         toast.success("Collection files generated successfully");
       } catch (fileError) {
-        console.error("Failed to generate collection files:", fileError);
         toast.error("Box created but failed to generate collection files");
       }
 
@@ -812,7 +798,6 @@ export default function PackManagerPage() {
       setDraftSkins([]);
       loadBoxes();
     } catch (error) {
-      console.error("Failed to create box from draft:", error);
       toast.error("Failed to create box from draft");
     } finally {
       setCreatingBox(false);
@@ -844,7 +829,6 @@ export default function PackManagerPage() {
         throw new Error("Failed to delete box");
       }
     } catch (error) {
-      console.error("Failed to delete box:", error);
       toast.error("Failed to delete box");
     }
   };

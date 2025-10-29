@@ -147,10 +147,8 @@ export class MetadataService {
         throw new Error(result.error?.message || 'Failed to upload metadata to Irys');
       }
 
-      console.log('Metadata uploaded to Irys:', result.data);
       return result.data.uri;
     } catch (error) {
-      console.error('Error uploading metadata to Irys:', error);
       throw error;
     }
   }

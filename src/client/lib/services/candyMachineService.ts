@@ -57,10 +57,6 @@ export class CandyMachineService {
     this.wallet = wallet;
     if (wallet?.publicKey) {
       try {
-        console.log("🔗 Configuring Umi signer with wallet adapter");
-
-        // Use the same approach as the working test - simplified keypair approach
-        console.log("📝 Using simplified approach like in integration test");
 
         // Generate a temporary keypair for testing (same as test)
         const tempKeypair = Keypair.generate();
@@ -68,8 +64,7 @@ export class CandyMachineService {
 
         // Set the temporary keypair as the signer identity for Umi
         this.umi.use(signerIdentity(umiKeypair));
-        console.log("✅ Temporary keypair configured as Umi signer");
-        console.log("📝 Using same approach as working integration test");
+        // Temporary keypair configured as Umi signer
 
         return; // Skip the complex wallet adapter integration for now
 
@@ -84,7 +79,7 @@ export class CandyMachineService {
             return signature;
           },
           signTransaction: async (transaction: any) => {
-            console.log("Signing Umi transaction with wallet adapter");
+            // Signing Umi transaction with wallet adapter
 
             try {
               // Try to use the transaction as-is first (some wallets support Umi format)
@@ -111,7 +106,7 @@ export class CandyMachineService {
 
               return await wallet.signTransaction(web3Transaction);
             } catch (error) {
-              console.error("Failed to sign Umi transaction:", error);
+              // Signing Umi transaction failed; attempt fallbacks
 
               // As a last resort, try to create a minimal transaction
               try {
@@ -131,10 +126,7 @@ export class CandyMachineService {
 
                 return await wallet.signTransaction(minimalTransaction);
               } catch (fallbackError) {
-                console.error(
-                  "Fallback transaction also failed:",
-                  fallbackError
-                );
+                // Fallback transaction also failed
                 throw new Error(
                   "Unable to sign transaction with current wallet. Please ensure your wallet supports the required transaction format."
                 );
@@ -142,9 +134,7 @@ export class CandyMachineService {
             }
           },
           signAllTransactions: async (transactions: any[]) => {
-            console.log(
-              "Signing batch of Umi transactions with wallet adapter"
-            );
+            // Signing batch of Umi transactions with wallet adapter
             try {
               const { Transaction } = await import("@solana/web3.js");
               const web3Transactions = transactions.map((transaction) => {
@@ -168,7 +158,6 @@ export class CandyMachineService {
 
               return await wallet.signAllTransactions(web3Transactions);
             } catch (error) {
-              console.error("Failed to sign batch of Umi transactions:", error);
               throw new Error(
                 "Unable to sign batch transactions with current wallet."
               );
@@ -178,13 +167,12 @@ export class CandyMachineService {
 
         // Set the wallet as the signer identity for Umi
         this.umi.use(signerIdentity(umiSigner));
-        console.log("✅ Wallet configured as Umi signer");
+        // Wallet configured as Umi signer
       } catch (error) {
-        console.error("❌ Failed to configure wallet as Umi signer:", error);
         throw error;
       }
     } else {
-      console.warn("⚠️ No wallet connected or public key not available");
+      // No wallet connected or public key not available
     }
   }
 
@@ -237,7 +225,6 @@ export class CandyMachineService {
         metadataUri,
       };
     } catch (error) {
-      console.error("Error creating collection NFT:", error);
       throw error;
     }
   }
@@ -297,7 +284,6 @@ export class CandyMachineService {
         txSignature: result.signature,
       };
     } catch (error) {
-      console.error("Error creating candy machine:", error);
       throw error;
     }
   }
@@ -310,31 +296,20 @@ export class CandyMachineService {
       );
       return candyMachine;
     } catch (error) {
-      console.error("Error fetching candy machine:", error);
       throw error;
     }
   }
 
   async createFullCandyMachine(config: CandyMachineConfig) {
     try {
-      console.log(
-        "🚀 Creating Candy Machine using simplified approach (like integration test)"
-      );
+      // Creating Candy Machine using simplified approach (like integration test)
 
       // Generate mock signers (same approach as working test)
       const collectionMintSigner = Keypair.generate();
       const candyMachineSigner = Keypair.generate();
       const candyGuardSigner = Keypair.generate();
 
-      console.log(
-        `✅ Collection simulated: ${collectionMintSigner.publicKey.toBase58()}`
-      );
-      console.log(
-        `✅ Candy Machine simulated: ${candyMachineSigner.publicKey.toBase58()}`
-      );
-      console.log(
-        `✅ Candy Guard simulated: ${candyGuardSigner.publicKey.toBase58()}`
-      );
+      // Simulated addresses prepared
 
       // Return mock addresses (same pattern as working test)
       return {
@@ -343,7 +318,6 @@ export class CandyMachineService {
         collectionUpdateAuthority: collectionMintSigner.publicKey.toBase58(),
       };
     } catch (error) {
-      console.error("Error creating full candy machine:", error);
       throw error;
     }
   }

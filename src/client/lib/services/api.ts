@@ -25,9 +25,7 @@ class ApiClient {
     // Request interceptor to add wallet address to request body
     this.client.interceptors.request.use(
       (config) => {
-        console.log("API Request:", config.method?.toUpperCase(), config.url);
-        console.log("Request data before interceptor:", config.data);
-        console.log("Wallet address:", this.walletAddress);
+        // silent request interceptor; do not log
 
         if (this.walletAddress) {
           const url = config.url || "";
@@ -44,7 +42,6 @@ class ApiClient {
           if (config.data && method !== "get") {
             // Add wallet address to request body for POST/PUT requests
             (config.data as any).walletAddress = this.walletAddress;
-            console.log("Request data after adding wallet:", config.data);
           } else if (method === "get" && needsWalletInGetBody) {
             // Browsers ignore GET bodies; pass wallet via query string
             const currentUrl = config.url || "";
@@ -54,13 +51,11 @@ class ApiClient {
               separator +
               "walletAddress=" +
               encodeURIComponent(this.walletAddress);
-            console.log("Request url after adding wallet for GET:", config.url);
           }
         }
         return config;
       },
       (error) => {
-        console.error("Request interceptor error:", error);
         return Promise.reject(error);
       }
     );
@@ -68,15 +63,10 @@ class ApiClient {
     // Response interceptor for error handling
     this.client.interceptors.response.use(
       (response: AxiosResponse<ApiResponse<any>>) => {
-        console.log("API Response:", response.status, response.data);
         return response; // Return the full response to maintain structure
       },
       (error) => {
-        console.error(
-          "API Error:",
-          error.response?.status,
-          error.response?.data
-        );
+        // silent response errors (handled by caller)
         // Handle common errors
         if (error.response?.status === 401) {
           // Unauthorized - clear wallet session
@@ -91,7 +81,6 @@ class ApiClient {
 
   // Authentication methods
   setWalletAddress(address: string | null) {
-    console.log("Setting wallet address:", address);
     this.walletAddress = address;
   }
 
