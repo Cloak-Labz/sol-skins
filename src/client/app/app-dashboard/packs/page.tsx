@@ -789,17 +789,17 @@ export default function PacksPage() {
               />
             )}
 
-            {/* FASE 2: Vídeo com fundo preto e luzes */}
+            {/* FASE 2: Vídeo com fundo preto e efeitos de smoke */}
             {openingPhase === "video" && (
-              <div className="relative w-full h-full bg-black">
-                {/* Vídeo centralizado */}
+              <div className="relative w-full h-full bg-black overflow-hidden">
+                {/* Vídeo centralizado com cobertura total */}
                 <div className="absolute inset-0 flex items-center justify-center">
                   <video
                     ref={videoRef}
                     autoPlay
                     muted
                     loop
-                    className="w-[80%] h-[80%] object-contain"
+                    className="w-200 h-200 object-cover"
                     onEnded={() => {
                       // Vídeo em loop, não precisa fazer nada
                     }}
@@ -808,73 +808,107 @@ export default function PacksPage() {
                   </video>
                 </div>
 
-                {/* Luzes sobrepostas ao vídeo */}
+                {/* Overlay escuro para suavizar o vídeo */}
+                <div className="absolute inset-0 bg-black/30" />
+
+                {/* Efeitos de smoke/partículas que cobrem toda a tela */}
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                  {[...Array(8)].map((_, i) => (
+                  {/* Smoke particles */}
+                  {[...Array(20)].map((_, i) => (
                     <motion.div
-                      key={i}
+                      key={`smoke-${i}`}
+                      animate={{
+                        opacity: [0, 0.8, 0],
+                        scale: [0.3, 1.2, 0.3],
+                        x: [0, Math.random() * 200 - 100],
+                        y: [0, Math.random() * 200 - 100],
+                      }}
+                      transition={{
+                        duration: 3 + Math.random() * 4,
+                        repeat: Infinity,
+                        delay: i * 0.2,
+                        ease: "easeInOut",
+                      }}
+                      className="absolute w-32 h-32 rounded-full blur-2xl"
+                      style={{
+                        background: `radial-gradient(circle, rgba(255, 255, 255, 0.1), transparent)`,
+                        left: `${Math.random() * 100}%`,
+                        top: `${Math.random() * 100}%`,
+                      }}
+                    />
+                  ))}
+
+                  {/* Luzes douradas */}
+                  {[...Array(12)].map((_, i) => (
+                    <motion.div
+                      key={`light-${i}`}
                       animate={{
                         opacity: [0, 0.6, 0],
                         scale: [0.5, 1.5, 0.5],
                       }}
                       transition={{
-                        duration: 2 + Math.random() * 2,
+                        duration: 2 + Math.random() * 3,
                         repeat: Infinity,
-                        delay: i * 0.3,
+                        delay: i * 0.4,
                       }}
-                      className="absolute w-96 h-96 rounded-full blur-3xl"
+                      className="absolute w-64 h-64 rounded-full blur-3xl"
                       style={{
                         background: `radial-gradient(circle, ${
-                          i % 2 === 0
-                            ? "rgba(233, 149, 0, 0.4)"
-                            : "rgba(255, 215, 0, 0.3)"
+                          i % 3 === 0
+                            ? "rgba(233, 149, 0, 0.3)"
+                            : i % 3 === 1
+                            ? "rgba(255, 215, 0, 0.2)"
+                            : "rgba(255, 140, 0, 0.25)"
                         }, transparent)`,
                         left: `${Math.random() * 100}%`,
                         top: `${Math.random() * 100}%`,
                       }}
                     />
                   ))}
+
+                  {/* Partículas flutuantes */}
+                  {[...Array(30)].map((_, i) => (
+                    <motion.div
+                      key={`particle-${i}`}
+                      animate={{
+                        opacity: [0, 1, 0],
+                        y: [0, -100],
+                        x: [0, Math.random() * 50 - 25],
+                      }}
+                      transition={{
+                        duration: 2 + Math.random() * 2,
+                        repeat: Infinity,
+                        delay: i * 0.1,
+                        ease: "easeOut",
+                      }}
+                      className="absolute w-2 h-2 rounded-full"
+                      style={{
+                        background: `rgba(255, 215, 0, ${0.3 + Math.random() * 0.4})`,
+                        left: `${Math.random() * 100}%`,
+                        top: `${100 + Math.random() * 20}%`,
+                        boxShadow: `0 0 10px rgba(255, 215, 0, 0.5)`,
+                      }}
+                    />
+                  ))}
                 </div>
 
-                {/* Texto sobreposto durante o vídeo */}
-                <div className="absolute bottom-20 left-0 right-0 flex justify-center z-10">
+                {/* Efeito de brilho central */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 1 }}
-                    className="text-center"
-                  >
-                    <motion.h3
-                      animate={{
-                        opacity: [0.7, 1, 0.7],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                      className="text-2xl md:text-3xl font-bold text-white drop-shadow-lg"
-                      style={{
-                        textShadow:
-                          "0 0 20px rgba(0, 0, 0, 0.8), 0 0 40px rgba(233, 149, 0, 0.5)",
-                      }}
-                    >
-                      Processing Result...
-                    </motion.h3>
-                    <motion.p
-                      animate={{
-                        opacity: [0.5, 0.8, 0.5],
-                      }}
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                      className="text-lg text-[#E99500] mt-2"
-                    >
-                      Please wait while we process your reward
-                    </motion.p>
-                  </motion.div>
+                    animate={{
+                      opacity: [0.3, 0.8, 0.3],
+                      scale: [0.8, 1.2, 0.8],
+                    }}
+                    transition={{
+                      duration: 3,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="w-96 h-96 rounded-full blur-3xl"
+                    style={{
+                      background: `radial-gradient(circle, rgba(255, 215, 0, 0.2), transparent)`,
+                    }}
+                  />
                 </div>
               </div>
             )}
@@ -1245,6 +1279,14 @@ export default function PacksPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden">
+                <button
+                  type="button"
+                  aria-label="Close"
+                  onClick={handleCloseResult}
+                  className="absolute top-3 right-3 z-10 inline-flex items-center justify-center rounded-md border border-white/20 bg-black/40 text-white hover:bg-black/60 hover:border-white/30 transition-colors p-2"
+                >
+                  <X className="w-4 h-4" />
+                </button>
                 {/* Top area with bright glow */}
                 <div className="relative p-6 pb-0">
                   <div className="pointer-events-none absolute -inset-40 bg-[radial-gradient(circle,rgba(255,170,0,0.35)_0%,rgba(0,0,0,0)_60%)]" />
