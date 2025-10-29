@@ -1,5 +1,4 @@
 import { BoxRepository } from '../repositories/BoxRepository';
-import { SolanaService } from './SolanaService';
 import { logger } from '../middlewares/logger';
 import { AppError } from '../middlewares/errorHandler';
 
@@ -43,16 +42,9 @@ export interface UpdateBoxDTO {
 
 export class BoxService {
   private boxRepository: BoxRepository;
-  private solanaService: SolanaService;
 
   constructor() {
     this.boxRepository = new BoxRepository();
-    try {
-      this.solanaService = new SolanaService();
-    } catch (error) {
-      logger.warn('SolanaService not available, sync features will be limited');
-      this.solanaService = null as any;
-    }
   }
 
   async getAllBoxes(): Promise<any[]> {
@@ -186,78 +178,6 @@ export class BoxService {
     }
   }
 
-  async syncWithOnChain(batchId: number): Promise<any> {
-    try {
-      if (!this.solanaService) {
-        this.solanaService = new SolanaService();
-      }
-      // Attempt a light call to ensure initialization
-      try {
-        await this.solanaService.getGlobalState();
-      } catch (e: any) {
-        throw new AppError('Solana service not initialized', 503, 'SOLANA_SERVICE_UNINITIALIZED');
-      }
-      
-      // Get on-chain batch data
-      const onChainBatch = await this.solanaService.getBatchState(batchId);
-      if (!onChainBatch || !onChainBatch.data) {
-        throw new AppError('Batch not found on-chain', 404, 'BATCH_NOT_FOUND');
-      }
-
-      // For now, since we're using raw account data, we'll just mark as synced
-      // TODO: Parse the account data properly to get actual batch state
-      
-      // Debug: Check if box exists with this batchId
-      const existingBox = await this.boxRepository.findByBatchId(batchId);
-      logger.info('Looking for box with batchId:', { batchId, found: !!existingBox });
-      
-      const updated = await this.boxRepository.updateByBatchId(batchId, {
-        isSynced: true,
-        lastSyncedAt: new Date(),
-        syncError: null,
-      });
-
-      if (!updated) {
-        logger.error('Box not found for batchId:', { batchId });
-        throw new AppError('Box not found in database', 404, 'BOX_NOT_FOUND');
-      }
-
-      logger.info('Box synced with on-chain state:', { batchId, totalItems: onChainBatch.totalItems });
-      return updated;
-    } catch (error) {
-      if (error instanceof AppError) throw error;
-      logger.error('Error syncing box with on-chain:', error);
-      
-      // Mark as unsynced
-      await this.boxRepository.updateSyncStatus(batchId, false, (error as any).message);
-      throw new AppError('Failed to sync box with on-chain state', 500);
-    }
-  }
-
-  async syncAllBoxes(): Promise<{ synced: number; failed: number; errors: string[] }> {
-    try {
-      const boxes = await this.boxRepository.findAll();
-      let synced = 0;
-      let failed = 0;
-      const errors: string[] = [];
-
-      for (const box of boxes) {
-        try {
-          await this.syncWithOnChain(box.batchId);
-          synced++;
-        } catch (error) {
-          failed++;
-          errors.push(`Batch ${box.batchId}: ${error.message}`);
-        }
-      }
-
-      logger.info('Bulk sync completed:', { synced, failed, total: boxes.length });
-      return { synced, failed, errors };
-    } catch (error) {
-      logger.error('Error in bulk sync:', error);
-      throw new AppError('Failed to sync all boxes', 500);
-    }
-  }
 
   async deleteBox(id: string): Promise<void> {
     try {

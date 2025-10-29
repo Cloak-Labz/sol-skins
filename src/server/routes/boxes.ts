@@ -31,11 +31,7 @@ boxRoutes.post("/", boxController.createBox);
 // PUT /boxes/:id - Update box
 boxRoutes.put("/:id", boxController.updateBox);
 
-// POST /boxes/:batchId/sync - Sync box with on-chain state
-boxRoutes.post("/:batchId/sync", boxController.syncBox);
-
-// POST /boxes/sync-all - Sync all boxes with on-chain state
-boxRoutes.post("/sync-all", boxController.syncAllBoxes);
+// Removed legacy sync endpoints (on-chain sync deprecated)
 
 // DELETE /boxes/:id - Delete box
 boxRoutes.delete("/:id", boxController.deleteBox);

@@ -753,7 +753,7 @@ export default function PacksPage() {
                   <div className="mt-6">
                     <Button
                       onClick={() => setShowBuybackModal(false)}
-                      className="w-full bg-zinc-100 text-black hover:bg-[#E99500] font-bold py-6"
+                      className="w-full bg-[#E99500] text-black hover:bg-[#d88500] font-bold py-6"
                     >
                       Buy Another Pack
                     </Button>
@@ -917,7 +917,7 @@ export default function PacksPage() {
                     className={`px-6 py-6 ml-4 font-semibold rounded-lg transition-all duration-300 ${
                       selectedPack?.supply?.isSoldOut
                         ? "bg-red-500/20 text-red-400 cursor-not-allowed"
-                        : "bg-[#E99500] text-black hover:bg-[#E99500] active:bg-[#E99500]"
+                        : "bg-[#E99500] text-black hover:bg-[#d88500] active:bg-[#E99500]"
                     } ${openingPhase === "processing" ? "animate-pulse" : "hover:scale-[1.02] active:scale-[0.99]"}`}
                   >
                     {openingPhase === "processing" ? (

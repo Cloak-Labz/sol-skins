@@ -53,17 +53,10 @@ export class BoxController {
   });
 
   // POST /boxes/:id/sync - Sync box with on-chain state
-  syncBox = catchAsync(async (req: Request, res: Response) => {
-    const { batchId } = req.params;
-    const box = await this.boxService.syncWithOnChain(parseInt(batchId));
-    ResponseUtil.success(res, box);
-  });
+  // Removed on-chain sync; legacy endpoint deleted
 
   // POST /boxes/sync-all - Sync all boxes with on-chain state
-  syncAllBoxes = catchAsync(async (req: Request, res: Response) => {
-    const result = await this.boxService.syncAllBoxes();
-    ResponseUtil.success(res, result);
-  });
+  // Removed on-chain sync; legacy endpoint deleted
 
   // DELETE /boxes/:id - Delete box
   deleteBox = catchAsync(async (req: Request, res: Response) => {
