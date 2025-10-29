@@ -84,14 +84,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <img
                   src="/assets/DUST3-SVG.svg"
                   alt="Dust3"
-                  className="h-16 w-auto mx-auto animate-pulse"
+                  className="h-16 w-auto mx-auto"
                 />
               </div>
 
               {/* Title */}
-              <h2 className="text-3xl font-bold text-white mb-2">
-                Welcome to Dust3
-              </h2>
               <p className="text-zinc-400 mb-8">
                 Connect your wallet to start trading CS:GO skins
               </p>
