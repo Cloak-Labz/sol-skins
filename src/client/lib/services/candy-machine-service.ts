@@ -19,7 +19,7 @@ import {
   createCandyMachine,
   fetchCandyMachine,
 } from "@metaplex-foundation/mpl-candy-machine";
-import { MetadataService } from "./metadataService";
+import { MetadataService } from "./metadata.service";
 
 export interface CandyMachineConfig {
   name: string;

@@ -1,12 +1,13 @@
 import { apiClient } from "./api";
-import {
-  UserSkin,
-  InventorySummary,
-  InventoryFilters,
-  BuybackRequest,
-} from "../types/api";
-import { MOCK_CONFIG } from "../config/mock";
-import { mockInventoryService } from "../mocks/services";
+import { UserSkin, InventorySummary, BuybackRequest } from "../types/api";
+type InventoryFilters = {
+  search?: string;
+  sortBy?: string;
+  filterBy?: string;
+  page?: number;
+  limit?: number;
+};
+// Mocks removed for production build
 
 class InventoryService {
   // Get user inventory
@@ -20,9 +21,7 @@ class InventoryService {
       totalPages: number;
     };
   }> {
-    if (MOCK_CONFIG.ENABLE_MOCK) {
-      return mockInventoryService.getInventory(filters);
-    }
+    // Always call API (mocks removed)
 
     const params = new URLSearchParams();
 
@@ -35,12 +34,12 @@ class InventoryService {
     const queryString = params.toString();
     const url = queryString ? `/inventory?${queryString}` : "/inventory";
 
-    const response = await apiClient.get(url);
-    // If interceptor already returned unwrapped data, return it directly
-    if (response && !response.success && !response.data) {
-      return response;
-    }
-    return response.data;
+    const response = await apiClient.get<{
+      skins: UserSkin[];
+      summary: InventorySummary;
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    }>(url);
+    return response;
   }
 
   // Get inventory value
@@ -51,24 +50,20 @@ class InventoryService {
       [key: string]: number;
     };
   }> {
-    if (MOCK_CONFIG.ENABLE_MOCK) {
-      return mockInventoryService.getInventoryValue();
-    }
+    // Always call API (mocks removed)
 
-    const response = await apiClient.get("/inventory/value");
-    if (response && !response.success && !response.data) {
-      return response;
-    }
-    return response.data;
+    const response = await apiClient.get<{
+      totalValue: number;
+      totalItems: number;
+      rarityBreakdown: { [key: string]: number };
+    }>("/inventory/value");
+    return response;
   }
 
   // Get specific skin details
   async getSkinDetails(skinId: string): Promise<UserSkin> {
-    const response = await apiClient.get(`/inventory/${skinId}`);
-    if (response && !response.success && !response.data) {
-      return response;
-    }
-    return response.data;
+    const response = await apiClient.get<UserSkin>(`/inventory/${skinId}`);
+    return response;
   }
 
   // Sell skin via buyback
@@ -91,19 +86,18 @@ class InventoryService {
       status: string;
     };
   }> {
-    if (MOCK_CONFIG.ENABLE_MOCK) {
-      return mockInventoryService.sellSkin(skinId, request);
-    }
+    // Always call API (mocks removed)
 
-    const response = await apiClient.post(
+    const response = await apiClient.post<{
+      soldSkin: {
+        id: string; weapon: string; skinName: string; originalPrice: number; buybackPrice: number; buybackPercentage: number;
+      };
+      transaction: { id: string; amountUsdc: number; txHash: string; status: string };
+    }>(
       `/inventory/${skinId}/buyback`,
       request
     );
-
-    if (response && !response.success && !response.data) {
-      return response;
-    }
-    return response.data;
+    return response;
   }
 }
 

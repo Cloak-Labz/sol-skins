@@ -33,8 +33,17 @@ import { MOCK_CONFIG } from "@/lib/config/mock";
 import { UserSkin } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
 import { toast } from "react-hot-toast";
-import { pendingSkinsService, PendingSkin } from "@/lib/services/pendingSkins.service";
+import { pendingSkinsService, PendingSkin } from "@/lib/services/pending-skins.service";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+
+const pendingApi = pendingSkinsService as unknown as {
+  getPendingSkinsByUserId(userId: string): Promise<PendingSkin[]>;
+  getPendingSkinById(id: string): Promise<PendingSkin>;
+  claimPendingSkin(id: string, walletAddress?: string, tradeUrl?: string): Promise<PendingSkin>;
+  createPendingSkin(data: any): Promise<PendingSkin>;
+  deletePendingSkin(id: string): Promise<void>;
+};
+
 
 export default function InventoryPage() {
   const { isConnected, walletAddress, user } = useUser();
@@ -75,7 +84,7 @@ export default function InventoryPage() {
           // Fetch pending skins from API using user ID
           try {
             
-            const pendingSkins = await pendingSkinsService.getPendingSkinsByUserId(user.id);
+            const pendingSkins = await pendingApi.getPendingSkinsByUserId(user.id);
             
             if (pendingSkins.length > 0) {
               
@@ -92,7 +101,7 @@ export default function InventoryPage() {
               // Old format stored the metadata URL in `id`. That cannot be claimed.
               const looksLikeUrl = typeof pendingSkinData.id === 'string' && /^https?:\/\//i.test(pendingSkinData.id);
               if (looksLikeUrl) {
-                toast.warn('This pending record is from an older format. Please open a new pack or refresh.', { id: 'claim' });
+                toast.error('This pending record is from an older format. Please open a new pack or refresh.', { id: 'claim' });
                 localStorage.removeItem('pendingSkin');
               } else {
                 setPendingSkin(pendingSkinData);
@@ -141,7 +150,7 @@ export default function InventoryPage() {
       }
 
       // Claim the pending skin via API (Discord ticket will be created automatically)
-      const claimedSkin = await pendingSkinsService.claimPendingSkin(
+      const claimedSkin = await pendingApi.claimPendingSkin(
         pendingSkin.id,
         walletAddress || undefined,
         userTradeUrl || undefined

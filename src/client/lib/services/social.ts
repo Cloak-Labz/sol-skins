@@ -5,16 +5,12 @@ import {
   ActivityItem,
   LeaderboardFilters
 } from '../types/api';
-import { MOCK_CONFIG } from '../config/mock';
-import { mockLeaderboardService, mockSocialService } from '../mocks/services';
+// Mocks removed for production build
 
 class SocialService {
   // Get leaderboard
   async getLeaderboard(filters?: LeaderboardFilters): Promise<LeaderboardEntry[]> {
-    if (MOCK_CONFIG.ENABLE_MOCK) {
-      const result = await mockLeaderboardService.getLeaderboard(filters);
-      return result.data;
-    }
+    // Always call API (mocks removed)
 
     const params = new URLSearchParams();
     
@@ -25,14 +21,8 @@ class SocialService {
     const queryString = params.toString();
     const url = queryString ? `/leaderboard?${queryString}` : '/leaderboard';
     
-    const response = await apiClient.get(url);
-    
-    // Check if response is already the data array (from interceptor) or if it's the full response
-    if (Array.isArray(response)) {
-      return response;
-    }
-    
-    return response.data;
+    const response = await apiClient.get<LeaderboardEntry[]>(url);
+    return response;
   }
 
   // Get user's rank
@@ -43,21 +33,13 @@ class SocialService {
     const queryString = params.toString();
     const url = queryString ? `/leaderboard/rank?${queryString}` : '/leaderboard/rank';
     
-    const response = await apiClient.get(url);
-    
-    // Check if response is already the data object (from interceptor) or if it's the full response
-    if (response && !response.success && !response.data) {
-      return response;
-    }
-    
-    return response.data;
+    const response = await apiClient.get<UserRank>(url);
+    return response;
   }
 
   // Get recent activity
   async getRecentActivity(limit?: number): Promise<ActivityItem[]> {
-    if (MOCK_CONFIG.ENABLE_MOCK) {
-      return mockSocialService.getRecentActivity(limit || 10);
-    }
+    // Always call API (mocks removed)
 
     const params = new URLSearchParams();
     if (limit) params.append('limit', limit.toString());
@@ -77,14 +59,10 @@ class SocialService {
     recentBuybacks: number;
     topUsers: string[];
   }> {
-    const response = await apiClient.get('/activity/stats');
-    
-    // Check if response is already the data object (from interceptor) or if it's the full response
-    if (response && !response.success && !response.data) {
-      return response;
-    }
-    
-    return response.data;
+    const response = await apiClient.get<{
+      totalActivities: number; recentCaseOpenings: number; recentBuybacks: number; topUsers: string[]
+    }>(`/activity/stats`);
+    return response;
   }
 }
 

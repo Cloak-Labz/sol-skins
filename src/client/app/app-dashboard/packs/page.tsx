@@ -356,7 +356,7 @@ export default function PacksPage() {
       } else {
         // MODO REAL - Integração completa
         const { packOpeningService } = await import(
-          "@/lib/services/packOpening.service"
+          "@/lib/services/pack-opening.service"
         );
 
         // Open pack using Candy Machine

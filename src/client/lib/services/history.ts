@@ -4,8 +4,7 @@ import {
   TransactionSummary,
   TransactionFilters
 } from '../types/api';
-import { MOCK_CONFIG } from '../config/mock';
-import { mockHistoryService } from '../mocks/services';
+// Mocks removed for production build
 
 class HistoryService {
   // Get user transactions
@@ -19,10 +18,7 @@ class HistoryService {
       totalPages: number;
     };
   }> {
-    if (MOCK_CONFIG.ENABLE_MOCK) {
-      const result = await mockHistoryService.getHistory(filters);
-      return result.data;
-    }
+    // Always call API (mocks removed)
 
     const params = new URLSearchParams();
     
@@ -35,38 +31,24 @@ class HistoryService {
     const queryString = params.toString();
     const url = queryString ? `/history/transactions?${queryString}` : '/history/transactions';
     
-    const response = await apiClient.get(url);
-    
-    // Check if response is already the data object (from interceptor) or if it's the full response
-    if (response && !response.success && !response.data) {
-      return response;
-    }
-    
-    return response.data;
+    const response = await apiClient.get<{
+      transactions: Transaction[];
+      summary: TransactionSummary;
+      pagination: { page: number; limit: number; total: number; totalPages: number };
+    }>(url);
+    return response;
   }
 
   // Get specific transaction
   async getTransactionById(id: string): Promise<Transaction> {
-    const response = await apiClient.get(`/history/transactions/${id}`);
-    
-    // Check if response is already the data object (from interceptor) or if it's the full response
-    if (response && !response.success && !response.data) {
-      return response;
-    }
-    
-    return response.data;
+    const response = await apiClient.get<Transaction>(`/history/transactions/${id}`);
+    return response;
   }
 
   // Get transaction summary
   async getTransactionSummary(): Promise<TransactionSummary> {
-    const response = await apiClient.get('/history/summary');
-    
-    // Check if response is already the data object (from interceptor) or if it's the full response
-    if (response && !response.success && !response.data) {
-      return response;
-    }
-    
-    return response.data;
+    const response = await apiClient.get<TransactionSummary>('/history/summary');
+    return response;
   }
 }
 
