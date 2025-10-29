@@ -1,4 +1,4 @@
-import { apiClient } from './api'
+import { apiClient } from './api.service'
 import { LootBoxType, LootBoxTypeDetails, LootBoxFilters } from '../types/api'
 
 export class MarketplaceService {

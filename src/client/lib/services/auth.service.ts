@@ -1,4 +1,4 @@
-import { apiClient } from "./api";
+import { apiClient } from "./api.service";
 import { User, ConnectWalletRequest, UpdateProfileRequest } from "../types/api";
 
 class AuthService {

@@ -1,4 +1,4 @@
-import { apiClient } from './api';
+import { apiClient } from './api.service';
 import { Connection, Transaction, PublicKey } from '@solana/web3.js';
 import { toast } from 'react-hot-toast';
 

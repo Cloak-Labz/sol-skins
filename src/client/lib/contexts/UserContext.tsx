@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { User } from '../types/api';
 import { authService } from '../services';
-import { apiClient } from '../services/api';
+import { apiClient } from '../services/api.service';
 
 interface UserContextType {
   user: User | null;

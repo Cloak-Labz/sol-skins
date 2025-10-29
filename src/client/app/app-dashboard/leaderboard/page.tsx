@@ -12,7 +12,7 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
-import { leaderboardService } from "@/lib/services";
+import { socialService } from "@/lib/services";
 import { LeaderboardEntry, UserRank } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
 import { formatCurrency } from "@/lib/utils";
@@ -21,7 +21,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { apiClient } from "@/lib/services/api";
+import { apiClient } from "@/lib/services/api.service";
 
 export default function LeaderboardPage() {
   const { user, isConnected } = useUser();
@@ -64,15 +64,13 @@ export default function LeaderboardPage() {
   const loadLeaderboard = async () => {
     try {
       setLoading(true);
-      const data = await leaderboardService.getLeaderboard({
+      const data = await socialService.getLeaderboard({
         metric,
         period,
         limit: 50,
       });
 
-      // Handle both unwrapped array and wrapped response
-      const leaderboardData = Array.isArray(data) ? data : data.data;
-      setLeaderboard(leaderboardData);
+      setLeaderboard(data);
     } catch (error) {
       toast.error("Failed to load leaderboard");
     } finally {
@@ -82,7 +80,7 @@ export default function LeaderboardPage() {
 
   const loadUserRank = async () => {
     try {
-      const data = await leaderboardService.getUserRank(metric);
+      const data = await socialService.getUserRank(metric);
       setUserRank(data);
     } catch (error) {
       // silently ignore user rank errors to avoid noise

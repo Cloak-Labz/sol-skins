@@ -1,4 +1,4 @@
-import { apiClient } from "./api";
+import { apiClient } from "./api.service";
 import type { ActivityItem } from "../types/api";
 
 class ActivityService {

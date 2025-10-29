@@ -1,4 +1,4 @@
-import { apiClient } from './api'
+import { apiClient } from './api.service'
 import { CaseOpening, OpenCaseRequest, CaseDecisionRequest } from '../types/api'
 
 export class CasesService {

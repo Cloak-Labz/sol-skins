@@ -1,4 +1,4 @@
-import { apiClient } from "./api";
+import { apiClient } from "./api.service";
 import { UserSkin, InventorySummary, BuybackRequest } from "../types/api";
 type InventoryFilters = {
   search?: string;

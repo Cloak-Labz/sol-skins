@@ -23,7 +23,7 @@ import {
 import { useUser } from "@/lib/contexts/UserContext";
 import { discordService } from "@/lib/services/discord.service";
 import { pendingSkinsService } from "@/lib/services/pending-skins.service";
-import { apiClient } from "@/lib/services/api";
+import { apiClient } from "@/lib/services/api.service";
 import { LootBoxType } from "@/lib/types/api";
 
 interface CSGOSkin {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { boxesService, type Box } from "@/lib/services/boxes.service";
-import { activityService } from "@/lib/services/activity";
+import { activityService } from "@/lib/services/activity.service";
 import type { ActivityItem } from "@/lib/types/api";
 
 export default function DashboardPage() {
