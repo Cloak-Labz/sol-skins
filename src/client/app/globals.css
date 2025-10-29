@@ -347,7 +347,7 @@
 /* Wallet buttons */
 .wallet-adapter-modal-list button,
 .wallet-adapter-modal-list .wallet-adapter-button {
-  background: #27272a !important;
+  background: linear-gradient(to bottom, #09090b 0%, #18181b 100%) !important;
   color: #fff !important;
   border: 1px solid #3f3f46 !important;
   border-radius: 8px !important;
@@ -368,9 +368,10 @@
 
 .wallet-adapter-modal-list button:hover,
 .wallet-adapter-modal-list .wallet-adapter-button:hover {
-  background: #E99500 !important;
-  color: #000 !important;
+  background: linear-gradient(to bottom, #09090b 0%, #18181b 100%) !important;
+  color: #fff !important;
   border-color: #E99500 !important;
+  box-shadow: 0 0 15px rgba(233, 149, 0, 0.3) !important;
 }
 
 /* Wallet icons */
