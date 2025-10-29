@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
@@ -16,7 +17,7 @@ import dynamic from "next/dynamic";
 import Footer from "@/components/footer";
 
 // Dynamic import for 3D components to avoid SSR issues
-const FloatingBox = dynamic(() => import("@/components/floating-box"), {
+const FloatingBox = dynamic(() => import("@/components/FloatingBox"), {
   ssr: false,
   loading: () => (
     <div className="aspect-square bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-2xl border border-[#333] flex items-center justify-center">
@@ -150,7 +151,7 @@ export default function LandingPage() {
             >
               <div className="aspect-square rounded-2xl overflow-hidden border border-[#333]">
                 <img
-                  src="/assets/karambit.jpg"
+                  src="/image.jpg"
                   alt="CS:GO Skin Showcase"
                   className="w-full h-full object-cover"
                 />
