@@ -30,6 +30,7 @@ import {
   Box,
   Sparkles,
   Zap,
+  X,
 } from "lucide-react";
 import { inventoryService, authService, buybackService } from "@/lib/services";
 import { MOCK_CONFIG } from "@/lib/config/mock";
@@ -683,6 +684,14 @@ export default function InventoryPage() {
             </DialogHeader>
             {selectedSkin && (
               <div className="relative">
+                <button
+                  type="button"
+                  aria-label="Close"
+                  onClick={() => setIsSellingDialogOpen(false)}
+                  className="absolute top-0 right-0 z-20 inline-flex items-center justify-center rounded-full border border-white/20 bg-black/60 text-white hover:bg-black/80 hover:border-white/40 transition-colors p-2 w-8 h-8 m-4"
+                >
+                  <X className="w-4 h-4" />
+                </button>
                 {/* Top area - simple layout like before */}
                 <div className="p-6">
                   <div className="flex items-center gap-4 p-4 rounded-lg border border-zinc-800 bg-zinc-950">
@@ -759,16 +768,6 @@ export default function InventoryPage() {
                         )}
                       </Button>
                     </div>
-                  </div>
-
-                  <div className="text-center mt-4">
-                    <Button 
-                      variant="ghost" 
-                      className="text-white/70 hover:text-white" 
-                      onClick={() => setIsSellingDialogOpen(false)}
-                    >
-                      Cancel
-                    </Button>
                   </div>
                 </div>
               </div>
