@@ -84,94 +84,6 @@ const getPackGlow = (rarity?: string) => {
   }
 };
 
-// Mock skins using local assets
-const MOCK_SKINS: CSGOSkin[] = [
-  {
-    id: "1",
-    name: "AK-47 | Neon Rider",
-    rarity: "legendary",
-    value: 850.0,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "2",
-    name: "AWP | Dragon Lore",
-    rarity: "legendary",
-    value: 1200.0,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "3",
-    name: "M4A4 | Howl",
-    rarity: "epic",
-    value: 450.0,
-    image: "/assets/skins/img3.png",
-  },
-  {
-    id: "4",
-    name: "Glock-18 | Fade",
-    rarity: "rare",
-    value: 125.5,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "5",
-    name: "USP-S | Kill Confirmed",
-    rarity: "rare",
-    value: 89.99,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "6",
-    name: "Desert Eagle | Blaze",
-    rarity: "uncommon",
-    value: 45.0,
-    image: "/assets/skins/img3.png",
-  },
-  {
-    id: "7",
-    name: "P90 | Asiimov",
-    rarity: "uncommon",
-    value: 32.5,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "8",
-    name: "MAC-10 | Neon Rider",
-    rarity: "common",
-    value: 12.0,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "9",
-    name: "Karambit | Fade",
-    rarity: "legendary",
-    value: 1850.0,
-    image: "/assets/skins/img3.png",
-  },
-  {
-    id: "10",
-    name: "M4A1-S | Hyper Beast",
-    rarity: "epic",
-    value: 380.0,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "11",
-    name: "Butterfly Knife | Doppler",
-    rarity: "legendary",
-    value: 1450.0,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "12",
-    name: "AK-47 | Fire Serpent",
-    rarity: "epic",
-    value: 520.0,
-    image: "/assets/skins/img3.png",
-  },
-];
-
 // Default odds when API doesn't provide per-rarity probabilities
 const DEFAULT_ODDS: { label: string; rarity: string; pct: number }[] = [
   { label: "Legendary", rarity: "legendary", pct: 0.5 },
@@ -441,7 +353,7 @@ export default function PacksPage() {
 
     if (openingPhase || !selectedPack) return;
 
-    // FASE 1: Processing - Animação no botão
+    // FASE 1: Processing - Botão carregando na mesma tela (sem blur)
     setOpeningPhase("processing");
     setIsProcessing(true);
     setShowResult(false);
@@ -457,7 +369,7 @@ export default function PacksPage() {
 
         // Simular delay de processamento
         setTimeout(() => {
-          // FASE 2: Flash na tela
+          // FASE 2: Flash na tela quando transação confirmada
           setOpeningPhase("flash");
 
           // Após flash, iniciar vídeo
@@ -500,8 +412,6 @@ export default function PacksPage() {
         const { packOpeningService } = await import(
           "@/lib/services/packOpening.service"
         );
-
-        toast.loading("Minting NFT from Candy Machine...", { id: "mint" });
 
         // Open pack using Candy Machine
         const result = await packOpeningService.openPack(
@@ -860,9 +770,9 @@ export default function PacksPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6 overflow-hidden relative">
-      {/* Fullscreen Opening Animation */}
+      {/* Fullscreen Opening Animation - Only show after processing */}
       <AnimatePresence>
-        {openingPhase && (
+        {openingPhase && openingPhase !== "processing" && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1050,40 +960,14 @@ export default function PacksPage() {
         )}
       </AnimatePresence>
 
-      {/* Main Content (blurred when opening) */}
+      {/* Main Content (blurred when opening, but not during processing) */}
       <div
         className={`transition-all duration-500 ${
-          openingPhase ? "blur-xl pointer-events-none" : ""
+          openingPhase && openingPhase !== "processing" ? "blur-xl pointer-events-none" : ""
         }`}
       >
         {/* Main Content */}
         <div className="max-w-7xl mx-auto space-y-8">
-          {/* Test Mode Toggle */}
-          <div className="flex justify-end">
-            <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4">
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-zinc-300">
-                  {testMode ? "🧪 Test Mode" : "🔗 Live Mode"}
-                </span>
-                <button
-                  onClick={() => setTestMode(!testMode)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                    testMode
-                      ? "bg-yellow-600 text-white hover:bg-yellow-700"
-                      : "bg-green-600 text-white hover:bg-green-700"
-                  }`}
-                >
-                  {testMode ? "Switch to Live" : "Switch to Test"}
-                </button>
-              </div>
-              <p className="text-xs text-zinc-500 mt-1">
-                {testMode
-                  ? "Animation only - no blockchain interaction"
-                  : "Full integration with Solana blockchain"}
-              </p>
-            </div>
-          </div>
-
           {/* Hero */}
           <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
             <img
@@ -1227,7 +1111,7 @@ export default function PacksPage() {
                     }
                     className={`px-6 py-6 ml-4 font-semibold rounded-lg transition-all duration-300 ${
                       openingPhase === "processing"
-                        ? "bg-[#E99500] text-black animate-pulse"
+                        ? "bg-zinc-100 text-black animate-pulse"
                         : openingPhase
                         ? "bg-zinc-700 cursor-not-allowed"
                         : selectedPack?.supply?.isSoldOut
@@ -1375,9 +1259,9 @@ export default function PacksPage() {
                     <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[80%] h-32 bg-gradient-to-t from-[#E99500]/20 to-transparent blur-xl" />
 
                     {/* Skin Image - Centered and elevated */}
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+                    <div className="absolute pt-15 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
                       {wonSkin.image === "icon-fallback" ? (
-                        <ImageIcon className="h-48 w-48 text-white/30 drop-shadow-[0_0_50px_rgba(255,140,0,0.8)]" />
+                        <ImageIcon className="h-40 w-40 text-white/30 drop-shadow-[0_0_50px_rgba(255,140,0,0.8)]" />
                       ) : (
                         <img
                           src={wonSkin.image}
