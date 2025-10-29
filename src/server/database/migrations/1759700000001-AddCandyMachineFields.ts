@@ -26,3 +26,5 @@ export class AddCandyMachineFields1759700000001 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "boxes" DROP COLUMN "candyGuard"`);
     }
 }
+
+

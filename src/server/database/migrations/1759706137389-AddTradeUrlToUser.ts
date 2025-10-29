@@ -12,3 +12,5 @@ export class AddTradeUrlToUser1759706137389 implements MigrationInterface {
     }
 
 }
+
+

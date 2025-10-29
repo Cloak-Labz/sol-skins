@@ -14,3 +14,5 @@ export class AddSupplyFields1759703710859 implements MigrationInterface {
     }
 
 }
+
+

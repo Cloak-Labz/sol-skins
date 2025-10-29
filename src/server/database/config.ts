@@ -1,5 +1,5 @@
 import { DataSource } from "typeorm";
-import { config } from "./env";
+import { config } from "../config/env";
 import { User } from "../entities/User";
 import { LootBoxType } from "../entities/LootBoxType";
 import { SkinTemplate } from "../entities/SkinTemplate";
@@ -12,13 +12,9 @@ import { UserSession } from "../entities/UserSession";
 import { SkinListing } from "../entities/SkinListing";
 import { SteamInventory } from "../entities/SteamInventory";
 import { Inventory } from "../entities/Inventory";
-import { Box } from "../entities/Box";
-import { BoxSkin } from "../entities/BoxSkin";
-import { Metadata } from "../entities/Metadata";
-import { PendingSkin } from "../entities/PendingSkin";
-import { BuybackRecord } from "../entities/BuybackRecord";
 
-export const AppDataSource = new DataSource({
+// DataSource for TypeORM CLI (migrations)
+export default new DataSource({
   type: "postgres",
   host: config.database.host,
   port: config.database.port,
@@ -40,22 +36,9 @@ export const AppDataSource = new DataSource({
     SkinListing,
     SteamInventory,
     Inventory,
-    Box,
-    BoxSkin,
-    Metadata,
-    PendingSkin,
-    BuybackRecord,
   ],
   migrations: ["src/server/database/migrations/*{.ts,.js}"],
-  // subscribers: ["src/server/database/subscribers/*{.ts,.js}"],
+  subscribers: ["src/server/database/subscribers/*{.ts,.js}"],
 });
 
-export const initializeDatabase = async (): Promise<void> => {
-  try {
-    await AppDataSource.initialize();
-    console.log("✅ Database connection established successfully");
-  } catch (error) {
-    console.error("❌ Error during database initialization:", error);
-    throw error;
-  }
-};
+
