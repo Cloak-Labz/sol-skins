@@ -13,7 +13,7 @@ function HeaderComponent() {
   };
 
   return (
-    <header className="fixed top-0 right-0 left-64 h-16 bg-[#0a0a0a] border-b border-[#1a1a1a] flex items-center justify-between px-6 z-40">
+    <header className="app-header fixed top-0 right-0 left-64 h-16 bg-[#0a0a0a] border-b border-[#1a1a1a] flex items-center justify-between px-6 z-40">
       <button
         onClick={handleBack}
         className="p-2 text-[#999] hover:text-white transition-colors"

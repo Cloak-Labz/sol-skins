@@ -83,7 +83,7 @@ function SidebarComponent() {
   ];
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col">
+    <aside className="app-sidebar fixed left-0 top-0 h-full w-64 bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-[#1a1a1a]">
         <Link href="/app-dashboard" className="flex items-center gap-2">

@@ -118,6 +118,18 @@ export default function PacksPage() {
   const [buybackAmountSol, setBuybackAmountSol] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const shouldHideSidebar = (openingPhase !== null && openingPhase !== "processing") || showResult;
+
+  useEffect(() => {
+    if (shouldHideSidebar) {
+      document.documentElement.classList.add("sidebar-hidden");
+    } else {
+      document.documentElement.classList.remove("sidebar-hidden");
+    }
+    return () => {
+      document.documentElement.classList.remove("sidebar-hidden");
+    };
+  }, [shouldHideSidebar]);
 
   
   // Toggle para testar animação sem integração

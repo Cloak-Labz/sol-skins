@@ -427,3 +427,16 @@ button, [role="button"] {
   position: relative;
   z-index: 30;
 }
+
+/* Hide sidebar and reset layout when opening/reveal overlays are active */
+.sidebar-hidden .app-sidebar {
+  display: none !important;
+}
+.sidebar-hidden .app-main {
+  margin-left: 0 !important;
+}
+
+/* Make header full-width when sidebar hidden */
+.sidebar-hidden .app-header {
+  left: 0 !important;
+}
