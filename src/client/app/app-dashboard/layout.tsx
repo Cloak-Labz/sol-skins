@@ -3,7 +3,6 @@
 import { useWallet } from "@solana/wallet-adapter-react";
 import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
-import Footer from "@/components/footer";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useState, useEffect } from "react";
 
@@ -110,7 +109,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Header />
       <main className="app-main ml-64 pt-16 min-h-screen flex flex-col relative z-10">
         <div className="flex-1 relative z-10">{children}</div>
-        <Footer />
       </main>
     </div>
   );

@@ -53,13 +53,13 @@ export default function Footer() {
                 Help Center
               </Link>
               <Link
-                href="#"
+                href="/terms"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Terms of Service
               </Link>
               <Link
-                href="#"
+                href="/privacy"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Privacy Policy
