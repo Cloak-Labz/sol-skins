@@ -499,7 +499,7 @@ export default function InventoryPage() {
                         </div>
                     </div>
                   }
-                  className="h-48"
+                  className="h-auto"
                 />
               </div>
             </div>
@@ -512,11 +512,12 @@ export default function InventoryPage() {
             <div className="flex items-center gap-2 mb-4">
               <h3 className="text-lg font-semibold text-orange-200">Owned Skins</h3>
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+            {/* Full-page scroll; grid flows naturally */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8 auto-rows-auto">
             {filteredSkins.map((skin) => (
               <div
                 key={skin.id}
-                className="group relative transition-transform duration-200 hover:scale-[1.015] cursor-pointer"
+                className="group relative transition-transform duration-200 hover:-translate-y-0.5 cursor-pointer"
                 onClick={() => setSelectedSkin(skin)}
               >
                 <NeonCard
@@ -597,20 +598,20 @@ export default function InventoryPage() {
                       <div className="mt-6">
                         <Button
                           size="sm"
-                          className="w-full bg-orange-500 hover:bg-orange-600 text-black text-xs font-black uppercase tracking-wide"
+                          className="w-full bg-[#FE9310] hover:bg-[#F2840E] text-black text-xs font-black uppercase tracking-wide"
                           style={{ fontFamily: "monospace" }}
                           onClick={(e) => {
                             e.stopPropagation();
                             handleSellSkin(skin);
                           }}
                         >
-                          <Coins className="w-3 h-3 mr-1" />
+                          <Zap className="w-8 h-8 text-black fill-black" />
                           Take Payout
                         </Button>
                       </div>
                     </div>
                   }
-                  className="h-48"
+                  className="h-auto"
                 />
               </div>
             ))}
