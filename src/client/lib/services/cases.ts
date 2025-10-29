@@ -1,7 +1,5 @@
 import { apiClient } from './api'
 import { CaseOpening, OpenCaseRequest, CaseDecisionRequest } from '../types/api'
-import { MOCK_CONFIG } from '../config/mock'
-import { mockLootBoxService } from '../mocks/services'
 
 export class CasesService {
   async openCase(request: OpenCaseRequest): Promise<{
@@ -14,20 +12,6 @@ export class CasesService {
       estimatedCompletionTime: string
     }
   }> {
-    if (MOCK_CONFIG.ENABLE_MOCK) {
-      const mockResult = await mockLootBoxService.openLootBox(request.lootBoxTypeId);
-      return {
-        success: true,
-        data: {
-          caseOpeningId: 'mock-case-' + Date.now(),
-          nftMintAddress: mockResult.data.skin.mintAddress,
-          vrfRequestId: 'mock-vrf-' + Date.now(),
-          transactionId: mockResult.data.transaction,
-          estimatedCompletionTime: new Date(Date.now() + 5000).toISOString()
-        }
-      };
-    }
-
     const data = await apiClient.post<{
       caseOpeningId: string
       nftMintAddress: string

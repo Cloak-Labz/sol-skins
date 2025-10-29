@@ -29,7 +29,6 @@ import {
   X,
 } from "lucide-react";
 import { inventoryService, authService, buybackService } from "@/lib/services";
-import { MOCK_CONFIG } from "@/lib/config/mock";
 import { UserSkin } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
 import { toast } from "react-hot-toast";
@@ -65,7 +64,7 @@ export default function InventoryPage() {
 
   // Load inventory from backend
   useEffect(() => {
-    if (isConnected || MOCK_CONFIG.ENABLE_MOCK) {
+    if (isConnected) {
       loadInventory();
     } else {
       // Not connected - clear data and stop loading

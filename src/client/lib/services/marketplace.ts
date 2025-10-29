@@ -1,7 +1,5 @@
 import { apiClient } from './api'
 import { LootBoxType, LootBoxTypeDetails, LootBoxFilters } from '../types/api'
-import { MOCK_CONFIG } from '../config/mock'
-import { mockLootBoxService } from '../mocks/services'
 
 export class MarketplaceService {
   async getLootBoxes(filters: LootBoxFilters = {}): Promise<{
@@ -14,10 +12,6 @@ export class MarketplaceService {
       totalPages: number
     }
   }> {
-    if (MOCK_CONFIG.ENABLE_MOCK) {
-      return mockLootBoxService.getLootBoxes();
-    }
-
     const params = new URLSearchParams()
 
     if (filters.search) params.append('search', filters.search)
@@ -36,10 +30,6 @@ export class MarketplaceService {
     success: boolean
     data: LootBoxTypeDetails
   }> {
-    if (MOCK_CONFIG.ENABLE_MOCK) {
-      return mockLootBoxService.getLootBox(id);
-    }
-
     const data = await apiClient.get<LootBoxTypeDetails>(`/marketplace/loot-boxes/${id}`)
 
     // apiClient.get returns the inner data directly, so wrap it in the expected format
