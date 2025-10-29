@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { NeonCard } from "@/components/neon-card";
 import {
   Select,
   SelectContent,
@@ -439,96 +440,48 @@ export default function InventoryPage() {
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               <div className="group relative transition-transform duration-200 hover:scale-[1.015] cursor-pointer">
-                {/* Card Template Background */}
-                <div className="relative w-full h-full rounded-lg overflow-hidden">
-                  <img
-                    src="/assets/card.jpeg"
-                    alt="Skin Card Template"
-                    className="w-full h-full object-cover"
-                  />
-                  
-                  {/* Top Section - Skin Name, Rarity and Status */}
-                  <div className="absolute top-5 left-6 right-4 h-23 w-52 bg-black/20 rounded-lg backdrop-blur-sm border border-yellow-400/30 p-3">
-                    <div className="h-full flex flex-col justify-between">
+                <NeonCard
+                  topContent={
+                    <div className="flex flex-col justify-between h-full">
                       {/* Skin Name */}
                       <h3 className="text-yellow-400 font-bold text-sm mb-2 truncate">
                         {pendingSkin.skinName}
                       </h3>
-                      
-                      {/* Rarity and Status */}
+                      {/* Rarity Badge */}
                       <div className="flex items-center justify-between">
-                        <Badge
-                          className="bg-yellow-500/20 text-yellow-200 border-yellow-500/30 text-xs px-2 py-1"
-                        >
+                        <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-400/30 text-xs px-2 py-1">
                           {pendingSkin.skinRarity}
                         </Badge>
-                        <Badge
-                          variant="outline"
-                          className="text-xs bg-yellow-400/20 text-yellow-400 border-yellow-400/50"
-                        >
+                        <div className="text-yellow-400 text-xs font-semibold">
                           PENDING
-                        </Badge>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Bottom Section - Skin Image and Stats */}
-                  <div className="absolute bottom-6 left-6 right-4 h-78 w-52 bg-black/30 rounded-lg backdrop-blur-sm border border-yellow-400/30 p-4">
-                    <div className="h-full flex flex-col">
-                      {/* Skin Image */}
-                      <div className="flex items-center justify-center h-20 mb-3">
-                        <img
-                          src={pendingSkin.skinImage}
-                          alt={pendingSkin.skinName}
-                          className="max-h-16 max-w-16 object-contain"
-                        />
-                      </div>
-
-                      {/* Skin Stats */}
-                      <div className="space-y-1 flex-1 pt-10">
-                        <div className="flex justify-between items-center">
-                          <span className="text-yellow-300 text-xs">Value:</span>
-                          <span className="text-yellow-400 text-sm font-bold">
-                            ${Number(pendingSkin.skinValue).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-yellow-300 text-xs">Status:</span>
-                          <span className="text-yellow-400 text-xs font-semibold">
-                            Awaiting Claim
-                          </span>
                         </div>
                       </div>
-
-                      {/* Claim Button */}
-                      <div className="mt-2">
-                        {userTradeUrl ? (
-                          <Button
-                            size="sm"
-                            disabled={isClaiming}
-                            className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:opacity-70 text-black text-xs font-semibold"
-                            onClick={claimPendingSkin}
-                          >
-                            <Sparkles className="w-3 h-3 mr-1" />
-                            {isClaiming ? 'Claiming...' : 'Claim Skin'}
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            disabled
-                            className="w-full bg-gray-600 text-gray-300 text-xs font-semibold"
-                          >
-                            <Lock className="w-3 h-3 mr-1" />
-                            Steam URL Required
-                          </Button>
-                        )}
+                    </div>
+                  }
+                  bottomContent={
+                    <div className="space-y-1 flex-1 pt-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-yellow-300 text-xs">Weapon:</span>
+                        <span className="text-yellow-400 text-xs font-semibold">
+                          {pendingSkin.skinWeapon}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-yellow-300 text-xs">Value:</span>
+                        <span className="text-yellow-400 text-sm font-bold">
+                          ${pendingSkin.skinValue?.toFixed(2) || '0.00'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-yellow-300 text-xs">Status:</span>
+                        <span className="text-yellow-400 text-xs">
+                          Awaiting Confirmation
+                        </span>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Hover Overlay (don't block clicks) */}
-                  <div className="absolute inset-0 bg-yellow-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg pointer-events-none" />
-                </div>
+                  }
+                  className="h-40"
+                />
               </div>
             </div>
           </div>
@@ -547,22 +500,13 @@ export default function InventoryPage() {
                 className="group relative transition-transform duration-200 hover:scale-[1.015] cursor-pointer"
                 onClick={() => setSelectedSkin(skin)}
               >
-                {/* Card Template Background */}
-                <div className="relative w-full h-full rounded-lg overflow-hidden">
-                  <img
-                    src="/assets/card.jpeg"
-                    alt="Skin Card Template"
-                    className="w-full h-full object-cover"
-                  />
-                  
-                  {/* Top Section - Skin Name, Rarity and Status */}
-                  <div className="absolute top-5 left-6 right-4 h-23 w-52 bg-black/20 rounded-lg backdrop-blur-sm border border-orange-400/30 p-3">
-                    <div className="h-full flex flex-col justify-between">
+                <NeonCard
+                  topContent={
+                    <div className="flex flex-col justify-between h-full">
                       {/* Skin Name */}
                       <h3 className="text-orange-400 font-bold text-sm mb-2 truncate">
                         {skin.name}
                       </h3>
-                      
                       {/* Rarity and Status */}
                       <div className="flex items-center justify-between">
                         <Badge
@@ -580,26 +524,24 @@ export default function InventoryPage() {
                         </Badge>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Bottom Section - Skin Image and Stats */}
-                  <div className="absolute bottom-6 left-6 right-4 h-78 w-52 bg-black/30 rounded-lg backdrop-blur-sm border border-orange-400/30 p-4">
-                    <div className="h-full flex flex-col">
+                  }
+                  bottomContent={
+                    <div className="space-y-1 flex-1 pt-2">
                       {/* Skin Image */}
-                      <div className="flex items-center justify-center h-20 mb-3">
+                      <div className="flex items-center justify-center h-8 mb-10 mt-2">
                         {skin.imageUrl ? (
                           <img
                             src={skin.imageUrl}
                             alt={skin.name}
-                            className="max-h-16 max-w-16 object-contain"
+                            className="max-h-8 max-w-8 object-contain"
                           />
                         ) : (
-                          <Package className="w-12 h-12 text-orange-400" />
+                          <Package className="w-6 h-6 text-orange-400" />
                         )}
                       </div>
 
                       {/* Skin Stats */}
-                      <div className="space-y-1 flex-1 pt-10">
+                      <div className="space-y-1 flex-1">
                         <div className="flex justify-between items-center">
                           <span className="text-orange-300 text-xs">Wear:</span>
                           <span className="text-orange-400 text-xs font-semibold">
@@ -641,11 +583,9 @@ export default function InventoryPage() {
                         </Button>
                       </div>
                     </div>
-                  </div>
-
-                  {/* Hover Overlay (don't block clicks) */}
-                  <div className="absolute inset-0 bg-orange-400/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg pointer-events-none" />
-                </div>
+                  }
+                  className="h-40"
+                />
               </div>
             ))}
             </div>
