@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/sidebar";
 import { Header } from "@/components/header";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useState, useEffect } from "react";
+import Footer from "@/components/footer";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { connected } = useWallet();
