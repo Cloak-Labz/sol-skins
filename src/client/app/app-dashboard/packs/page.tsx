@@ -1185,14 +1185,46 @@ export default function PacksPage() {
                   {/* Skin Display Area - Inspired by the reference image */}
                   <div className="relative w-full h-[180px] md:h-[200px] rounded-lg overflow-hidden bg-black">
                     {/* Background with central light effect */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black via-gray-900 to-black" />
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center_bottom,rgba(255,140,0,0.2)_0%,rgba(0,0,0,0)_70%)]" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-black via-orange-950/50 to-black" />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center_bottom,rgba(233,149,0,0.35)_0%,rgba(0,0,0,0)_70%)]" />
+
+                    {/* Subtle floating particles (inside only this rectangle) */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                      {Array.from({ length: 18 }).map((_, i) => (
+                        <motion.div
+                          key={`reveal-p-${i}`}
+                          initial={{
+                            opacity: 0,
+                            y: 40 + Math.random() * 40,
+                            x: Math.random() * 100,
+                            scale: 0.6 + Math.random() * 0.8,
+                          }}
+                          animate={{
+                            opacity: [0, 0.9, 0],
+                            y: ["0%", "-140%"],
+                          }}
+                          transition={{
+                            duration: 2 + Math.random() * 2.5,
+                            repeat: Infinity,
+                            delay: Math.random() * 1.5,
+                            ease: "easeOut",
+                          }}
+                          className="absolute w-1.5 h-1.5 rounded-full"
+                          style={{
+                            left: `${Math.random() * 100}%`,
+                            bottom: `${Math.random() * 10}%`,
+                            boxShadow: "0 0 10px rgba(233,149,0,0.5)",
+                            background: "rgba(233,149,0,0.85)",
+                          }}
+                        />
+                      ))}
+                    </div>
 
                     {/* Central light platform effect */}
                     <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[65%] h-14 bg-gradient-to-t from-[#E99500]/15 to-transparent blur-md" />
 
                     {/* Skin Image - Centered and elevated */}
-                    <div className="absolute pt-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center">
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pt-10">
                       {wonSkin.image === "icon-fallback" ? (
                         <ImageIcon className="h-24 w-24 md:h-28 md:w-28 text-white/30 drop-shadow-[0_0_30px_rgba(255,140,0,0.5)]" />
                       ) : (
@@ -1213,7 +1245,7 @@ export default function PacksPage() {
                         {wonSkin.name.split(" | ")[0]}
                         <span className="text-white/60 mx-1">|</span>
                         {wonSkin.name.split(" | ")[1] ||
-                          wonSkin.rarity.toUpperCase()}
+                           wonSkin.rarity.toUpperCase()}
                       </h1>
                       <p
                         className="text-[11px] md:text-xs lg:text-sm font-bold text-[#E99500] uppercase tracking-wide"
