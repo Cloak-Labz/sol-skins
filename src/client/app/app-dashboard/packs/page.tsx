@@ -82,8 +82,6 @@ export default function PacksPage() {
   }, [shouldHideSidebar]);
 
   
-  // Toggle para testar animação sem integração
-  const [testMode, setTestMode] = useState(false); // Mude para false para integração real
 
   // Calculate real odds from box skins in database
   const calculateRealOdds = async (boxId: string) => {
@@ -292,7 +290,7 @@ export default function PacksPage() {
   // Auto-buyback removed by request
 
   const handleOpenPack = async () => {
-    if (!testMode && !connected) {
+    if (!connected) {
       toast.error("Connect your wallet first!");
       return;
     }
@@ -309,51 +307,7 @@ export default function PacksPage() {
       if (isOpeningRef.current) return;
       isOpeningRef.current = true;
 
-      if (testMode) {
-        // MODO TESTE - Apenas animação
-        toast.loading("Testing animation...", { id: "mint" });
-
-        // Simular delay de processamento
-        setTimeout(() => {
-          // FASE 2: Flash na tela quando transação confirmada
-          setOpeningPhase("flash");
-
-          // Após flash, iniciar vídeo
-          setTimeout(() => {
-            setOpeningPhase("video");
-            // Vídeo fica em loop até o resultado estar pronto
-          }, 500); // 500ms para o flash
-
-          // Simular resultado após 8 segundos
-          setTimeout(() => {
-            const testSkin: CSGOSkin = {
-              id: "test",
-              name: "AK-47 | Test Skin",
-              rarity: "legendary",
-              value: 1000,
-              image: "/assets/skins/img2.png",
-            };
-
-            setWonSkin(testSkin);
-            setLastPackResult({
-              signature: "test-signature",
-              asset: "test-asset",
-            });
-
-            // FASE 3: Flash + mostrar resultado (quando resultado estiver pronto)
-            setOpeningPhase("flash");
-            setTimeout(() => {
-              setShowResult(true);
-              setOpeningPhase(null);
-              setIsProcessing(false);
-              toast.success(`You won ${testSkin.name}!`, {
-                icon: "🎉",
-                duration: 4000,
-              });
-            }, 300);
-          }, 8000); // 8 segundos total
-        }, 1000); // 1 segundo de processamento simulado
-      } else {
+      {
         // MODO REAL - Integração completa
         const { packOpeningService } = await import(
           "@/lib/services/pack-opening.service"
@@ -974,11 +928,7 @@ export default function PacksPage() {
                     ) : (
                       <>
                         <span className="mr-2 ml-2">
-                          {selectedPack?.supply?.isSoldOut
-                            ? "Sold Out"
-                            : testMode
-                            ? "Test Animation"
-                            : "Open Pack"}
+                          {selectedPack?.supply?.isSoldOut ? "Sold Out" : "Open Pack"}
                         </span>
                         <svg
                           className="w-4 h-4"
