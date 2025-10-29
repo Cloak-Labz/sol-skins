@@ -56,78 +56,50 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Gate access: show blurred homepage-like background with a modal to connect
+  // Gate access: show blurred current page background with a modal to connect
   if (!connected) {
     return (
-      <div className="relative min-h-screen bg-black overflow-hidden">
-        {/* Background hero (acts like homepage preview) */}
-        <div className="pointer-events-none select-none">
-          <div className="absolute inset-0 opacity-20">
-            <img
-              src="/dust3.jpeg"
-              alt="Dust3 background"
-              className="w-full h-full object-cover"
-            />
-          </div>
-
-          <div className="relative z-0 px-6 md:px-10 py-16 md:py-24">
-            <div className="max-w-6xl mx-auto">
-              <div className="flex items-center gap-4 mb-8">
-                <img
-                  src="/assets/DUST3-SVG.svg"
-                  alt="Dust3"
-                  className="h-10 w-auto"
-                />
-                <h1 className="text-2xl md:text-3xl font-bold text-white">
-                  Discover and Trade CS:GO Skins on Solana
-                </h1>
-              </div>
-
-              {/* Mock marketplace strip */}
-              <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3 opacity-80">
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <div
-                    key={i}
-                    className="aspect-square rounded-lg bg-muted/40 border border-border backdrop-blur flex items-center justify-center text-xs text-muted-foreground"
-                  >
-                    Preview Item #{i + 1}
-                  </div>
-                ))}
-              </div>
-            </div>
+      <div className="relative min-h-screen bg-[#0a0a0a] overflow-hidden">
+        {/* Show the actual dashboard content as background */}
+        <div className="pointer-events-none select-none opacity-30 blur-sm">
+          <div className="relative">
+            <Sidebar />
+            <Header />
+            <main className="ml-64 pt-16 min-h-screen flex flex-col relative z-10">
+              <div className="flex-1 relative z-10">{children}</div>
+              <Footer />
+            </main>
           </div>
         </div>
 
-        {/* Blur and darken the entire background when modal is open */}
-        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10" />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-10" />
 
         {/* Centered modal */}
         <div className="fixed inset-0 z-20 flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-card/80 backdrop-blur-xl shadow-xl">
-            <div className="p-6 flex flex-col items-center text-center">
-              <div className="flex items-center gap-3 mb-4 justify-center">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 shadow-2xl animate-slide-up">
+            <div className="p-8 flex flex-col items-center text-center">
+              {/* Logo */}
+              <div className="mb-6">
                 <img
                   src="/assets/DUST3-SVG.svg"
                   alt="Dust3"
-                  className="h-8 w-auto"
+                  className="h-16 w-auto mx-auto animate-pulse"
                 />
-                <h2 className="text-xl font-semibold text-foreground">
-                  Connect Wallet
-                </h2>
               </div>
 
-              <p className="text-sm text-muted-foreground">
-                Connect your Solana wallet to access trading, inventory and
-                rewards.
+              {/* Title */}
+              <h2 className="text-3xl font-bold text-white mb-2">
+                Welcome to Dust3
+              </h2>
+              <p className="text-zinc-400 mb-8">
+                Connect your wallet to start trading CS:GO skins
               </p>
 
-              <div className="mt-6">
-                <WalletMultiButton className="w-full !bg-[#E99500] hover:!bg-[#c77f00] !text-black !font-bold !h-11 !rounded-lg !transition-all !duration-300" />
+              {/* Connect Button */}
+              <div className="w-full">
+                <WalletMultiButton className="w-full !bg-[#E99500] hover:!bg-[#c77f00] !text-black !font-bold !h-12 !rounded-lg !transition-all !duration-300 !text-lg" />
               </div>
-
-              <p className="mt-6 text-xs text-muted-foreground text-center">
-                Preview shown is mock data. Your assets load after connecting.
-              </p>
             </div>
           </div>
         </div>
