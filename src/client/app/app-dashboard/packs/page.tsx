@@ -207,8 +207,9 @@ export default function PacksPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
+  
   // Toggle para testar animação sem integração
-  const [testMode, setTestMode] = useState(false); // Modo real ativado
+  const [testMode, setTestMode] = useState(false); // Mude para false para integração real
 
   // Calculate real odds from box skins in database
   const calculateRealOdds = async (boxId: string) => {
@@ -1057,6 +1058,32 @@ export default function PacksPage() {
       >
         {/* Main Content */}
         <div className="max-w-7xl mx-auto space-y-8">
+          {/* Test Mode Toggle */}
+          <div className="flex justify-end">
+            <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4">
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-zinc-300">
+                  {testMode ? "🧪 Test Mode" : "🔗 Live Mode"}
+                </span>
+                <button
+                  onClick={() => setTestMode(!testMode)}
+                  className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                    testMode
+                      ? "bg-yellow-600 text-white hover:bg-yellow-700"
+                      : "bg-green-600 text-white hover:bg-green-700"
+                  }`}
+                >
+                  {testMode ? "Switch to Live" : "Switch to Test"}
+                </button>
+              </div>
+              <p className="text-xs text-zinc-500 mt-1">
+                {testMode
+                  ? "Animation only - no blockchain interaction"
+                  : "Full integration with Solana blockchain"}
+              </p>
+            </div>
+          </div>
+
           {/* Hero */}
           <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
             <img
@@ -1218,6 +1245,8 @@ export default function PacksPage() {
                         <span className="mr-2 ml-2">
                           {selectedPack?.supply?.isSoldOut
                             ? "Sold Out"
+                            : testMode
+                            ? "Test Animation"
                             : "Open Pack"}
                         </span>
                         <svg
