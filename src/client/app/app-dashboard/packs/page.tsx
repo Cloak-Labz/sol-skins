@@ -1047,14 +1047,10 @@ export default function PacksPage() {
                       selectedPack?.supply?.isSoldOut
                     }
                     className={`px-6 py-6 ml-4 font-semibold rounded-lg transition-all duration-300 ${
-                      openingPhase === "processing"
-                        ? "bg-zinc-100 text-black animate-pulse"
-                        : openingPhase
-                        ? "bg-zinc-700 cursor-not-allowed"
-                        : selectedPack?.supply?.isSoldOut
+                      selectedPack?.supply?.isSoldOut
                         ? "bg-red-500/20 text-red-400 cursor-not-allowed"
-                        : "bg-zinc-100 text-black hover:bg-white hover:scale-[1.02] active:scale-[0.99]"
-                    }`}
+                        : "bg-[#E99500] text-black hover:bg-[#E99500] active:bg-[#E99500]"
+                    } ${openingPhase === "processing" ? "animate-pulse" : "hover:scale-[1.02] active:scale-[0.99]"}`}
                   >
                     {openingPhase === "processing" ? (
                       <>
