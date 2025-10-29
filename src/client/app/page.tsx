@@ -1,6 +1,5 @@
 "use client";
 
-import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
@@ -16,7 +15,7 @@ import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 
 // Dynamic import for 3D components to avoid SSR issues
-const FloatingBox = dynamic(() => import("@/components/FloatingBox"), {
+const FloatingBox = dynamic(() => import("@/components/floating-box"), {
   ssr: false,
   loading: () => (
     <div className="aspect-square bg-gradient-to-br from-[#1a1a1a] to-[#0a0a0a] rounded-2xl border border-[#333] flex items-center justify-center">

@@ -6,9 +6,6 @@ import {
   Zap,
   Loader2,
   Lock,
-  Package,
-  Gem,
-  Crown,
   X,
   ImageIcon,
 } from "lucide-react";

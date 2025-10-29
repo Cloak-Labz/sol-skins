@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { boxesService, type Box } from "@/lib/services/boxes.service";
 import { activityService } from "@/lib/services/activity";
 import type { ActivityItem } from "@/lib/types/api";
-// Using keyboard emoticon instead of an icon
 
 export default function DashboardPage() {
   const [pulls, setPulls] = useState<ActivityItem[]>([]);

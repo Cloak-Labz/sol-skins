@@ -7,7 +7,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,25 +15,15 @@ import { authService, inventoryService, historyService, casesService, socialServ
 import { ActivityItem } from "@/lib/types/api";
 import { toast } from "react-hot-toast";
 import {
-  ArrowLeft,
   Loader2,
   User,
-  Mail,
-  Wallet,
   Calendar,
-  TrendingUp,
   Package,
   Lock,
   DollarSign,
-  Trophy,
   Activity,
   BarChart3,
   Clock,
-  Eye,
-  Star,
-  Zap,
-  Target,
-  Award,
   TrendingDown,
   TrendingUp as TrendingUpIcon,
 } from "lucide-react";

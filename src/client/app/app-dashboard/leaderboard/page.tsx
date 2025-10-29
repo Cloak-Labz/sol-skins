@@ -19,7 +19,6 @@ import { formatCurrency } from "@/lib/utils";
 import {
   Loader2,
   TrendingUp,
-  Info,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { apiClient } from "@/lib/services/api";

@@ -20,7 +20,6 @@ export const metadata: Metadata = {
   title: "Dust3 - Where CS skins meet Web3 fairness",
   description:
     "Unbox CS:GO skins on-chain. Provably fair, backed by real inventory, instant liquidity.",
-  generator: "v0.app",
 };
 
 export default function RootLayout({

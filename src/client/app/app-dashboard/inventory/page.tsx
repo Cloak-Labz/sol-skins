@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { NeonCard } from "@/components/neon-card";
 import {
@@ -23,13 +22,9 @@ import {
 import {
   Search,
   Filter,
-  Coins,
-  ExternalLink,
   Package,
   Loader2,
   Lock,
-  Box,
-  Sparkles,
   Zap,
   X,
 } from "lucide-react";
@@ -38,8 +33,6 @@ import { MOCK_CONFIG } from "@/lib/config/mock";
 import { UserSkin } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
 import { toast } from "react-hot-toast";
-import { formatCurrency } from "@/lib/utils";
-import { discordService } from "@/lib/services/discord.service";
 import { pendingSkinsService, PendingSkin } from "@/lib/services/pendingSkins.service";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 
@@ -78,19 +71,19 @@ export default function InventoryPage() {
     const checkPendingSkin = async () => {
       try {
         if (isConnected && user?.id) {
-          console.log('🔍 Checking for pending skins with user ID:', user.id);
+          console.log('Checking for pending skins with user ID:', user.id);
           
           // Fetch pending skins from API using user ID
           try {
-            console.log('🔍 Fetching pending skins for user:', user.id);
+            console.log('Fetching pending skins for user:', user.id);
             const pendingSkins = await pendingSkinsService.getPendingSkinsByUserId(user.id);
-            console.log('📦 Pending skins from API:', pendingSkins);
+            console.log('Pending skins from API:', pendingSkins);
             if (pendingSkins.length > 0) {
-              console.log('🔄 Found pending skin in database:', pendingSkins[0]);
-              console.log('🔄 Pending skin ID:', pendingSkins[0].id);
+              console.log('Found pending skin in database:', pendingSkins[0]);
+              console.log('Pending skin ID:', pendingSkins[0].id);
               setPendingSkin(pendingSkins[0]); // Show the first pending skin
             } else {
-              console.log('📭 No pending skins found in database');
+              console.log('No pending skins found in database');
             }
           } catch (apiError) {
             console.error('Failed to fetch pending skins from API:', apiError);
@@ -105,7 +98,7 @@ export default function InventoryPage() {
                 localStorage.removeItem('pendingSkin');
               } else {
                 setPendingSkin(pendingSkinData);
-                console.log('🔄 Fallback: Found pending skin in localStorage:', pendingSkinData.name);
+                console.log('Fallback: Found pending skin in localStorage:', pendingSkinData.name);
               }
             }
           }
@@ -134,8 +127,8 @@ export default function InventoryPage() {
     try {
       if (isClaiming) return;
       setIsClaiming(true);
-      console.log('🎯 Claiming pending skin:', pendingSkin);
-      console.log('🎯 Pending skin ID:', pendingSkin.id);
+      console.log('Claiming pending skin:', pendingSkin);
+      console.log('Pending skin ID:', pendingSkin.id);
       // Guard against legacy objects where id is a metadata URL
       if (typeof pendingSkin.id === 'string' && /^https?:\/\//i.test(pendingSkin.id)) {
         toast.error('This pending record is from an older format. Please open a new pack or refresh.', { id: 'claim' });
@@ -156,7 +149,7 @@ export default function InventoryPage() {
         walletAddress || undefined,
         userTradeUrl || undefined
       );
-      console.log('✅ Pending skin claimed successfully:', claimedSkin.id);
+      console.log('Pending skin claimed successfully:', claimedSkin.id);
 
       // Clear the pending skin from state and localStorage
       setPendingSkin(null);
