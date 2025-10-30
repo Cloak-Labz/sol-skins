@@ -16,6 +16,7 @@ import { pendingSkinsService } from "@/lib/services/pending-skins.service";
 import { apiClient } from "@/lib/services/api.service";
 import { LootBoxType } from "@/lib/types/api";
 import XIconPng from "@/public/assets/x_icon.png";
+import { useRouter } from "next/navigation";
 
 interface CSGOSkin {
   id: string;
@@ -346,14 +347,15 @@ export default function PacksPage() {
   // Auto-buyback removed by request
 
   const handleOpenPack = async () => {
+    dismissOpenPackToast();
     if (!connected) {
-      toast.error("Connect your wallet first!");
+      openPackToastIdRef.current = toast.error("Connect your wallet first!");
       return;
     }
 
     // Require Steam Trade URL before allowing opening
     if (!userTradeUrl || userTradeUrl.trim() === "") {
-      toast.error("Set your Steam Trade URL in Profile to open packs.");
+      openPackToastIdRef.current = toast.error("Set your Steam Trade URL in Profile to open packs.");
       return;
     }
 
@@ -501,12 +503,8 @@ export default function PacksPage() {
         }, 8000); // 8 segundos total (6s vídeo + 2s espera)
       }
     } catch (error: any) {
-      const msg = error?.message || "Failed to open pack. Please try again.";
-      if (process.env.NODE_ENV !== "production") {
-        toast.error(`Failed to open pack: ${msg}`);
-      } else {
-        toast.error("Failed to open pack. Please try again.");
-      }
+      dismissOpenPackToast();
+      openPackToastIdRef.current = toast.error(`Failed to open pack: ${error?.message || "Please try again."}`);
       setOpeningPhase(null);
       setIsProcessing(false);
     } finally {
@@ -532,7 +530,8 @@ export default function PacksPage() {
     }
 
     try {
-      const loadingToast = toast.loading("Calculating buyback amount...");
+      dismissBuybackToast();
+      buybackToastIdRef.current = toast.loading("Calculating buyback amount...");
 
       // Calculate buyback amount
       const calcResponse = await fetch(
@@ -543,13 +542,13 @@ export default function PacksPage() {
       const calcData = await calcResponse.json();
 
       if (!calcData.success) {
-        toast.dismiss(loadingToast);
-        toast.error("Failed to calculate buyback");
+        dismissBuybackToast();
+        buybackToastIdRef.current = toast.error("Failed to calculate buyback");
         return;
       }
 
-      toast.dismiss(loadingToast);
-      toast.loading(
+      dismissBuybackToast();
+      buybackToastIdRef.current = toast.loading(
         `Buyback: ${calcData.data.buybackAmount} SOL - Requesting transaction...`
       );
       // buyback calculation received
@@ -575,14 +574,16 @@ export default function PacksPage() {
       const txData = await txResponse.json();
 
       if (!txData.success) {
-        toast.error("Failed to create buyback transaction");
+        dismissBuybackToast();
+        buybackToastIdRef.current = toast.error("Failed to create buyback transaction");
         return;
       }
 
       const transaction = txData.data.transaction;
 
       if (!signTransaction) {
-        toast.error("Wallet does not support signing transactions.");
+        dismissBuybackToast();
+        buybackToastIdRef.current = toast.error("Wallet does not support signing transactions.");
         return;
       }
 
@@ -591,11 +592,13 @@ export default function PacksPage() {
         Buffer.from(transaction, "base64")
       );
 
-      toast.loading("Please sign the transaction in your wallet...");
+      dismissBuybackToast();
+      buybackToastIdRef.current = toast.loading("Please sign the transaction in your wallet...");
       const signedTx = await signTransaction(recoveredTransaction);
       const rawTransaction = signedTx.serialize();
 
-      toast.loading("Confirming buyback...");
+      dismissBuybackToast();
+      buybackToastIdRef.current = toast.loading("Confirming buyback...");
 
       // Add timeout to prevent hanging
       const controller = new AbortController();
@@ -630,12 +633,12 @@ export default function PacksPage() {
         const confirmData = await confirmResponse.json();
 
         if (confirmData.success) {
-          const txSignature = confirmData.data?.signature || confirmData.data?.txSignature || "";
-          toast.success(
+          dismissBuybackToast();
+          buybackToastIdRef.current = toast.success(
             <div className="flex flex-col gap-1">
               <p className="font-semibold text-sm">NFT successfully bought back! 💰</p>
               <a
-                href={getSolscanUrl(txSignature)}
+                href={getSolscanUrl(lastPackResult.asset)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
@@ -667,52 +670,46 @@ export default function PacksPage() {
           setLastPackResult(null);
           setShowBuybackModal(true);
         } else {
-          toast.error(
+          dismissBuybackToast();
+          buybackToastIdRef.current = toast.error(
             confirmData.error?.message || "Failed to confirm buyback"
           );
         }
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
-        if (fetchError.name === "AbortError") {
-          // Transaction was successful on-chain but backend confirmation timed out
-          // Show success message and proceed anyway
-          toast.success(
+        let fallbackDisplayed = false;
+        // txn might be on chain even if backend timed out, check Solscan with last tx/asset
+        if (lastPackResult?.asset) {
+          // Best-effort: show user fallback success + link
+          dismissBuybackToast();
+          buybackToastIdRef.current = toast.success(
             <div className="flex flex-col gap-1">
               <p className="font-semibold text-sm">NFT successfully bought back! ✅</p>
-              <p className="text-xs text-zinc-400">(Transaction confirmed on-chain)</p>
+              <p className="text-xs text-zinc-400">(Transaction confirmed on-chain or likely sent. Backend didn’t respond.)</p>
+              <a
+                href={getSolscanUrl(lastPackResult.asset)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+              >
+                View transaction on Solscan
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
             </div>,
-            {
-              duration: 6000,
-            }
+            { duration: 8000 }
           );
-
-          const packPrice = selectedPack
-            ? parseFloat(String((selectedPack as any).priceSol))
-            : 0;
-          // When timing out, use last calculated buyback if available (calcData in upper scope), otherwise 0
-          try {
-            // Best-effort: refetch last calculation quickly
-            const calcFallbackResp = await fetch(
-              `${
-                process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-              }/api/v1/buyback/calculate/${lastPackResult!.asset}`
-            );
-            const calcFallback = await calcFallbackResp.json();
-            const payout = calcFallback?.data?.buybackAmount ?? 0;
-            setBuybackAmountSol(Number(payout));
-          } catch (_) {
-            setBuybackAmountSol(0);
-          }
-          setShowResult(false);
-          setWonSkin(null);
-          setLastPackResult(null);
-          setShowBuybackModal(true);
-        } else {
-          toast.error("Buyback confirmation failed. Please retry.");
+          fallbackDisplayed = true;
+        }
+        if (!fallbackDisplayed) {
+          dismissBuybackToast();
+          buybackToastIdRef.current = toast.error(fetchError?.message || "Payout failed, and transaction did not hit the chain.");
         }
       }
     } catch (error: any) {
-      toast.error("Failed to buyback NFT");
+      dismissBuybackToast();
+      buybackToastIdRef.current = toast.error("Failed to buyback NFT");
     }
   };
 
@@ -817,6 +814,34 @@ export default function PacksPage() {
       }
     );
   };
+
+  const buybackToastIdRef = useRef<string | number | null>(null);
+  const openPackToastIdRef = useRef<string | number | null>(null);
+  const claimToastIdRef = useRef<string | number | null>(null);
+
+  const dismissBuybackToast = () => {
+    if (buybackToastIdRef.current) toast.dismiss(buybackToastIdRef.current);
+  };
+
+  const dismissOpenPackToast = () => {
+    if (openPackToastIdRef.current) toast.dismiss(openPackToastIdRef.current);
+  };
+
+  const dismissClaimToast = () => {
+    if (claimToastIdRef.current) toast.dismiss(claimToastIdRef.current);
+  };
+
+  useEffect(() => {
+    // Whenever showClaimShare changes, fire the event
+    const hide = !!showClaimShare;
+    window.dispatchEvent(new CustomEvent('topbar-visibility', { detail: { hide } }));
+    return () => {
+      // On unmount/close, force it back to visible just in case
+      window.dispatchEvent(new CustomEvent('topbar-visibility', { detail: { hide: false } }));
+    };
+  }, [showClaimShare]);
+
+  const router = useRouter();
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6 overflow-hidden relative">
@@ -1394,13 +1419,14 @@ export default function PacksPage() {
                       <Button
                         disabled={userTradeUrl === null}
                         onClick={async () => {
+                          dismissClaimToast();
                           try {
                             const userProfile = await authService.getProfile();
                             if (
                               !userProfile.tradeUrl ||
                               userProfile.tradeUrl.trim() === ""
                             ) {
-                              toast.error(
+                              claimToastIdRef.current = toast.error(
                                 "Please set your Steam Trade URL in your profile before claiming skins!"
                               );
                               return;
@@ -1435,13 +1461,13 @@ export default function PacksPage() {
                                 }
                               );
                             }
-                            toast.success("Skin claimed to inventory!");
+                            claimToastIdRef.current = toast.success("Skin claimed to inventory!");
                             // Show share option after claim
                             setClaimedSkin(wonSkin);
                             setShowClaimShare(true);
                             setShowResult(false);
                           } catch (error) {
-                            toast.error("Failed to claim skin");
+                            claimToastIdRef.current = toast.error("Failed to claim skin");
                           }
                         }}
                         className="mt-4 w-full bg-white text-black hover:bg-gray-200 font-bold"
@@ -1478,16 +1504,40 @@ export default function PacksPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden">
-                <div className="p-6">
-                  <div className="text-center">
-                    <div className="text-zinc-300 text-sm uppercase tracking-wider">
-                      Share your win
-                    </div>
-                    <div className="mt-2 text-lg font-semibold text-white">
-                      {claimedSkin.name}
+                {/* Top area (match buyback) */}
+                <div className="relative p-6 pb-0">
+                  <div className="pointer-events-none absolute -inset-40 bg-[radial-gradient(circle,rgba(255,170,0,0.3)_0%,rgba(0,0,0,0)_60%)]" />
+
+                  <div className="relative w-full h-[220px] rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
+                    <div className="text-center space-y-2">
+                      <div className="text-zinc-300 text-sm uppercase tracking-wider">
+                        Share your win
+                      </div>
+                      <div className="text-2xl md:text-3xl font-extrabold text-white break-words px-4">
+                        {claimedSkin.name}
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-6 flex gap-3">
+                </div>
+
+                {/* Bottom area (match buyback) */}
+                <div className="mt-6 p-6 bg-[#0d0d0d] border-t border-white/10">
+                  <div className="text-xs text-zinc-400 leading-relaxed mb-4">
+                    You will receive this skin via the Steam Trade URL you provided in approximately 24 hours.
+                  </div>
+
+                  <div className="mt-2 flex items-stretch gap-3">
+                    <Button
+                      onClick={() => {
+                        setShowClaimShare(false);
+                        setClaimedSkin(null);
+                        router.push("/app-dashboard/packs");
+                      }}
+                      className="flex-1 h-12 px-4 py-0 flex items-center justify-center bg-[#E99500] text-black hover:bg-[#d88500] font-bold"
+                    >
+                      Open a new pack
+                    </Button>
+
                     <a
                       href={generateXShareUrl({
                         kind: "claim",
@@ -1496,19 +1546,10 @@ export default function PacksPage() {
                       })}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-md bg-black border border-white/20 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900 transition-colors whitespace-nowrap"
+                      className="flex-1 inline-flex h-12 px-4 py-0 items-center justify-center gap-2 rounded-md bg-black border border-white/20 text-sm font-semibold text-white hover:bg-zinc-900 transition-colors whitespace-nowrap"
                     >
                       Share on <img src="/assets/x_icon.png" alt="X" className="w-5 h-5" />
                     </a>
-                    <Button
-                      onClick={() => {
-                        setShowClaimShare(false);
-                        setClaimedSkin(null);
-                      }}
-                      className="flex-1 bg-[#E99500] text-black hover:bg-[#d88500] font-bold"
-                    >
-                      Close
-                    </Button>
                   </div>
                 </div>
               </Card>
@@ -1519,3 +1560,4 @@ export default function PacksPage() {
     </div>
   );
 }
+
