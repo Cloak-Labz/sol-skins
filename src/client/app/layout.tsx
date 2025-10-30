@@ -4,7 +4,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { SolanaProvider } from "@/components/solana-provider";
 import { UserProvider } from "@/lib/contexts/UserContext";
-import { Toaster } from "react-hot-toast";
+import { Toaster } from "sonner";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -40,7 +40,8 @@ export default function RootLayout({
           <UserProvider>
             {children}
             <Toaster
-              position="top-right"
+              position="top-center"
+              theme="dark"
               toastOptions={{
                 style: {
                   background: "#1a1a1a",

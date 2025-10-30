@@ -6,7 +6,7 @@ import { Zap, Loader2, Lock, X, ImageIcon } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import { useState, useEffect, useRef } from "react";
-import { toast } from "react-hot-toast";
+import { toast } from "sonner";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { marketplaceService, boxesService, authService } from "@/lib/services";
@@ -423,10 +423,42 @@ export default function PacksPage() {
               setShowResult(true);
               setOpeningPhase(null);
               setIsProcessing(false);
-              toast.success(`You won ${winnerSkin.name}!`, {
-                icon: "🎉",
-                duration: 4000,
-              });
+
+              // Custom toast with Sonner including skin image and transaction link
+              toast.success(
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    {winnerSkin.image === "icon-fallback" ? (
+                      <div className="w-12 h-12 bg-zinc-800 rounded flex items-center justify-center">
+                        <ImageIcon className="w-6 h-6 text-zinc-400" />
+                      </div>
+                    ) : (
+                      <img
+                        src={winnerSkin.image}
+                        alt={winnerSkin.name}
+                        className="w-12 h-12 object-contain rounded"
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm">You won {winnerSkin.name}! 🎉</p>
+                    <a
+                      href={`https://solscan.io/tx/${result.signature}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+                    >
+                      View on Solscan
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>,
+                {
+                  duration: 6000,
+                }
+              );
             }, 300);
           } catch (error) {
             setOpeningPhase(null);
@@ -437,9 +469,9 @@ export default function PacksPage() {
     } catch (error: any) {
       const msg = error?.message || "Failed to open pack. Please try again.";
       if (process.env.NODE_ENV !== "production") {
-        toast.error(`Failed to open pack: ${msg}`, { id: "mint" });
+        toast.error(`Failed to open pack: ${msg}`);
       } else {
-        toast.error("Failed to open pack. Please try again.", { id: "mint" });
+        toast.error("Failed to open pack. Please try again.");
       }
       setOpeningPhase(null);
       setIsProcessing(false);
@@ -466,7 +498,7 @@ export default function PacksPage() {
     }
 
     try {
-      toast.loading("Calculating buyback amount...", { id: "buyback" });
+      const loadingToast = toast.loading("Calculating buyback amount...");
 
       // Calculate buyback amount
       const calcResponse = await fetch(
@@ -477,13 +509,14 @@ export default function PacksPage() {
       const calcData = await calcResponse.json();
 
       if (!calcData.success) {
-        toast.error("Failed to calculate buyback", { id: "buyback" });
+        toast.dismiss(loadingToast);
+        toast.error("Failed to calculate buyback");
         return;
       }
 
+      toast.dismiss(loadingToast);
       toast.loading(
-        `Buyback: ${calcData.data.buybackAmount} SOL - Requesting transaction...`,
-        { id: "buyback" }
+        `Buyback: ${calcData.data.buybackAmount} SOL - Requesting transaction...`
       );
       // buyback calculation received
 
@@ -508,16 +541,14 @@ export default function PacksPage() {
       const txData = await txResponse.json();
 
       if (!txData.success) {
-        toast.error("Failed to create buyback transaction", { id: "buyback" });
+        toast.error("Failed to create buyback transaction");
         return;
       }
 
       const transaction = txData.data.transaction;
 
       if (!signTransaction) {
-        toast.error("Wallet does not support signing transactions.", {
-          id: "buyback",
-        });
+        toast.error("Wallet does not support signing transactions.");
         return;
       }
 
@@ -526,13 +557,11 @@ export default function PacksPage() {
         Buffer.from(transaction, "base64")
       );
 
-      toast.loading("Please sign the transaction in your wallet...", {
-        id: "buyback",
-      });
+      toast.loading("Please sign the transaction in your wallet...");
       const signedTx = await signTransaction(recoveredTransaction);
       const rawTransaction = signedTx.serialize();
 
-      toast.loading("Confirming buyback...", { id: "buyback" });
+      toast.loading("Confirming buyback...");
 
       // Add timeout to prevent hanging
       const controller = new AbortController();
@@ -567,7 +596,25 @@ export default function PacksPage() {
         const confirmData = await confirmResponse.json();
 
         if (confirmData.success) {
-          toast.success("NFT successfully bought back!", { id: "buyback" });
+          toast.success(
+            <div className="flex flex-col gap-1">
+              <p className="font-semibold text-sm">NFT successfully bought back! 💰</p>
+              <a
+                href={`https://solscan.io/tx/${confirmData.data?.signature || confirmData.data?.txSignature || ""}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+              >
+                View transaction on Solscan
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            </div>,
+            {
+              duration: 6000,
+            }
+          );
 
           // Show summary modal
           const packPrice = selectedPack
@@ -586,8 +633,7 @@ export default function PacksPage() {
           setShowBuybackModal(true);
         } else {
           toast.error(
-            confirmData.error?.message || "Failed to confirm buyback",
-            { id: "buyback" }
+            confirmData.error?.message || "Failed to confirm buyback"
           );
         }
       } catch (fetchError: any) {
@@ -596,8 +642,13 @@ export default function PacksPage() {
           // Transaction was successful on-chain but backend confirmation timed out
           // Show success message and proceed anyway
           toast.success(
-            "NFT successfully bought back! (Transaction confirmed on-chain)",
-            { id: "buyback" }
+            <div className="flex flex-col gap-1">
+              <p className="font-semibold text-sm">NFT successfully bought back! ✅</p>
+              <p className="text-xs text-zinc-400">(Transaction confirmed on-chain)</p>
+            </div>,
+            {
+              duration: 6000,
+            }
           );
 
           const packPrice = selectedPack
@@ -622,13 +673,11 @@ export default function PacksPage() {
           setLastPackResult(null);
           setShowBuybackModal(true);
         } else {
-          toast.error("Buyback confirmation failed. Please retry.", {
-            id: "buyback",
-          });
+          toast.error("Buyback confirmation failed. Please retry.");
         }
       }
     } catch (error: any) {
-      toast.error("Failed to buyback NFT", { id: "buyback" });
+      toast.error("Failed to buyback NFT");
     }
   };
 
@@ -660,6 +709,47 @@ export default function PacksPage() {
       default:
         return "border-gray-400";
     }
+  };
+
+  // TEST FUNCTION - Remove this later
+  const testToast = () => {
+    const testSkin = {
+      name: "AK-47 | Redline",
+      image: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpot7HxfDhjxszJemkV09-5lpKKqPrxN7LEmyVQ7MEpiLuSrYmnjQO3-UdsZGHwddKVcFI2Ml7T_VO5xL_vhZS-tMudyXE36SYgsXiImhWpwUYbeOuVm2I/360fx360f",
+      rarity: "legendary",
+      value: 45.50
+    };
+
+    const testSignature = "5JKWJwHvN5bUbR8NCMQmJGWNqQYm9FKZvbXxHyVqZQHKhPqZGJR8NwXqHyVqZQHK";
+
+    toast.success(
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0">
+          <img
+            src={testSkin.image}
+            alt={testSkin.name}
+            className="w-12 h-12 object-contain rounded"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm">You won {testSkin.name}! 🎉</p>
+          <a
+            href={`https://solscan.io/tx/${testSignature}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+          >
+            View on Solscan
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+        </div>
+      </div>,
+      {
+        duration: 6000,
+      }
+    );
   };
 
   return (
@@ -804,6 +894,16 @@ export default function PacksPage() {
         {/* Main Content */}
         <div className="max-w-7xl mx-auto space-y-8">
           
+          {/* TEST BUTTON - Remove this later */}
+          <div className="flex justify-end mb-4">
+            <Button
+              onClick={testToast}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg"
+            >
+              🧪 Test Toast (Remove Later)
+            </Button>
+          </div>
+
           {/* Hero */}
           <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
             <img
