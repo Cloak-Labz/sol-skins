@@ -51,15 +51,22 @@ export class PackOpeningService {
 
     const box = boxData.data;
 
-    // Step 2: Mint NFT from Candy Machine using the same configuration as test-mint
+    // Step 2: Mint NFT from Candy Machine using box configuration
     const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || "https://api.devnet.solana.com";
     const umi = createUmi(rpcUrl);
     umi.use(walletAdapterIdentity(wallet));
     umi.use(mplCandyMachine());
 
-    // Use the same Candy Machine as test-mint page
-    const CANDY_MACHINE_ID = "5WDRNFjb3KNfNdXyiikUhU7pZWR2Gq9AYZQ8vFcATt1h";
-    const COLLECTION_MINT = "BBwtV8CDpp4t8KjKMgNuGiz4Hqpsv1fWbayPPLLSFfFh";
+    // Prefer server-provided values; fallback to envs if necessary
+    const CANDY_MACHINE_ID = box?.candyMachine || process.env.NEXT_PUBLIC_CANDY_MACHINE_ID;
+    const COLLECTION_MINT = box?.collectionMint || process.env.NEXT_PUBLIC_COLLECTION_MINT;
+    const COLLECTION_UPDATE_AUTHORITY = process.env.NEXT_PUBLIC_COLLECTION_UPDATE_AUTHORITY;
+    const CANDY_GUARD_ID = box?.candyGuard || process.env.NEXT_PUBLIC_CANDY_GUARD_ID;
+    const TREASURY = box?.treasuryAddress || process.env.NEXT_PUBLIC_TREASURY_ADDRESS;
+
+    if (!CANDY_MACHINE_ID) {
+      throw new Error("Candy Machine ID not configured for this box");
+    }
 
     // Fetch Candy Machine
     const candyMachine = await fetchCandyMachine(umi, publicKey(CANDY_MACHINE_ID));
@@ -71,18 +78,18 @@ export class PackOpeningService {
     // Generate NFT mint signer
     const nftMint = generateSigner(umi);
     
-    // Mint NFT using the same configuration as test-mint
+    // Mint NFT using resolved config
     const mintResult = await transactionBuilder()
       .add(setComputeUnitLimit(umi, { units: 800_000 }))
       .add(
         mintV2(umi, {
           candyMachine: candyMachine.publicKey,
-          candyGuard: candyMachine.mintAuthority,
+          candyGuard: CANDY_GUARD_ID ? publicKey(CANDY_GUARD_ID) : candyMachine.mintAuthority,
           nftMint,
-          collectionMint: candyMachine.collectionMint,
-          collectionUpdateAuthority: candyMachine.authority,
+          collectionMint: COLLECTION_MINT ? publicKey(COLLECTION_MINT) : candyMachine.collectionMint,
+          collectionUpdateAuthority: COLLECTION_UPDATE_AUTHORITY ? publicKey(COLLECTION_UPDATE_AUTHORITY) : candyMachine.authority,
           mintArgs: {
-            solPayment: some({ destination: publicKey(process.env.NEXT_PUBLIC_TREASURY_ADDRESS || "v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs") }),
+            solPayment: some({ destination: publicKey(TREASURY || "v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs") }),
           },
         })
       )

@@ -406,8 +406,13 @@ export default function PacksPage() {
           }
         }, 8000); // 8 segundos total (6s vídeo + 2s espera)
       }
-    } catch (error) {
-      toast.error("Failed to open pack. Please try again.", { id: "mint" });
+    } catch (error: any) {
+      const msg = error?.message || "Failed to open pack. Please try again.";
+      if (process.env.NODE_ENV !== 'production') {
+        toast.error(`Failed to open pack: ${msg}`, { id: "mint" });
+      } else {
+        toast.error("Failed to open pack. Please try again.", { id: "mint" });
+      }
       setOpeningPhase(null);
       setIsProcessing(false);
     } finally {
