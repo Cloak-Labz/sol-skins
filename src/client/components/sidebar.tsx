@@ -28,9 +28,13 @@ function SidebarComponent() {
 
   // Check if connected wallet is admin
   const isAdmin = useMemo(() => {
-    const adminWallet = "v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs";
-    if (publicKey) {
-      return publicKey.toBase58() === adminWallet;
+    const env = process.env.NEXT_PUBLIC_ADMIN_WALLETS || "";
+    const admins = env
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (publicKey && admins.length > 0) {
+      return admins.includes(publicKey.toBase58());
     }
     return false;
   }, [publicKey]);
