@@ -67,7 +67,6 @@ export default function PacksPage() {
   const [showClaimShare, setShowClaimShare] = useState(false);
   const [claimedSkin, setClaimedSkin] = useState<CSGOSkin | null>(null);
   const [hideTradePrompt, setHideTradePrompt] = useState(false);
-  const [pendingCount, setPendingCount] = useState<number>(0);
 
   useEffect(() => {
     if (shouldHideSidebar) {
@@ -197,22 +196,6 @@ export default function PacksPage() {
     loadBoxes(); // Load boxes from database
   }, []);
 
-  // Fetch pending skins count for this user to surface a banner on packs page
-  useEffect(() => {
-    const fetchPending = async () => {
-      try {
-        if (connected && user?.id) {
-          const list = await pendingSkinsService.getUserPendingSkins(user.id);
-          setPendingCount(Array.isArray(list) ? list.length : 0);
-        } else {
-          setPendingCount(0);
-        }
-      } catch {
-        setPendingCount(0);
-      }
-    };
-    fetchPending();
-  }, [connected, user?.id]);
 
   // Calculate real odds when pack is selected
   useEffect(() => {
@@ -331,6 +314,12 @@ export default function PacksPage() {
   const handleOpenPack = async () => {
     if (!connected) {
       toast.error("Connect your wallet first!");
+      return;
+    }
+
+    // Require Steam Trade URL before allowing opening
+    if (!userTradeUrl || userTradeUrl.trim() === "") {
+      toast.error("Set your Steam Trade URL in Profile to open packs.");
       return;
     }
 
@@ -460,31 +449,6 @@ export default function PacksPage() {
   };
 
   const handleCloseResult = async () => {
-    // If user closes modal without buying back, create pending skin
-    if (lastPackResult && wonSkin && walletCtx.publicKey) {
-      try {
-        await pendingSkinsService.createPendingSkin({
-          userId: user?.id || walletCtx.publicKey.toString(), // Use user ID if available, fallback to wallet address
-          skinName: wonSkin.name,
-          skinRarity: wonSkin.rarity,
-          skinWeapon: wonSkin.name.split(" | ")[0] || "Unknown",
-          skinValue: wonSkin.value,
-          skinImage: wonSkin.image,
-          nftMintAddress: lastPackResult.asset,
-          transactionHash: lastPackResult.signature,
-          caseOpeningId: `pack-${Date.now()}`,
-        });
-        console.log('[pending] created on close', {
-          mint: lastPackResult.asset,
-          name: wonSkin.name,
-        });
-        toast.success('Saved pending skin');
-      } catch (error: any) {
-        // If pending already exists (e.g. duplicate close), don't block UX
-        console.warn('[pending] create on close failed', error?.message);
-      }
-    }
-
     setShowResult(false);
     setWonSkin(null);
     setLastPackResult(null);
@@ -839,20 +803,7 @@ export default function PacksPage() {
       >
         {/* Main Content */}
         <div className="max-w-7xl mx-auto space-y-8">
-          {/* Pending banner */}
-          {pendingCount > 0 && (
-            <div className="rounded-xl border border-white/10 bg-zinc-900/60 p-4 flex items-center justify-between">
-              <div className="text-sm text-white">
-                You have <span className="font-semibold">{pendingCount}</span> pending skin{pendingCount > 1 ? 's' : ''} to claim.
-              </div>
-              <Link
-                href="/app-dashboard/inventory"
-                className="inline-flex items-center justify-center rounded-md bg-[#E99500] text-black px-3 py-2 text-sm font-semibold hover:bg-[#f0a116]"
-              >
-                Review now
-              </Link>
-            </div>
-          )}
+          
           {/* Hero */}
           <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
             <img
@@ -1232,28 +1183,6 @@ export default function PacksPage() {
                           <div className="mt-3 flex gap-2">
                             <Link
                               href="/app-dashboard/profile"
-                              onClick={async () => {
-                                try {
-                                  if (lastPackResult && wonSkin && walletCtx.publicKey) {
-                                    await pendingSkinsService.createPendingSkin({
-                                      userId: user?.id || walletCtx.publicKey.toString(),
-                                      skinName: wonSkin.name,
-                                      skinRarity: wonSkin.rarity,
-                                      skinWeapon: wonSkin.name.split(" | ")[0] || "Unknown",
-                                      skinValue: wonSkin.value,
-                                      skinImage: wonSkin.image,
-                                      nftMintAddress: lastPackResult.asset,
-                                      transactionHash: lastPackResult.signature,
-                                      caseOpeningId: `pack-${Date.now()}`,
-                                    });
-                                    console.log('[pending] created on Add Trade URL', {
-                                      mint: lastPackResult.asset,
-                                      name: wonSkin.name,
-                                    });
-                                    toast.success('Saved pending skin');
-                                  }
-                                } catch {}
-                              }}
                               className="flex-1 inline-flex items-center justify-center rounded-md text-black px-3 py-2 text-sm font-semibold bg-[#E99500] hover:bg-[#f0a116]"
                             >
                               Add Trade URL
