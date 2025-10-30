@@ -557,8 +557,8 @@ export default function InventoryPage() {
                           </>
                         ) : (
                           <>
-                            <Zap className="w-4 h-4 mr-2" />
-                            Take Payout
+                          <Zap className="w-8 h-8 text-black fill-black" />
+                          Take Payout
                           </>
                         )}
                       </Button>
