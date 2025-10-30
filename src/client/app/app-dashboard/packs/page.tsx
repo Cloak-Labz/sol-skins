@@ -26,21 +26,17 @@ interface CSGOSkin {
   image: string;
 }
 
-// Helper function to get Solscan URL based on network
+// Helper function to get Solscan URL based on NEXT_PUBLIC_SOLANA_NETWORK
 const getSolscanUrl = (signature: string): string => {
-  const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC || "";
+  const network = (process.env.NEXT_PUBLIC_SOLANA_NETWORK || "").toLowerCase();
 
-  // Check if using devnet
-  if (rpcUrl.includes("devnet") || rpcUrl.includes("api.devnet")) {
+  if (network.includes("devnet")) {
     return `https://solscan.io/tx/${signature}?cluster=devnet`;
   }
-
-  // Check if using testnet
-  if (rpcUrl.includes("testnet") || rpcUrl.includes("api.testnet")) {
+  if (network.includes("testnet")) {
     return `https://solscan.io/tx/${signature}?cluster=testnet`;
   }
-
-  // Default to mainnet
+  // mainnet or unspecified
   return `https://solscan.io/tx/${signature}`;
 };
 
@@ -105,7 +101,7 @@ export default function PacksPage() {
   }, [shouldHideSidebar]);
 
   useEffect(() => {
-    const send = (hide) => {
+    const send = (hide: boolean) => {
       window.dispatchEvent(
         new CustomEvent('topbar-visibility', { detail: { hide } })
       );
@@ -634,20 +630,29 @@ export default function PacksPage() {
 
         if (confirmData.success) {
           dismissBuybackToast();
+          const txSig: string | undefined =
+            confirmData.data?.transactionSignature ||
+            confirmData.data?.signature ||
+            confirmData.data?.txSignature ||
+            confirmData.data?.hash ||
+            confirmData.data?.tx ||
+            undefined;
           buybackToastIdRef.current = toast.success(
             <div className="flex flex-col gap-1">
               <p className="font-semibold text-sm">NFT successfully bought back! 💰</p>
-              <a
-                href={getSolscanUrl(lastPackResult.asset)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
-              >
-                View transaction on Solscan
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
+              {txSig ? (
+                <a
+                  href={getSolscanUrl(txSig)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+                >
+                  View transaction on Solscan
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              ) : null}
             </div>,
             {
               duration: 6000,
@@ -678,30 +683,16 @@ export default function PacksPage() {
       } catch (fetchError: any) {
         clearTimeout(timeoutId);
         let fallbackDisplayed = false;
-        // txn might be on chain even if backend timed out, check Solscan with last tx/asset
-        if (lastPackResult?.asset) {
-          // Best-effort: show user fallback success + link
-          dismissBuybackToast();
-          buybackToastIdRef.current = toast.success(
-            <div className="flex flex-col gap-1">
-              <p className="font-semibold text-sm">NFT successfully bought back! ✅</p>
-              <p className="text-xs text-zinc-400">(Transaction confirmed on-chain or likely sent. Backend didn’t respond.)</p>
-              <a
-                href={getSolscanUrl(lastPackResult.asset)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
-              >
-                View transaction on Solscan
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-              </a>
-            </div>,
-            { duration: 8000 }
-          );
-          fallbackDisplayed = true;
-        }
+        // txn might be on chain even if backend timed out
+        dismissBuybackToast();
+        buybackToastIdRef.current = toast.success(
+          <div className="flex flex-col gap-1">
+            <p className="font-semibold text-sm">NFT successfully bought back! ✅</p>
+            <p className="text-xs text-zinc-400">(Transaction likely sent. Backend didn’t respond.)</p>
+          </div>,
+          { duration: 8000 }
+        );
+        fallbackDisplayed = true;
         if (!fallbackDisplayed) {
           dismissBuybackToast();
           buybackToastIdRef.current = toast.error(fetchError?.message || "Payout failed, and transaction did not hit the chain.");
@@ -910,11 +901,14 @@ export default function PacksPage() {
                       <div className="text-zinc-300 text-sm uppercase tracking-wider">
                         Payout received
                       </div>
-                      <div className="text-5xl font-extrabold text-white">
-                        {typeof (buybackAmountSol ?? pendingBuybackInfo?.payoutSol) === 'number' && (buybackAmountSol ?? pendingBuybackInfo?.payoutSol) > 0
-                          ? `+${Number(buybackAmountSol ?? pendingBuybackInfo?.payoutSol).toFixed(3)} SOL`
-                          : `+0.00 SOL`}
-                      </div>
+                      {(() => {
+                        const payoutVal = Number((buybackAmountSol ?? pendingBuybackInfo?.payoutSol ?? 0));
+                        return (
+                          <div className="text-5xl font-extrabold text-white">
+                            {payoutVal > 0 ? `+${payoutVal.toFixed(3)} SOL` : `+0.00 SOL`}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
