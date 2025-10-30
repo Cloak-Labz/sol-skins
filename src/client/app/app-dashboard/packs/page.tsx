@@ -74,12 +74,25 @@ export default function PacksPage() {
   useEffect(() => {
     if (shouldHideSidebar) {
       document.documentElement.classList.add("sidebar-hidden");
+      document.documentElement.classList.add("topbar-hidden");
     } else {
       document.documentElement.classList.remove("sidebar-hidden");
+      document.documentElement.classList.remove("topbar-hidden");
     }
     return () => {
       document.documentElement.classList.remove("sidebar-hidden");
+      document.documentElement.classList.remove("topbar-hidden");
     };
+  }, [shouldHideSidebar]);
+
+  useEffect(() => {
+    const send = (hide) => {
+      window.dispatchEvent(
+        new CustomEvent('topbar-visibility', { detail: { hide } })
+      );
+    };
+    send(shouldHideSidebar);
+    return () => send(false);
   }, [shouldHideSidebar]);
 
   // Calculate real odds from box skins in database

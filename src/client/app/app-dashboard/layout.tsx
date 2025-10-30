@@ -10,9 +10,15 @@ import Footer from "@/components/footer";
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { connected } = useWallet();
   const [mounted, setMounted] = useState(false);
+  const [hideTopbar, setHideTopbar] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+    const handler = (e) => {
+      setHideTopbar(!!(e && e.detail && e.detail.hide));
+    };
+    window.addEventListener("topbar-visibility", handler);
+    return () => window.removeEventListener("topbar-visibility", handler);
   }, []);
 
   // Prevent hydration mismatch by rendering placeholder during SSR
@@ -107,7 +113,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative">
       <Sidebar />
-      <Header />
+      {!hideTopbar && <Header />}
       <main className="app-main ml-64 pt-16 min-h-screen flex flex-col relative z-10">
         <div className="flex-1 relative z-10">{children}</div>
         <Footer />
