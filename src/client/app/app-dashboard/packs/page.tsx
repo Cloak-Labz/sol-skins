@@ -66,6 +66,7 @@ export default function PacksPage() {
   // Share state for claim flow
   const [showClaimShare, setShowClaimShare] = useState(false);
   const [claimedSkin, setClaimedSkin] = useState<CSGOSkin | null>(null);
+  const [hideTradePrompt, setHideTradePrompt] = useState(false);
 
   useEffect(() => {
     if (shouldHideSidebar) {
@@ -1179,23 +1180,27 @@ export default function PacksPage() {
 
                 {/* Bottom action area (fixed bg) */}
                 <div className="mt-6 p-6 bg-[#0d0d0d] border-t border-white/10">
-                  {userTradeUrl === null && (
-                    <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 mb-4">
-                      <div className="flex items-center gap-2 text-yellow-200">
-                        <Lock className="w-5 h-5" />
-                        <span className="font-semibold">
-                          Steam Trade URL Required
-                        </span>
+                  {userTradeUrl === null && !hideTradePrompt && (
+                    <div className="mb-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-4">
+                      <div className="flex items-start gap-3">
+                        <Lock className="w-5 h-5 mt-0.5 text-[#E99500]" />
+                        <div className="flex-1">
+                          <div className="font-semibold text-yellow-200">
+                            Steam Trade URL required to claim this skin
+                          </div>
+                          <p className="text-yellow-100/90 text-sm mt-1">
+                            Add your Trade URL in Profile to enable Steam claims. You can still take a payout now.
+                          </p>
+                          <div className="mt-3 flex gap-2">
+                            <Link
+                              href="/app-dashboard/profile"
+                              className="flex-1 inline-flex items-center justify-center rounded-md text-black px-3 py-2 text-sm font-semibold bg-[#E99500] hover:bg-[#f0a116]"
+                            >
+                              Add Trade URL
+                            </Link>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-yellow-100 text-sm mt-1">
-                        Set your Steam Trade URL in profile to take the skin.
-                      </p>
-                      <Link
-                        href="/app-dashboard/profile"
-                        className="text-yellow-200 underline text-sm hover:text-yellow-100 inline-block mt-1"
-                      >
-                        Go to Profile Settings →
-                      </Link>
                     </div>
                   )}
 
