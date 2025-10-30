@@ -70,6 +70,27 @@ export class PackOpeningService {
         return existingUserSkin;
       }
 
+      // --- PATCH: Attempt to look up box skin value via BoxSkinService ---
+      let realValue = skinData.basePriceUsd;
+      try {
+        const boxSkinRepo = AppDataSource.getRepository(require('../entities/BoxSkin').BoxSkin);
+        // Try matching all: boxId, name, weapon, rarity (case-insensitive)
+        const match = await boxSkinRepo.findOne({
+          where: {
+            boxId,
+            name: skinData.name,
+            weapon: skinData.weapon,
+            rarity: skinData.rarity,
+          }
+        });
+        if (match && match.basePriceUsd != null) {
+          realValue = Number(match.basePriceUsd);
+        }
+      } catch (err) {
+        // fallback: log but do not block
+        console.error('Failed to look up box skin value:', err);
+      }
+
       // Create user skin
       const savedUserSkin = await this.userSkinRepository.create({
         userId,
@@ -77,7 +98,7 @@ export class PackOpeningService {
         name: skinData.name,
         metadataUri: skinData.metadataUri,
         openedAt: new Date(),
-        currentPriceUsd: skinData.basePriceUsd,
+        currentPriceUsd: realValue,
         lastPriceUpdate: new Date(),
         isInInventory: true,
         symbol: 'SKIN',

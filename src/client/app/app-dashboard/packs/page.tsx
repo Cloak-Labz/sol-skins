@@ -15,6 +15,7 @@ import { discordService } from "@/lib/services/discord.service";
 import { pendingSkinsService } from "@/lib/services/pending-skins.service";
 import { apiClient } from "@/lib/services/api.service";
 import { LootBoxType } from "@/lib/types/api";
+import XIconPng from "@/public/assets/x_icon.png";
 
 interface CSGOSkin {
   id: string;
@@ -67,6 +68,8 @@ export default function PacksPage() {
   const [showClaimShare, setShowClaimShare] = useState(false);
   const [claimedSkin, setClaimedSkin] = useState<CSGOSkin | null>(null);
   const [hideTradePrompt, setHideTradePrompt] = useState(false);
+  const [pendingBuybackAmount, setPendingBuybackAmount] = useState<number | null>(null);
+  const [pendingBuybackInfo, setPendingBuybackInfo] = useState<{skinUsd: number, skinSol: number, payoutSol: number} | null>(null);
 
   useEffect(() => {
     if (shouldHideSidebar) {
@@ -662,6 +665,39 @@ export default function PacksPage() {
     }
   };
 
+  useEffect(() => {
+    if (showResult && lastPackResult?.asset) {
+      setPendingBuybackAmount(null);
+      fetch(`/api/v1/buyback/calculate/${lastPackResult.asset}`)
+        .then(r => r.json())
+        .then(j => {
+          if (j.success && typeof j.data?.buybackAmount === 'number') {
+            setPendingBuybackAmount(j.data.buybackAmount);
+          }
+        })
+        .catch(() => setPendingBuybackAmount(null));
+    }
+  }, [showResult, lastPackResult?.asset]);
+
+  // Fetch and cache buyback calculation (SOL/USD) whenever showResult && lastPackResult is set
+  useEffect(() => {
+    if (showResult && lastPackResult?.asset) {
+      setPendingBuybackInfo(null);
+      fetch(`/api/v1/buyback/calculate/${lastPackResult.asset}`)
+        .then(r => r.json())
+        .then(j => {
+          if (j.success && typeof j.data?.buybackAmount === 'number') {
+            setPendingBuybackInfo({
+              skinUsd: wonSkin?.value ?? 0,
+              skinSol: j.data.skinPrice ?? 0,
+              payoutSol: j.data.buybackAmount ?? 0,
+            });
+          }
+        })
+        .catch(() => setPendingBuybackInfo(null));
+    }
+  }, [showResult, lastPackResult?.asset, wonSkin?.value]);
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6 overflow-hidden relative">
       {/* Fullscreen Opening Animation - Only show after processing */}
@@ -730,8 +766,8 @@ export default function PacksPage() {
                         Payout received
                       </div>
                       <div className="text-5xl font-extrabold text-white">
-                        {buybackAmountSol !== null
-                          ? `+${Number(buybackAmountSol).toFixed(2)} SOL`
+                        {typeof (buybackAmountSol ?? pendingBuybackInfo?.payoutSol) === 'number' && (buybackAmountSol ?? pendingBuybackInfo?.payoutSol) > 0
+                          ? `+${Number(buybackAmountSol ?? pendingBuybackInfo?.payoutSol).toFixed(3)} SOL`
                           : `+0.00 SOL`}
                       </div>
                     </div>
@@ -781,9 +817,9 @@ export default function PacksPage() {
                       })}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-md border border-white/15 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900 whitespace-nowrap"
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-md bg-black border border-white/20 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900 transition-colors whitespace-nowrap"
                     >
-                      Share on X
+                      Share on <img src="/assets/x_icon.png" alt="X" className="w-5 h-5" />
                     </a>
                   </div>
                 </div>
@@ -1089,8 +1125,6 @@ export default function PacksPage() {
                 </button>
                 {/* Top area with bright glow */}
                 <div className="relative p-6 pb-0">
-                  <div className="pointer-events-none absolute -inset-40 bg-[radial-gradient(circle,rgba(255,170,0,0.35)_0%,rgba(0,0,0,0)_60%)]" />
-
                   {/* Skin Display Area - Inspired by the reference image */}
                   <div className="relative w-full h-[180px] md:h-[200px] rounded-lg overflow-hidden bg-black">
                     {/* Background with central light effect */}
@@ -1160,8 +1194,10 @@ export default function PacksPage() {
                         className="text-[11px] md:text-xs lg:text-sm font-bold text-[#E99500] uppercase tracking-wide"
                         style={{ fontFamily: "monospace" }}
                       >
-                        {wonSkin.rarity.toUpperCase()} • ${" "}
-                        {Number(wonSkin.value).toFixed(2)}
+                        {wonSkin.rarity.toUpperCase()} •
+                        {typeof (pendingBuybackInfo?.skinSol) === 'number'
+                          ? ` ${pendingBuybackInfo.skinSol.toFixed(3)} SOL`
+                          : 'Market value: —'}
                       </p>
                     </div>
                   </div>
@@ -1202,7 +1238,9 @@ export default function PacksPage() {
                             Receive a payout
                           </div>
                           <div className="text-white/60 text-sm">
-                            Calculated on next step
+                            {typeof (pendingBuybackInfo?.payoutSol) === 'number'
+                              ? `≈ +${pendingBuybackInfo.payoutSol.toFixed(3)} SOL`
+                              : 'Calculated on next step'}
                           </div>
                         </div>
                       </div>
@@ -1328,9 +1366,9 @@ export default function PacksPage() {
                       })}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-md border border-white/15 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900 whitespace-nowrap"
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-md bg-black border border-white/20 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900 transition-colors whitespace-nowrap"
                     >
-                      Share on X
+                      Share on <img src="/assets/x_icon.png" alt="X" className="w-5 h-5" />
                     </a>
                     <Button
                       onClick={() => {
