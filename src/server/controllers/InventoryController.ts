@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { InventoryRepository } from "../repositories/InventoryRepository";
 import { AppDataSource } from "../config/database";
 import { UserSkin } from "../entities/UserSkin";
+import { UserSkinRepository } from "../repositories/UserSkinRepository";
 
 export type InventoryItem = {
   id: string;
@@ -190,6 +191,26 @@ export class InventoryController {
         summary,
         pagination
       });
+    } catch (e: any) {
+      return res
+        .status(500)
+        .json({ success: false, error: e?.message || "Failed" });
+    }
+  };
+
+  public claimByMint = async (
+    req: Request,
+    res: Response
+  ): Promise<Response> => {
+    try {
+      const userId = req.user!.id;
+      const nftMint = (req.body?.nftMint as string | undefined)?.trim();
+      if (!nftMint) {
+        return res.status(400).json({ success: false, error: "nftMint is required" });
+      }
+      const userSkinRepo = new UserSkinRepository();
+      await userSkinRepo.markAsClaimedByMint(userId, nftMint);
+      return res.json({ success: true });
     } catch (e: any) {
       return res
         .status(500)

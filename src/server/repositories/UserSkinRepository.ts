@@ -105,6 +105,14 @@ export class UserSkinRepository {
     });
   }
 
+  async markAsClaimedByMint(userId: string, nftMintAddress: string): Promise<void> {
+    const skin = await this.repository.findOne({ where: { userId, nftMintAddress } });
+    if (!skin) return;
+    await this.repository.update(skin.id, {
+      isInInventory: false,
+    });
+  }
+
   async getUserInventoryValue(userId: string): Promise<number> {
     const result = await this.repository
       .createQueryBuilder('userSkin')

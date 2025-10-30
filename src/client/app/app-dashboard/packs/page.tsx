@@ -1425,43 +1425,95 @@ export default function PacksPage() {
                               );
                               return;
                             }
-                            if (wonSkin) {
-                              // Send Discord ticket directly and create SKIN_CLAIMED activity
-                              await discordService.createSkinClaimTicket({
-                                userId:
-                                  walletCtx.publicKey?.toString() || "unknown",
-                                walletAddress:
-                                  walletCtx.publicKey?.toString() || "unknown",
-                                steamTradeUrl: userProfile.tradeUrl,
-                                skinName: wonSkin.name,
-                                skinRarity: wonSkin.rarity,
-                                skinWeapon:
-                                  wonSkin.name.split(" | ")[0] || "Unknown",
-                                nftMintAddress:
-                                  lastPackResult?.asset || "unknown",
-                                openedAt: new Date(),
-                                caseOpeningId: `pack-${Date.now()}`,
-                              });
+                            if (!lastPackResult?.asset) {
+                              claimToastIdRef.current = toast.error("No NFT to claim");
+                              return;
+                            }
+                            if (!walletCtx.signTransaction || !walletCtx.publicKey) {
+                              claimToastIdRef.current = toast.error("Wallet cannot sign transactions");
+                              return;
+                            }
 
-                              // Create SKIN_CLAIMED transaction directly
-                              await pendingSkinsService.createSkinClaimedActivity(
-                                {
-                                  userId: user?.id || "",
+                            // Step 1: Request burn tx
+                            claimToastIdRef.current = toast.loading("Requesting claim transaction...");
+                            const reqResp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/claim/request`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ nftMint: lastPackResult.asset, walletAddress: walletCtx.publicKey.toBase58() }),
+                            });
+                            const reqJson = await reqResp.json();
+                            if (!reqResp.ok || !reqJson?.success) {
+                              throw new Error(reqJson?.error?.message || 'Failed to create claim transaction');
+                            }
+
+                            // Step 2: Sign
+                            toast.dismiss(claimToastIdRef.current!);
+                            claimToastIdRef.current = toast.loading("Please sign the transaction in your wallet...");
+                            const { Transaction } = await import("@solana/web3.js");
+                            const recovered = Transaction.from(Buffer.from(reqJson.data.transaction, 'base64'));
+                            const signed = await walletCtx.signTransaction(recovered);
+                            const signedBase64 = Buffer.from(signed.serialize()).toString('base64');
+
+                            // Step 3: Confirm
+                            toast.dismiss(claimToastIdRef.current!);
+                            claimToastIdRef.current = toast.loading("Confirming claim...");
+                            const confResp = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"}/api/v1/claim/confirm`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ nftMint: lastPackResult.asset, signedTransaction: signedBase64, walletAddress: walletCtx.publicKey.toBase58() }),
+                            });
+                            const confJson = await confResp.json();
+                            if (!confResp.ok || !confJson?.success) {
+                              throw new Error(confJson?.error?.message || 'Failed to confirm claim');
+                            }
+
+                            toast.dismiss(claimToastIdRef.current!);
+                            const txSig: string | undefined = confJson.data?.txSignature || confJson.data?.signature || confJson.data?.tx;
+                            claimToastIdRef.current = toast.success(
+                              <div className="flex flex-col gap-1">
+                                <p className="font-semibold text-sm">Skin successfully claimed! 🎯</p>
+                                {txSig ? (
+                                  <a
+                                    href={getSolscanUrl(txSig)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+                                  >
+                                    View transaction on Solscan
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                  </a>
+                                ) : null}
+                              </div>,
+                              { duration: 6000 }
+                            );
+
+                            // Send Discord ticket (best-effort)
+                            if (wonSkin) {
+                              try {
+                                await discordService.createSkinClaimTicket({
+                                  userId: walletCtx.publicKey?.toString() || 'unknown',
+                                  walletAddress: walletCtx.publicKey?.toString() || 'unknown',
+                                  steamTradeUrl: userProfile.tradeUrl,
                                   skinName: wonSkin.name,
                                   skinRarity: wonSkin.rarity,
-                                  skinWeapon:
-                                    wonSkin.name.split(" | ")[0] || "Unknown",
-                                  nftMintAddress: lastPackResult?.asset || "",
-                                }
-                              );
+                                  skinWeapon: wonSkin.name.split(" | ")[0] || 'Unknown',
+                                  nftMintAddress: lastPackResult.asset,
+                                  openedAt: new Date(),
+                                  caseOpeningId: `pack-${Date.now()}`,
+                                });
+                              } catch (_) {}
                             }
-                            claimToastIdRef.current = toast.success("Skin claimed to inventory!");
+
+                            
                             // Show share option after claim
                             setClaimedSkin(wonSkin);
                             setShowClaimShare(true);
                             setShowResult(false);
-                          } catch (error) {
-                            claimToastIdRef.current = toast.error("Failed to claim skin");
+                          } catch (error: any) {
+                            toast.dismiss(claimToastIdRef.current!);
+                            claimToastIdRef.current = toast.error(error?.message || "Failed to claim skin");
                           }
                         }}
                         className="mt-4 w-full bg-white text-black hover:bg-gray-200 font-bold"
