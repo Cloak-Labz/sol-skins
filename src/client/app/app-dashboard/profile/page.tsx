@@ -7,33 +7,23 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUser } from "@/lib/contexts/UserContext";
-import { authService, inventoryService, historyService, casesService } from "@/lib/services";
+import { authService, inventoryService, historyService, casesService, socialService } from "@/lib/services";
+import { ActivityItem } from "@/lib/types/api";
 import { toast } from "react-hot-toast";
 import {
-  ArrowLeft,
   Loader2,
   User,
-  Mail,
-  Wallet,
   Calendar,
-  TrendingUp,
   Package,
   Lock,
   DollarSign,
-  Trophy,
   Activity,
   BarChart3,
   Clock,
-  Eye,
-  Star,
-  Zap,
-  Target,
-  Award,
   TrendingDown,
   TrendingUp as TrendingUpIcon,
 } from "lucide-react";
@@ -64,7 +54,7 @@ export default function ProfilePage() {
 
   // Dashboard data state
   const [inventorySummary, setInventorySummary] = useState<InventorySummary | null>(null);
-  const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
+  const [recentTransactions, setRecentTransactions] = useState<ActivityItem[]>([]);
   const [recentCaseOpenings, setRecentCaseOpenings] = useState<CaseOpening[]>([]);
   const [transactionSummary, setTransactionSummary] = useState<TransactionSummary | null>(null);
   const [isLoadingData, setIsLoadingData] = useState(false);
@@ -79,12 +69,12 @@ export default function ProfilePage() {
     }
   }, [user]);
 
-  // Load dashboard data when user is available
+  // Load dashboard data when user and wallet are available
   useEffect(() => {
-    if (user) {
+    if (user && walletAddress) {
       loadDashboardData();
     }
-  }, [user]);
+  }, [user, walletAddress]);
 
   const loadDashboardData = async () => {
     try {
@@ -98,7 +88,7 @@ export default function ProfilePage() {
         transactionSummaryData
       ] = await Promise.allSettled([
         inventoryService.getInventoryValue(),
-        historyService.getTransactions({ limit: 5, sortBy: 'date' }),
+        socialService.getRecentActivity(5),
         casesService.getUserCaseOpenings(),
         historyService.getTransactionSummary()
       ]);
@@ -106,16 +96,22 @@ export default function ProfilePage() {
       // Set inventory summary
       if (inventoryData.status === 'fulfilled' && inventoryData.value) {
         setInventorySummary(inventoryData.value);
+      } else {
+        // ignore
       }
 
-      // Set recent transactions
+      // Set recent transactions (now using activity data)
       if (transactionsData.status === 'fulfilled') {
-        setRecentTransactions(transactionsData.value.transactions || []);
+        setRecentTransactions(transactionsData.value || []);
+      } else {
+        // ignore
       }
 
       // Set recent case openings
       if (caseOpeningsData.status === 'fulfilled') {
         setRecentCaseOpenings(caseOpeningsData.value.data || []);
+      } else {
+        // ignore
       }
 
       // Set transaction summary
@@ -124,7 +120,6 @@ export default function ProfilePage() {
       }
 
     } catch (error) {
-      console.error('Failed to load dashboard data:', error);
       toast.error('Failed to load some dashboard data');
     } finally {
       setIsLoadingData(false);
@@ -179,7 +174,6 @@ export default function ProfilePage() {
       toast.success("Profile updated successfully!");
       setIsEditing(false);
     } catch (err) {
-      console.error("Failed to update profile:", err);
       toast.error(
         err instanceof Error ? err.message : "Failed to update profile"
       );
@@ -192,6 +186,7 @@ export default function ProfilePage() {
     setFormData({
       username: user?.username || "",
       email: user?.email || "",
+      tradeUrl: (user as any)?.tradeUrl || "",
     });
     setIsEditing(false);
   };
@@ -514,39 +509,55 @@ export default function ProfilePage() {
                     </div>
                   ) : recentTransactions.length > 0 ? (
                     <div className="space-y-3">
-                      {recentTransactions.slice(0, 5).map((transaction) => (
-                        <div key={transaction.id} className="flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
+                      {recentTransactions
+                        .slice(0, 5)
+                        .map((item) => (
+                        <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
                           <div className="flex items-center gap-3">
                             <div className={`p-2 rounded-md bg-zinc-800`}>
-                              {transaction.type === 'open_case' ? (
+                              {item.type === 'case_opened' ? (
                                 <Package className="w-4 h-4 text-zinc-400" />
-                              ) : transaction.type === 'buyback' ? (
+                              ) : item.type === 'payout' ? (
                                 <DollarSign className="w-4 h-4 text-zinc-400" />
+                              ) : item.type === 'skin_claimed' ? (
+                                <Package className="w-4 h-4 text-zinc-400" />
                               ) : (
                                 <Activity className="w-4 h-4 text-zinc-400" />
                               )}
                             </div>
                             <div>
                               <p className="font-medium text-foreground">
-                                {transaction.type === 'open_case' ? 'Case Opened' :
-                                 transaction.type === 'buyback' ? 'Skin Sold' :
-                                 'Transaction'}
+                                {item.type === 'case_opened' ? 'Case Opened' :
+                                 item.type === 'payout' ? 'Skin Sold' :
+                                 item.type === 'skin_claimed' ? 'Skin Claimed' :
+                                 'Activity'}
                               </p>
                               <p className="text-sm text-muted-foreground">
-                                {transaction.resultSkin ? 
-                                  `${transaction.resultSkin.weapon} ${transaction.resultSkin.skinName}` :
-                                  transaction.lootBoxType?.name || 'Unknown'
+                                {item.skin ? 
+                                  (item.skin.skinName.includes(item.skin.weapon) ? 
+                                    item.skin.skinName : 
+                                    `${item.skin.weapon} | ${item.skin.skinName}`) :
+                                  item.lootBox?.name || 'Unknown'
                                 }
                               </p>
                             </div>
                           </div>
                           <div className="text-right">
                             <p className={`font-bold text-foreground`}>
-                              {transaction.type === 'buyback' ? '+' : '-'}
-                              {formatCurrency(transaction.amountUsd)}
+                              {(() => {
+                                if (item.type === 'payout') {
+                                  return '+' + formatCurrency(item.amount?.usd || 0);
+                                } else if (item.type === 'case_opened') {
+                                  return '-' + (item.amount?.sol ? `${parseFloat(item.amount.sol.toString()).toFixed(2)} SOL` : '0 SOL');
+                                } else if (item.type === 'skin_claimed') {
+                                  return '0 SOL'; // Show 0 SOL for skin claims
+                                } else {
+                                  return '';
+                                }
+                              })()}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {new Date(transaction.createdAt).toLocaleDateString()}
+                              {new Date(item.timestamp).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
@@ -557,39 +568,6 @@ export default function ProfilePage() {
                       No recent activity
                     </p>
                   )}
-                </CardContent>
-              </Card>
-
-              {/* Performance Overview */}
-              <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5" />
-                    Performance Overview
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center p-4 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
-                      <p className="text-2xl font-bold text-foreground">
-                        {formatCurrency(totalSpentNum)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Total Spent</p>
-                    </div>
-                    <div className="text-center p-4 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
-                      <p className="text-2xl font-bold text-foreground">
-                        {formatCurrency(totalEarnedNum)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Total Earned</p>
-                    </div>
-                    <div className="text-center p-4 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
-                      <p className={`text-2xl font-bold text-foreground`}>
-                        {totalEarnedNum - totalSpentNum >= 0 ? '+' : ''}
-                        {formatCurrency(totalEarnedNum - totalSpentNum)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">Net Profit</p>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </div>

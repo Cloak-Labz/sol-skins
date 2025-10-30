@@ -2,30 +2,21 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  ArrowLeft,
-  Zap,
-  Loader2,
-  Sparkles,
-  TrendingUp,
-  Lock,
-  Unlock,
-  Package,
-  Gem,
-  Crown,
-} from "lucide-react";
+import { Zap, Loader2, Lock, X, ImageIcon } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import { useState, useEffect, useRef } from "react";
-import { toast } from "react-hot-toast";
+import { toast } from "sonner";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { casesService, marketplaceService, SolanaProgramService, boxesService, authService } from "@/lib/services";
+import { marketplaceService, boxesService, authService } from "@/lib/services";
+import { useUser } from "@/lib/contexts/UserContext";
 import { discordService } from "@/lib/services/discord.service";
 import { pendingSkinsService } from "@/lib/services/pending-skins.service";
-import { PublicKey, Keypair } from '@solana/web3.js';
+import { apiClient } from "@/lib/services/api.service";
 import { LootBoxType } from "@/lib/types/api";
+import XIconPng from "@/public/assets/x_icon.png";
+import { useRouter } from "next/navigation";
 
 interface CSGOSkin {
   id: string;
@@ -35,133 +26,19 @@ interface CSGOSkin {
   image: string;
 }
 
-const getPackIcon = (rarity?: string) => {
-  if (!rarity) return Package;
-  switch (rarity.toLowerCase()) {
-    case "legendary":
-      return Crown;
-    case "premium":
-      return Gem;
-    default:
-      return Package;
-  }
-};
+// Helper function to get Solscan URL based on NEXT_PUBLIC_SOLANA_NETWORK
+const getSolscanUrl = (signature: string): string => {
+  const network = (process.env.NEXT_PUBLIC_SOLANA_NETWORK || "").toLowerCase();
 
-const getPackColor = (rarity?: string) => {
-  if (!rarity) return "from-gray-600 to-gray-800";
-  switch (rarity.toLowerCase()) {
-    case "legendary":
-      return "from-yellow-500 to-orange-600";
-    case "premium":
-      return "from-blue-600 to-purple-600";
-    case "special":
-      return "from-purple-500 to-pink-600";
-    default:
-      return "from-gray-600 to-gray-800";
+  if (network.includes("devnet")) {
+    return `https://solscan.io/tx/${signature}?cluster=devnet`;
   }
-};
-
-const getPackGlow = (rarity?: string) => {
-  if (!rarity) return "shadow-gray-500/50";
-  switch (rarity.toLowerCase()) {
-    case "legendary":
-      return "shadow-yellow-500/50";
-    case "premium":
-      return "shadow-blue-500/50";
-    case "special":
-      return "shadow-purple-500/50";
-    default:
-      return "shadow-gray-500/50";
+  if (network.includes("testnet")) {
+    return `https://solscan.io/tx/${signature}?cluster=testnet`;
   }
+  // mainnet or unspecified
+  return `https://solscan.io/tx/${signature}`;
 };
-
-// Mock skins using local assets
-const MOCK_SKINS: CSGOSkin[] = [
-  {
-    id: "1",
-    name: "AK-47 | Neon Rider",
-    rarity: "legendary",
-    value: 850.0,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "2",
-    name: "AWP | Dragon Lore",
-    rarity: "legendary",
-    value: 1200.0,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "3",
-    name: "M4A4 | Howl",
-    rarity: "epic",
-    value: 450.0,
-    image: "/assets/skins/img3.png",
-  },
-  {
-    id: "4",
-    name: "Glock-18 | Fade",
-    rarity: "rare",
-    value: 125.5,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "5",
-    name: "USP-S | Kill Confirmed",
-    rarity: "rare",
-    value: 89.99,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "6",
-    name: "Desert Eagle | Blaze",
-    rarity: "uncommon",
-    value: 45.0,
-    image: "/assets/skins/img3.png",
-  },
-  {
-    id: "7",
-    name: "P90 | Asiimov",
-    rarity: "uncommon",
-    value: 32.5,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "8",
-    name: "MAC-10 | Neon Rider",
-    rarity: "common",
-    value: 12.0,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "9",
-    name: "Karambit | Fade",
-    rarity: "legendary",
-    value: 1850.0,
-    image: "/assets/skins/img3.png",
-  },
-  {
-    id: "10",
-    name: "M4A1-S | Hyper Beast",
-    rarity: "epic",
-    value: 380.0,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "11",
-    name: "Butterfly Knife | Doppler",
-    rarity: "legendary",
-    value: 1450.0,
-    image: "/assets/skins/img2.png",
-  },
-  {
-    id: "12",
-    name: "AK-47 | Fire Serpent",
-    rarity: "epic",
-    value: 520.0,
-    image: "/assets/skins/img3.png",
-  },
-];
 
 // Default odds when API doesn't provide per-rarity probabilities
 const DEFAULT_ODDS: { label: string; rarity: string; pct: number }[] = [
@@ -174,112 +51,120 @@ const DEFAULT_ODDS: { label: string; rarity: string; pct: number }[] = [
 
 export default function PacksPage() {
   const walletCtx = useWallet();
+  const { user } = useUser();
   const { connected, publicKey, signTransaction } = walletCtx;
   const [lootBoxes, setLootBoxes] = useState<LootBoxType[]>([]);
   const [selectedPack, setSelectedPack] = useState<LootBoxType | null>(null);
   const [boxes, setBoxes] = useState<any[]>([]);
   const [loadingBoxes, setLoadingBoxes] = useState(false);
-  const [selectedBoxMetaUris, setSelectedBoxMetaUris] = useState<string[]>([]);
   const isRevealingRef = useRef(false);
   const isOpeningRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [openingPhase, setOpeningPhase] = useState<
-    "waiting" | "spinning" | "revealing" | null
+    "processing" | "flash" | "video" | null
   >(null);
   const [wonSkin, setWonSkin] = useState<CSGOSkin | null>(null);
   const [showResult, setShowResult] = useState(false);
-  const [spinItems, setSpinItems] = useState<CSGOSkin[]>([]);
-  const rouletteRef = useRef<HTMLDivElement>(null);
-  const animationRef = useRef<any>(null);
-  const [batchPrice, setBatchPrice] = useState<number | null>(null);
-  const [lastPackResult, setLastPackResult] = useState<{ signature: string; asset: string } | null>(null);
+  const [lastPackResult, setLastPackResult] = useState<{
+    signature: string;
+    asset: string;
+  } | null>(null);
   const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
+  const [showBuybackModal, setShowBuybackModal] = useState(false);
+  const [buybackAmountSol, setBuybackAmountSol] = useState<number | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const shouldHideSidebar =
+    (openingPhase !== null && openingPhase !== "processing") ||
+    showResult ||
+    showBuybackModal;
 
-  // Calculate real odds from batch metadata URIs
-  const calculateRealOdds = async (metadataUris: string[]) => {
-    if (!Array.isArray(metadataUris) || metadataUris.length === 0) {
-      return DEFAULT_ODDS;
+  // Share state for claim flow
+  const [showClaimShare, setShowClaimShare] = useState(false);
+  const [claimedSkin, setClaimedSkin] = useState<CSGOSkin | null>(null);
+  const [hideTradePrompt, setHideTradePrompt] = useState(false);
+  const [pendingBuybackAmount, setPendingBuybackAmount] = useState<number | null>(null);
+  const [pendingBuybackInfo, setPendingBuybackInfo] = useState<{skinUsd: number, skinSol: number, payoutSol: number} | null>(null);
+
+  useEffect(() => {
+    if (shouldHideSidebar) {
+      document.documentElement.classList.add("sidebar-hidden");
+      document.documentElement.classList.add("topbar-hidden");
+    } else {
+      document.documentElement.classList.remove("sidebar-hidden");
+      document.documentElement.classList.remove("topbar-hidden");
     }
+    return () => {
+      document.documentElement.classList.remove("sidebar-hidden");
+      document.documentElement.classList.remove("topbar-hidden");
+    };
+  }, [shouldHideSidebar]);
 
+  useEffect(() => {
+    const send = (hide: boolean) => {
+      window.dispatchEvent(
+        new CustomEvent('topbar-visibility', { detail: { hide } })
+      );
+    };
+    send(shouldHideSidebar);
+    return () => send(false);
+  }, [shouldHideSidebar]);
+
+  // Calculate real odds from box skins in database
+  const calculateRealOdds = async (boxId: string) => {
     try {
-      // Fetch metadata for all items in the batch
-      const metadataPromises = metadataUris.slice(0, 20).map(async (uri) => {
-        try {
-          const response = await fetch(uri);
-          if (!response.ok) return null;
-          const metadata = await response.json();
-          return metadata;
-        } catch {
-          return null;
-        }
-      });
+      // Fetch box skins distribution from backend
+      const response = await fetch(
+        `/api/v1/box-skins/box/${boxId}/distribution`
+      );
+      const data = await response.json();
 
-      const metadataResults = await Promise.allSettled(metadataPromises);
-      const validMetadata = metadataResults
-        .filter((result) => result.status === 'fulfilled' && result.value)
-        .map((result) => (result as any).value);
-
-      if (validMetadata.length === 0) {
+      if (!data.success) {
         return DEFAULT_ODDS;
       }
 
-      // Count items by rarity
-      const rarityCounts: Record<string, number> = {
-        common: 0,
-        uncommon: 0,
-        rare: 0,
-        epic: 0,
-        legendary: 0,
-      };
+      const distribution = data.data;
 
-      validMetadata.forEach((metadata) => {
-        const rarityAttr = Array.isArray(metadata?.attributes)
-          ? metadata.attributes.find((a: any) => /rarity/i.test(a?.trait_type))?.value
-          : null;
-        
-        const rarity = (rarityAttr || 'common').toString().toLowerCase();
-        if (rarity in rarityCounts) {
-          rarityCounts[rarity]++;
-        } else {
-          rarityCounts.common++;
-        }
-      });
+      // Convert distribution to odds format
+      const totalSkins = Object.values(distribution).reduce(
+        (sum: number, count: any) => sum + count,
+        0
+      );
 
-      const totalItems = validMetadata.length;
-      
-      // Calculate percentages
+      if (totalSkins === 0) {
+        return DEFAULT_ODDS;
+      }
+
       const odds = [
         {
           label: "Legendary",
           rarity: "legendary",
-          pct: (rarityCounts.legendary / totalItems) * 100,
+          pct: ((distribution.legendary || 0) / totalSkins) * 100,
         },
         {
-          label: "Epic", 
+          label: "Epic",
           rarity: "epic",
-          pct: (rarityCounts.epic / totalItems) * 100,
+          pct: ((distribution.epic || 0) / totalSkins) * 100,
         },
         {
           label: "Rare",
-          rarity: "rare", 
-          pct: (rarityCounts.rare / totalItems) * 100,
+          rarity: "rare",
+          pct: ((distribution.rare || 0) / totalSkins) * 100,
         },
         {
           label: "Uncommon",
           rarity: "uncommon",
-          pct: (rarityCounts.uncommon / totalItems) * 100,
+          pct: ((distribution.uncommon || 0) / totalSkins) * 100,
         },
         {
           label: "Common",
           rarity: "common",
-          pct: (rarityCounts.common / totalItems) * 100,
+          pct: ((distribution.common || 0) / totalSkins) * 100,
         },
       ];
 
-      console.log('Calculated real odds from batch metadata:', odds);
       return odds;
     } catch (error) {
-      console.error('Error calculating real odds:', error);
       return DEFAULT_ODDS;
     }
   };
@@ -291,29 +176,64 @@ export default function PacksPage() {
   const selectRarityByOdds = (odds: typeof DEFAULT_ODDS) => {
     const random = Math.random() * 100;
     let cumulative = 0;
-    
+
     for (const odd of odds) {
       cumulative += odd.pct;
       if (random <= cumulative) {
         return odd.rarity;
       }
     }
-    
+
     // Fallback to common if no match
-    return 'common';
+    return "common";
   };
+
+  // Build X (Twitter) share URL
+  const generateXShareUrl = (
+    params:
+      | {
+          kind: "buyback";
+          skin?: CSGOSkin | null;
+          amountSol: number;
+          packName?: string | null;
+        }
+      | { kind: "claim"; skin: CSGOSkin; packName?: string | null }
+  ) => {
+    let text = "";
+    if (params.kind === "buyback") {
+      const name = params.packName ? ` ${params.packName}` : "";
+      const skinText = params.skin ? ` (won: ${params.skin.name})` : "";
+      text = `I just sold my pack${name} drop for +${params.amountSol.toFixed(
+        2
+      )} SOL on @DUST3fun with instant payout!${skinText}`;
+    } else {
+      const packText = params.packName ? ` from ${params.packName}` : "";
+      text = `Claimed ${params.skin.name}${packText} to my Steam inventory via @DUST3fun!`;
+    }
+    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+  };
+
+  // Set wallet address in API client when wallet connects/disconnects
+  useEffect(() => {
+    if (connected && publicKey) {
+      apiClient.setWalletAddress(publicKey.toString());
+    } else {
+      apiClient.setWalletAddress(null);
+    }
+  }, [connected, publicKey]);
 
   // Load boxes from database
   useEffect(() => {
     loadBoxes(); // Load boxes from database
   }, []);
 
+
   // Calculate real odds when pack is selected
   useEffect(() => {
-    if (selectedPack && selectedBoxMetaUris.length > 0) {
-      calculateRealOdds(selectedBoxMetaUris).then(setOddsToUse);
+    if (selectedPack && selectedPack.id) {
+      calculateRealOdds(selectedPack.id).then(setOddsToUse);
     }
-  }, [selectedPack, selectedBoxMetaUris]);
+  }, [selectedPack]);
 
   const loadLootBoxes = async () => {
     try {
@@ -327,7 +247,6 @@ export default function PacksPage() {
         setSelectedPack(boxes[0]);
       }
     } catch (error) {
-      console.error("Failed to load loot boxes:", error);
       toast.error("Failed to load packs");
     } finally {
       setLoading(false);
@@ -339,21 +258,14 @@ export default function PacksPage() {
       setLoading(true);
       setLoadingBoxes(true);
       const data = await boxesService.getActiveBoxes();
-      console.log("loadBoxes - received data:", data);
-      console.log("loadBoxes - data length:", data?.length);
-      // Only show published boxes (on-chain batches): require non-null batchId
-      const published = Array.isArray(data) ? data.filter((b: any) => !!b?.batchId) : [];
-      setBoxes(published);
-      console.log("loadBoxes - boxes state set");
+      // Show all active boxes (both published and unpublished)
+      const activeBoxes = Array.isArray(data) ? data : [];
+      setBoxes(activeBoxes);
       // Set the first box as selected pack if none is selected
-      if (published.length > 0 && !selectedPack) {
-        setSelectedPack(published[0] as any);
-        console.log("loadBoxes - selectedPack set to:", published[0]);
-        // Prefetch metadata URIs for first selection
-        void fetchSelectedBoxMetaUris(published[0]);
+      if (activeBoxes.length > 0 && !selectedPack) {
+        setSelectedPack(activeBoxes[0] as any);
       }
     } catch (error) {
-      console.error("Failed to load boxes:", error);
       toast.error("Failed to load boxes");
     } finally {
       setLoading(false);
@@ -361,54 +273,10 @@ export default function PacksPage() {
     }
   };
 
-  const fetchSelectedBoxMetaUris = async (pack: any) => {
-    try {
-      const batchId = pack?.batchId;
-      if (!batchId) {
-        setSelectedBoxMetaUris([]);
-        return;
-      }
-      const box = await boxesService.getBoxByBatchId(batchId);
-      const uris = Array.isArray(box?.metadataUris) ? box.metadataUris : [];
-      setSelectedBoxMetaUris(uris);
-      console.log('Fetched metadataUris for batch', batchId, uris.length);
-    } catch (e) {
-      console.warn('Failed to fetch box by batchId for metadataUris', e);
-      setSelectedBoxMetaUris([]);
-    }
-  };
-
-  const fetchBatchPrice = async (pack: any) => {
-    try {
-      const batchId = pack?.batchId;
-      if (!batchId) {
-        setBatchPrice(null);
-        return;
-      }
-
-      const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
-      const pid = process.env.NEXT_PUBLIC_PROGRAM_ID as string;
-      const programService = new SolanaProgramService(rpc, pid);
-      
-      const batchInfo = await programService.getBatchInfo(batchId);
-      setBatchPrice(batchInfo.priceSol);
-      console.log('Fetched batch price:', batchInfo.priceSol, 'SOL');
-    } catch (error) {
-      console.error("Failed to fetch batch price:", error);
-      setBatchPrice(null);
-    }
-  };
-
-  // Generate initial roulette items
-  useEffect(() => {
-    generateSpinItems();
-  }, [selectedPack, selectedBoxMetaUris]);
-
-  // When user changes selected pack, fetch its metadataUris from backend
+  // When user changes selected pack, calculate odds
   useEffect(() => {
     if (selectedPack) {
-      void fetchSelectedBoxMetaUris(selectedPack as any);
-      void fetchBatchPrice(selectedPack as any);
+      // Odds will be calculated automatically by the other useEffect
     }
   }, [selectedPack]);
 
@@ -419,7 +287,6 @@ export default function PacksPage() {
         const userProfile = await authService.getProfile();
         setUserTradeUrl(userProfile.tradeUrl || null);
       } catch (error) {
-        console.error('Failed to fetch user profile:', error);
         setUserTradeUrl(null);
       }
     };
@@ -429,434 +296,411 @@ export default function PacksPage() {
     }
   }, [connected]);
 
-
-  // Cleanup animation on unmount
-  useEffect(() => {
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-    };
-  }, []);
-
-  const generateSpinItems = async () => {
-    const items: CSGOSkin[] = [];
-
-    // Use real metadata from selected pack (fetched from backend) if available
-    const metadataUris = selectedBoxMetaUris;
-    if (Array.isArray(metadataUris) && metadataUris.length > 0) {
-      try {
-        // Fetch a subset of metadata to avoid over-fetching; limit concurrency
-        const sample = metadataUris.slice(0, Math.min(10, metadataUris.length));
-        const fetchWithTimeout = (rawUrl: string, ms = 7000) => {
-          // Normalize metadata URLs
-          const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
-          const baseV1 = `${apiBase}/api/v1`;
-
-          let url = rawUrl?.trim();
-          if (!url) return Promise.reject(new Error('empty url'));
-
-          // If UUID-like, assume DB metadata id
-          const uuidLike = /^[0-9a-fA-F-]{32,36}$/;
-          if (uuidLike.test(url)) {
-            url = `${baseV1}/metadata/${url}`;
-          }
-
-          // If relative metadata path
-          if (url.startsWith('/metadata/')) {
-            url = `${baseV1}${url}`;
-          }
-          if (url.startsWith('/api/v1/metadata/')) {
-            url = `${apiBase}${url}`;
-          }
-
-          // Allow Arweave and any HTTP(S); do not hard-skip deprecated hosts, just let fetch fail
-          return Promise.race([
-            fetch(url).then((r) => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
-          ]);
-        };
-
-        const results = await Promise.allSettled(sample.map((u) => fetchWithTimeout(u)));
-        // Debug: log raw metadata responses for field mapping
-        try {
-          console.log('Roulette metadata fetch results (first 3):', results.slice(0, 3).map((r: any, i) => ({
-            idx: i,
-            status: r?.status,
-            keys: r?.status === 'fulfilled' ? Object.keys(r.value || {}) : undefined,
-            sample: r?.status === 'fulfilled' ? r.value : r?.reason?.message || String(r?.reason || '')
-          })));
-        } catch {}
-        const normalize = (md: any) => {
-          if (!md) return null;
-          
-          // Unwrap API envelope { success, data }
-          if (md.success && md.data) md = md.data;
-          if (md.data && !md.name && !md.image) md = md.data; // nested data
-          
-          // Extract name (trim whitespace)
-          const name = md.name ? md.name.trim() : undefined;
-          
-          // Extract rarity from attributes
-          const rarityAttr = Array.isArray(md?.attributes)
-            ? md.attributes.find((a: any) => /rarity/i.test(a?.trait_type))?.value
-            : undefined;
-          const rarity = typeof rarityAttr === 'string' ? rarityAttr.toLowerCase() : undefined;
-          
-          // Extract image
-          const image = md.image || (md as any).image_url || (md as any).imageUri || md?.properties?.files?.[0]?.uri || undefined;
-          
-          // Extract value from Float attribute (CS:GO float value)
-          const floatAttr = Array.isArray(md?.attributes)
-            ? md.attributes.find((a: any) => /float/i.test(a?.trait_type))?.value
-            : undefined;
-          const floatValue = floatAttr ? parseFloat(floatAttr) : undefined;
-          
-          // Use float value as the price (multiply by 1000 for display)
-          const value = floatValue ? floatValue * 1000 : undefined;
-          
-          return { name, image, rarity, value };
-        };
-
-        const assets: { name?: string; image?: string; rarity?: string; value?: number }[] = results
-          .map((r) => (r.status === 'fulfilled' ? normalize((r as any).value) : null))
-          .filter(Boolean) as any;
-        try {
-          console.log('Normalized roulette assets (first 5):', assets.slice(0, 5));
-        } catch {}
-
-        // Build 50 spin items using weighted selection based on real odds
-        for (let i = 0; i < 50; i++) {
-          const pick = assets[Math.floor(Math.random() * Math.max(assets.length, 1))] || {} as any;
-          const rarityFromMeta = pick.rarity && ['common','uncommon','rare','epic','legendary'].includes(pick.rarity)
-            ? pick.rarity
-            : undefined;
-          const chosenRarity = rarityFromMeta || selectRarityByOdds(oddsToUse);
-
-          items.push({
-            id: `real-${i}`,
-            name: pick.name || `Mystery Skin #${i + 1}`,
-            rarity: chosenRarity,
-            value: pick.value || Math.round(Math.random() * 10000) / 100,
-            image: pick.image || "/assets/skins/img1.png",
-          });
-        }
-      } catch (_e) {
-        // Fallback to mock skins on any error, but still use weighted selection
-        for (let i = 0; i < 50; i++) {
-          const selectedRarity = selectRarityByOdds(oddsToUse);
-          const mockSkin = MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)];
-          items.push({
-            ...mockSkin,
-            rarity: selectedRarity, // Override with weighted rarity
-          });
-        }
-      }
-    } else {
-      // Fallback to mock skins with weighted selection
-      for (let i = 0; i < 50; i++) {
-        const selectedRarity = selectRarityByOdds(oddsToUse);
-        const mockSkin = MOCK_SKINS[Math.floor(Math.random() * MOCK_SKINS.length)];
-        items.push({
-          ...mockSkin,
-          rarity: selectedRarity, // Override with weighted rarity
-        });
-      }
-    }
-
-    setSpinItems(items);
-  };
-
   // Fetch a single metadata JSON and map to CSGOSkin
   const resolveSkinFromMetadata = async (uri: string): Promise<CSGOSkin> => {
     try {
-      console.log('DEBUG: Fetching metadata from URI:', uri);
       const r = await fetch(uri);
       const j = await r.json();
-      console.log('DEBUG: Raw metadata response:', j);
-      
+
       // Unwrap API envelope { success, data }
       const md = j.success && j.data ? j.data : j;
-      
+
       // Extract name (trim whitespace)
-      const name = md.name ? md.name.trim() : 'Mystery Skin';
-      
+      const name = md.name ? md.name.trim() : "Mystery Skin";
+
       // Extract rarity from attributes
       const rarityAttr = Array.isArray(md?.attributes)
         ? md.attributes.find((a: any) => /rarity/i.test(a?.trait_type))?.value
         : undefined;
-      const rarity = typeof rarityAttr === 'string' ? rarityAttr.toLowerCase() : 'common';
-      
+      const rarity =
+        typeof rarityAttr === "string" ? rarityAttr.toLowerCase() : "common";
+
       // Extract image
-      const image = md.image || '/assets/skins/img1.png';
-      
+      const image = md.image || "/assets/skins/img1.png";
+
       // Extract value from Float attribute (CS:GO float value)
       const floatAttr = Array.isArray(md?.attributes)
         ? md.attributes.find((a: any) => /float/i.test(a?.trait_type))?.value
         : undefined;
       const floatValue = floatAttr ? parseFloat(floatAttr) : undefined;
-      
+
       // Use float value as the price (multiply by 1000 for display)
       const value = floatValue ? floatValue * 1000 : 0;
-      
+
       const result = { id: uri, name, rarity, value, image };
-      console.log('DEBUG: Resolved skin:', result);
       return result;
     } catch (error) {
-      console.error('DEBUG: Failed to resolve metadata:', error);
-      return { id: uri, name: 'Mystery Skin', rarity: 'common', value: 0, image: '/assets/skins/img1.png' };
+      return {
+        id: uri,
+        name: "Mystery Skin",
+        rarity: "common",
+        value: 0,
+        image: "/assets/skins/img1.png",
+      };
     }
   };
 
-  // Continuous spinning animation
-  const startContinuousSpin = () => {
-    if (!rouletteRef.current) return;
-
-    const animate = () => {
-      if (rouletteRef.current && openingPhase === "spinning") {
-        const currentTransform = rouletteRef.current.style.transform;
-        const currentX =
-          parseFloat(currentTransform.replace(/[^-\d.]/g, "")) || 0;
-        const newX = currentX - 5;
-
-        if (newX < -8000) {
-          rouletteRef.current.style.transform = "translateX(0px)";
-        } else {
-          rouletteRef.current.style.transform = `translateX(${newX}px)`;
-        }
-      }
-      animationRef.current = requestAnimationFrame(animate);
-    };
-
-    animationRef.current = requestAnimationFrame(animate);
-  };
-
-  // Stop and reveal result
-  const stopAndShowResult = (winnerSkin: CSGOSkin) => {
-    setOpeningPhase("revealing");
-
-    if (animationRef.current) {
-      cancelAnimationFrame(animationRef.current);
-    }
-
-    // Keep current items and inject winner at a deterministic index
-    const items: CSGOSkin[] = [...spinItems];
-    const winningIndex = Math.min(42, Math.max(0, items.length - 1));
-    if (items.length === 0) {
-      items.push(winnerSkin);
-    } else {
-      items[winningIndex] = winnerSkin;
-    }
-    setSpinItems(items);
-
-    // Animate to final position
-    setTimeout(() => {
-      if (rouletteRef.current) {
-        const itemWidth = 160;
-        const finalPosition = -(
-          winningIndex * itemWidth -
-          window.innerWidth / 2 +
-          itemWidth / 2
-        );
-
-        rouletteRef.current.style.transition =
-          "transform 4s cubic-bezier(0.17, 0.67, 0.05, 0.98)";
-        rouletteRef.current.style.transform = `translateX(${finalPosition}px)`;
-      }
-
-      // Show result modal after animation
-      setTimeout(() => {
-        setWonSkin(winnerSkin);
-        setShowResult(true);
-        setOpeningPhase(null);
-        toast.success(`You won ${winnerSkin.name}!`, {
-          icon: "🎉",
-          duration: 4000,
-        });
-      }, 4200);
-    }, 100);
-  };
+  // Auto-buyback removed by request
 
   const handleOpenPack = async () => {
+    dismissOpenPackToast();
     if (!connected) {
-      toast.error("Connect your wallet first!");
+      openPackToastIdRef.current = toast.error("Connect your wallet first!");
+      return;
+    }
+
+    // Require Steam Trade URL before allowing opening
+    if (!userTradeUrl || userTradeUrl.trim() === "") {
+      openPackToastIdRef.current = toast.error("Set your Steam Trade URL in Profile to open packs.");
       return;
     }
 
     if (openingPhase || !selectedPack) return;
 
-    // FASE 1: Waiting (apenas texto)
-    setOpeningPhase("waiting");
+    // FASE 1: Processing - Botão carregando na mesma tela (sem blur)
+    setOpeningPhase("processing");
+    setIsProcessing(true);
     setShowResult(false);
     setWonSkin(null);
-
-    // Reset roulette
-    generateSpinItems();
-    if (rouletteRef.current) {
-      rouletteRef.current.style.transition = "none";
-      rouletteRef.current.style.transform = "translateX(0px)";
-    }
 
     try {
       if (isOpeningRef.current) return;
       isOpeningRef.current = true;
-      const rpc = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.devnet.solana.com';
-      const pid = process.env.NEXT_PUBLIC_PROGRAM_ID as string;
-      // Fresh instance for open to avoid tx reuse
-      let programService = new SolanaProgramService(rpc, pid);
 
-      const wallet = walletCtx;
-      
-      // Skip initialize here; assume global is already set up via admin
+      {
+        // MODO REAL - Integração completa
+        const { packOpeningService } = await import(
+          "@/lib/services/pack-opening.service"
+        );
 
-      // 2. Use existing box data from database
-      const batchId = (selectedPack as any).batchId;
-      if (!batchId) {
-        toast.error("This pack is not a published batch. Only published batches can be opened.");
-        setOpeningPhase(null);
-        return;
-      }
+        // Open pack using Candy Machine
+        const result = await packOpeningService.openPack(
+          selectedPack.id,
+          walletCtx,
+          null // connection will be handled by the service
+        );
 
-      // Generate a new box asset for this opening
-      const boxAsset = Keypair.generate().publicKey;
+        setLastPackResult({
+          signature: result.signature,
+          asset: result.nftMint,
+        });
 
-      // 3. Execute complete pack opening in single transaction
-      // This combines createBox + openBox + revealAndClaim
+        // FASE 2: Flash na tela quando transação confirmada
+        setOpeningPhase("flash");
 
-      // Require real metadata for roulette/reveal
-      const ensureUris = async () => {
-        if (Array.isArray(selectedBoxMetaUris) && selectedBoxMetaUris.length > 0) return true;
-        try {
-          await fetchSelectedBoxMetaUris(selectedPack as any);
-        } catch {}
-        return Array.isArray(selectedBoxMetaUris) && selectedBoxMetaUris.length > 0;
-      };
-      const haveUris = await ensureUris();
-      if (!haveUris) {
-        toast.error("No metadata linked to this pack yet. Add metadata before opening.");
-        setOpeningPhase(null);
-        return;
-      }
+        // Após flash, iniciar vídeo
+        setTimeout(() => {
+          setOpeningPhase("video");
+          // Vídeo fica em loop até o resultado estar pronto
+        }, 500); // 500ms para o flash
 
-      console.log("Using box for open:", { batchId, boxAsset: boxAsset.toBase58(), metadataCount: selectedBoxMetaUris.length });
-
-      // 4. Execute complete pack opening (createBox + openBox + revealAndClaim in single transaction)
-      // Get treasury address from environment, admin panel, or use admin wallet as fallback
-      const treasuryAddress = process.env.NEXT_PUBLIC_TREASURY_ADDRESS || 'mgfSqUe1qaaUjeEzuLUyDUx5Rk4fkgePB5NtLnS3Vxa';
-      if (!treasuryAddress) {
-        toast.error("Treasury address not configured. Please set NEXT_PUBLIC_TREASURY_ADDRESS in environment variables.");
-        setOpeningPhase(null);
-        return;
-      }
-      const treasury = new PublicKey(treasuryAddress);
-      
-      // Show payment information to user
-      const paymentAmount = batchPrice || (selectedPack as any)?.priceSol || 0;
-      const paymentInSOL = paymentAmount / 1_000_000_000;
-      console.log(`💳 Payment: ${paymentInSOL} SOL will be deducted from your wallet`);
-      toast(`💳 Opening pack costs ${paymentInSOL} SOL`, { 
-        duration: 3000,
-        icon: '💰'
-      });
-      
-      // Execute the Solana transaction
-      const result = await programService.openPackComplete(wallet, { batchId, poolSize: 1, boxAsset, treasury });
-      console.log("Pack opened and NFT claimed:", result);
-      setLastPackResult(result); // Store the result for later use
-      
-      // Show transaction link for verification
-      const explorerUrl = `https://solana.fm/tx/${result.signature}?cluster=devnet-solana`;
-      console.log('🔍 View transaction:', explorerUrl);
-      
-      toast.success(`Pack opened successfully! ${paymentInSOL} SOL paid to treasury.`, {
-        duration: 5000
-      });
-      
-      // Show transaction link separately
-      toast(`🔍 View transaction: ${explorerUrl}`, {
-        duration: 10000,
-        icon: '🔗'
-      });
-
-
-      // 2. Start roulette animation
-      setOpeningPhase("spinning");
-      startContinuousSpin();
-
-      // 3. After animation, show the revealed NFT
-      setTimeout(async () => {
-        if (isRevealingRef.current) return;
-        isRevealingRef.current = true;
-        try {
-          const { signature, asset } = result;
-          console.log("Using revealed NFT:", { signature, asset });
-
-          // Resolve real revealed metadata: try to map asset → one of our metadata URIs
-          // Heuristic: if only one URI in the batch, use it; otherwise try first as placeholder
-          let winnerSkin: CSGOSkin | null = null;
-          const uris = selectedBoxMetaUris;
-          if (Array.isArray(uris) && uris.length > 0) {
-            const uri = uris.length === 1 ? uris[0] : uris[0];
-            winnerSkin = await resolveSkinFromMetadata(uri);
-          }
-          if (!winnerSkin) {
-            winnerSkin = { id: asset, name: `Revealed #${asset.slice(0, 6)}`, rarity: 'common', value: 0, image: '/assets/skins/img1.png' };
-          }
-
-          setWonSkin(winnerSkin);
-          setOpeningPhase("revealing");
-          
-          // Store the won skin in database via API
+        // Processar resultado em background
+        setTimeout(async () => {
           try {
-            if (walletCtx.publicKey) {
-              await pendingSkinsService.createPendingSkin({
-                userId: walletCtx.publicKey.toString(),
-                skinName: winnerSkin.name,
-                skinRarity: winnerSkin.rarity,
-                skinWeapon: winnerSkin.name.split(' | ')[0] || 'Unknown',
-                skinValue: winnerSkin.value,
-                skinImage: winnerSkin.image,
-                nftMintAddress: result?.asset,
-                transactionHash: result?.signature,
-                caseOpeningId: `pack-${Date.now()}`,
-              });
-              console.log('💾 Stored pending skin in database:', winnerSkin.name);
+            // 2. Use real image metadata with graceful fallback
+            let resolvedImage = result.skin.imageUrl as string | undefined;
+            if (
+              !resolvedImage &&
+              result.skin.id &&
+              /^https?:\/\//.test(result.skin.id)
+            ) {
+              try {
+                const metaResp = await fetch(result.skin.id);
+                if (metaResp.ok) {
+                  const meta = await metaResp.json();
+                  let img = meta.image as string | undefined;
+                  if (img && img.startsWith("ipfs://")) {
+                    img = `https://ipfs.io/ipfs/${img.replace("ipfs://", "")}`;
+                  }
+                  resolvedImage = img || undefined;
+                }
+              } catch (_) {
+                // ignore, will fallback
+              }
             }
-          } catch (error) {
-            console.error('Failed to store pending skin in database:', error);
-            // Fallback to localStorage if API fails
+
+            const winnerSkin: CSGOSkin = {
+              id: result.skin.id,
+              name: result.skin.name,
+              rarity: result.skin.rarity,
+              value: result.skin.basePriceUsd,
+              image: resolvedImage || "icon-fallback",
+            };
+
+            setWonSkin(winnerSkin);
+
+            // Create case opening record for activity tracking
             try {
-              localStorage.setItem('pendingSkin', JSON.stringify(winnerSkin));
-              console.log('💾 Fallback: Stored pending skin in localStorage:', winnerSkin.name);
-            } catch (localError) {
-              console.error('Failed to store pending skin in localStorage:', localError);
+              if (walletCtx.publicKey) {
+                await packOpeningService.createCaseOpeningRecord({
+                  userId: walletCtx.publicKey.toString(),
+                  boxId: selectedPack.id,
+                  nftMint: result.nftMint,
+                  skinName: result.skin.name,
+                  skinRarity: result.skin.rarity,
+                  skinWeapon: result.skin.weapon,
+                  skinValue: result.skin.basePriceUsd,
+                  skinImage: result.skin.imageUrl || "",
+                  transactionHash: result.signature,
+                });
+                // activity record created
+              }
+            } catch (error) {
+              // non-critical telemetry failure; ignore
             }
-          }
-          
-          stopAndShowResult(winnerSkin);
 
-        } catch (error: any) {
-          const msg = String(error?.message || "");
-          if (msg.includes("already been processed")) {
-            console.warn("Reveal ignored: transaction already processed");
-            setOpeningPhase(null);
-          } else {
-            console.error("Failed to reveal and claim:", error);
-            console.error("Full error details:", JSON.stringify(error, null, 2));
-            toast.error("Failed to reveal and claim: " + (error as Error).message);
-            setOpeningPhase(null);
-          }
-        } finally {
-          isRevealingRef.current = false;
-        }
-      }, 4000); // After roulette animation
+            // FASE 3: Flash + mostrar resultado (quando resultado estiver pronto)
+            setOpeningPhase("flash");
+            setTimeout(() => {
+              setShowResult(true);
+              setOpeningPhase(null);
+              setIsProcessing(false);
 
-    } catch (error) {
-      console.error("Failed to open box:", error);
-      toast.error("Failed to open box: " + (error as Error).message);
+              // Custom toast with Sonner including skin image and transaction link
+              toast.success(
+                <div className="flex items-center gap-3">
+                  <div className="flex-shrink-0">
+                    {winnerSkin.image === "icon-fallback" ? (
+                      <div className="w-12 h-12 bg-zinc-800 rounded flex items-center justify-center">
+                        <ImageIcon className="w-6 h-6 text-zinc-400" />
+                      </div>
+                    ) : (
+                      <img
+                        src={winnerSkin.image}
+                        alt={winnerSkin.name}
+                        className="w-12 h-12 object-contain rounded"
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm">You won {winnerSkin.name}! 🎉</p>
+                    <a
+                      href={getSolscanUrl(result.signature)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+                    >
+                      View on Solscan
+                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </a>
+                  </div>
+                </div>,
+                {
+                  duration: 6000,
+                }
+              );
+            }, 300);
+          } catch (error) {
+            setOpeningPhase(null);
+            setIsProcessing(false);
+          }
+        }, 8000); // 8 segundos total (6s vídeo + 2s espera)
+      }
+    } catch (error: any) {
+      dismissOpenPackToast();
+      openPackToastIdRef.current = toast.error(`Failed to open pack: ${error?.message || "Please try again."}`);
       setOpeningPhase(null);
+      setIsProcessing(false);
     } finally {
       isOpeningRef.current = false;
+    }
+  };
+
+  const handleCloseResult = async () => {
+    setShowResult(false);
+    setWonSkin(null);
+    setLastPackResult(null);
+  };
+
+  const handleBuyback = async () => {
+    if (!lastPackResult) {
+      toast.error("No NFT to buyback!");
+      return;
+    }
+
+    if (!connected || !publicKey) {
+      toast.error("Please connect your wallet!");
+      return;
+    }
+
+    try {
+      dismissBuybackToast();
+      buybackToastIdRef.current = toast.loading("Calculating buyback amount...");
+
+      // Calculate buyback amount
+      const calcResponse = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+        }/api/v1/buyback/calculate/${lastPackResult.asset}`
+      );
+      const calcData = await calcResponse.json();
+
+      if (!calcData.success) {
+        dismissBuybackToast();
+        buybackToastIdRef.current = toast.error("Failed to calculate buyback");
+        return;
+      }
+
+      dismissBuybackToast();
+      buybackToastIdRef.current = toast.loading(
+        `Buyback: ${calcData.data.buybackAmount} SOL - Requesting transaction...`
+      );
+      // buyback calculation received
+
+      const walletAddress = publicKey.toBase58();
+
+      const txResponse = await fetch(
+        `${
+          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+        }/api/v1/buyback/request`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            nftMint: lastPackResult.asset,
+            walletAddress: walletAddress,
+          }),
+        }
+      );
+
+      const txData = await txResponse.json();
+
+      if (!txData.success) {
+        dismissBuybackToast();
+        buybackToastIdRef.current = toast.error("Failed to create buyback transaction");
+        return;
+      }
+
+      const transaction = txData.data.transaction;
+
+      if (!signTransaction) {
+        dismissBuybackToast();
+        buybackToastIdRef.current = toast.error("Wallet does not support signing transactions.");
+        return;
+      }
+
+      const { Transaction } = await import("@solana/web3.js");
+      const recoveredTransaction = Transaction.from(
+        Buffer.from(transaction, "base64")
+      );
+
+      dismissBuybackToast();
+      buybackToastIdRef.current = toast.loading("Please sign the transaction in your wallet...");
+      const signedTx = await signTransaction(recoveredTransaction);
+      const rawTransaction = signedTx.serialize();
+
+      dismissBuybackToast();
+      buybackToastIdRef.current = toast.loading("Confirming buyback...");
+
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+
+      try {
+        const confirmResponse = await fetch(
+          `${
+            process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
+          }/api/v1/buyback/confirm`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              nftMint: lastPackResult.asset,
+              walletAddress: publicKey.toBase58(),
+              signedTransaction: Buffer.from(rawTransaction).toString("base64"),
+            }),
+            signal: controller.signal,
+          }
+        );
+
+        clearTimeout(timeoutId);
+
+        if (!confirmResponse.ok) {
+          const errorText = await confirmResponse.text();
+          throw new Error(`HTTP ${confirmResponse.status}: ${errorText}`);
+        }
+
+        const confirmData = await confirmResponse.json();
+
+        if (confirmData.success) {
+          dismissBuybackToast();
+          const txSig: string | undefined =
+            confirmData.data?.transactionSignature ||
+            confirmData.data?.signature ||
+            confirmData.data?.txSignature ||
+            confirmData.data?.hash ||
+            confirmData.data?.tx ||
+            undefined;
+          buybackToastIdRef.current = toast.success(
+            <div className="flex flex-col gap-1">
+              <p className="font-semibold text-sm">NFT successfully bought back! 💰</p>
+              {txSig ? (
+                <a
+                  href={getSolscanUrl(txSig)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+                >
+                  View transaction on Solscan
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              ) : null}
+            </div>,
+            {
+              duration: 6000,
+            }
+          );
+
+          // Show summary modal
+          const packPrice = selectedPack
+            ? parseFloat(String((selectedPack as any).priceSol))
+            : 0;
+          const payout = Number(
+            confirmData.data?.amountPaid ??
+              confirmData.data?.buybackAmount ??
+              confirmData.data?.amount ??
+              0
+          );
+          setBuybackAmountSol(payout);
+          setShowResult(false);
+          setWonSkin(null);
+          setLastPackResult(null);
+          setShowBuybackModal(true);
+        } else {
+          dismissBuybackToast();
+          buybackToastIdRef.current = toast.error(
+            confirmData.error?.message || "Failed to confirm buyback"
+          );
+        }
+      } catch (fetchError: any) {
+        clearTimeout(timeoutId);
+        let fallbackDisplayed = false;
+        // txn might be on chain even if backend timed out
+        dismissBuybackToast();
+        buybackToastIdRef.current = toast.success(
+          <div className="flex flex-col gap-1">
+            <p className="font-semibold text-sm">NFT successfully bought back! ✅</p>
+            <p className="text-xs text-zinc-400">(Transaction likely sent. Backend didn’t respond.)</p>
+          </div>,
+          { duration: 8000 }
+        );
+        fallbackDisplayed = true;
+        if (!fallbackDisplayed) {
+          dismissBuybackToast();
+          buybackToastIdRef.current = toast.error(fetchError?.message || "Payout failed, and transaction did not hit the chain.");
+        }
+      }
+    } catch (error: any) {
+      dismissBuybackToast();
+      buybackToastIdRef.current = toast.error("Failed to buyback NFT");
     }
   };
 
@@ -890,199 +734,265 @@ export default function PacksPage() {
     }
   };
 
+  useEffect(() => {
+    if (showResult && lastPackResult?.asset) {
+      setPendingBuybackAmount(null);
+      fetch(`/api/v1/buyback/calculate/${lastPackResult.asset}`)
+        .then(r => r.json())
+        .then(j => {
+          if (j.success && typeof j.data?.buybackAmount === 'number') {
+            setPendingBuybackAmount(j.data.buybackAmount);
+          }
+        })
+        .catch(() => setPendingBuybackAmount(null));
+    }
+  }, [showResult, lastPackResult?.asset]);
+
+  // Fetch and cache buyback calculation (SOL/USD) whenever showResult && lastPackResult is set
+  useEffect(() => {
+    if (showResult && lastPackResult?.asset) {
+      setPendingBuybackInfo(null);
+      fetch(`/api/v1/buyback/calculate/${lastPackResult.asset}`)
+        .then(r => r.json())
+        .then(j => {
+          if (j.success && typeof j.data?.buybackAmount === 'number') {
+            setPendingBuybackInfo({
+              skinUsd: wonSkin?.value ?? 0,
+              skinSol: j.data.skinPrice ?? 0,
+              payoutSol: j.data.buybackAmount ?? 0,
+            });
+          }
+        })
+        .catch(() => setPendingBuybackInfo(null));
+    }
+  }, [showResult, lastPackResult?.asset, wonSkin?.value]);
+  const testToast = () => {
+    const testSkin = {
+      name: "AK-47 | Redline",
+      image: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpot7HxfDhjxszJemkV09-5lpKKqPrxN7LEmyVQ7MEpiLuSrYmnjQO3-UdsZGHwddKVcFI2Ml7T_VO5xL_vhZS-tMudyXE36SYgsXiImhWpwUYbeOuVm2I/360fx360f",
+      rarity: "legendary",
+      value: 45.50
+    };
+
+    const testSignature = "5JKWJwHvN5bUbR8NCMQmJGWNqQYm9FKZvbXxHyVqZQHKhPqZGJR8NwXqHyVqZQHK";
+
+    toast.success(
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0">
+          <img
+            src={testSkin.image}
+            alt={testSkin.name}
+            className="w-12 h-12 object-contain rounded"
+          />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm">You won {testSkin.name}! 🎉</p>
+          <a
+            href={getSolscanUrl(testSignature)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+          >
+            View on Solscan
+            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            </svg>
+          </a>
+        </div>
+      </div>,
+      {
+        duration: 6000,
+      }
+    );
+  };
+
+  const buybackToastIdRef = useRef<string | number | null>(null);
+  const openPackToastIdRef = useRef<string | number | null>(null);
+  const claimToastIdRef = useRef<string | number | null>(null);
+
+  const dismissBuybackToast = () => {
+    if (buybackToastIdRef.current) toast.dismiss(buybackToastIdRef.current);
+  };
+
+  const dismissOpenPackToast = () => {
+    if (openPackToastIdRef.current) toast.dismiss(openPackToastIdRef.current);
+  };
+
+  const dismissClaimToast = () => {
+    if (claimToastIdRef.current) toast.dismiss(claimToastIdRef.current);
+  };
+
+  useEffect(() => {
+    // Whenever showClaimShare changes, fire the event
+    const hide = !!showClaimShare;
+    window.dispatchEvent(new CustomEvent('topbar-visibility', { detail: { hide } }));
+    return () => {
+      // On unmount/close, force it back to visible just in case
+      window.dispatchEvent(new CustomEvent('topbar-visibility', { detail: { hide: false } }));
+    };
+  }, [showClaimShare]);
+
+  const router = useRouter();
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6 overflow-hidden relative">
-      {/* Fullscreen Opening Animation */}
+      {/* Fullscreen Opening Animation - Only show after processing */}
       <AnimatePresence>
-        {openingPhase && (
+        {openingPhase && openingPhase !== "processing" && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black"
           >
-            {/* Simplified Background - reduced animations */}
-            <div className="absolute inset-0 overflow-hidden">
-              {/* Static gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-radial from-[#E99500]/20 to-black" />
-            </div>
+            {/* FASE 1: Flash */}
+            {openingPhase === "flash" && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 0] }}
+                transition={{ duration: 0.5 }}
+                className="absolute inset-0 bg-white"
+              />
+            )}
 
-            {/* Center Content */}
-            <div className="relative z-10 flex flex-col items-center justify-center h-full space-y-12">
-              {/* FASE 1: Waiting - Apenas texto e ícone */}
-              {openingPhase === "waiting" && (
-                <>
-                  {/* Animated Icon */}
-                  <motion.div
-                    animate={{
-                      scale: [1, 1.2, 1],
-                      rotateY: [0, 360],
-                    }}
-                    transition={{
-                      duration: 3,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                    className="relative"
-                  >
-                    <div className="w-32 h-32 bg-gradient-to-br from-[#E99500] to-[#ff6b00] rounded-2xl flex items-center justify-center shadow-lg shadow-[#E99500]/50">
-                      {selectedPack &&
-                        React.createElement(getPackIcon((selectedPack as any).rarity), {
-                          className: "w-16 h-16 text-black",
-                        })}
-                    </div>
-                  </motion.div>
-
-                  {/* Status Text */}
-                  <div className="text-center space-y-4">
-                    <motion.h2
-                      animate={{
-                        opacity: [0.5, 1, 0.5],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                      className="text-4xl md:text-6xl font-bold text-white"
-                    >
-                      Opening Pack...
-                    </motion.h2>
-
-                    <motion.p
-                      animate={{
-                        opacity: [0.3, 0.7, 0.3],
-                      }}
-                      transition={{
-                        duration: 1.5,
-                        repeat: Infinity,
-                        ease: "easeInOut",
-                      }}
-                      className="text-xl text-[#E99500]"
-                    >
-                      Processing transaction on blockchain
-                    </motion.p>
-
-                    {/* Animated dots */}
-                    <div className="flex justify-center gap-2">
-                      {[0, 1, 2].map((i) => (
-                        <motion.div
-                          key={i}
-                          animate={{
-                            scale: [1, 1.5, 1],
-                            opacity: [0.3, 1, 0.3],
-                          }}
-                          transition={{
-                            duration: 1.5,
-                            repeat: Infinity,
-                            delay: i * 0.2,
-                          }}
-                          className="w-3 h-3 bg-[#E99500] rounded-full"
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* FASE 2 e 3: Spinning e Revealing - Roleta em tela cheia */}
-              {(openingPhase === "spinning" ||
-                openingPhase === "revealing") && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.9, y: 100 }}
-                  animate={{
-                    opacity: 1,
-                    scale: 1,
-                    y: 0,
-                  }}
-                  transition={{ duration: 0.5, type: "spring" }}
-                  className="w-full max-w-6xl px-4"
+            {/* FASE 2: Vídeo com fundo preto e efeitos de smoke */}
+            {openingPhase === "video" && (
+              <div className="absolute inset-0 bg-black flex items-center justify-center">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  loop
+                  className="max-w-[60vw] max-h-[60vh] w-auto h-auto object-contain"
                 >
-                  <div className="relative bg-black/30 backdrop-blur-xl rounded-3xl p-4 md:p-8 border-2 border-[#E99500]/50 shadow-[0_0_60px_rgba(233,149,0,0.3)]">
-                    {/* Center Line */}
-                    <div className="absolute left-1/2 top-0 bottom-0 w-1 bg-[#E99500] z-20 transform -translate-x-1/2 shadow-[0_0_40px_rgba(233,149,0,1)]">
-                      <div className="absolute -top-6 left-1/2 transform -translate-x-1/2">
-                        <motion.div
-                          animate={{
-                            y: [0, 8, 0],
-                          }}
-                          transition={{
-                            duration: 1.5,
-                            repeat: Infinity,
-                            ease: "easeInOut",
-                          }}
-                          className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[16px] border-l-transparent border-r-transparent border-t-[#E99500] drop-shadow-[0_0_10px_rgba(233,149,0,1)]"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Roulette */}
-                    <div className="overflow-hidden py-6">
-                      <div
-                        ref={rouletteRef}
-                        className="flex gap-3 md:gap-4"
-                        style={{
-                          transform: "translateX(0px)",
-                          transition: "none",
-                        }}
-                      >
-                        {spinItems.map((item, index) => (
-                          <div
-                            key={index}
-                            className="flex-shrink-0 w-32 md:w-40 h-44 md:h-56 relative"
-                          >
-                            <Card
-                              className={`w-full h-full bg-gradient-to-br ${getRarityColor(
-                                item.rarity
-                              )} p-3 md:p-4 border-2 ${getRarityBorderColor(
-                                item.rarity
-                              )} flex flex-col items-center justify-center space-y-2 shadow-lg`}
-                            >
-                              <div className="w-full h-20 md:h-28 flex items-center justify-center bg-black/30 rounded-lg">
-                                <img
-                                  src={item.image}
-                                  alt={item.name}
-                                  className="max-w-full max-h-full object-contain"
-                                />
-                              </div>
-                              {/* Rarity badge */}
-                              <div className="px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide border border-white/20 bg-black/30 text-white/90">
-                                {(item.rarity || '').toString()}
-                              </div>
-                              <p className="text-white text-xs font-bold text-center px-1 min-h-[2rem] flex items-center justify-center">
-                                {item.name || 'Mystery Skin'}
-                              </p>
-                              <p className="text-white text-sm md:text-base font-bold">
-                                $
-                                {typeof item.value === "number"
-                                  ? item.value.toFixed(2)
-                                  : parseFloat(item.value || "0").toFixed(2)}
-                              </p>
-                            </Card>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </div>
+                  <source src="/assets/video.mp4" type="video/mp4" />
+                </video>
+              </div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Main Content (blurred when opening) */}
+      {/* Buyback Summary Modal */}
+      <AnimatePresence>
+        {showBuybackModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0, rotateY: -180 }}
+              animate={{ scale: 1, opacity: 1, rotateY: 0 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.8, bounce: 0.4 }}
+              className="relative max-w-2xl w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden">
+                {/* Top area */}
+                <div className="relative p-6 pb-0">
+                  <div className="pointer-events-none absolute -inset-40 bg-[radial-gradient(circle,rgba(255,170,0,0.3)_0%,rgba(0,0,0,0)_60%)]" />
+
+                  <div className="relative w-full h-[220px] rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
+                    <div className="text-center space-y-2">
+                      <div className="text-zinc-300 text-sm uppercase tracking-wider">
+                        Payout received
+                      </div>
+                      {(() => {
+                        const payoutVal = Number((buybackAmountSol ?? pendingBuybackInfo?.payoutSol ?? 0));
+                        return (
+                          <div className="text-5xl font-extrabold text-white">
+                            {payoutVal > 0 ? `+${payoutVal.toFixed(3)} SOL` : `+0.00 SOL`}
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom area */}
+                <div className="mt-6 p-6 bg-[#0d0d0d] border-t border-white/10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Pack Price */}
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
+                      <div className="text-white/70 text-sm">Pack Price</div>
+                      <div className="text-white font-semibold text-2xl mt-1">
+                        {selectedPack
+                          ? `${parseFloat(
+                              String((selectedPack as any).priceSol)
+                            ).toFixed(2)} SOL`
+                          : "—"}
+                      </div>
+                    </div>
+
+                    {/* Payout */}
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
+                      <div className="text-white/70 text-sm">Payout</div>
+                      <div className="text-white font-semibold text-2xl mt-1">
+                        {buybackAmountSol !== null
+                          ? `${Number(buybackAmountSol).toFixed(2)} SOL`
+                          : "—"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 flex gap-3">
+                    <Button
+                      onClick={() => setShowBuybackModal(false)}
+                      className="flex-1 bg-[#E99500] text-black hover:bg-[#d88500] font-bold py-6"
+                    >
+                      Buy Another Pack
+                    </Button>
+                    {/* Share on X */}
+                    <a
+                      href={generateXShareUrl({
+                        kind: "buyback",
+                        skin: wonSkin,
+                        amountSol: Number(buybackAmountSol || 0),
+                        packName: selectedPack?.name || null,
+                      })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-md bg-black border border-white/20 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900 transition-colors whitespace-nowrap"
+                    >
+                      Share on <img src="/assets/x_icon.png" alt="X" className="w-5 h-5" />
+                    </a>
+                  </div>
+                </div>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Main Content (blurred when opening, but not during processing) */}
       <div
         className={`transition-all duration-500 ${
-          openingPhase ? "blur-xl pointer-events-none" : ""
+          openingPhase && openingPhase !== "processing"
+            ? "blur-xl pointer-events-none"
+            : ""
         }`}
       >
         {/* Main Content */}
         <div className="max-w-7xl mx-auto space-y-8">
+          
+          {/* TEST BUTTON - Remove this later */}
+          {/* <div className="flex justify-end mb-4">
+            <Button
+              onClick={testToast}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg"
+            >
+              🧪 Test Toast (Remove Later)
+            </Button>
+          </div> */}
+
           {/* Hero */}
           <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
             <img
-              src="/assets/2.jpg"
+              src="/assets/banner3.png"
               alt="Dust3 Pack"
               className="w-full h-[220px] md:h-[320px] object-cover"
             />
@@ -1106,7 +1016,7 @@ export default function PacksPage() {
             <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 flex flex-col">
               <div className="relative w-full h-[260px] md:h-[320px] lg:h-[360px]">
                 <img
-                  src="/dust3.jpeg"
+                  src="/assets/machine.jpeg"
                   alt="Dust3 Pack Preview"
                   className="w-full h-full object-cover"
                 />
@@ -1198,17 +1108,13 @@ export default function PacksPage() {
                 <div className="flex items-center gap-3">
                   <div className="text-right">
                     <p className="text-3xl font-bold text-foreground">
-                      {batchPrice !== null
-                        ? (batchPrice / 1_000_000_000).toFixed(4)
-                        : selectedPack
+                      {selectedPack
                         ? parseFloat(selectedPack.priceSol).toFixed(2)
                         : "—"}{" "}
                       SOL
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {batchPrice !== null
-                        ? `$${((batchPrice / 1_000_000_000) * 100).toFixed(2)}`
-                        : selectedPack
+                      {selectedPack
                         ? `$${parseFloat(
                             String(
                               selectedPack.priceUsdc ?? selectedPack.priceSol
@@ -1224,33 +1130,44 @@ export default function PacksPage() {
                       !connected ||
                       selectedPack?.supply?.isSoldOut
                     }
-                    className={`px-6 py-6 ml-4 font-semibold rounded-lg transition-transform duration-150 ${
-                      openingPhase
-                        ? "bg-zinc-700 cursor-not-allowed"
-                        : selectedPack?.supply?.isSoldOut
+                    className={`px-6 py-6 ml-4 font-semibold rounded-lg transition-all duration-300 ${
+                      selectedPack?.supply?.isSoldOut
                         ? "bg-red-500/20 text-red-400 cursor-not-allowed"
-                        : "bg-zinc-100 text-black hover:bg-white hover:scale-[1.02] active:scale-[0.99]"
+                        : "bg-[#E99500] text-black hover:bg-[#d88500] active:bg-[#E99500]"
+                    } ${
+                      openingPhase === "processing"
+                        ? "animate-pulse"
+                        : "hover:scale-[1.02] active:scale-[0.99]"
                     }`}
                   >
-                    <span className="mr-2 ml-2">
-                      {selectedPack?.supply?.isSoldOut
-                        ? "Sold Out"
-                        : "Open Pack"}
-                    </span>
-                    <svg
-                      className="w-4 h-4"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      xmlns="http://www.w3.org/2000/svg"
-                    >
-                      <path
-                        d="M5 12h14M13 5l7 7-7 7"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
+                    {openingPhase === "processing" ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="mr-2 ml-2">
+                          {selectedPack?.supply?.isSoldOut
+                            ? "Sold Out"
+                            : "Open Pack"}
+                        </span>
+                        <svg
+                          className="w-4 h-4"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M5 12h14M13 5l7 7-7 7"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </>
+                    )}
                   </Button>
                 </div>
               </div>
@@ -1336,175 +1253,298 @@ export default function PacksPage() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowResult(false)}
+            onClick={(e) => e.stopPropagation()}
           >
             <motion.div
               initial={{ scale: 0.5, opacity: 0, rotateY: -180 }}
               animate={{ scale: 1, opacity: 1, rotateY: 0 }}
               exit={{ scale: 0.5, opacity: 0 }}
               transition={{ type: "spring", duration: 0.8, bounce: 0.4 }}
-              className="relative max-w-2xl w-full"
+              className="relative max-w-2xl w-full mx-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <Card
-                className={`bg-gradient-to-br ${getRarityColor(
-                  wonSkin.rarity
-                )} p-8 border-4 border-white/30 shadow-2xl relative overflow-hidden`}
-              >
-                {/* Animated background effect */}
-                <motion.div
-                  animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [0.3, 0.6, 0.3],
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                  }}
-                  className="absolute inset-0 bg-gradient-to-r from-white/10 to-transparent"
-                />
+              <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden">
+                <button
+                  type="button"
+                  aria-label="Close"
+                  onClick={handleCloseResult}
+                  className="absolute top-0 right-0 z-20 inline-flex items-center justify-center rounded-full border border-white/20 bg-black/60 text-white hover:bg-black/80 hover:border-white/40 transition-colors p-2 w-8 h-8 m-4"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                {/* Top area with bright glow */}
+                <div className="relative p-6 pb-0">
+                  {/* Skin Display Area - Inspired by the reference image */}
+                  <div className="relative w-full h-[180px] md:h-[200px] rounded-lg overflow-hidden bg-black">
+                    {/* Background with central light effect */}
+                    <div className="absolute inset-0 bg-gradient-to-b from-black via-orange-950/50 to-black" />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center_bottom,rgba(233,149,0,0.35)_0%,rgba(0,0,0,0)_70%)]" />
 
-                <div className="text-center space-y-6 relative z-10">
-                  {/* Skin Image */}
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{
-                      scale: [0, 1.3, 1],
-                      rotateY: [0, 360, 360],
-                    }}
-                    transition={{ duration: 1, times: [0, 0.6, 1] }}
-                    className="w-64 h-64 mx-auto flex items-center justify-center bg-black/30 rounded-lg"
-                  >
-                    <img
-                      src={wonSkin.image}
-                      alt={wonSkin.name}
-                      className="max-w-full max-h-full object-contain drop-shadow-2xl p-4"
-                    />
-                  </motion.div>
+                    {/* Subtle floating particles (inside only this rectangle) */}
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                      {Array.from({ length: 18 }).map((_, i) => (
+                        <motion.div
+                          key={`reveal-p-${i}`}
+                          initial={{
+                            opacity: 0,
+                            y: 40 + Math.random() * 40,
+                            x: Math.random() * 100,
+                            scale: 0.6 + Math.random() * 0.8,
+                          }}
+                          animate={{
+                            opacity: [0, 0.9, 0],
+                            y: ["0%", "-140%"],
+                          }}
+                          transition={{
+                            duration: 2 + Math.random() * 2.5,
+                            repeat: Infinity,
+                            delay: Math.random() * 1.5,
+                            ease: "easeOut",
+                          }}
+                          className="absolute w-1.5 h-1.5 rounded-full"
+                          style={{
+                            left: `${Math.random() * 100}%`,
+                            bottom: `${Math.random() * 10}%`,
+                            boxShadow: "0 0 10px rgba(233,149,0,0.5)",
+                            background: "rgba(233,149,0,0.85)",
+                          }}
+                        />
+                      ))}
+                    </div>
 
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                    className="space-y-2"
-                  >
-                    <Badge className="bg-black/30 text-white border-white/20 text-lg px-4 py-1 uppercase">
-                      {wonSkin.rarity}
-                    </Badge>
-                    <h2 className="text-3xl font-bold text-white px-4">
-                      {wonSkin.name}
-                    </h2>
-                    <motion.p
-                      animate={{
-                        scale: [1, 1.1, 1],
-                      }}
-                      transition={{
-                        duration: 2,
-                        repeat: Infinity,
-                      }}
-                      className="text-5xl font-bold text-white"
-                    >
-                      ${wonSkin.value.toFixed(2)}
-                    </motion.p>
-                  </motion.div>
+                    {/* Central light platform effect */}
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[65%] h-14 bg-gradient-to-t from-[#E99500]/15 to-transparent blur-md" />
 
-                  {/* Steam Trade URL Warning */}
-                  {userTradeUrl === null && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.6 }}
-                      className="bg-yellow-500/20 border border-yellow-500/30 rounded-lg p-4 mb-4 mx-4"
-                    >
-                      <div className="flex items-center gap-2 text-yellow-200">
-                        <Lock className="w-5 h-5" />
-                        <span className="font-semibold">Steam Trade URL Required</span>
-                      </div>
-                      <p className="text-yellow-100 text-sm mt-1">
-                        You need to set up your Steam Trade URL in your profile to claim this skin. Your skin will be saved and waiting for you!
-                      </p>
-                      <Link 
-                        href="/app-dashboard/profile" 
-                        className="text-yellow-200 underline text-sm hover:text-yellow-100 mt-2 inline-block"
+                    {/* Skin Image - Centered and elevated */}
+                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pt-10">
+                      {wonSkin.image === "icon-fallback" ? (
+                        <ImageIcon className="h-24 w-24 md:h-28 md:w-28 text-white/30 drop-shadow-[0_0_30px_rgba(255,140,0,0.5)]" />
+                      ) : (
+                        <img
+                          src={wonSkin.image}
+                          alt={wonSkin.name}
+                          className="h-24 w-24 md:h-28 md:w-28 object-contain drop-shadow-[0_0_30px_rgba(255,140,0,0.5)]"
+                        />
+                      )}
+                    </div>
+
+                    {/* Skin Name - Large and prominent like in reference */}
+                    <div className="absolute top-1 left-0 right-0 text-center px-4 pt-2">
+                      <h1
+                        className="text-base md:text-lg lg:text-xl font-black text-white uppercase tracking-wider mb-0.5"
+                        style={{ fontFamily: "monospace" }}
                       >
-                        Go to Profile Settings →
-                      </Link>
-                    </motion.div>
+                        {wonSkin.name.split(" | ")[0]}
+                        <span className="text-white/60 mx-1">|</span>
+                        {wonSkin.name.split(" | ")[1] ||
+                          wonSkin.rarity.toUpperCase()}
+                      </h1>
+                      <p
+                        className="text-[11px] md:text-xs lg:text-sm font-bold text-[#E99500] uppercase tracking-wide"
+                        style={{ fontFamily: "monospace" }}
+                      >
+                        {wonSkin.rarity.toUpperCase()} •
+                        {typeof (pendingBuybackInfo?.skinSol) === 'number'
+                          ? ` ${pendingBuybackInfo.skinSol.toFixed(3)} SOL`
+                          : 'Market value: —'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom action area (fixed bg) */}
+                <div className="mt-6 p-6 bg-[#0d0d0d] border-t border-white/10">
+                  {userTradeUrl === null && !hideTradePrompt && (
+                    <div className="mb-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-4">
+                      <div className="flex items-start gap-3">
+                        <Lock className="w-5 h-5 mt-0.5 text-[#E99500]" />
+                        <div className="flex-1">
+                          <div className="font-semibold text-yellow-200">
+                            Steam Trade URL required to claim this skin
+                          </div>
+                          <p className="text-yellow-100/90 text-sm mt-1">
+                            Add your Trade URL in Profile to enable Steam claims. You can still take a payout now.
+                          </p>
+                          <div className="mt-3 flex gap-2">
+                            <Link
+                              href="/app-dashboard/profile"
+                              className="flex-1 inline-flex items-center justify-center rounded-md text-black px-3 py-2 text-sm font-semibold bg-[#E99500] hover:bg-[#f0a116]"
+                            >
+                              Add Trade URL
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   )}
 
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.8 }}
-                    className="flex gap-4 justify-center pt-4"
-                  >
-                    <Button
-                      disabled={userTradeUrl === null}
-                      onClick={async () => {
-                        try {
-                          // Check if user has Steam Trade URL set up
-                          const userProfile = await authService.getProfile();
-                          if (!userProfile.tradeUrl || userProfile.tradeUrl.trim() === '') {
-                            toast.error("Please set up your Steam Trade URL in your profile before claiming skins!");
-                            return;
-                          }
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Payout box */}
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-white font-semibold">
+                            Receive a payout
+                          </div>
+                          <div className="text-white/60 text-sm">
+                            {typeof (pendingBuybackInfo?.payoutSol) === 'number'
+                              ? `≈ +${pendingBuybackInfo.payoutSol.toFixed(3)} SOL`
+                              : 'Calculated on next step'}
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={handleBuyback}
+                        className="mt-4 w-full bg-[#E99500] hover:bg-[#f0a116] text-black font-bold"
+                      >
+                        <Zap className="w-8 h-8 text-black fill-black" />
+                        Take payout
+                      </Button>
+                    </div>
 
-                          // Create Discord ticket for skin claim
-                          if (wonSkin) {
-                            console.log('🎫 Creating Discord ticket for claimed skin:', wonSkin);
-                            await discordService.createSkinClaimTicket({
-                              userId: walletCtx.publicKey?.toString() || 'unknown',
-                              walletAddress: walletCtx.publicKey?.toString() || 'unknown',
-                              steamTradeUrl: userProfile.tradeUrl,
-                              skinName: wonSkin.name,
-                              skinRarity: wonSkin.rarity,
-                              skinWeapon: wonSkin.name.split(' | ')[0] || 'Unknown',
-                              nftMintAddress: lastPackResult?.asset || 'unknown',
-                              openedAt: new Date(),
-                              caseOpeningId: `pack-${Date.now()}`,
-                            });
-                            console.log('✅ Discord ticket created successfully for:', wonSkin.name);
+                    {/* Claim box */}
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
+                      <div className="text-white font-semibold">
+                        Claim to Steam inventory
+                      </div>
+                      <div className="text-white/60 text-sm">
+                        Send this skin to your Steam account
+                      </div>
+                      <Button
+                        disabled={userTradeUrl === null}
+                        onClick={async () => {
+                          dismissClaimToast();
+                          try {
+                            const userProfile = await authService.getProfile();
+                            if (
+                              !userProfile.tradeUrl ||
+                              userProfile.tradeUrl.trim() === ""
+                            ) {
+                              claimToastIdRef.current = toast.error(
+                                "Please set your Steam Trade URL in your profile before claiming skins!"
+                              );
+                              return;
+                            }
+                            if (wonSkin) {
+                              // Send Discord ticket directly and create SKIN_CLAIMED activity
+                              await discordService.createSkinClaimTicket({
+                                userId:
+                                  walletCtx.publicKey?.toString() || "unknown",
+                                walletAddress:
+                                  walletCtx.publicKey?.toString() || "unknown",
+                                steamTradeUrl: userProfile.tradeUrl,
+                                skinName: wonSkin.name,
+                                skinRarity: wonSkin.rarity,
+                                skinWeapon:
+                                  wonSkin.name.split(" | ")[0] || "Unknown",
+                                nftMintAddress:
+                                  lastPackResult?.asset || "unknown",
+                                openedAt: new Date(),
+                                caseOpeningId: `pack-${Date.now()}`,
+                              });
+
+                              // Create SKIN_CLAIMED transaction directly
+                              await pendingSkinsService.createSkinClaimedActivity(
+                                {
+                                  userId: user?.id || "",
+                                  skinName: wonSkin.name,
+                                  skinRarity: wonSkin.rarity,
+                                  skinWeapon:
+                                    wonSkin.name.split(" | ")[0] || "Unknown",
+                                  nftMintAddress: lastPackResult?.asset || "",
+                                }
+                              );
+                            }
+                            claimToastIdRef.current = toast.success("Skin claimed to inventory!");
+                            // Show share option after claim
+                            setClaimedSkin(wonSkin);
+                            setShowClaimShare(true);
+                            setShowResult(false);
+                          } catch (error) {
+                            claimToastIdRef.current = toast.error("Failed to claim skin");
                           }
-                          
-                          // Find the case opening ID from the won skin
-                          // In production, store this in state when opening
-                          toast.success("Skin claimed to inventory!");
-                          
-                          // Clear the pending skin from localStorage
-                          localStorage.removeItem('pendingSkin');
-                          setShowResult(false);
-                        } catch (error) {
-                          console.error("Failed to claim skin:", error);
-                          toast.error("Failed to claim skin");
-                        }
-                      }}
-                      size="lg"
-                      className="bg-white text-black hover:bg-gray-200 font-bold px-8"
-                    >
-                      <Unlock className="w-5 h-5 mr-2" />
-                      Claim Skin
-                    </Button>
+                        }}
+                        className="mt-4 w-full bg-white text-black hover:bg-gray-200 font-bold"
+                      >
+                        Take Skin
+                      </Button>
+                    </div>
+                  </div>
+
+                  {wonSkin && null}
+                </div>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Share after Claim Modal */}
+      <AnimatePresence>
+        {showClaimShare && claimedSkin && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0, rotateY: -180 }}
+              animate={{ scale: 1, opacity: 1, rotateY: 0 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.8, bounce: 0.4 }}
+              className="relative max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden">
+                {/* Top area (match buyback) */}
+                <div className="relative p-6 pb-0">
+                  <div className="pointer-events-none absolute -inset-40 bg-[radial-gradient(circle,rgba(255,170,0,0.3)_0%,rgba(0,0,0,0)_60%)]" />
+
+                  <div className="relative w-full h-[220px] rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
+                    <div className="text-center space-y-2">
+                      <div className="text-zinc-300 text-sm uppercase tracking-wider">
+                        Share your win
+                      </div>
+                      <div className="text-2xl md:text-3xl font-extrabold text-white break-words px-4">
+                        {claimedSkin.name}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Bottom area (match buyback) */}
+                <div className="mt-6 p-6 bg-[#0d0d0d] border-t border-white/10">
+                  <div className="text-xs text-zinc-400 leading-relaxed mb-4">
+                    You will receive this skin via the Steam Trade URL you provided in approximately 24 hours.
+                  </div>
+
+                  <div className="mt-2 flex items-stretch gap-3">
                     <Button
-                      onClick={async () => {
-                        try {
-                          // In production, make API call to sell
-                          toast.success(
-                            `Sold for $${(wonSkin.value * 0.85).toFixed(2)}`
-                          );
-                          setShowResult(false);
-                        } catch (error) {
-                          console.error("Failed to sell skin:", error);
-                          toast.error("Failed to sell skin");
-                        }
+                      onClick={() => {
+                        setShowClaimShare(false);
+                        setClaimedSkin(null);
+                        router.push("/app-dashboard/packs");
                       }}
-                      size="lg"
-                      variant="outline"
-                      className="bg-transparent border-2 border-white text-white hover:bg-white/20 font-bold px-8"
+                      className="flex-1 h-12 px-4 py-0 flex items-center justify-center bg-[#E99500] text-black hover:bg-[#d88500] font-bold"
                     >
-                      <TrendingUp className="w-5 h-5 mr-2" />
-                      Sell (85%)
+                      Open a new pack
                     </Button>
-                  </motion.div>
+
+                    <a
+                      href={generateXShareUrl({
+                        kind: "claim",
+                        skin: claimedSkin,
+                        packName: selectedPack?.name || null,
+                      })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 inline-flex h-12 px-4 py-0 items-center justify-center gap-2 rounded-md bg-black border border-white/20 text-sm font-semibold text-white hover:bg-zinc-900 transition-colors whitespace-nowrap"
+                    >
+                      Share on <img src="/assets/x_icon.png" alt="X" className="w-5 h-5" />
+                    </a>
+                  </div>
                 </div>
               </Card>
             </motion.div>
@@ -1514,3 +1554,4 @@ export default function PacksPage() {
     </div>
   );
 }
+

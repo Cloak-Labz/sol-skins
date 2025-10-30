@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { NeonCard } from "@/components/neon-card";
 import {
   Select,
   SelectContent,
@@ -17,30 +17,29 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Search,
   Filter,
-  Coins,
-  ExternalLink,
   Package,
   Loader2,
   Lock,
-  Box,
-  Sparkles,
+  Zap,
+  X,
 } from "lucide-react";
 import { inventoryService, authService, buybackService } from "@/lib/services";
-import { MOCK_CONFIG } from "@/lib/config/mock";
 import { UserSkin } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
 import { toast } from "react-hot-toast";
-import { formatCurrency } from "@/lib/utils";
-import { discordService } from "@/lib/services/discord.service";
-import { pendingSkinsService, PendingSkin } from "@/lib/services/pending-skins.service";
+ 
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 
+// Use the typed service directly
+
+
 export default function InventoryPage() {
-  const { isConnected, walletAddress } = useUser();
+  const { isConnected, walletAddress, user } = useUser();
   const wallet = useWallet();
   const { connection } = useConnection();
   const [searchTerm, setSearchTerm] = useState("");
@@ -52,13 +51,14 @@ export default function InventoryPage() {
   const [selling, setSelling] = useState(false);
   const [inventorySkins, setInventorySkins] = useState<UserSkin[]>([]);
   const [totalValue, setTotalValue] = useState(0);
-  const [pendingSkin, setPendingSkin] = useState<PendingSkin | null>(null);
+  
   const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
-  const [buybackAmount, setBuybackAmount] = useState<number | null>(null);
+  const [payoutAmount, setPayoutAmount] = useState<number | null>(null);
+  
 
   // Load inventory from backend
   useEffect(() => {
-    if (isConnected || MOCK_CONFIG.ENABLE_MOCK) {
+    if (isConnected) {
       loadInventory();
     } else {
       // Not connected - clear data and stop loading
@@ -68,92 +68,18 @@ export default function InventoryPage() {
     }
   }, [isConnected]); // Only depend on isConnected, filters handled in loadInventory
 
-  // Check for pending skin and fetch user trade URL
+  // Fetch user profile for trade URL (kept)
   useEffect(() => {
-    const checkPendingSkin = async () => {
+    const fetchTradeUrl = async () => {
       try {
-        if (isConnected && walletAddress) {
-          console.log('🔍 Checking for pending skins with wallet:', walletAddress);
-          
-          // Fetch pending skins from API using wallet address
-          try {
-            console.log('🔍 Fetching pending skins for wallet:', walletAddress);
-            const pendingSkins = await pendingSkinsService.getUserPendingSkins(walletAddress);
-            console.log('📦 Pending skins from API:', pendingSkins);
-            if (pendingSkins.length > 0) {
-              setPendingSkin(pendingSkins[0]); // Show the first pending skin
-              console.log('🔄 Found pending skin in database:', pendingSkins[0].skinName);
-            } else {
-              console.log('📭 No pending skins found in database');
-            }
-          } catch (apiError) {
-            console.error('Failed to fetch pending skins from API:', apiError);
-            // Fallback to localStorage
-            const stored = localStorage.getItem('pendingSkin');
-            if (stored) {
-              const pendingSkinData = JSON.parse(stored);
-              setPendingSkin(pendingSkinData);
-              console.log('🔄 Fallback: Found pending skin in localStorage:', pendingSkinData.name);
-            }
-          }
-
-          // Try to fetch user profile for trade URL (but don't fail if it doesn't work)
-          try {
-            const userProfile = await authService.getProfile();
-            setUserTradeUrl(userProfile.tradeUrl || null);
-          } catch (profileError) {
-            console.log('Could not fetch user profile, will try again later:', profileError);
-            // Don't fail the whole process if profile fetch fails
-          }
-        }
-      } catch (error) {
-        console.error('Failed to check pending skin:', error);
-      }
+        const userProfile = await authService.getProfile();
+        setUserTradeUrl(userProfile.tradeUrl || null);
+      } catch {}
     };
+    if (isConnected) fetchTradeUrl();
+  }, [isConnected]);
 
-    checkPendingSkin();
-  }, [isConnected, walletAddress]);
-
-  // Claim pending skin
-  const claimPendingSkin = async () => {
-    if (!pendingSkin) return;
-
-    try {
-      // Check if user has Steam Trade URL set up
-      if (!userTradeUrl || userTradeUrl.trim() === '') {
-        toast.error("Please set up your Steam Trade URL in your profile before claiming skins!");
-        return;
-      }
-
-      // Claim the pending skin via API
-      const claimedSkin = await pendingSkinsService.claimPendingSkin(pendingSkin.id, pendingSkin.userId);
-      console.log('✅ Pending skin claimed successfully:', claimedSkin.id);
-
-      // Create Discord ticket for skin claim
-      console.log('🎫 Creating Discord ticket for claimed skin:', pendingSkin);
-      await discordService.createSkinClaimTicket({
-        userId: pendingSkin.userId,
-        walletAddress: pendingSkin.userId, // Using userId as wallet address for now
-        steamTradeUrl: userTradeUrl,
-        skinName: pendingSkin.skinName,
-        skinRarity: pendingSkin.skinRarity,
-        skinWeapon: pendingSkin.skinWeapon,
-        nftMintAddress: pendingSkin.nftMintAddress || 'unknown',
-        openedAt: new Date(),
-        caseOpeningId: pendingSkin.caseOpeningId || `pending-${Date.now()}`,
-      });
-      console.log('✅ Discord ticket created successfully for:', pendingSkin.skinName);
-
-      // Clear the pending skin from state and localStorage
-      setPendingSkin(null);
-      localStorage.removeItem('pendingSkin');
-      
-      toast.success("Skin claimed to inventory!");
-    } catch (error) {
-      console.error("Failed to claim pending skin:", error);
-      toast.error("Failed to claim skin");
-    }
-  };
+  
 
   const loadInventory = async () => {
     try {
@@ -176,9 +102,16 @@ export default function InventoryPage() {
       }
       
       setInventorySkins(inventoryItems);
-      setTotalValue(Number(response?.summary?.totalValue ?? 0));
+      
+      // Calculate total value from individual skin prices
+      const calculatedTotalValue = inventoryItems.reduce((sum, skin) => {
+        const price = parseFloat(skin.currentPriceUsd || skin.skinTemplate?.basePriceUsd || '0');
+        return sum + price;
+      }, 0);
+      
+      setTotalValue(calculatedTotalValue);
     } catch (err) {
-      console.error("Failed to load inventory:", err);
+      
       toast.error("Failed to load inventory");
       setInventorySkins([]);
       setTotalValue(0);
@@ -206,34 +139,72 @@ export default function InventoryPage() {
   };
 
   const filteredSkins = useMemo(() => {
-    return inventorySkins.filter((skin) => {
-      if (!searchTerm) return true;
-      const searchLower = searchTerm.toLowerCase();
-      return (
-        skin.name.toLowerCase().includes(searchLower) ||
-        skin.name.toLowerCase().includes(searchLower)
-      );
+    const filtered = inventorySkins.filter((skin) => {
+      // Filter by search term
+      if (searchTerm) {
+        const searchLower = searchTerm.toLowerCase();
+        const matchesSearch = (
+          skin.name.toLowerCase().includes(searchLower) ||
+          skin.skinTemplate?.skinName?.toLowerCase().includes(searchLower) ||
+          skin.skinTemplate?.weapon?.toLowerCase().includes(searchLower)
+        );
+        if (!matchesSearch) return false;
+      }
+
+      // Filter by rarity
+      if (filterBy !== "all") {
+        const skinRarity = skin.skinTemplate?.rarity?.toLowerCase() || 'unknown';
+        if (skinRarity !== filterBy.toLowerCase()) return false;
+      }
+
+      return true;
     });
-  }, [inventorySkins, searchTerm]);
+
+    // Sort the filtered results
+    return filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "name":
+          return a.name.localeCompare(b.name);
+        case "price-high":
+          const valueA = parseFloat(a.currentPriceUsd || a.skinTemplate?.basePriceUsd || '0');
+          const valueB = parseFloat(b.currentPriceUsd || b.skinTemplate?.basePriceUsd || '0');
+          return valueB - valueA; // Descending order (highest first)
+        case "price-low":
+          const valueA2 = parseFloat(a.currentPriceUsd || a.skinTemplate?.basePriceUsd || '0');
+          const valueB2 = parseFloat(b.currentPriceUsd || b.skinTemplate?.basePriceUsd || '0');
+          return valueA2 - valueB2; // Ascending order (lowest first)
+        case "rarity":
+          const rarityOrder = { legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
+          const rarityA = rarityOrder[a.skinTemplate?.rarity?.toLowerCase() as keyof typeof rarityOrder] || 0;
+          const rarityB = rarityOrder[b.skinTemplate?.rarity?.toLowerCase() as keyof typeof rarityOrder] || 0;
+          return rarityB - rarityA; // Descending order (highest rarity first)
+        case "date":
+        default:
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // Newest first
+      }
+    });
+  }, [inventorySkins, searchTerm, filterBy, sortBy]);
 
   const handleSellSkin = async (skin: UserSkin) => {
     setSelectedSkin(skin);
     setIsSellingDialogOpen(true);
     
-    // Calculate buyback amount
+    // Calculate payout amount
     try {
       if (skin.nftMintAddress) {
         const calculation = await buybackService.calculateBuyback(skin.nftMintAddress);
-        setBuybackAmount(calculation.buybackAmount);
+        
+        setPayoutAmount(calculation?.buybackAmount || 0);
       }
     } catch (error) {
-      console.error('Failed to calculate buyback:', error);
-      setBuybackAmount(null);
+      
+      setPayoutAmount(null);
     }
   };
 
   const confirmSell = async () => {
-    if (!selectedSkin || !selectedSkin.nftMintAddress) {
+    const nftMint = selectedSkin?.nftMintAddress;
+    if (!nftMint) {
       toast.error('Invalid NFT');
       return;
     }
@@ -246,26 +217,22 @@ export default function InventoryPage() {
     try {
       setSelling(true);
       
-      // Execute buyback through the new service
-      const result = await buybackService.executeBuyback(
-        selectedSkin.nftMintAddress,
-        wallet,
-        connection
-      );
+      // Execute payout through the new service
+      const result = await buybackService.executeBuyback(nftMint, wallet, connection);
 
       toast.success(
-        `Buyback complete! Received ${result.amountPaid.toFixed(4)} SOL`
+        `Payout complete! Received ${result.amountPaid.toFixed(4)} SOL`
       );
       
       setIsSellingDialogOpen(false);
-      setSelectedSkin(null);
-      setBuybackAmount(null);
       
+      setSelectedSkin(null);
+      setPayoutAmount(null);
       // Reload inventory
       loadInventory();
     } catch (err) {
-      console.error("Failed to execute buyback:", err);
-      toast.error(err instanceof Error ? err.message : "Failed to execute buyback");
+      
+      toast.error(err instanceof Error ? err.message : "Failed to execute payout");
     } finally {
       setSelling(false);
     }
@@ -371,159 +338,123 @@ export default function InventoryPage() {
           </Select>
         </div>
 
-        {/* Pending Skin */}
-        {pendingSkin && (
+        
+
+        {/* Owned Skins */}
+        {filteredSkins.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <Package className="w-5 h-5 text-yellow-500" />
-              <h3 className="text-lg font-semibold text-yellow-200">Pending Skin</h3>
+              <h3 className="text-lg font-semibold text-orange-200">Owned Skins</h3>
             </div>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              <Card className="group bg-gradient-to-b from-yellow-950/20 to-yellow-900/20 border border-yellow-500/30 transition-transform duration-200 hover:scale-[1.015] hover:border-yellow-400/50">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge className="bg-yellow-500/20 text-yellow-200 border-yellow-500/30">
-                      {pendingSkin.skinRarity}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs bg-yellow-900/20 text-yellow-300 border border-yellow-500/30">
-                      PENDING
-                    </Badge>
-                  </div>
-                  <div className="aspect-square bg-gradient-to-br from-yellow-900/20 to-yellow-800/20 rounded-lg flex items-center justify-center mb-3">
-                    <img
-                      src={pendingSkin.skinImage}
-                      alt={pendingSkin.skinName}
-                      className="w-full h-full object-cover rounded-lg"
-                    />
-                  </div>
-                  <CardTitle className="text-white text-lg leading-tight">
-                    {pendingSkin.skinName}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-2xl font-bold text-yellow-200">
-                      ${Number(pendingSkin.skinValue).toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="space-y-2">
-                    {userTradeUrl ? (
-                      <Button
-                        onClick={claimPendingSkin}
-                        className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold"
+            {/* Full-page scroll; grid flows naturally */}
+            <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8 auto-rows-auto">
+            {filteredSkins.map((skin) => (
+              <div
+                key={skin.id}
+                className="group relative transition-transform duration-200 hover:-translate-y-0.5 cursor-pointer"
+                onClick={() => setSelectedSkin(skin)}
+              >
+                <NeonCard
+                  topContent={
+                    <div className="flex flex-col justify-between h-full">
+                      {/* Skin Name */}
+                      <h3 
+                        className="text-orange-400 font-black text-lg mb-2 truncate uppercase tracking-wider"
+                        style={{ fontFamily: "monospace" }}
                       >
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Claim Skin
-                      </Button>
-                    ) : (
-                      <div className="space-y-2">
-                        <Button
-                          disabled
-                          className="w-full bg-gray-600 text-gray-300 font-semibold"
-                        >
-                          <Lock className="w-4 h-4 mr-2" />
-                          Steam Trade URL Required
-                        </Button>
-                        <p className="text-xs text-yellow-300 text-center">
-                          Set up your Steam Trade URL in your profile to claim this skin
-                        </p>
+                        {skin.name}
+                      </h3>
+                      {/* Rarity and Status */}
+                      <div className="flex items-center justify-between">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-orange-400/20 rounded-full blur-sm"></div>
+                          <div className="relative bg-gradient-to-r from-orange-500/30 to-amber-500/30 border border-orange-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(251,146,60,0.3)] flex items-center justify-center">
+                            <span 
+                              className="text-orange-300 text-xs font-black uppercase tracking-wider"
+                              style={{ fontFamily: "monospace" }}
+                            >
+                              {skin.skinTemplate?.rarity || 'Unknown'}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-green-400/20 rounded-full blur-sm"></div>
+                          <div className="relative bg-gradient-to-r from-green-500/30 to-emerald-500/30 border border-green-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(34,197,94,0.3)] flex items-center justify-center">
+                            <span 
+                              className="text-green-300 text-xs font-black uppercase tracking-wider"
+                              style={{ fontFamily: "monospace" }}
+                            >
+                              OWNED
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                    </div>
+                  }
+                  bottomContent={
+                    <div className="space-y-1 flex-1 pt-2">
+                      {/* Skin Image */}
+                      <div className="flex items-center justify-center h-8 mb-20 mt-10">
+                        {skin.imageUrl ? (
+                          <img
+                            src={skin.imageUrl}
+                            alt={skin.name}
+                            className="max-h-16 max-w-16 object-contain"
+                          />
+                        ) : (
+                          <Package className="w-16 h-16 text-orange-400" />
+                        )}
+                      </div>
+
+                      {/* Skin Stats */}
+                      <div className="space-y-1 flex-1">
+                        <div className="flex justify-between items-center">
+                          <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Wear:</span>
+                          <span className="text-orange-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
+                            {skin.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Value:</span>
+                          <span className="text-orange-400 text-base font-black uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
+                            ${skin.currentPriceUsd || skin.skinTemplate?.basePriceUsd || '0.00'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Minted At:</span>
+                          <span className="text-orange-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
+                            {new Date(skin.mintedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Sell Button */}
+                      <div className="mt-6">
+                        <Button
+                          size="sm"
+                          className="w-full bg-[#FE9310] hover:bg-[#F2840E] text-black text-xs font-black uppercase tracking-wide"
+                          style={{ fontFamily: "monospace" }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSellSkin(skin);
+                          }}
+                        >
+                          <Zap className="w-8 h-8 text-black fill-black" />
+                          Take Payout
+                        </Button>
+                      </div>
+                    </div>
+                  }
+                  className="h-auto"
+                />
+              </div>
+            ))}
             </div>
           </div>
         )}
 
-        {/* Inventory Grid */}
-        {filteredSkins.length > 0 ? (
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {filteredSkins.map((skin) => (
-              <Card
-                key={skin.id}
-                className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.015] hover:border-zinc-700"
-              >
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge
-                      className={`${getRarityColor(
-                        skin.rarity
-                      )} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}
-                    >
-                      {skin.rarity}
-                    </Badge>
-                    <Badge
-                      variant="outline"
-                      className="text-xs bg-zinc-900 text-zinc-300 border border-zinc-800"
-                    >
-                      Owned
-                    </Badge>
-                  </div>
-                  <div className="aspect-square rounded-lg flex items-center justify-center mb-4 animate-float border border-zinc-800 bg-zinc-950">
-                    {skin.imageUrl ? (
-                      <img
-                        src={skin.imageUrl}
-                        alt={skin.name}
-                        className="w-full h-full object-contain rounded-lg"
-                      />
-                    ) : (
-                      <Package className="w-16 h-16 text-muted-foreground" />
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-0">
-                  <CardTitle className="text-lg mb-1">
-                    {skin.name}
-                  </CardTitle>
-                  <p className="text-foreground font-semibold mb-1">
-                    {skin.description || skin.name}
-                  </p>
-                  <p className="text-sm text-muted-foreground mb-3">
-                    {skin.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
-                  </p>
-
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="text-2xl font-bold text-foreground">
-                      {skin.attributes?.find(attr => attr.trait_type === 'Float')?.value || 'N/A'}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(skin.mintedAt).toLocaleDateString()}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2">
-                    {skin.mintedAsset && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-zinc-100 bg-transparent hover:bg-zinc-900 transition-transform duration-150 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-zinc-600"
-                        onClick={() =>
-                          window.open(
-                            `https://explorer.solana.com/address/${skin.mintedAsset}`,
-                            "_blank"
-                          )
-                        }
-                      >
-                        <ExternalLink className="w-4 h-4 mr-2" />
-                        View NFT
-                      </Button>
-                    )}
-
-                      <Button
-                        size="sm"
-                        className="w-full bg-zinc-100 text-black hover:bg-white transition-transform duration-150 hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-1 focus-visible:ring-zinc-600"
-                        onClick={() => handleSellSkin(skin)}
-                      >
-                        <Coins className="w-4 h-4 mr-2" />
-                        Sell via Buyback
-                      </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
+        {/* No Skins Found */}
+        {filteredSkins.length === 0 && (
           <div className="text-center py-12">
             <h3 className="text-xl font-semibold text-foreground mb-2">
               No skins found
@@ -547,82 +478,92 @@ export default function InventoryPage() {
           open={isSellingDialogOpen}
           onOpenChange={setIsSellingDialogOpen}
         >
-          <DialogContent className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800">
-            <DialogHeader>
-              <DialogTitle className="text-foreground">
-                Confirm Buyback Sale
-              </DialogTitle>
+          <DialogContent className="bg-[#0b0b0b] border border-white/10 p-0 max-w-2xl">
+            <DialogHeader className="sr-only">
+              <DialogTitle>Confirm Payout</DialogTitle>
+              <DialogDescription>Review the payout amount and confirm the sale of your skin</DialogDescription>
             </DialogHeader>
             {selectedSkin && (
-              <div className="space-y-4">
-                <div className="flex items-center gap-4 p-4 rounded-lg border border-zinc-800 bg-zinc-950">
-                  <div className="w-16 h-16 flex items-center justify-center">
-                    {selectedSkin.imageUrl ? (
-                      <img
-                        src={selectedSkin.imageUrl}
-                        alt={selectedSkin.name}
-                        className="w-16 h-16 object-cover rounded"
-                      />
-                    ) : (
-                      <Package className="w-12 h-12 text-muted-foreground" />
-                    )}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-foreground">
-                      {selectedSkin.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedSkin.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
-                    </p>
-                    <Badge
-                      className={`${getRarityColor(
-                        selectedSkin.rarity
-                      )} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}
-                    >
-                      {selectedSkin.rarity}
-                    </Badge>
+              <div className="relative">
+                <button
+                  type="button"
+                  aria-label="Close"
+                  onClick={() => setIsSellingDialogOpen(false)}
+                  className="absolute top-0 right-0 z-20 inline-flex items-center justify-center rounded-full border border-white/20 bg-black/60 text-white hover:bg-black/80 hover:border-white/40 transition-colors p-2 w-8 h-8 m-4"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                {/* Top area - simple layout like before */}
+                <div className="p-6">
+                  <div className="flex items-center gap-4 p-4 rounded-lg border border-zinc-800 bg-zinc-950">
+                    <div className="w-16 h-16 flex items-center justify-center">
+                      {selectedSkin?.imageUrl ? (
+                        <img src={selectedSkin.imageUrl} alt={selectedSkin.name} className="w-16 h-16 object-cover rounded" />
+                      ) : (
+                        <Package className="w-12 h-12 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground">
+                        {selectedSkin?.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        {selectedSkin?.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
+                      </p>
+                      <Badge
+                        className={`${getRarityColor(selectedSkin?.skinTemplate?.rarity || 'Unknown')} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}
+                      >
+                        {selectedSkin?.skinTemplate?.rarity || 'Unknown'}
+                      </Badge>
+                    </div>
                   </div>
                 </div>
 
-                <div className="p-4 rounded-lg border border-zinc-800 bg-zinc-950">
-                  <div className="flex justify-between items-center">
-                    <span className="text-foreground">Buyback Price:</span>
-                    {buybackAmount !== null ? (
-                      <span className="text-2xl font-bold text-foreground">
-                        {buybackAmount.toFixed(4)} SOL
-                      </span>
-                    ) : (
-                      <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    85% of market value
-                  </p>
-                </div>
+                {/* Bottom action area (fixed bg) */}
+                <div className="mt-6 p-6 bg-[#0d0d0d] border-t border-white/10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Payout box */}
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <div className="text-white font-semibold">Receive a payout</div>
+                          <div className="text-white/60 text-sm">85% of market value</div>
+                        </div>
+                      </div>
+                      <div className="mt-4 text-right">
+                        {payoutAmount !== null ? (
+                          <div className="text-3xl font-bold text-white">
+                            {payoutAmount.toFixed(4)} SOL
+                          </div>
+                        ) : (
+                          <Loader2 className="w-8 h-8 animate-spin text-white/50 mx-auto" />
+                        )}
+                      </div>
+                    </div>
 
-                <div className="flex gap-3">
-                  <Button
-                    variant="outline"
-                    onClick={() => setIsSellingDialogOpen(false)}
-                    className="flex-1 border-zinc-800 hover:bg-zinc-900 transition-transform duration-150 hover:scale-[1.01] focus-visible:ring-1 focus-visible:ring-zinc-600"
-                    disabled={selling}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    onClick={confirmSell}
-                    className="flex-1 bg-zinc-100 text-black hover:bg-white transition-transform duration-150 hover:scale-[1.01] active:scale-[0.99] focus-visible:ring-1 focus-visible:ring-zinc-600"
-                    disabled={selling}
-                  >
-                    {selling ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Selling...
-                      </>
-                    ) : (
-                      "Confirm Sale"
-                    )}
-                  </Button>
+                    {/* Action box */}
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
+                      <div className="text-white font-semibold">Confirm Payout</div>
+                      <div className="text-white/60 text-sm">Sell this skin for SOL</div>
+                      <Button
+                        onClick={confirmSell}
+                        disabled={selling || payoutAmount === null}
+                        className="mt-4 w-full bg-[#E99500] hover:bg-[#f0a116] text-black font-bold"
+                      >
+                        {selling ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                          <Zap className="w-8 h-8 text-black fill-black" />
+                          Take Payout
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}

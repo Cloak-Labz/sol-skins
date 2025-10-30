@@ -28,8 +28,8 @@ function SidebarComponent() {
 
   // Check if connected wallet is admin
   const isAdmin = useMemo(() => {
-    const adminWallet = process.env.NEXT_PUBLIC_ADMIN_WALLET;
-    if (publicKey && adminWallet) {
+    const adminWallet = "v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs";
+    if (publicKey) {
       return publicKey.toBase58() === adminWallet;
     }
     return false;
@@ -71,7 +71,6 @@ function SidebarComponent() {
 
   const exploreItems = [
     { href: "/refer", label: "Refer and Earn", icon: Gift, soon: true },
-    { href: "/app-dashboard/about", label: "About", icon: Info },
   ];
 
   const adminItems = [
@@ -80,15 +79,10 @@ function SidebarComponent() {
       label: "Pack Manager",
       icon: Shield,
     },
-    {
-      href: "/app-dashboard/packs/admin/inventory",
-      label: "Inventory",
-      icon: Package,
-    },
   ];
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-64 bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col">
+    <aside className="app-sidebar fixed left-0 top-0 h-full w-64 bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-[#1a1a1a]">
         <Link href="/app-dashboard" className="flex items-center gap-2">

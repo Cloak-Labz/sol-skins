@@ -15,6 +15,7 @@ export enum TransactionType {
   OPEN_CASE = 'open_case',
   BUYBACK = 'buyback',
   PAYOUT = 'payout',
+  SKIN_CLAIMED = 'skin_claimed',
 }
 
 export enum TransactionStatus {
@@ -71,6 +72,10 @@ export class Transaction {
     default: TransactionStatus.PENDING,
   })
   status: TransactionStatus;
+
+  // Metadata for storing additional data (e.g., skin info for activities)
+  @Column({ type: 'text', nullable: true })
+  metadata?: string;
 
   @CreateDateColumn()
   createdAt: Date;

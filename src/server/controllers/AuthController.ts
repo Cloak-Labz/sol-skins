@@ -71,6 +71,7 @@ export class AuthController {
       walletAddress: user.walletAddress,
       username: user.username,
       email: user.email,
+      tradeUrl: user.tradeUrl,
       totalSpent: user.totalSpent,
       totalEarned: user.totalEarned,
       casesOpened: user.casesOpened,
@@ -81,9 +82,9 @@ export class AuthController {
 
   updateProfile = catchAsync(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const { username, email } = req.body;
+    const { username, email, tradeUrl } = req.body;
 
-    await this.userService.updateUser(userId, { username, email });
+    await this.userService.updateUser(userId, { username, email, tradeUrl });
 
     return ResponseUtil.success(res, {
       message: "Profile updated successfully",

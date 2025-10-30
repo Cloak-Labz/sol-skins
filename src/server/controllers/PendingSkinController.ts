@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
+import { PendingSkinService, CreatePendingSkinDTO, UpdatePendingSkinDTO } from '../services/PendingSkinService';
 import { ResponseUtil } from '../utils/response';
-import { PendingSkinService } from '../services/PendingSkinService';
-import { AppError } from '../middlewares/errorHandler';
+import { catchAsync } from '../middlewares/errorHandler';
 
 export class PendingSkinController {
   private pendingSkinService: PendingSkinService;
@@ -10,122 +10,84 @@ export class PendingSkinController {
     this.pendingSkinService = new PendingSkinService();
   }
 
-  // Create a new pending skin
-  createPendingSkin = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { userId, skinName, skinRarity, skinWeapon, skinValue, skinImage, nftMintAddress, transactionHash, caseOpeningId } = req.body;
+  // POST /pending-skins - Create new pending skin
+  createPendingSkin = catchAsync(async (req: Request, res: Response) => {
+    const data: CreatePendingSkinDTO = req.body;
+    const pendingSkin = await this.pendingSkinService.createPendingSkin(data);
+    ResponseUtil.success(res, pendingSkin, 201);
+  });
 
-      if (!userId || !skinName || !skinRarity || !skinWeapon || !skinValue || !skinImage) {
-        ResponseUtil.error(res, 'Missing required fields', 400);
-        return;
-      }
+  // GET /pending-skins/user/:userId - Get pending skins for a user
+  getPendingSkinsByUserId = catchAsync(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const pendingSkins = await this.pendingSkinService.getPendingSkinsByUserId(userId);
+    ResponseUtil.success(res, pendingSkins);
+  });
 
-      const pendingSkin = await this.pendingSkinService.createPendingSkin({
-        userId,
-        skinName,
-        skinRarity,
-        skinWeapon,
-        skinValue: typeof skinValue === 'string' ? parseFloat(skinValue) : skinValue,
-        skinImage,
-        nftMintAddress,
-        transactionHash,
-        caseOpeningId,
-      });
+  // GET /pending-skins/:id - Get pending skin by ID
+  getPendingSkinById = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const pendingSkin = await this.pendingSkinService.getPendingSkinById(id);
+    ResponseUtil.success(res, pendingSkin);
+  });
 
-      ResponseUtil.success(res, { pendingSkin });
-    } catch (error) {
-      console.error('Error creating pending skin:', error);
-      if (error instanceof AppError) {
-        ResponseUtil.error(res, error.message, error.statusCode);
-        return;
-      }
-      ResponseUtil.error(res, 'Internal server error', 500);
+  // PUT /pending-skins/:id - Update pending skin
+  updatePendingSkin = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const data: UpdatePendingSkinDTO = req.body;
+    const pendingSkin = await this.pendingSkinService.updatePendingSkin(id, data);
+    ResponseUtil.success(res, pendingSkin);
+  });
+
+  // POST /pending-skins/:id/claim - Claim pending skin
+  claimPendingSkin = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { walletAddress, tradeUrl } = req.body;
+    
+    const pendingSkin = await this.pendingSkinService.claimPendingSkin(
+      id, 
+      walletAddress, 
+      tradeUrl
+    );
+    ResponseUtil.success(res, pendingSkin);
+  });
+
+  // DELETE /pending-skins/:id - Delete pending skin
+  deletePendingSkin = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    await this.pendingSkinService.deletePendingSkin(id);
+    ResponseUtil.success(res, null, 204);
+  });
+
+  // DELETE /pending-skins/by-nft/:nftMint - Delete pending skin by NFT mint address
+  deletePendingSkinByNftMint = catchAsync(async (req: Request, res: Response) => {
+    const { nftMint } = req.params;
+    const { walletAddress } = req.body;
+    
+    if (!walletAddress) {
+      return ResponseUtil.error(res, 'walletAddress is required', 400);
     }
-  };
 
-  // Get user's pending skins
-  getUserPendingSkins = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { userId } = req.params;
+    await this.pendingSkinService.deletePendingSkinByNftMint(nftMint, walletAddress);
+    ResponseUtil.success(res, null, 204);
+  });
 
-      if (!userId) {
-        ResponseUtil.error(res, 'User ID is required', 400);
-        return;
-      }
+  // GET /pending-skins/expired - Get expired pending skins
+  getExpiredPendingSkins = catchAsync(async (req: Request, res: Response) => {
+    const expiredSkins = await this.pendingSkinService.getExpiredPendingSkins();
+    ResponseUtil.success(res, expiredSkins);
+  });
 
-      const pendingSkins = await this.pendingSkinService.getUserPendingSkins(userId);
+  // POST /pending-skins/mark-expired - Mark expired skins
+  markExpiredSkins = catchAsync(async (req: Request, res: Response) => {
+    const count = await this.pendingSkinService.markExpiredSkins();
+    ResponseUtil.success(res, { count });
+  });
 
-      ResponseUtil.success(res, { pendingSkins });
-    } catch (error) {
-      console.error('Error fetching user pending skins:', error);
-      if (error instanceof AppError) {
-        ResponseUtil.error(res, error.message, error.statusCode);
-        return;
-      }
-      ResponseUtil.error(res, 'Internal server error', 500);
-    }
-  };
-
-  // Claim a pending skin
-  claimPendingSkin = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { pendingSkinId } = req.params;
-      const { userId } = req.body;
-
-      if (!pendingSkinId || !userId) {
-        ResponseUtil.error(res, 'Pending skin ID and user ID are required', 400);
-        return;
-      }
-
-      const claimedSkin = await this.pendingSkinService.claimPendingSkin(pendingSkinId, userId);
-
-      ResponseUtil.success(res, { claimedSkin });
-    } catch (error) {
-      console.error('Error claiming pending skin:', error);
-      if (error instanceof AppError) {
-        ResponseUtil.error(res, error.message, error.statusCode);
-        return;
-      }
-      ResponseUtil.error(res, 'Internal server error', 500);
-    }
-  };
-
-  // Get a specific pending skin
-  getPendingSkinById = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const { id } = req.params;
-
-      if (!id) {
-        ResponseUtil.error(res, 'Pending skin ID is required', 400);
-        return;
-      }
-
-      const pendingSkin = await this.pendingSkinService.getPendingSkinById(id);
-
-      ResponseUtil.success(res, { pendingSkin });
-    } catch (error) {
-      console.error('Error fetching pending skin:', error);
-      if (error instanceof AppError) {
-        ResponseUtil.error(res, error.message, error.statusCode);
-        return;
-      }
-      ResponseUtil.error(res, 'Internal server error', 500);
-    }
-  };
-
-  // Cleanup expired skins (admin endpoint)
-  cleanupExpiredSkins = async (req: Request, res: Response): Promise<void> => {
-    try {
-      const result = await this.pendingSkinService.cleanupExpiredSkins();
-
-      ResponseUtil.success(res, result);
-    } catch (error) {
-      console.error('Error cleaning up expired skins:', error);
-      if (error instanceof AppError) {
-        ResponseUtil.error(res, error.message, error.statusCode);
-        return;
-      }
-      ResponseUtil.error(res, 'Internal server error', 500);
-    }
-  };
+  // POST /pending-skins/claim-activity - Create skin claimed activity
+  createSkinClaimedActivity = catchAsync(async (req: Request, res: Response) => {
+    const data = req.body;
+    await this.pendingSkinService.createSkinClaimedActivity(data);
+    ResponseUtil.success(res, { message: 'Skin claimed activity created' }, 201);
+  });
 }

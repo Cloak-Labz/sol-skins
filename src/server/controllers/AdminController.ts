@@ -76,7 +76,7 @@ export class AdminController {
         collectionMint: packData.collectionMint || '11111111111111111111111111111111',
         name: packData.name || `Pack ${Date.now()}`,
         description: packData.description || 'A mystery pack',
-        imageUrl: packData.imageUrl || '/assets/default-pack.png',
+        imageUrl: packData.imageUrl || '/assets/banner2.jpg',
         priceSol: packData.priceSol || 0,
         priceUsdc: packData.priceUsdc || 0,
         totalItems: packData.totalItems || 10,

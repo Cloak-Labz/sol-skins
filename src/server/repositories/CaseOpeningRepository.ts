@@ -1,4 +1,4 @@
-import { Repository, IsNull } from 'typeorm';
+import { Repository, IsNull, Not } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { CaseOpening, UserDecision } from '../entities/CaseOpening';
 
@@ -12,6 +12,13 @@ export class CaseOpeningRepository {
   async findById(id: string): Promise<CaseOpening | null> {
     return this.repository.findOne({
       where: { id },
+      relations: ['user', 'lootBoxType', 'skinTemplate', 'userSkin'],
+    });
+  }
+
+  async findOne(where: any): Promise<CaseOpening | null> {
+    return this.repository.findOne({
+      where: where,
       relations: ['user', 'lootBoxType', 'skinTemplate', 'userSkin'],
     });
   }
@@ -105,6 +112,9 @@ export class CaseOpeningRepository {
 
   async getRecentActivity(limit: number = 50): Promise<CaseOpening[]> {
     return this.repository.find({
+      where: {
+        completedAt: Not(IsNull()),
+      },
       relations: ['user', 'lootBoxType', 'skinTemplate'],
       order: { completedAt: 'DESC' },
       take: limit,

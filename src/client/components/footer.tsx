@@ -23,19 +23,19 @@ export default function Footer() {
             <h4 className="text-white font-medium mb-4">Platform</h4>
             <div className="space-y-2">
               <Link
-                href="/packs"
+                href="/app-dashboard/packs"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Packs
               </Link>
               <Link
-                href="/leaderboard"
+                href="/app-dashboard/leaderboard"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Leaderboard
               </Link>
               <Link
-                href="/activity"
+                href="/app-dashboard/activity"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Activity
@@ -47,25 +47,19 @@ export default function Footer() {
             <h4 className="text-white font-medium mb-4">Support</h4>
             <div className="space-y-2">
               <Link
-                href="/about"
-                className="block text-[#666] hover:text-white text-sm transition-colors"
-              >
-                About
-              </Link>
-              <Link
                 href="https://discord.gg/ZMgYmAZBzU"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Help Center
               </Link>
               <Link
-                href="#"
+                href="/terms"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Terms of Service
               </Link>
               <Link
-                href="#"
+                href="/privacy"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Privacy Policy
@@ -87,12 +81,6 @@ export default function Footer() {
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Twitter
-              </Link>
-              <Link
-                href="#"
-                className="block text-[#666] hover:text-white text-sm transition-colors"
-              >
-                Telegram
               </Link>
             </div>
           </div>

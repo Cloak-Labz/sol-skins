@@ -1,23 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { marketplaceService } from "@/lib/services/marketplace";
-import { activityService } from "@/lib/services/activity";
-import type { LootBoxType, ActivityItem } from "@/lib/types/api";
-// Using keyboard emoticon instead of an icon
+import { boxesService, type Box } from "@/lib/services/boxes.service";
+import { activityService } from "@/lib/services/activity.service";
+import type { ActivityItem } from "@/lib/types/api";
 
 export default function DashboardPage() {
   const [pulls, setPulls] = useState<ActivityItem[]>([]);
-  const [packs, setPacks] = useState<LootBoxType[]>([]);
+  const [packs, setPacks] = useState<Box[]>([]);
 
   useEffect(() => {
     activityService
       .getRecent(12)
       .then(setPulls)
       .catch(() => setPulls([]));
-    marketplaceService
-      .getLootBoxes({ filterBy: "all", limit: 6 })
-      .then((r) => setPacks(r.data))
+    boxesService
+      .getActiveBoxes()
+      .then(setPacks)
       .catch(() => setPacks([]));
   }, []);
   return (
@@ -59,7 +58,7 @@ export default function DashboardPage() {
                 <div>Nothing here yet</div>
               </div>
             )}
-            {pulls.map((p) => (
+            {pulls.slice(0, 6).map((p) => (
               <div
                 key={p.id}
                 className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden"
@@ -73,7 +72,7 @@ export default function DashboardPage() {
                     />
                   ) : (
                     <img
-                      src="/assets/pack-card.png"
+                      src="/assets/banner2.jpg"
                       alt="pull"
                       className="w-full h-full object-cover"
                     />
@@ -106,7 +105,7 @@ export default function DashboardPage() {
             {packs.map((p) => (
               <div
                 key={p.id}
-                className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-4"
+                className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-4 flex flex-col h-full"
               >
                 <div className="aspect-[3/4] rounded-lg bg-zinc-800/40 mb-3 overflow-hidden">
                   {p.imageUrl && (
@@ -117,51 +116,26 @@ export default function DashboardPage() {
                     />
                   )}
                 </div>
-                <div className="text-white font-semibold leading-tight">
-                  {p.name}
-                </div>
-                <div className="text-zinc-400 text-sm">
-                  ${p.priceUsdc || p.priceSol}
-                </div>
-                <div className="mt-3 flex items-center gap-2">
-                  <button className="h-8 w-8 rounded bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700 transition-colors">
-                    −
-                  </button>
-                  <div className="px-3 py-1 rounded bg-zinc-800 border border-zinc-700 text-white text-sm">
-                    1
+                <div className="flex-1 flex flex-col">
+                  <div className="text-white font-semibold leading-tight mb-2 min-h-[2.5rem] flex items-start">
+                    {p.name}
                   </div>
-                  <button className="h-8 w-8 rounded bg-zinc-800 border border-zinc-700 text-white hover:bg-zinc-700 transition-colors">
-                    +
-                  </button>
-                  <a
-                    href={`/app-dashboard/packs?id=${p.id}`}
-                    className="ml-auto inline-flex items-center px-3 py-1.5 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] text-sm"
-                  >
-                    Buy
-                  </a>
+                  <div className="text-zinc-400 text-sm mb-3">
+                    {Number(p.priceSol).toFixed(1)} SOL
+                  </div>
+                  <div className="mt-auto">
+                    <a
+                      href="/app-dashboard/packs"
+                      className="w-full inline-flex items-center justify-center px-3 py-2 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] text-sm font-semibold transition-colors"
+                    >
+                      Open Pack
+                    </a>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         </section>
-
-        {/* Stats */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { label: "Packs Opened", value: "1,284" },
-            { label: "Total Won (USDC)", value: "$32,910" },
-            { label: "Buybacks Processed", value: "742" },
-            { label: "Avg. Confirmation", value: "1.6s" },
-          ].map((s) => (
-            <div
-              key={s.label}
-              className="group rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-5 transition-transform duration-200 hover:scale-[1.015] hover:border-zinc-700"
-            >
-              <div className="text-zinc-400 text-sm">{s.label}</div>
-              <div className="text-white text-2xl font-bold">{s.value}</div>
-            </div>
-          ))}
-        </div>
       </div>
     </div>
   );

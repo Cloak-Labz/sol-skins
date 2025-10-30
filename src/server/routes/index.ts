@@ -9,12 +9,14 @@ import { leaderboardRoutes } from "./leaderboard";
 import { activityRoutes } from "./activity";
 import { adminRoutes } from "./admin";
 import { boxRoutes } from "./boxes";
+import { boxSkinRoutes } from "./boxSkins";
 import { buybackRoutes } from "./buyback";
 import { revealRoutes } from "./reveal";
 import irysRoutes from "./irys";
 import metadataRoutes from "./metadata";
 import discordRoutes from "./discord";
 import pendingSkinsRoutes from "./pending-skins";
+import { packOpeningRoutes } from "./pack-opening";
 
 export async function createRoutes(): Promise<Router> {
   const router = Router();
@@ -30,12 +32,14 @@ export async function createRoutes(): Promise<Router> {
   router.use("/activity", activityRoutes);
   router.use("/admin", adminRoutes);
   router.use("/boxes", boxRoutes);
+  router.use("/box-skins", boxSkinRoutes);
   router.use("/buyback", buybackRoutes);
   router.use("/reveal", revealRoutes);
   router.use("/irys", irysRoutes);
   router.use("/metadata", metadataRoutes);
   router.use("/discord", discordRoutes);
   router.use("/pending-skins", pendingSkinsRoutes);
+  router.use("/pack-opening", packOpeningRoutes);
 
   return router;
 }

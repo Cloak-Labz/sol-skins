@@ -9,7 +9,7 @@ import {
 
 /**
  * Inventory - Stores minted NFTs that can be used in batches
- * These are the NFTs that have been minted on-chain and uploaded to Walrus
+ * These are the NFTs that have been minted on-chain
  */
 @Entity('inventory')
 export class Inventory {
@@ -33,7 +33,7 @@ export class Inventory {
   @Column({ type: 'jsonb', nullable: true })
   attributes?: Record<string, any>;
 
-  // Walrus metadata URI
+  // Metadata URI
   @Column({ type: 'text', nullable: true })
   @Index()
   metadataUri?: string;

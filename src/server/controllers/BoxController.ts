@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { BoxService, CreateBoxDTO, UpdateBoxDTO } from '../services/BoxService';
+import { collectionFileService } from '../services/CollectionFileService';
+import { BoxSkinService } from '../services/BoxSkinService';
 import { ResponseUtil } from '../utils/response';
 import { catchAsync } from '../middlewares/errorHandler';
 
@@ -52,23 +54,57 @@ export class BoxController {
   });
 
   // POST /boxes/:id/sync - Sync box with on-chain state
-  syncBox = catchAsync(async (req: Request, res: Response) => {
-    const { batchId } = req.params;
-    const box = await this.boxService.syncWithOnChain(parseInt(batchId));
-    ResponseUtil.success(res, box);
-  });
+  // Removed on-chain sync; legacy endpoint deleted
 
   // POST /boxes/sync-all - Sync all boxes with on-chain state
-  syncAllBoxes = catchAsync(async (req: Request, res: Response) => {
-    const result = await this.boxService.syncAllBoxes();
-    ResponseUtil.success(res, result);
-  });
+  // Removed on-chain sync; legacy endpoint deleted
 
   // DELETE /boxes/:id - Delete box
   deleteBox = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
-    await this.boxService.deleteBox(id);
+    const force = String(req.query.force || '').toLowerCase() === 'true';
+
+    // Delete collection files first
+    try {
+      await collectionFileService.deleteCollectionFiles(id);
+    } catch (error) {
+      // Log error but don't fail the deletion
+      console.error('Failed to delete collection files:', error);
+    }
+
+    // If force, also delete all box skins before removing the box
+    if (force) {
+      try {
+        const svc = new BoxSkinService();
+        await svc.deleteBoxSkinsByBoxId(id);
+      } catch (err) {
+        console.error('Failed to delete box skins for force delete:', err);
+      }
+    }
+
+    await this.boxService.deleteBox(id, { force });
     ResponseUtil.success(res, null, 204);
+  });
+
+  // GET /boxes/:id/collection-files - Get collection files status
+  getCollectionFiles = catchAsync(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    
+    const result = await collectionFileService.getCollectionFiles(id);
+    ResponseUtil.success(res, result);
+  });
+
+  // POST /boxes/generate-collection-files - Generate collection.json and collection.png files
+  generateCollectionFiles = catchAsync(async (req: Request, res: Response) => {
+    const { boxId, collectionData, imageUrl } = req.body;
+    
+    const result = await collectionFileService.generateCollectionFiles(
+      boxId,
+      collectionData,
+      imageUrl
+    );
+    
+    ResponseUtil.success(res, result);
   });
 
   // GET /boxes/stats - Get box statistics

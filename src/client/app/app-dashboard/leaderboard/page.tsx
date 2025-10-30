@@ -12,17 +12,16 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
-import { leaderboardService } from "@/lib/services";
+import { socialService } from "@/lib/services";
 import { LeaderboardEntry, UserRank } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
 import { formatCurrency } from "@/lib/utils";
 import {
   Loader2,
   TrendingUp,
-  Info,
 } from "lucide-react";
 import { toast } from "react-hot-toast";
-import { apiClient } from "@/lib/services/api";
+import { apiClient } from "@/lib/services/api.service";
 
 export default function LeaderboardPage() {
   const { user, isConnected } = useUser();
@@ -48,12 +47,7 @@ export default function LeaderboardPage() {
       // Add a small delay to ensure wallet address is set in API client
       const timer = setTimeout(() => {
         if (apiClient.getWalletAddress()) {
-          console.log("Loading user rank - wallet connected and user loaded");
           loadUserRank();
-        } else {
-          console.log(
-            "Wallet connected but API client wallet address not set yet"
-          );
         }
       }, 100);
 
@@ -70,21 +64,14 @@ export default function LeaderboardPage() {
   const loadLeaderboard = async () => {
     try {
       setLoading(true);
-      console.log("Loading leaderboard with filters:", { metric, period });
-      const data = await leaderboardService.getLeaderboard({
+      const data = await socialService.getLeaderboard({
         metric,
         period,
         limit: 50,
       });
 
-      console.log("Leaderboard data:", data);
-
-      // Handle both unwrapped array and wrapped response
-      const leaderboardData = Array.isArray(data) ? data : data.data;
-      console.log("Setting leaderboard data:", leaderboardData);
-      setLeaderboard(leaderboardData);
+      setLeaderboard(data);
     } catch (error) {
-      console.error("Error loading leaderboard:", error);
       toast.error("Failed to load leaderboard");
     } finally {
       setLoading(false);
@@ -93,12 +80,10 @@ export default function LeaderboardPage() {
 
   const loadUserRank = async () => {
     try {
-      console.log("Loading user rank with metric:", metric);
-      const data = await leaderboardService.getUserRank(metric);
-      console.log("User rank data:", data);
+      const data = await socialService.getUserRank(metric);
       setUserRank(data);
     } catch (error) {
-      console.error("Error loading user rank:", error);
+      // silently ignore user rank errors to avoid noise
     }
   };
 
@@ -180,9 +165,6 @@ export default function LeaderboardPage() {
       </div>
     );
   }
-
-  console.log("Rendering leaderboard with data:", leaderboard);
-  console.log("Leaderboard length:", leaderboard.length);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] py-8">

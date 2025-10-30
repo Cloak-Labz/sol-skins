@@ -5,6 +5,7 @@ import { config } from '../config/env';
 import { AppDataSource } from '../config/database';
 import { UserSkin } from '../entities/UserSkin';
 import { SkinTemplate } from '../entities/SkinTemplate';
+import { UserSkinRepository } from '../repositories/UserSkinRepository';
 import buybackIdl from '../../client/lib/idl/buyback.json';
 
 export interface BuybackCalculation {
@@ -50,20 +51,18 @@ export class BuybackService {
   }
 
   async calculateBuyback(nftMint: string): Promise<BuybackCalculation> {
-    const userSkinRepo = AppDataSource.getRepository(UserSkin);
+    const userSkinRepo = new UserSkinRepository();
     const skinTemplateRepo = AppDataSource.getRepository(SkinTemplate);
 
-    const userSkin = await userSkinRepo.findOne({
-      where: { nftMintAddress: nftMint },
-      relations: ['skinTemplate'],
-    });
+    const userSkin = await userSkinRepo.findByNftMintAddress(nftMint);
 
     if (!userSkin) {
       throw new Error('NFT not found in user inventory');
     }
 
+    // Don't throw error if already burned - just log it
     if (userSkin.isBurnedBack) {
-      throw new Error('This NFT has already been bought back');
+      console.warn('NFT has already been bought back, but returning calculation for display purposes');
     }
 
     const skinTemplate = userSkin.skinTemplate || await skinTemplateRepo.findOne({
@@ -154,19 +153,37 @@ export class BuybackService {
    * Mark NFT as burned in database after successful buyback
    */
   async markNFTAsBurned(nftMint: string, txSignature: string): Promise<void> {
-    const userSkinRepo = AppDataSource.getRepository(UserSkin);
+    const userSkinRepo = new UserSkinRepository();
+    const skinTemplateRepo = AppDataSource.getRepository(SkinTemplate);
 
-    const userSkin = await userSkinRepo.findOne({
-      where: { nftMintAddress: nftMint },
-    });
+    const userSkin = await userSkinRepo.findByNftMintAddress(nftMint);
 
     if (!userSkin) {
       throw new Error('NFT not found in database');
     }
 
-    userSkin.isBurnedBack = true;
-    userSkin.buybackTxSignature = txSignature;
-    await userSkinRepo.save(userSkin);
+    // Calculate buyback amount directly (avoid circular dependency)
+    const skinTemplate = userSkin.skinTemplate || await skinTemplateRepo.findOne({
+      where: { id: userSkin.skinTemplateId },
+    });
+
+    if (!skinTemplate) {
+      throw new Error('Skin template not found');
+    }
+
+    const skinPriceUsd = parseFloat(skinTemplate.basePriceUsd.toString());
+    const solPriceUsd = 200;
+    const skinPriceSol = skinPriceUsd / solPriceUsd;
+    const buybackAmount = skinPriceSol * config.buyback.buybackRate;
+    
+    // Mark as sold (removes from inventory) and set burn-specific fields
+    await userSkinRepo.update(userSkin.id, {
+      soldViaBuyback: true,
+      isInInventory: false,
+      buybackAmount,
+      buybackAt: new Date(),
+      buybackTxSignature: txSignature,
+    });
   }
 
   /**
@@ -185,8 +202,14 @@ export class BuybackService {
    * Check if buyback is enabled
    */
   async isBuybackEnabled(): Promise<boolean> {
-    const config = await this.getBuybackConfig();
-    return config.buybackEnable;
+    try {
+      const config = await this.getBuybackConfig();
+      return config.buybackEnable;
+    } catch (error) {
+      console.warn('Failed to fetch buyback config from Solana program, defaulting to enabled:', error);
+      // If we can't fetch the config, assume buyback is enabled for development
+      return true;
+    }
   }
 }
 

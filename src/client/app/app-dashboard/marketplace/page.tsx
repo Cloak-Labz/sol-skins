@@ -35,7 +35,6 @@ export default function MarketplacePage() {
       });
       setListings(data);
     } catch (err) {
-      console.error("Failed to load listings:", err);
       toast.error("Failed to load marketplace listings");
     } finally {
       setLoading(false);
@@ -70,7 +69,6 @@ export default function MarketplacePage() {
       toast.success("Skin purchased successfully!");
       loadListings(); // Refresh listings
     } catch (err) {
-      console.error("Failed to buy skin:", err);
       toast.error(
         err instanceof Error ? err.message : "Failed to purchase skin"
       );

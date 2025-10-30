@@ -16,6 +16,13 @@ export class UserSkinRepository {
     });
   }
 
+  async findOne(where: any): Promise<UserSkin | null> {
+    return this.repository.findOne({
+      where: where,
+      relations: ['user', 'skinTemplate', 'lootBoxType'],
+    });
+  }
+
   async findByUser(userId: string, options?: {
     skip?: number;
     take?: number;

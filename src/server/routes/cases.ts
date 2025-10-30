@@ -20,3 +20,6 @@ casesRoutes.post('/opening/:id/decision', walletAuth.requireWallet, validateSche
 
 // GET /cases/openings - Get user's case openings (requires wallet)
 casesRoutes.get('/openings', walletAuth.requireWallet, casesController.getUserCaseOpenings);
+
+// POST /cases/pack-opening - Create pack opening record for activity tracking
+casesRoutes.post('/pack-opening', casesController.createPackOpeningRecord);

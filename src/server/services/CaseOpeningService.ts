@@ -6,6 +6,8 @@ import { UserRepository } from '../repositories/UserRepository';
 import { AppError } from '../middlewares/errorHandler';
 import { TransactionType, TransactionStatus } from '../entities/Transaction';
 import { UserDecision } from '../entities/CaseOpening';
+import { Box } from '../entities/Box';
+import { AppDataSource } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import { discordService } from './DiscordService';
 
@@ -193,8 +195,43 @@ export class CaseOpeningService {
       take: limit,
     });
 
+    // Format case openings to include both old case openings and new pack openings
+    const formattedOpenings = caseOpenings.map(opening => {
+      if (opening.isPackOpening) {
+        // Pack opening format
+        return {
+          id: opening.id,
+          type: 'pack_opening',
+          nftMintAddress: opening.nftMintAddress,
+          transactionId: opening.transactionId,
+          skinName: opening.skinName,
+          skinRarity: opening.skinRarity,
+          skinWeapon: opening.skinWeapon,
+          skinValue: opening.skinValue,
+          skinImage: opening.skinImage,
+          openedAt: opening.openedAt,
+          completedAt: opening.completedAt,
+          userDecision: opening.userDecision,
+          decisionAt: opening.decisionAt,
+        };
+      } else {
+        // Old case opening format
+        return {
+          id: opening.id,
+          type: 'case_opening',
+          lootBoxType: opening.lootBoxType,
+          skinTemplate: opening.skinTemplate,
+          userSkin: opening.userSkin,
+          openedAt: opening.openedAt,
+          completedAt: opening.completedAt,
+          userDecision: opening.userDecision,
+          decisionAt: opening.decisionAt,
+        };
+      }
+    });
+
     return {
-      data: caseOpenings,
+      data: formattedOpenings,
       pagination: {
         page,
         limit,
@@ -292,6 +329,96 @@ export class CaseOpeningService {
       }
     } catch (error) {
       console.error('Error in VRF simulation:', error);
+    }
+  }
+
+  // Create a case opening record for pack openings (for activity tracking)
+  async createPackOpeningRecord(data: {
+    userId: string;
+    lootBoxTypeId: string;
+    nftMintAddress: string;
+    transactionId: string;
+    skinName: string;
+    skinRarity: string;
+    skinWeapon: string;
+    skinValue: number;
+    skinImage: string;
+    isPackOpening: boolean;
+  }) {
+    try {
+      // Look up the user by wallet address to get the actual user ID
+      const user = await this.userRepository.findByWalletAddress(data.userId);
+      if (!user) {
+        throw new AppError('User not found for wallet address', 404, 'USER_NOT_FOUND');
+      }
+
+      // Check if case opening record already exists for this NFT mint
+      const existingCaseOpening = await this.caseOpeningRepository.findOne({ nftMintAddress: data.nftMintAddress });
+
+      if (existingCaseOpening) {
+        console.log('CaseOpening already exists for NFT mint:', data.nftMintAddress);
+        return {
+          caseOpeningId: existingCaseOpening.id,
+          nftMintAddress: data.nftMintAddress,
+          transactionId: data.transactionId,
+          skinName: data.skinName,
+          skinRarity: data.skinRarity,
+          skinWeapon: data.skinWeapon,
+          skinValue: data.skinValue,
+          skinImage: data.skinImage,
+          isPackOpening: data.isPackOpening,
+          openedAt: existingCaseOpening.openedAt,
+          completedAt: existingCaseOpening.completedAt,
+        };
+      }
+
+      // Create a case opening record for activity tracking
+      // For pack openings, we'll use a default loot box type ID since pack openings
+      // Get box price for pack openings
+      let boxPriceSol = 0;
+      if (data.isPackOpening) {
+        const boxRepository = AppDataSource.getRepository(Box);
+        const box = await boxRepository.findOne({ where: { id: data.lootBoxTypeId } });
+        boxPriceSol = box?.priceSol || 0;
+      }
+
+      // use the boxes table but CaseOpening expects a lootBoxTypeId
+      const defaultLootBoxTypeId = '014dfab9-73ca-4701-988c-19e30fda8141'; // Use first available loot box type
+      
+      const savedCaseOpening = await this.caseOpeningRepository.create({
+        userId: user.id,
+        lootBoxTypeId: defaultLootBoxTypeId,
+        nftMintAddress: data.nftMintAddress,
+        transactionId: data.transactionId,
+        skinName: data.skinName,
+        skinRarity: data.skinRarity,
+        skinWeapon: data.skinWeapon,
+        skinValue: data.skinValue,
+        skinImage: data.skinImage,
+        isPackOpening: data.isPackOpening,
+        boxPriceSol: boxPriceSol, // Store box price for pack openings
+        openedAt: new Date(),
+        completedAt: new Date(), // Pack openings are immediately completed
+        userDecision: UserDecision.KEEP, // Default to keep for pack openings
+        decisionAt: new Date(),
+      });
+
+      return {
+        caseOpeningId: savedCaseOpening.id,
+        nftMintAddress: data.nftMintAddress,
+        transactionId: data.transactionId,
+        skinName: data.skinName,
+        skinRarity: data.skinRarity,
+        skinWeapon: data.skinWeapon,
+        skinValue: data.skinValue,
+        skinImage: data.skinImage,
+        isPackOpening: data.isPackOpening,
+        openedAt: savedCaseOpening.openedAt,
+        completedAt: savedCaseOpening.completedAt,
+      };
+    } catch (error) {
+      console.error('Error creating pack opening record:', error);
+      throw new AppError('Failed to create pack opening record', 500);
     }
   }
 } 

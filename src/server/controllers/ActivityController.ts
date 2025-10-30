@@ -11,10 +11,14 @@ export class ActivityController {
   }
 
   getRecentActivity = catchAsync(async (req: Request, res: Response) => {
-    const { limit = 50, type = 'all' } = req.query;
+    const { limit, type = 'all' } = req.query;
+
+    // Handle limit parameter properly - it might be undefined or a string
+    const parsedLimit = limit ? parseInt(limit as string, 10) : 50;
+    const finalLimit = isNaN(parsedLimit) ? 50 : parsedLimit;
 
     const activities = await this.activityService.getRecentActivity({
-      limit: parseInt(limit as string),
+      limit: finalLimit,
       type: type as any,
     });
 

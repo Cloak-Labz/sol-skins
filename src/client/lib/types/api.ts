@@ -3,6 +3,11 @@ export interface ApiResponse<T> {
   success: boolean
   data: T
   message?: string
+  error?: {
+    message: string
+    code?: string
+    statusCode?: number
+  }
   pagination?: {
     page: number
     limit: number
@@ -197,7 +202,7 @@ export interface LeaderboardFilters {
 // Activity types
 export interface ActivityItem {
   id: string
-  type: 'case_opened' | 'skin_sold' | 'rare_drop'
+  type: 'case_opened' | 'skin_sold' | 'rare_drop' | 'skin_claimed' | 'payout'
   user: {
     id: string
     username?: string
@@ -216,6 +221,10 @@ export interface ActivityItem {
     id: string
     name: string
     rarity: string
+  }
+  amount?: {
+    sol: number
+    usd: number
   }
   timestamp: string
 }
