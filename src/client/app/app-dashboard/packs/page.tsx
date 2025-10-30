@@ -2,24 +2,14 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import {
-  Zap,
-  Loader2,
-  Lock,
-  X,
-  ImageIcon,
-} from "lucide-react";
+import { Zap, Loader2, Lock, X, ImageIcon } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "react-hot-toast";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  marketplaceService,
-  boxesService,
-  authService,
-} from "@/lib/services";
+import { marketplaceService, boxesService, authService } from "@/lib/services";
 import { useUser } from "@/lib/contexts/UserContext";
 import { discordService } from "@/lib/services/discord.service";
 import { pendingSkinsService } from "@/lib/services/pending-skins.service";
@@ -68,7 +58,12 @@ export default function PacksPage() {
   const [buybackAmountSol, setBuybackAmountSol] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const shouldHideSidebar = (openingPhase !== null && openingPhase !== "processing") || showResult;
+  const shouldHideSidebar =
+    (openingPhase !== null && openingPhase !== "processing") || showResult;
+
+  // Share state for claim flow
+  const [showClaimShare, setShowClaimShare] = useState(false);
+  const [claimedSkin, setClaimedSkin] = useState<CSGOSkin | null>(null);
 
   useEffect(() => {
     if (shouldHideSidebar) {
@@ -80,8 +75,6 @@ export default function PacksPage() {
       document.documentElement.classList.remove("sidebar-hidden");
     };
   }, [shouldHideSidebar]);
-
-  
 
   // Calculate real odds from box skins in database
   const calculateRealOdds = async (boxId: string) => {
@@ -159,6 +152,31 @@ export default function PacksPage() {
 
     // Fallback to common if no match
     return "common";
+  };
+
+  // Build X (Twitter) share URL
+  const generateXShareUrl = (
+    params:
+      | {
+          kind: "buyback";
+          skin?: CSGOSkin | null;
+          amountSol: number;
+          packName?: string | null;
+        }
+      | { kind: "claim"; skin: CSGOSkin; packName?: string | null }
+  ) => {
+    let text = "";
+    if (params.kind === "buyback") {
+      const name = params.packName ? ` ${params.packName}` : "";
+      const skinText = params.skin ? ` (won: ${params.skin.name})` : "";
+      text = `I just sold my pack${name} drop for +${params.amountSol.toFixed(
+        2
+      )} SOL on @DUST3fun with instant payout!${skinText}`;
+    } else {
+      const packText = params.packName ? ` from ${params.packName}` : "";
+      text = `Claimed ${params.skin.name}${packText} to my Steam inventory via @DUST3fun!`;
+    }
+    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
   };
 
   // Set wallet address in API client when wallet connects/disconnects
@@ -762,6 +780,20 @@ export default function PacksPage() {
                     >
                       Buy Another Pack
                     </Button>
+                    {/* Share on X */}
+                    <a
+                      href={generateXShareUrl({
+                        kind: "buyback",
+                        skin: wonSkin,
+                        amountSol: Number(buybackAmountSol || 0),
+                        packName: selectedPack?.name || null,
+                      })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex w-full items-center justify-center rounded-md border border-white/15 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900"
+                    >
+                      Share on X
+                    </a>
                   </div>
                 </div>
               </Card>
@@ -773,7 +805,9 @@ export default function PacksPage() {
       {/* Main Content (blurred when opening, but not during processing) */}
       <div
         className={`transition-all duration-500 ${
-          openingPhase && openingPhase !== "processing" ? "blur-xl pointer-events-none" : ""
+          openingPhase && openingPhase !== "processing"
+            ? "blur-xl pointer-events-none"
+            : ""
         }`}
       >
         {/* Main Content */}
@@ -923,7 +957,11 @@ export default function PacksPage() {
                       selectedPack?.supply?.isSoldOut
                         ? "bg-red-500/20 text-red-400 cursor-not-allowed"
                         : "bg-[#E99500] text-black hover:bg-[#d88500] active:bg-[#E99500]"
-                    } ${openingPhase === "processing" ? "animate-pulse" : "hover:scale-[1.02] active:scale-[0.99]"}`}
+                    } ${
+                      openingPhase === "processing"
+                        ? "animate-pulse"
+                        : "hover:scale-[1.02] active:scale-[0.99]"
+                    }`}
                   >
                     {openingPhase === "processing" ? (
                       <>
@@ -933,7 +971,9 @@ export default function PacksPage() {
                     ) : (
                       <>
                         <span className="mr-2 ml-2">
-                          {selectedPack?.supply?.isSoldOut ? "Sold Out" : "Open Pack"}
+                          {selectedPack?.supply?.isSoldOut
+                            ? "Sold Out"
+                            : "Open Pack"}
                         </span>
                         <svg
                           className="w-4 h-4"
@@ -1122,7 +1162,7 @@ export default function PacksPage() {
                         {wonSkin.name.split(" | ")[0]}
                         <span className="text-white/60 mx-1">|</span>
                         {wonSkin.name.split(" | ")[1] ||
-                           wonSkin.rarity.toUpperCase()}
+                          wonSkin.rarity.toUpperCase()}
                       </h1>
                       <p
                         className="text-[11px] md:text-xs lg:text-sm font-bold text-[#E99500] uppercase tracking-wide"
@@ -1232,6 +1272,9 @@ export default function PacksPage() {
                               );
                             }
                             toast.success("Skin claimed to inventory!");
+                            // Show share option after claim
+                            setClaimedSkin(wonSkin);
+                            setShowClaimShare(true);
                             setShowResult(false);
                           } catch (error) {
                             toast.error("Failed to claim skin");
@@ -1245,6 +1288,62 @@ export default function PacksPage() {
                   </div>
 
                   {wonSkin && null}
+                </div>
+              </Card>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Share after Claim Modal */}
+      <AnimatePresence>
+        {showClaimShare && claimedSkin && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <motion.div
+              initial={{ scale: 0.5, opacity: 0, rotateY: -180 }}
+              animate={{ scale: 1, opacity: 1, rotateY: 0 }}
+              exit={{ scale: 0.5, opacity: 0 }}
+              transition={{ type: "spring", duration: 0.8, bounce: 0.4 }}
+              className="relative max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden">
+                <div className="p-6">
+                  <div className="text-center">
+                    <div className="text-zinc-300 text-sm uppercase tracking-wider">
+                      Share your win
+                    </div>
+                    <div className="mt-2 text-lg font-semibold text-white">
+                      {claimedSkin.name}
+                    </div>
+                  </div>
+                  <a
+                    href={generateXShareUrl({
+                      kind: "claim",
+                      skin: claimedSkin,
+                      packName: selectedPack?.name || null,
+                    })}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-6 inline-flex w-full items-center justify-center rounded-md border border-white/15 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900"
+                  >
+                    Share on X
+                  </a>
+                  <Button
+                    onClick={() => {
+                      setShowClaimShare(false);
+                      setClaimedSkin(null);
+                    }}
+                    className="mt-3 w-full bg-[#E99500] text-black hover:bg-[#d88500] font-bold"
+                  >
+                    Close
+                  </Button>
                 </div>
               </Card>
             </motion.div>
