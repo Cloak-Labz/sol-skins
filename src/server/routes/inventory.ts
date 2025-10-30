@@ -28,6 +28,9 @@ inventoryRoutes.get('/steam', walletAuth.requireWallet, inventoryController.getS
 // POST /inventory/steam/import - Import CS2 Steam inventory (requires wallet)
 inventoryRoutes.post('/steam/import', walletAuth.requireWallet, inventoryController.importSteamInventory);
 
+// POST /inventory/claim - Mark a skin as claimed by nft mint (requires wallet)
+inventoryRoutes.post('/claim', walletAuth.requireWallet, inventoryController.claimByMint);
+
 // Dynamic routes (must come LAST)
 // GET /inventory/:skinId - Get skin details (requires wallet)
 inventoryRoutes.get('/:skinId', walletAuth.requireWallet, inventoryController.getSkinDetails);
