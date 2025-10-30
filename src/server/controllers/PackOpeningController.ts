@@ -22,8 +22,10 @@ export class PackOpeningController {
     }
 
     // Resolve wallet address to user ID if needed
+    const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     let actualUserId = userId;
-    if (userId.length === 44) { // Wallet address
+    if (!uuidV4Regex.test(userId)) {
+      // Treat as wallet address
       const user = await this.userService.findByWalletAddress(userId);
       if (!user) {
         return ResponseUtil.error(res, 'User not found', 404);
@@ -50,8 +52,9 @@ export class PackOpeningController {
     }
 
     // Resolve wallet address to user ID if needed
+    const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     let actualUserId = userId;
-    if (userId.length === 44) { // Wallet address
+    if (!uuidV4Regex.test(userId)) {
       const user = await this.userService.findByWalletAddress(userId);
       if (!user) {
         return ResponseUtil.error(res, 'User not found', 404);
