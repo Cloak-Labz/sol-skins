@@ -176,7 +176,7 @@ export default function TermsOfServicePage() {
           <h2 className="mt-8 pt-2 text-3xl font-semibold">13. Contact</h2>
           <p>
             Questions about these Terms? Contact us at
-            <a href="mailto:hello@dust3.fun"> hello@dust3.fun</a>.
+            <a href="mailto:dust3solana@outlook.com"> dust3solana@outlook.com</a>.
           </p>
 
           <p className="mt-8 text-sm text-[#888]">
@@ -188,7 +188,7 @@ export default function TermsOfServicePage() {
           </p>
 
           <p className="mt-4">
-            <Link href="/" className="underline">
+            <Link href="/app-dashboard" className="underline">
               Back to home
             </Link>
           </p>
