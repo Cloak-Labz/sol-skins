@@ -639,7 +639,7 @@ export default function PacksPage() {
             undefined;
           buybackToastIdRef.current = toast.success(
             <div className="flex flex-col gap-1">
-              <p className="font-semibold text-sm">NFT successfully bought back! 💰</p>
+              <p className="font-semibold text-sm">Skin successfully bought back! 💰</p>
               {txSig ? (
                 <a
                   href={getSolscanUrl(txSig)}
@@ -687,7 +687,7 @@ export default function PacksPage() {
         dismissBuybackToast();
         buybackToastIdRef.current = toast.success(
           <div className="flex flex-col gap-1">
-            <p className="font-semibold text-sm">NFT successfully bought back! ✅</p>
+            <p className="font-semibold text-sm">Skin successfully bought back! ✅</p>
             <p className="text-xs text-zinc-400">(Transaction likely sent. Backend didn’t respond.)</p>
           </div>,
           { duration: 8000 }

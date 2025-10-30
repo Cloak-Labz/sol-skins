@@ -134,3 +134,10 @@ export const debounce = <T extends (...args: any[]) => any>(
 export const sleep = (ms: number): Promise<void> => {
   return new Promise(resolve => setTimeout(resolve, ms));
 };
+
+export function getSolscanUrl(signature: string): string {
+  const network = (process.env.NEXT_PUBLIC_SOLANA_NETWORK || "").toLowerCase();
+  if (network.includes("devnet")) return `https://solscan.io/tx/${signature}?cluster=devnet`;
+  if (network.includes("testnet")) return `https://solscan.io/tx/${signature}?cluster=testnet`;
+  return `https://solscan.io/tx/${signature}`;
+}

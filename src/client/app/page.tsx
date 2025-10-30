@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
-import Footer from "@/components/footer";
 
 // Dynamic import for 3D components to avoid SSR issues
 const FloatingBox = dynamic(() => import("@/components/floating-box"), {
@@ -318,8 +317,6 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
-
-      <Footer />
     </div>
   );
 }

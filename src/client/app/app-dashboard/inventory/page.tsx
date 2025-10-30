@@ -31,9 +31,10 @@ import {
 import { inventoryService, authService, buybackService } from "@/lib/services";
 import { UserSkin } from "@/lib/types/api";
 import { useUser } from "@/lib/contexts/UserContext";
-import { toast } from "react-hot-toast";
+import { toast } from "sonner";
  
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
+import { getSolscanUrl } from "@/lib/utils";
 
 // Use the typed service directly
 
@@ -214,25 +215,74 @@ export default function InventoryPage() {
       return;
     }
 
+    let currentToast: number | string | undefined;
     try {
       setSelling(true);
-      
-      // Execute payout through the new service
-      const result = await buybackService.executeBuyback(nftMint, wallet, connection);
 
-      toast.success(
-        `Payout complete! Received ${result.amountPaid.toFixed(4)} SOL`
+      // Step 1: Calculating buyback amount (already fetched in dialog, but mirror UX)
+      if (typeof payoutAmount === 'number') {
+        currentToast = toast.loading(`Buyback: ${Number(payoutAmount).toFixed(6)} SOL - Requesting transaction...`);
+      } else {
+        currentToast = toast.loading('Calculating buyback amount...');
+      }
+
+      // Request unsigned transaction from backend
+      const requestData = await buybackService.requestBuyback(nftMint);
+
+      // Step 2: Sign the transaction
+      toast.dismiss(currentToast);
+      currentToast = toast.loading('Please sign the transaction in your wallet...');
+      const signedTxBase64 = await buybackService.signBuybackTransaction(requestData.transaction, wallet);
+
+      // Step 3: Confirm on backend
+      toast.dismiss(currentToast);
+      currentToast = toast.loading('Confirming buyback...');
+      const walletAddress = wallet.publicKey.toBase58();
+      const confirmData = await buybackService.confirmBuybackSigned({
+        nftMint,
+        walletAddress,
+        signedTransaction: signedTxBase64,
+      });
+
+      // Success
+      toast.dismiss(currentToast);
+      const txSig: string | undefined =
+        (confirmData as any)?.transactionSignature ||
+        (confirmData as any)?.signature ||
+        (confirmData as any)?.txSignature ||
+        (confirmData as any)?.hash ||
+        (confirmData as any)?.tx ||
+        undefined;
+
+      currentToast = toast.success(
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold text-sm">Skin successfully bought back! 💰</span>
+          {txSig ? (
+            <a
+              href={getSolscanUrl(txSig)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+            >
+              View transaction on Solscan
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            </a>
+          ) : null}
+        </div>,
+        { duration: 6000 }
       );
-      
+
       setIsSellingDialogOpen(false);
-      
       setSelectedSkin(null);
       setPayoutAmount(null);
-      // Reload inventory
-      loadInventory();
-    } catch (err) {
-      
-      toast.error(err instanceof Error ? err.message : "Failed to execute payout");
+      await loadInventory();
+    } catch (err: any) {
+      toast.dismiss(currentToast);
+      // Fallback: consider tx may have succeeded on-chain even if backend failed
+      const fallbackMsg = err instanceof Error ? err.message : 'Failed to execute payout';
+      currentToast = toast.error(fallbackMsg);
     } finally {
       setSelling(false);
     }
