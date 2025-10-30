@@ -25,6 +25,24 @@ interface CSGOSkin {
   image: string;
 }
 
+// Helper function to get Solscan URL based on network
+const getSolscanUrl = (signature: string): string => {
+  const rpcUrl = process.env.NEXT_PUBLIC_SOLANA_RPC || "";
+
+  // Check if using devnet
+  if (rpcUrl.includes("devnet") || rpcUrl.includes("api.devnet")) {
+    return `https://solscan.io/tx/${signature}?cluster=devnet`;
+  }
+
+  // Check if using testnet
+  if (rpcUrl.includes("testnet") || rpcUrl.includes("api.testnet")) {
+    return `https://solscan.io/tx/${signature}?cluster=testnet`;
+  }
+
+  // Default to mainnet
+  return `https://solscan.io/tx/${signature}`;
+};
+
 // Default odds when API doesn't provide per-rarity probabilities
 const DEFAULT_ODDS: { label: string; rarity: string; pct: number }[] = [
   { label: "Legendary", rarity: "legendary", pct: 0.5 },
@@ -446,7 +464,7 @@ export default function PacksPage() {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-sm">You won {winnerSkin.name}! 🎉</p>
                     <a
-                      href={`https://solscan.io/tx/${result.signature}`}
+                      href={getSolscanUrl(result.signature)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
@@ -599,11 +617,12 @@ export default function PacksPage() {
         const confirmData = await confirmResponse.json();
 
         if (confirmData.success) {
+          const txSignature = confirmData.data?.signature || confirmData.data?.txSignature || "";
           toast.success(
             <div className="flex flex-col gap-1">
               <p className="font-semibold text-sm">NFT successfully bought back! 💰</p>
               <a
-                href={`https://solscan.io/tx/${confirmData.data?.signature || confirmData.data?.txSignature || ""}`}
+                href={getSolscanUrl(txSignature)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
@@ -768,7 +787,7 @@ export default function PacksPage() {
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm">You won {testSkin.name}! 🎉</p>
           <a
-            href={`https://solscan.io/tx/${testSignature}`}
+            href={getSolscanUrl(testSignature)}
             target="_blank"
             rel="noopener noreferrer"
             className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
