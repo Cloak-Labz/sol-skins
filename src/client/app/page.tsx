@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
@@ -13,6 +14,7 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
+import Footer from "@/components/footer";
 
 // Dynamic import for 3D components to avoid SSR issues
 const FloatingBox = dynamic(() => import("@/components/floating-box"), {
@@ -149,7 +151,7 @@ export default function LandingPage() {
             >
               <div className="aspect-square rounded-2xl overflow-hidden border border-[#333]">
                 <img
-                  src="/assets/karambit.jpg"
+                  src="/image.jpg"
                   alt="CS:GO Skin Showcase"
                   className="w-full h-full object-cover"
                 />
@@ -316,6 +318,8 @@ export default function LandingPage() {
           </div>
         </div>
       </section>
+
+      <Footer />
     </div>
   );
 }
