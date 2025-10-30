@@ -59,7 +59,9 @@ export default function PacksPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const shouldHideSidebar =
-    (openingPhase !== null && openingPhase !== "processing") || showResult;
+    (openingPhase !== null && openingPhase !== "processing") ||
+    showResult ||
+    showBuybackModal;
 
   // Share state for claim flow
   const [showClaimShare, setShowClaimShare] = useState(false);
