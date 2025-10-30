@@ -32,61 +32,23 @@ export interface CreatePendingSkinRequest {
 
 export class PendingSkinsService {
   async createPendingSkin(data: CreatePendingSkinRequest): Promise<PendingSkin> {
-    try {
-      const response = await apiClient.post('/pending-skins', data);
-      const apiResponse = response as any;
-      
-      // Handle both wrapped and unwrapped responses
-      if (apiResponse.pendingSkin) {
-        return apiResponse.pendingSkin;
-      } else if (apiResponse.id) {
-        // Direct response without wrapping
-        return apiResponse;
-      }
-      
-      throw new Error('Invalid API response structure');
-    } catch (error) {
-      throw error;
-    }
+    return apiClient.post<PendingSkin>('/pending-skins', data);
   }
 
   async getUserPendingSkins(userId: string): Promise<PendingSkin[]> {
-    try {
-      const response = await apiClient.get(`/pending-skins/user/${userId}`);
-      const apiResponse = response as any;
-      if (apiResponse.pendingSkins) {
-        return apiResponse.pendingSkins;
-      }
-      return [];
-    } catch (error) {
-      throw error;
-    }
+    return apiClient.get<PendingSkin[]>(`/pending-skins/user/${userId}`);
   }
 
-  async claimPendingSkin(pendingSkinId: string, userId: string): Promise<PendingSkin> {
-    try {
-      const response = await apiClient.post(`/pending-skins/${pendingSkinId}/claim`, { userId });
-      const apiResponse = response as any;
-      if (apiResponse.claimedSkin) {
-        return apiResponse.claimedSkin;
-      }
-      throw new Error('Invalid API response structure');
-    } catch (error) {
-      throw error;
-    }
+  async claimPendingSkin(pendingSkinId: string, walletAddress?: string, tradeUrl?: string): Promise<PendingSkin> {
+    return apiClient.post<PendingSkin>(`/pending-skins/${pendingSkinId}/claim`, { walletAddress, tradeUrl });
+  }
+
+  async deletePendingSkin(id: string): Promise<void> {
+    await apiClient.delete(`/pending-skins/${id}`);
   }
 
   async getPendingSkinById(id: string): Promise<PendingSkin> {
-    try {
-      const response = await apiClient.get(`/pending-skins/${id}`);
-      const apiResponse = response as any;
-      if (apiResponse.pendingSkin) {
-        return apiResponse.pendingSkin;
-      }
-      throw new Error('Invalid API response structure');
-    } catch (error) {
-      throw error;
-    }
+    return apiClient.get<PendingSkin>(`/pending-skins/${id}`);
   }
 
   async createSkinClaimedActivity(data: {
@@ -96,11 +58,7 @@ export class PendingSkinsService {
     skinWeapon: string;
     nftMintAddress: string;
   }): Promise<void> {
-    try {
-      const response = await apiClient.post('/pending-skins/claim-activity', data);
-    } catch (error) {
-      throw error;
-    }
+    await apiClient.post('/pending-skins/claim-activity', data);
   }
 }
 

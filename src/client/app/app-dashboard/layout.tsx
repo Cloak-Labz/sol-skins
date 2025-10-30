@@ -110,6 +110,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <Header />
       <main className="app-main ml-64 pt-16 min-h-screen flex flex-col relative z-10">
         <div className="flex-1 relative z-10">{children}</div>
+        <Footer />
       </main>
     </div>
   );

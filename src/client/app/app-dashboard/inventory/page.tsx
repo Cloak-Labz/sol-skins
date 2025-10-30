@@ -35,13 +35,7 @@ import { toast } from "react-hot-toast";
 import { pendingSkinsService, PendingSkin } from "@/lib/services/pending-skins.service";
 import { useWallet, useConnection } from "@solana/wallet-adapter-react";
 
-const pendingApi = pendingSkinsService as unknown as {
-  getPendingSkinsByUserId(userId: string): Promise<PendingSkin[]>;
-  getPendingSkinById(id: string): Promise<PendingSkin>;
-  claimPendingSkin(id: string, walletAddress?: string, tradeUrl?: string): Promise<PendingSkin>;
-  createPendingSkin(data: any): Promise<PendingSkin>;
-  deletePendingSkin(id: string): Promise<void>;
-};
+// Use the typed service directly
 
 
 export default function InventoryPage() {
@@ -57,10 +51,11 @@ export default function InventoryPage() {
   const [selling, setSelling] = useState(false);
   const [inventorySkins, setInventorySkins] = useState<UserSkin[]>([]);
   const [totalValue, setTotalValue] = useState(0);
-  const [pendingSkin, setPendingSkin] = useState<PendingSkin | null>(null);
+  const [pendingSkins, setPendingSkins] = useState<PendingSkin[]>([]);
   const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
   const [payoutAmount, setPayoutAmount] = useState<number | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
+  const [processingPendingId, setProcessingPendingId] = useState<string | null>(null);
 
   // Load inventory from backend
   useEffect(() => {
@@ -80,33 +75,20 @@ export default function InventoryPage() {
       try {
         if (isConnected && user?.id) {
           
-          // Fetch pending skins from API using user ID
+          // Fetch pending skins from API using user ID; also query walletAddress and merge
           try {
-            
-            const pendingSkins = await pendingApi.getPendingSkinsByUserId(user.id);
-            
-            if (pendingSkins.length > 0) {
-              
-              setPendingSkin(pendingSkins[0]); // Show the first pending skin
-            } else {
-              
+            const lists: PendingSkin[][] = [] as any;
+            const byUser = await pendingSkinsService.getUserPendingSkins(user.id);
+            lists.push(byUser || []);
+            if (walletAddress) {
+              const byWallet = await pendingSkinsService.getUserPendingSkins(walletAddress);
+              lists.push(byWallet || []);
             }
+            const merged = ([] as PendingSkin[]).concat(...lists);
+            const unique = Array.from(new Map(merged.map((p) => [p.id, p])).values());
+            setPendingSkins(unique);
           } catch (apiError) {
-            
-            // Fallback to localStorage
-            const stored = localStorage.getItem('pendingSkin');
-            if (stored) {
-              const pendingSkinData = JSON.parse(stored);
-              // Old format stored the metadata URL in `id`. That cannot be claimed.
-              const looksLikeUrl = typeof pendingSkinData.id === 'string' && /^https?:\/\//i.test(pendingSkinData.id);
-              if (looksLikeUrl) {
-                toast.error('This pending record is from an older format. Please open a new pack or refresh.', { id: 'claim' });
-                localStorage.removeItem('pendingSkin');
-              } else {
-                setPendingSkin(pendingSkinData);
-                
-              }
-            }
+            setPendingSkins([]);
           }
 
           // Try to fetch user profile for trade URL (but don't fail if it doesn't work)
@@ -127,15 +109,15 @@ export default function InventoryPage() {
   }, [isConnected, user?.id]);
 
   // Claim pending skin
-  const claimPendingSkin = async () => {
-    if (!pendingSkin) return;
+  const claimPendingSkin = async (p: PendingSkin) => {
+    if (!p) return;
 
     try {
       if (isClaiming) return;
       setIsClaiming(true);
       
       // Guard against legacy objects where id is a metadata URL
-      if (typeof pendingSkin.id === 'string' && /^https?:\/\//i.test(pendingSkin.id)) {
+      if (typeof p.id === 'string' && /^https?:\/\//i.test(p.id)) {
         toast.error('This pending record is from an older format. Please open a new pack or refresh.', { id: 'claim' });
         setIsClaiming(false);
         return;
@@ -149,15 +131,14 @@ export default function InventoryPage() {
       }
 
       // Claim the pending skin via API (Discord ticket will be created automatically)
-      const claimedSkin = await pendingApi.claimPendingSkin(
-        pendingSkin.id,
+      await pendingSkinsService.claimPendingSkin(
+        p.id,
         walletAddress || undefined,
         userTradeUrl || undefined
       );
       
       // Clear the pending skin from state and localStorage
-      setPendingSkin(null);
-      localStorage.removeItem('pendingSkin');
+      setPendingSkins((prev) => prev.filter((x) => x.id !== p.id));
       // Give user clear success feedback, same flow as reveal
       toast.success("Claim submitted! We'll DM you on Discord.", { id: "claim" });
     } catch (error) {
@@ -166,6 +147,29 @@ export default function InventoryPage() {
     }
     finally {
       setIsClaiming(false);
+    }
+  };
+
+  const payoutPendingSkin = async (p: PendingSkin) => {
+    if (!p?.nftMintAddress) {
+      toast.error('Invalid NFT');
+      return;
+    }
+    if (!wallet.connected || !wallet.publicKey) {
+      toast.error('Please connect your wallet');
+      return;
+    }
+    try {
+      setProcessingPendingId(p.id);
+      const result = await buybackService.executeBuyback(p.nftMintAddress, wallet, connection);
+      toast.success(`Payout complete! Received ${result.amountPaid.toFixed(4)} SOL`);
+      // Remove pending after payout
+      try { await pendingSkinsService.deletePendingSkin(p.id); } catch {}
+      setPendingSkins((prev) => prev.filter((x) => x.id !== p.id));
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to execute payout');
+    } finally {
+      setProcessingPendingId(null);
     }
   };
 
@@ -430,41 +434,42 @@ export default function InventoryPage() {
         </div>
 
         {/* Pending Skin */}
-        {pendingSkin && (
+        {pendingSkins.length > 0 && (
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
               <h3 className="text-lg font-semibold text-yellow-200">Pending Skins</h3>
             </div>
             <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
-              <div className="group relative transition-transform duration-200 hover:scale-[1.015] cursor-pointer">
-                <NeonCard
-                  topContent={
+              {pendingSkins.map((ps) => (
+                <div key={ps.id} className="group relative transition-transform duration-200 hover:-translate-y-0.5 cursor-pointer">
+                  <NeonCard
+                    topContent={
                     <div className="flex flex-col justify-between h-full">
-                      {/* Skin Name */}
+                      {/* Skin Name (match owned style) */}
                       <h3 
-                        className="text-yellow-400 font-black text-lg mb-2 truncate uppercase tracking-wider"
+                        className="text-orange-400 font-black text-lg mb-2 truncate uppercase tracking-wider"
                         style={{ fontFamily: "monospace" }}
                       >
-                        {pendingSkin.skinName}
+                        {ps.skinName}
                       </h3>
-                        {/* Rarity Badge */}
+                        {/* Rarity and Status (match owned style) */}
                         <div className="flex items-center justify-between">
                           <div className="relative">
-                            <div className="absolute inset-0 bg-yellow-400/20 rounded-full blur-sm"></div>
-                            <div className="relative bg-gradient-to-r from-yellow-500/30 to-amber-500/30 border border-yellow-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(234,179,8,0.3)] flex items-center justify-center">
+                            <div className="absolute inset-0 bg-orange-400/20 rounded-full blur-sm"></div>
+                            <div className="relative bg-gradient-to-r from-orange-500/30 to-amber-500/30 border border-orange-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(251,146,60,0.3)] flex items-center justify-center">
                               <span 
-                                className="text-yellow-300 text-xs font-black uppercase tracking-wider"
+                                className="text-orange-300 text-xs font-black uppercase tracking-wider"
                                 style={{ fontFamily: "monospace" }}
                               >
-                                {pendingSkin.skinRarity}
+                                {ps.skinRarity || 'Unknown'}
                               </span>
                             </div>
                           </div>
                           <div className="relative">
-                            <div className="absolute inset-0 bg-blue-400/20 rounded-full blur-sm"></div>
-                            <div className="relative bg-gradient-to-r from-blue-500/30 to-cyan-500/30 border border-blue-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(59,130,246,0.3)] flex items-center justify-center">
+                            <div className="absolute inset-0 bg-green-400/20 rounded-full blur-sm"></div>
+                            <div className="relative bg-gradient-to-r from-green-500/30 to-emerald-500/30 border border-green-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(34,197,94,0.3)] flex items-center justify-center">
                               <span 
-                                className="text-blue-300 text-xs font-black uppercase tracking-wider"
+                                className="text-green-300 text-xs font-black uppercase tracking-wider"
                                 style={{ fontFamily: "monospace" }}
                               >
                                 PENDING
@@ -476,29 +481,73 @@ export default function InventoryPage() {
                   }
                   bottomContent={
                     <div className="space-y-1 flex-1 pt-2">
-                        <div className="flex justify-between items-center">
+                        {/* Skin Image (match owned style) */}
+                        <div className="flex items-center justify-center h-8 mb-20 mt-10">
+                          {ps.skinImage && (/^https?:\/\//i.test(ps.skinImage) || ps.skinImage.startsWith('ipfs://')) ? (
+                            <img
+                              src={ps.skinImage.startsWith('ipfs://') ? `https://ipfs.io/ipfs/${ps.skinImage.replace('ipfs://','')}` : ps.skinImage}
+                              alt={ps.skinName}
+                              className="max-h-16 max-w-16 object-contain"
+                            />
+                          ) : (
+                            <Package className="w-16 h-16 text-orange-400" />
+                          )}
+                        </div>
+
+                        <div className="space-y-1 flex-1">
+                          <div className="flex justify-between items-center">
                           <span className="text-yellow-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Weapon:</span>
                           <span className="text-yellow-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
-                            {pendingSkin.skinWeapon}
+                            {ps.skinWeapon}
                           </span>
                         </div>
-                        <div className="flex justify-between items-center">
+                          <div className="flex justify-between items-center">
                           <span className="text-yellow-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Value:</span>
                           <span className="text-yellow-400 text-base font-black uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
-                            ${pendingSkin.skinValue?.toFixed(2) || '0.00'}
+                            ${Number(ps.skinValue || 0).toFixed(2)}
                           </span>
-                        </div>
-                        <div className="flex justify-between items-center">
+                          </div>
+                          <div className="flex justify-between items-center">
                           <span className="text-yellow-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Status:</span>
                           <span className="text-yellow-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
                             Awaiting Confirmation
                           </span>
+                          </div>
+                        </div>
+
+                        <div className="pt-3 grid grid-cols-2 gap-2">
+                          <Button
+                            size="sm"
+                            className="bg-[#FE9310] hover:bg-[#F2840E] text-black text-xs font-black uppercase tracking-wide"
+                            style={{ fontFamily: "monospace" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              claimPendingSkin(ps);
+                            }}
+                            disabled={isClaiming || processingPendingId === ps.id}
+                          >
+                            Claim
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-[#FE9310] hover:bg-[#F2840E] text-black text-xs font-black uppercase tracking-wide"
+                            style={{ fontFamily: "monospace" }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              payoutPendingSkin(ps);
+                            }}
+                            disabled={processingPendingId === ps.id}
+                          >
+                            <Zap className="w-8 h-8 text-black fill-black" />
+                            Take Payout
+                          </Button>
                         </div>
                     </div>
                   }
                   className="h-auto"
                 />
-              </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
