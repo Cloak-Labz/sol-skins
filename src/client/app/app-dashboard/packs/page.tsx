@@ -428,7 +428,7 @@ export default function PacksPage() {
       }
     } catch (error: any) {
       const msg = error?.message || "Failed to open pack. Please try again.";
-      if (process.env.NODE_ENV !== 'production') {
+      if (process.env.NODE_ENV !== "production") {
         toast.error(`Failed to open pack: ${msg}`, { id: "mint" });
       } else {
         toast.error("Failed to open pack. Please try again.", { id: "mint" });
@@ -775,10 +775,10 @@ export default function PacksPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6">
+                  <div className="mt-6 flex gap-3">
                     <Button
                       onClick={() => setShowBuybackModal(false)}
-                      className="w-full bg-[#E99500] text-black hover:bg-[#d88500] font-bold py-6"
+                      className="flex-1 bg-[#E99500] text-black hover:bg-[#d88500] font-bold py-6"
                     >
                       Buy Another Pack
                     </Button>
@@ -792,7 +792,7 @@ export default function PacksPage() {
                       })}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="mt-3 inline-flex w-full items-center justify-center rounded-md border border-white/15 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900"
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-md border border-white/15 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900 whitespace-nowrap"
                     >
                       Share on X
                     </a>
@@ -1325,27 +1325,29 @@ export default function PacksPage() {
                       {claimedSkin.name}
                     </div>
                   </div>
-                  <a
-                    href={generateXShareUrl({
-                      kind: "claim",
-                      skin: claimedSkin,
-                      packName: selectedPack?.name || null,
-                    })}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-6 inline-flex w-full items-center justify-center rounded-md border border-white/15 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900"
-                  >
-                    Share on X
-                  </a>
-                  <Button
-                    onClick={() => {
-                      setShowClaimShare(false);
-                      setClaimedSkin(null);
-                    }}
-                    className="mt-3 w-full bg-[#E99500] text-black hover:bg-[#d88500] font-bold"
-                  >
-                    Close
-                  </Button>
+                  <div className="mt-6 flex gap-3">
+                    <a
+                      href={generateXShareUrl({
+                        kind: "claim",
+                        skin: claimedSkin,
+                        packName: selectedPack?.name || null,
+                      })}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-md border border-white/15 bg-zinc-900/60 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900 whitespace-nowrap"
+                    >
+                      Share on X
+                    </a>
+                    <Button
+                      onClick={() => {
+                        setShowClaimShare(false);
+                        setClaimedSkin(null);
+                      }}
+                      className="flex-1 bg-[#E99500] text-black hover:bg-[#d88500] font-bold"
+                    >
+                      Close
+                    </Button>
+                  </div>
                 </div>
               </Card>
             </motion.div>
