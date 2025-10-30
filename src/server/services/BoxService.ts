@@ -60,7 +60,9 @@ export class BoxService {
     try {
       const box = await this.boxRepository.findById(id);
       if (!box) {
-        throw new AppError('Box not found', 404, 'BOX_NOT_FOUND');
+        // Idempotent: nothing to delete
+        logger.info('Delete box requested, but box not found; treating as no-op', { id });
+        return;
       }
       return box;
     } catch (error) {
@@ -86,7 +88,7 @@ export class BoxService {
 
   async getActiveBoxes(): Promise<any[]> {
     try {
-      return await this.boxRepository.findAll();
+      return await this.boxRepository.findAllActive();
     } catch (error) {
       logger.error('Error fetching active boxes:', error);
       throw new AppError('Failed to fetch active boxes', 500);
@@ -179,7 +181,7 @@ export class BoxService {
   }
 
 
-  async deleteBox(id: string): Promise<void> {
+  async deleteBox(id: string, options?: { force?: boolean }): Promise<void> {
     try {
       const box = await this.boxRepository.findById(id);
       if (!box) {
@@ -187,14 +189,11 @@ export class BoxService {
       }
 
       // Check if box has been opened
-      if (box.itemsOpened > 0) {
+      if (!options?.force && box.itemsOpened > 0) {
         throw new AppError('Cannot delete box that has been opened', 400, 'BOX_HAS_OPENINGS');
       }
 
-      const deleted = await this.boxRepository.delete(id);
-      if (!deleted) {
-        throw new AppError('Failed to delete box', 500);
-      }
+      await this.boxRepository.delete(id);
 
       logger.info('Box deleted:', { id, batchId: box.batchId });
     } catch (error) {

@@ -812,24 +812,55 @@ export default function PackManagerPage() {
 
   const handleDeleteBox = async (boxId: string) => {
     if (!confirm("Are you sure you want to delete this box? This will also delete all associated skins.")) return;
-    
+
+    const attempt = async (force: boolean) => {
+      const url = force ? `/api/v1/boxes/${boxId}?force=true` : `/api/v1/boxes/${boxId}`;
+      const res = await fetch(url, { method: "DELETE" });
+      if (res.status === 404) {
+        // Treat as idempotent success (already deleted)
+        return 'not_found' as const;
+      }
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({} as any));
+        const message = body?.error?.message || `Failed to delete box${force ? " (force)" : ""}`;
+        throw new Error(message);
+      }
+      return 'deleted' as const;
+    };
+
     try {
-      const response = await fetch(`/api/v1/boxes/${boxId}`, {
-        method: "DELETE",
-      });
-      
-      if (response.ok) {
+      const result = await attempt(false);
+      if (result === 'not_found') {
+        toast.success("Box already deleted");
+      } else {
         toast.success("Box deleted successfully");
-        loadBoxes();
-        if (selectedBox?.id === boxId) {
-          setSelectedBox(null);
-          setBoxSkins([]);
+      }
+    } catch (e: any) {
+      if (e?.message?.includes("Cannot delete box that has been opened") || e?.message?.includes("BOX_HAS_OPENINGS")) {
+        const confirmForce = confirm("This box has openings. Force delete will also delete all associated skins. Proceed?");
+        if (!confirmForce) return;
+        try {
+          const result = await attempt(true);
+          if (result === 'not_found') {
+            toast.success("Box already deleted");
+          } else {
+            toast.success("Box force-deleted successfully");
+          }
+        } catch (err) {
+          toast.error((err as any)?.message || "Force delete failed");
+          return;
         }
       } else {
-        throw new Error("Failed to delete box");
+        toast.error(e?.message || "Failed to delete box");
+        return;
       }
-    } catch (error) {
-      toast.error("Failed to delete box");
+    }
+
+    // refresh UI
+    loadBoxes();
+    if (selectedBox?.id === boxId) {
+      setSelectedBox(null);
+      setBoxSkins([]);
     }
   };
 

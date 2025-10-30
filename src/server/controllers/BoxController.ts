@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { BoxService, CreateBoxDTO, UpdateBoxDTO } from '../services/BoxService';
 import { collectionFileService } from '../services/CollectionFileService';
+import { BoxSkinService } from '../services/BoxSkinService';
 import { ResponseUtil } from '../utils/response';
 import { catchAsync } from '../middlewares/errorHandler';
 
@@ -61,7 +62,8 @@ export class BoxController {
   // DELETE /boxes/:id - Delete box
   deleteBox = catchAsync(async (req: Request, res: Response) => {
     const { id } = req.params;
-    
+    const force = String(req.query.force || '').toLowerCase() === 'true';
+
     // Delete collection files first
     try {
       await collectionFileService.deleteCollectionFiles(id);
@@ -69,8 +71,18 @@ export class BoxController {
       // Log error but don't fail the deletion
       console.error('Failed to delete collection files:', error);
     }
-    
-    await this.boxService.deleteBox(id);
+
+    // If force, also delete all box skins before removing the box
+    if (force) {
+      try {
+        const svc = new BoxSkinService();
+        await svc.deleteBoxSkinsByBoxId(id);
+      } catch (err) {
+        console.error('Failed to delete box skins for force delete:', err);
+      }
+    }
+
+    await this.boxService.deleteBox(id, { force });
     ResponseUtil.success(res, null, 204);
   });
 

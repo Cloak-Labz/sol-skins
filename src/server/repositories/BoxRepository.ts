@@ -17,6 +17,12 @@ export class BoxRepository {
 
   async findAll(): Promise<Box[]> {
     return this.repository.find({
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findAllActive(): Promise<Box[]> {
+    return this.repository.find({
       where: { status: 'active' },
       order: { createdAt: 'DESC' },
     });
