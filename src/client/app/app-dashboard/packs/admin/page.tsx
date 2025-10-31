@@ -47,7 +47,7 @@ interface Box {
   symbol?: string;
   sellerFeeBasisPoints: number;
   isMutable: boolean;
-  status: 'active' | 'paused' | 'sold_out' | 'ended';
+  status: "active" | "paused" | "sold_out" | "ended";
   createdAt: string;
   updatedAt: string;
 }
@@ -94,7 +94,7 @@ export default function PackManagerPage() {
       collectionImagePath: string;
     };
   }>({});
-  
+
   // Draft box states
   const [draftBox, setDraftBox] = useState<{
     name: string;
@@ -112,9 +112,11 @@ export default function PackManagerPage() {
     isMutable: boolean;
   } | null>(null);
   const [draftSkins, setDraftSkins] = useState<DraftSkin[]>([]);
-  const [uploadingToArweave, setUploadingToArweave] = useState<string | null>(null);
+  const [uploadingToArweave, setUploadingToArweave] = useState<string | null>(
+    null
+  );
   const [jsonSkinsInput, setJsonSkinsInput] = useState<string>("");
-  
+
   // Form states
   const [creatingBox, setCreatingBox] = useState(false);
   const [editingBox, setEditingBox] = useState<Box | null>(null);
@@ -149,9 +151,14 @@ export default function PackManagerPage() {
 
   // Check if connected wallet is admin
   useEffect(() => {
-    const adminWallet = "v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs";
+    const env = process.env.NEXT_PUBLIC_ADMIN_WALLETS || "";
+    const admins = env
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
     if (publicKey) {
-      const isAdminWallet = publicKey.toBase58() === adminWallet;
+      const isAdminWallet =
+        admins.length > 0 && admins.includes(publicKey.toBase58());
       setIsAdmin(isAdminWallet);
       if (!isAdminWallet) {
         toast.error("Access denied: Admin wallet required");
@@ -173,24 +180,26 @@ export default function PackManagerPage() {
       setLoading(true);
       const data = await boxesService.getAllBoxes();
       setBoxes(data);
-      
+
       // Check collection files status for each box
       const statusPromises = data.map(async (box: Box) => {
         try {
-          const response = await fetch(`/api/v1/boxes/${box.id}/collection-files`);
+          const response = await fetch(
+            `/api/v1/boxes/${box.id}/collection-files`
+          );
           const result = await response.json();
           return { boxId: box.id, status: result.success ? result.data : null };
-          } catch (error) {
+        } catch (error) {
           return { boxId: box.id, status: null };
         }
       });
-      
+
       const statusResults = await Promise.all(statusPromises);
       const statusMap: any = {};
       statusResults.forEach(({ boxId, status }) => {
         statusMap[boxId] = status;
       });
-      
+
       setCollectionFilesStatus(statusMap);
     } catch (error) {
       toast.error("Failed to load boxes");
@@ -206,7 +215,7 @@ export default function PackManagerPage() {
       if (data.success) {
         setBoxSkins(data.data);
       }
-      } catch (error) {
+    } catch (error) {
       toast.error("Failed to load box skins");
     }
   };
@@ -224,11 +233,11 @@ export default function PackManagerPage() {
           files: [
             {
               uri: "collection.png",
-              type: "image/png"
-            }
+              type: "image/png",
+            },
           ],
-          category: "image"
-        }
+          category: "image",
+        },
       };
 
       // Send to backend to generate files
@@ -246,11 +255,13 @@ export default function PackManagerPage() {
 
       const data = await response.json();
       if (!data.success) {
-        throw new Error(data.error?.message || "Failed to generate collection files");
+        throw new Error(
+          data.error?.message || "Failed to generate collection files"
+        );
       }
 
       return data.data;
-      } catch (error) {
+    } catch (error) {
       throw error;
     }
   };
@@ -263,11 +274,11 @@ export default function PackManagerPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(boxForm),
       });
-      
+
       const data = await response.json();
       if (data.success) {
         toast.success("Box created successfully");
-        
+
         // Generate collection files
         try {
           await generateCollectionFiles(data.data);
@@ -275,7 +286,7 @@ export default function PackManagerPage() {
         } catch (fileError) {
           toast.error("Box created but failed to generate collection files");
         }
-        
+
         setBoxForm({
           name: "",
           description: "",
@@ -304,7 +315,7 @@ export default function PackManagerPage() {
 
   const handleAddSkin = async () => {
     if (!selectedBox) return;
-    
+
     try {
       setAddingSkin(true);
       const response = await fetch("/api/v1/box-skins", {
@@ -315,7 +326,7 @@ export default function PackManagerPage() {
           boxId: selectedBox.id,
         }),
       });
-      
+
       const data = await response.json();
       if (data.success) {
         toast.success("Skin added successfully");
@@ -343,28 +354,32 @@ export default function PackManagerPage() {
   const handleGenerateCollectionFiles = async (box: Box) => {
     try {
       toast.loading("Generating collection files...", { id: "generate-files" });
-      
+
       await generateCollectionFiles(box);
-      toast.success("Collection files generated successfully!", { id: "generate-files" });
-      
+      toast.success("Collection files generated successfully!", {
+        id: "generate-files",
+      });
+
       // Refresh collection files status
       loadBoxes();
     } catch (error: any) {
-      toast.error(error.message || "Failed to generate collection files", { id: "generate-files" });
+      toast.error(error.message || "Failed to generate collection files", {
+        id: "generate-files",
+      });
     }
   };
 
   const handleDeleteSkin = async (skinId: string) => {
     if (!confirm("Are you sure you want to delete this skin?")) return;
-    
+
     try {
       const response = await fetch(`/api/v1/box-skins/${skinId}`, {
         method: "DELETE",
       });
-      
+
       if (response.ok) {
         toast.success("Skin deleted successfully");
-      if (selectedBox) {
+        if (selectedBox) {
           loadBoxSkins(selectedBox.id);
         }
       } else {
@@ -412,10 +427,10 @@ export default function PackManagerPage() {
     setDraftSkins([...draftSkins, newSkin]);
     setSkinForm({
       name: "",
-            weapon: "",
+      weapon: "",
       rarity: "common",
       condition: "factory_new",
-            imageUrl: "",
+      imageUrl: "",
       basePriceUsd: 0,
       metadataUri: "",
       weight: 1,
@@ -432,7 +447,7 @@ export default function PackManagerPage() {
     try {
       // Skip all the cleaning bullshit and just parse the JSON directly
       let skinsData;
-      
+
       try {
         // First try direct parsing
         skinsData = JSON.parse(jsonSkinsInput);
@@ -440,12 +455,12 @@ export default function PackManagerPage() {
         // If that fails, try minimal cleaning
         let cleanedJson = jsonSkinsInput.trim();
         cleanedJson = cleanedJson.replace(/'/g, '"'); // Only fix quotes
-        cleanedJson = cleanedJson.replace(/\/\/.*$/gm, ''); // Remove comments
-        cleanedJson = cleanedJson.replace(/,(\s*[}\]])/g, '$1'); // Remove trailing commas
-        
+        cleanedJson = cleanedJson.replace(/\/\/.*$/gm, ""); // Remove comments
+        cleanedJson = cleanedJson.replace(/,(\s*[}\]])/g, "$1"); // Remove trailing commas
+
         skinsData = JSON.parse(cleanedJson);
       }
-      
+
       if (!Array.isArray(skinsData)) {
         toast.error("JSON must be an array of skins");
         return;
@@ -453,19 +468,21 @@ export default function PackManagerPage() {
 
       if (skinsData.length === 0) {
         toast.error("JSON array is empty");
-      return;
-    }
+        return;
+      }
 
       // Validate each skin object
       const validSkins: DraftSkin[] = [];
       for (let i = 0; i < skinsData.length; i++) {
         const skin = skinsData[i];
-        
+
         // Handle both 'name' and 'skinName' fields
         const skinName = skin.name || skin.skinName;
-        
+
         if (!skinName || !skin.weapon || !skin.rarity || !skin.condition) {
-          toast.error(`Skin at index ${i} is missing required fields (name/skinName, weapon, rarity, condition)`);
+          toast.error(
+            `Skin at index ${i} is missing required fields (name/skinName, weapon, rarity, condition)`
+          );
           return;
         }
 
@@ -474,7 +491,7 @@ export default function PackManagerPage() {
           name: skinName,
           weapon: skin.weapon,
           rarity: skin.rarity.toLowerCase(), // Normalize rarity to lowercase
-          condition: skin.condition.toLowerCase().replace(/\s+/g, '_'), // Normalize condition
+          condition: skin.condition.toLowerCase().replace(/\s+/g, "_"), // Normalize condition
           imageUrl: skin.imageUrl || "",
           basePriceUsd: skin.basePriceUsd || 0,
           metadataUri: skin.metadataUri || "",
@@ -489,9 +506,10 @@ export default function PackManagerPage() {
       setDraftSkins([...draftSkins, ...validSkins]);
       setJsonSkinsInput("");
       toast.success(`Added ${validSkins.length} skins to draft!`);
-      
     } catch (error) {
-      toast.error(`Invalid JSON format: ${error.message}. Please check your syntax.`);
+      toast.error(
+        `Invalid JSON format: ${error.message}. Please check your syntax.`
+      );
     }
   };
 
@@ -628,66 +646,84 @@ export default function PackManagerPage() {
         // If that fails, try minimal cleaning
         let cleanedJson = jsonSkinsInput.trim();
         cleanedJson = cleanedJson.replace(/'/g, '"'); // Only fix quotes
-        cleanedJson = cleanedJson.replace(/\/\/.*$/gm, ''); // Remove comments
-        cleanedJson = cleanedJson.replace(/,(\s*[}\]])/g, '$1'); // Remove trailing commas
-        
+        cleanedJson = cleanedJson.replace(/\/\/.*$/gm, ""); // Remove comments
+        cleanedJson = cleanedJson.replace(/,(\s*[}\]])/g, "$1"); // Remove trailing commas
+
         parsed = JSON.parse(cleanedJson);
       }
-      
+
       // parsed successfully
-      toast.success(`JSON is valid! Found ${Array.isArray(parsed) ? parsed.length : 'unknown'} items`);
+      toast.success(
+        `JSON is valid! Found ${
+          Array.isArray(parsed) ? parsed.length : "unknown"
+        } items`
+      );
     } catch (error: any) {
       toast.error(`JSON validation failed.`);
-      
+
       // Offer to load clean JSON as fallback
-      if (confirm("JSON parsing failed. Would you like to load the clean JSON with all 11 skins instead?")) {
+      if (
+        confirm(
+          "JSON parsing failed. Would you like to load the clean JSON with all 11 skins instead?"
+        )
+      ) {
         loadCleanJson();
       }
     }
   };
 
   const removeDraftSkin = (skinId: string) => {
-    setDraftSkins(draftSkins.filter(skin => skin.id !== skinId));
+    setDraftSkins(draftSkins.filter((skin) => skin.id !== skinId));
     toast.success("Skin removed from draft");
   };
 
   const mockUploadToArweave = async (skin: DraftSkin): Promise<string> => {
     // Mock Arweave upload - simulate delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+
     // Mock metadata URI
-    const mockUri = `https://arweave.net/mock-${Date.now()}-${skin.name.replace(/\s+/g, '-').toLowerCase()}`;
+    const mockUri = `https://arweave.net/mock-${Date.now()}-${skin.name
+      .replace(/\s+/g, "-")
+      .toLowerCase()}`;
     return mockUri;
   };
 
   const uploadSkinToArweave = async (skinId: string) => {
-    const skin = draftSkins.find(s => s.id === skinId);
+    const skin = draftSkins.find((s) => s.id === skinId);
     if (!skin) return;
 
     try {
       setUploadingToArweave(skinId);
-      toast.loading(`Uploading ${skin.name} to Arweave...`, { id: `upload-${skinId}` });
+      toast.loading(`Uploading ${skin.name} to Arweave...`, {
+        id: `upload-${skinId}`,
+      });
 
       const metadataUri = await mockUploadToArweave(skin);
-      
-      // Update the skin with the metadata URI
-      setDraftSkins(draftSkins.map(s => 
-        s.id === skinId 
-          ? { ...s, metadataUri, uploadedToArweave: true }
-          : s
-      ));
 
-      toast.success(`${skin.name} uploaded to Arweave successfully!`, { id: `upload-${skinId}` });
+      // Update the skin with the metadata URI
+      setDraftSkins(
+        draftSkins.map((s) =>
+          s.id === skinId ? { ...s, metadataUri, uploadedToArweave: true } : s
+        )
+      );
+
+      toast.success(`${skin.name} uploaded to Arweave successfully!`, {
+        id: `upload-${skinId}`,
+      });
     } catch (error) {
-      toast.error(`Failed to upload ${skin.name} to Arweave`, { id: `upload-${skinId}` });
+      toast.error(`Failed to upload ${skin.name} to Arweave`, {
+        id: `upload-${skinId}`,
+      });
     } finally {
       setUploadingToArweave(null);
     }
   };
 
   const uploadAllSkinsToArweave = async () => {
-    const unuploadedSkins = draftSkins.filter(skin => !skin.uploadedToArweave);
-    
+    const unuploadedSkins = draftSkins.filter(
+      (skin) => !skin.uploadedToArweave
+    );
+
     if (unuploadedSkins.length === 0) {
       toast.info("All skins are already uploaded to Arweave");
       return;
@@ -695,31 +731,39 @@ export default function PackManagerPage() {
 
     try {
       setUploadingToArweave("all");
-      toast.loading(`Uploading ${unuploadedSkins.length} skins to Arweave...`, { id: "upload-all" });
-      
+      toast.loading(`Uploading ${unuploadedSkins.length} skins to Arweave...`, {
+        id: "upload-all",
+      });
+
       for (let i = 0; i < unuploadedSkins.length; i++) {
         const skin = unuploadedSkins[i];
-        
+
         try {
           setUploadingToArweave(skin.id);
           const metadataUri = await mockUploadToArweave(skin);
-          
+
           // Update the skin in the draft
-          setDraftSkins(prevSkins => 
-            prevSkins.map(s => 
-              s.id === skin.id 
+          setDraftSkins((prevSkins) =>
+            prevSkins.map((s) =>
+              s.id === skin.id
                 ? { ...s, metadataUri, uploadedToArweave: true }
                 : s
             )
           );
-          
-          toast.success(`Uploaded ${skin.name} (${i + 1}/${unuploadedSkins.length})`, { id: "upload-all" });
-      } catch (error) {
+
+          toast.success(
+            `Uploaded ${skin.name} (${i + 1}/${unuploadedSkins.length})`,
+            { id: "upload-all" }
+          );
+        } catch (error) {
           toast.error(`Failed to upload ${skin.name}`, { id: "upload-all" });
         }
       }
-      
-      toast.success(`Successfully uploaded all ${unuploadedSkins.length} skins to Arweave!`, { id: "upload-all" });
+
+      toast.success(
+        `Successfully uploaded all ${unuploadedSkins.length} skins to Arweave!`,
+        { id: "upload-all" }
+      );
     } catch (error) {
       toast.error("Failed to upload skins to Arweave", { id: "upload-all" });
     } finally {
@@ -731,32 +775,36 @@ export default function PackManagerPage() {
     if (!draftBox) return;
 
     // Validate that we have uploaded skins
-    const uploadedSkins = draftSkins.filter(s => s.uploadedToArweave);
+    const uploadedSkins = draftSkins.filter((s) => s.uploadedToArweave);
     if (uploadedSkins.length === 0) {
-      toast.error("Please upload at least one skin to Arweave before creating the box");
+      toast.error(
+        "Please upload at least one skin to Arweave before creating the box"
+      );
       return;
     }
 
     try {
       setCreatingBox(true);
-      
+
       // Get metadata URIs from uploaded skins
-      const metadataUris = uploadedSkins.map(skin => skin.metadataUri).filter(Boolean);
-      
+      const metadataUris = uploadedSkins
+        .map((skin) => skin.metadataUri)
+        .filter(Boolean);
+
       // Create box data with metadata URIs
       const boxData = {
         ...draftBox,
         metadataUris,
         totalItems: uploadedSkins.length, // Set total items to number of uploaded skins
       };
-      
+
       // First create the box
       const response = await fetch("/api/v1/boxes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(boxData),
       });
-      
+
       const data = await response.json();
       if (!data.success) {
         throw new Error(data.error?.message || "Failed to create box");
@@ -765,7 +813,7 @@ export default function PackManagerPage() {
       const createdBox = data.data;
 
       // Then add all uploaded skins to the box
-      for (const skin of draftSkins.filter(s => s.uploadedToArweave)) {
+      for (const skin of draftSkins.filter((s) => s.uploadedToArweave)) {
         await fetch("/api/v1/box-skins", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -784,7 +832,7 @@ export default function PackManagerPage() {
       }
 
       toast.success("Box created successfully with all skins!");
-      
+
       // Generate collection files
       try {
         await generateCollectionFiles(createdBox);
@@ -811,37 +859,51 @@ export default function PackManagerPage() {
   };
 
   const handleDeleteBox = async (boxId: string) => {
-    if (!confirm("Are you sure you want to delete this box? This will also delete all associated skins.")) return;
+    if (
+      !confirm(
+        "Are you sure you want to delete this box? This will also delete all associated skins."
+      )
+    )
+      return;
 
     const attempt = async (force: boolean) => {
-      const url = force ? `/api/v1/boxes/${boxId}?force=true` : `/api/v1/boxes/${boxId}`;
+      const url = force
+        ? `/api/v1/boxes/${boxId}?force=true`
+        : `/api/v1/boxes/${boxId}`;
       const res = await fetch(url, { method: "DELETE" });
       if (res.status === 404) {
         // Treat as idempotent success (already deleted)
-        return 'not_found' as const;
+        return "not_found" as const;
       }
       if (!res.ok) {
         const body = await res.json().catch(() => ({} as any));
-        const message = body?.error?.message || `Failed to delete box${force ? " (force)" : ""}`;
+        const message =
+          body?.error?.message ||
+          `Failed to delete box${force ? " (force)" : ""}`;
         throw new Error(message);
       }
-      return 'deleted' as const;
+      return "deleted" as const;
     };
 
     try {
       const result = await attempt(false);
-      if (result === 'not_found') {
+      if (result === "not_found") {
         toast.success("Box already deleted");
       } else {
         toast.success("Box deleted successfully");
       }
     } catch (e: any) {
-      if (e?.message?.includes("Cannot delete box that has been opened") || e?.message?.includes("BOX_HAS_OPENINGS")) {
-        const confirmForce = confirm("This box has openings. Force delete will also delete all associated skins. Proceed?");
+      if (
+        e?.message?.includes("Cannot delete box that has been opened") ||
+        e?.message?.includes("BOX_HAS_OPENINGS")
+      ) {
+        const confirmForce = confirm(
+          "This box has openings. Force delete will also delete all associated skins. Proceed?"
+        );
         if (!confirmForce) return;
         try {
           const result = await attempt(true);
-          if (result === 'not_found') {
+          if (result === "not_found") {
             toast.success("Box already deleted");
           } else {
             toast.success("Box force-deleted successfully");
@@ -919,7 +981,8 @@ export default function PackManagerPage() {
                       Draft Box: {draftBox.name || "Untitled Box"}
                     </CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Add skins to your box, upload to Arweave, then create the box
+                      Add skins to your box, upload to Arweave, then create the
+                      box
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -927,9 +990,13 @@ export default function PackManagerPage() {
                       <X className="h-4 w-4 mr-2" />
                       Cancel Draft
                     </Button>
-                  <Button
+                    <Button
                       onClick={createBoxFromDraft}
-                      disabled={creatingBox || draftSkins.length === 0 || draftSkins.some(s => !s.uploadedToArweave)}
+                      disabled={
+                        creatingBox ||
+                        draftSkins.length === 0 ||
+                        draftSkins.some((s) => !s.uploadedToArweave)
+                      }
                     >
                       {creatingBox ? (
                         <>
@@ -939,14 +1006,16 @@ export default function PackManagerPage() {
                       ) : (
                         <>
                           <Package className="h-4 w-4 mr-2" />
-                          Create Box ({draftSkins.filter(s => s.uploadedToArweave).length}/{draftSkins.length} skins ready)
+                          Create Box (
+                          {draftSkins.filter((s) => s.uploadedToArweave).length}
+                          /{draftSkins.length} skins ready)
                         </>
                       )}
-                  </Button>
-                </div>
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
-              </Card>
+            </Card>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Left Column - Draft Box Form */}
@@ -965,20 +1034,24 @@ export default function PackManagerPage() {
                         <Input
                           id="draft-box-name"
                           value={draftBox.name}
-                          onChange={(e) => setDraftBox({ ...draftBox, name: e.target.value })}
+                          onChange={(e) =>
+                            setDraftBox({ ...draftBox, name: e.target.value })
+                          }
                           placeholder="Enter box name"
                         />
-                </div>
+                      </div>
                       <div>
                         <Label htmlFor="draft-box-symbol">Symbol</Label>
                         <Input
                           id="draft-box-symbol"
                           value={draftBox.symbol}
-                          onChange={(e) => setDraftBox({ ...draftBox, symbol: e.target.value })}
+                          onChange={(e) =>
+                            setDraftBox({ ...draftBox, symbol: e.target.value })
+                          }
                           placeholder="SKIN"
                         />
-                  </div>
-                </div>
+                      </div>
+                    </div>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -988,17 +1061,29 @@ export default function PackManagerPage() {
                           type="number"
                           step="0.01"
                           value={draftBox.priceSol}
-                          onChange={(e) => setDraftBox({ ...draftBox, priceSol: parseFloat(e.target.value) || 0 })}
+                          onChange={(e) =>
+                            setDraftBox({
+                              ...draftBox,
+                              priceSol: parseFloat(e.target.value) || 0,
+                            })
+                          }
                           placeholder="0.00"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="draft-box-total-items">Total Items</Label>
+                        <Label htmlFor="draft-box-total-items">
+                          Total Items
+                        </Label>
                         <Input
                           id="draft-box-total-items"
                           type="number"
                           value={draftBox.totalItems}
-                          onChange={(e) => setDraftBox({ ...draftBox, totalItems: parseInt(e.target.value) || 100 })}
+                          onChange={(e) =>
+                            setDraftBox({
+                              ...draftBox,
+                              totalItems: parseInt(e.target.value) || 100,
+                            })
+                          }
                           placeholder="100"
                         />
                       </div>
@@ -1009,40 +1094,61 @@ export default function PackManagerPage() {
                       <Textarea
                         id="draft-box-description"
                         value={draftBox.description}
-                        onChange={(e) => setDraftBox({ ...draftBox, description: e.target.value })}
+                        onChange={(e) =>
+                          setDraftBox({
+                            ...draftBox,
+                            description: e.target.value,
+                          })
+                        }
                         placeholder="Enter box description"
                       />
                     </div>
 
-                        <div>
+                    <div>
                       <Label htmlFor="draft-box-image">Image URL</Label>
-                          <Input
+                      <Input
                         id="draft-box-image"
                         value={draftBox.imageUrl}
-                        onChange={(e) => setDraftBox({ ...draftBox, imageUrl: e.target.value })}
+                        onChange={(e) =>
+                          setDraftBox({ ...draftBox, imageUrl: e.target.value })
+                        }
                         placeholder="https://example.com/box-image.png"
-                          />
-                        </div>
+                      />
+                    </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                        <Label htmlFor="draft-candy-machine">Candy Machine ID</Label>
-                          <Input
+                      <div>
+                        <Label htmlFor="draft-candy-machine">
+                          Candy Machine ID
+                        </Label>
+                        <Input
                           id="draft-candy-machine"
                           value={draftBox.candyMachine}
-                          onChange={(e) => setDraftBox({ ...draftBox, candyMachine: e.target.value })}
+                          onChange={(e) =>
+                            setDraftBox({
+                              ...draftBox,
+                              candyMachine: e.target.value,
+                            })
+                          }
                           placeholder="Candy Machine address"
-                          />
-                        </div>
-                        <div>
-                        <Label htmlFor="draft-collection-mint">Collection Mint</Label>
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="draft-collection-mint">
+                          Collection Mint
+                        </Label>
                         <Input
                           id="draft-collection-mint"
                           value={draftBox.collectionMint}
-                          onChange={(e) => setDraftBox({ ...draftBox, collectionMint: e.target.value })}
+                          onChange={(e) =>
+                            setDraftBox({
+                              ...draftBox,
+                              collectionMint: e.target.value,
+                            })
+                          }
                           placeholder="Collection mint address"
-                          />
-                        </div>
+                        />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -1059,7 +1165,7 @@ export default function PackManagerPage() {
                     </p>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                        <div>
+                    <div>
                       <Label htmlFor="json-skins">Skins JSON</Label>
                       <Textarea
                         id="json-skins"
@@ -1085,10 +1191,10 @@ export default function PackManagerPage() {
 ]`}
                         className="min-h-[200px] font-mono text-sm"
                         onChange={(e) => setJsonSkinsInput(e.target.value)}
-                          />
-                        </div>
+                      />
+                    </div>
                     <div className="flex gap-2">
-                      <Button 
+                      <Button
                         onClick={addSkinsFromJson}
                         disabled={!jsonSkinsInput.trim() || uploadingToArweave}
                         className="flex-1"
@@ -1105,7 +1211,7 @@ export default function PackManagerPage() {
                           </>
                         )}
                       </Button>
-                      <Button 
+                      <Button
                         variant="outline"
                         onClick={() => setJsonSkinsInput("")}
                         disabled={!jsonSkinsInput.trim()}
@@ -1113,10 +1219,10 @@ export default function PackManagerPage() {
                         <X className="h-4 w-4 mr-2" />
                         Clear
                       </Button>
-                      </div>
+                    </div>
 
                     <div className="flex gap-2">
-                      <Button 
+                      <Button
                         variant="secondary"
                         onClick={loadSampleJson}
                         className="flex-1"
@@ -1124,7 +1230,7 @@ export default function PackManagerPage() {
                         <FileText className="h-4 w-4 mr-2" />
                         Load Sample JSON
                       </Button>
-                      <Button 
+                      <Button
                         variant="outline"
                         onClick={validateJson}
                         className="flex-1"
@@ -1146,32 +1252,38 @@ export default function PackManagerPage() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
+                      <div>
                         <Label htmlFor="draft-skin-name">Skin Name</Label>
-                          <Input
+                        <Input
                           id="draft-skin-name"
                           value={skinForm.name}
-                          onChange={(e) => setSkinForm({ ...skinForm, name: e.target.value })}
+                          onChange={(e) =>
+                            setSkinForm({ ...skinForm, name: e.target.value })
+                          }
                           placeholder="AK-47 | Redline"
                         />
                       </div>
                       <div>
                         <Label htmlFor="draft-skin-weapon">Weapon</Label>
-                        <Input 
+                        <Input
                           id="draft-skin-weapon"
                           value={skinForm.weapon}
-                          onChange={(e) => setSkinForm({ ...skinForm, weapon: e.target.value })}
+                          onChange={(e) =>
+                            setSkinForm({ ...skinForm, weapon: e.target.value })
+                          }
                           placeholder="AK-47"
                         />
                       </div>
-                        </div>
+                    </div>
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
+                      <div>
                         <Label htmlFor="draft-skin-rarity">Rarity</Label>
                         <Select
                           value={skinForm.rarity}
-                          onValueChange={(value) => setSkinForm({ ...skinForm, rarity: value })}
+                          onValueChange={(value) =>
+                            setSkinForm({ ...skinForm, rarity: value })
+                          }
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -1187,47 +1299,59 @@ export default function PackManagerPage() {
                       </div>
                       <div>
                         <Label htmlFor="draft-skin-weight">Weight</Label>
-                          <Input
+                        <Input
                           id="draft-skin-weight"
-                            type="number"
+                          type="number"
                           min="1"
                           value={skinForm.weight}
-                          onChange={(e) => setSkinForm({ ...skinForm, weight: parseInt(e.target.value) || 1 })}
+                          onChange={(e) =>
+                            setSkinForm({
+                              ...skinForm,
+                              weight: parseInt(e.target.value) || 1,
+                            })
+                          }
                           placeholder="1"
                         />
-                        </div>
                       </div>
+                    </div>
 
-                        <div>
+                    <div>
                       <Label htmlFor="draft-skin-price">Base Price (USD)</Label>
-                          <Input
+                      <Input
                         id="draft-skin-price"
                         type="number"
                         step="0.01"
                         value={skinForm.basePriceUsd}
-                        onChange={(e) => setSkinForm({ ...skinForm, basePriceUsd: parseFloat(e.target.value) || 0 })}
+                        onChange={(e) =>
+                          setSkinForm({
+                            ...skinForm,
+                            basePriceUsd: parseFloat(e.target.value) || 0,
+                          })
+                        }
                         placeholder="0.00"
                       />
-                        </div>
+                    </div>
 
-                        <div>
+                    <div>
                       <Label htmlFor="draft-skin-image">Image URL</Label>
-                          <Input
+                      <Input
                         id="draft-skin-image"
                         value={skinForm.imageUrl}
-                        onChange={(e) => setSkinForm({ ...skinForm, imageUrl: e.target.value })}
+                        onChange={(e) =>
+                          setSkinForm({ ...skinForm, imageUrl: e.target.value })
+                        }
                         placeholder="https://example.com/skin-image.png"
                       />
-                      </div>
+                    </div>
 
-                        <Button
+                    <Button
                       onClick={addDraftSkin}
                       disabled={!skinForm.name || !skinForm.weapon}
                       className="w-full"
                     >
                       <Plus className="h-4 w-4 mr-2" />
                       Add Skin to Draft
-                        </Button>
+                    </Button>
                   </CardContent>
                 </Card>
               </div>
@@ -1241,10 +1365,10 @@ export default function PackManagerPage() {
                         <Package className="h-5 w-5" />
                         Draft Skins ({draftSkins.length})
                       </CardTitle>
-                      {draftSkins.some(s => !s.uploadedToArweave) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
+                      {draftSkins.some((s) => !s.uploadedToArweave) && (
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={uploadAllSkinsToArweave}
                           disabled={uploadingToArweave !== null}
                         >
@@ -1258,46 +1382,56 @@ export default function PackManagerPage() {
                               <Upload className="h-4 w-4 mr-2" />
                               Upload All to Arweave
                             </>
-                    )}
-                  </Button>
+                          )}
+                        </Button>
                       )}
-                </div>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     {draftSkins.length === 0 ? (
-                  <div className="text-center py-8">
+                      <div className="text-center py-8">
                         <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                        <h3 className="text-lg font-semibold mb-2">No Skins Added</h3>
+                        <h3 className="text-lg font-semibold mb-2">
+                          No Skins Added
+                        </h3>
                         <p className="text-muted-foreground">
-                          Add skins to your draft box using the form on the left.
-                    </p>
-                  </div>
-                ) : (
+                          Add skins to your draft box using the form on the
+                          left.
+                        </p>
+                      </div>
+                    ) : (
                       <div className="space-y-2">
                         {draftSkins.map((skin) => (
-                      <div
+                          <div
                             key={skin.id}
                             className="flex items-center justify-between p-3 bg-zinc-900 rounded-lg border border-zinc-700"
-                      >
-                          <div className="flex-1">
+                          >
+                            <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <h4 className="font-medium">{skin.name}</h4>
-                                <Badge 
-                                  variant={skin.uploadedToArweave ? "default" : "secondary"}
+                                <Badge
+                                  variant={
+                                    skin.uploadedToArweave
+                                      ? "default"
+                                      : "secondary"
+                                  }
                                   className="text-xs"
                                 >
-                                  {skin.uploadedToArweave ? "Uploaded" : "Pending"}
+                                  {skin.uploadedToArweave
+                                    ? "Uploaded"
+                                    : "Pending"}
                                 </Badge>
-                            </div>
+                              </div>
                               <p className="text-sm text-muted-foreground">
-                                {skin.weapon} • {skin.rarity} • Weight: {skin.weight} • ${skin.basePriceUsd}
+                                {skin.weapon} • {skin.rarity} • Weight:{" "}
+                                {skin.weight} • ${skin.basePriceUsd}
                               </p>
                               {skin.metadataUri && (
                                 <p className="text-xs text-green-400 mt-1">
                                   Arweave: {skin.metadataUri}
                                 </p>
                               )}
-                              </div>
+                            </div>
                             <div className="flex items-center gap-1">
                               {!skin.uploadedToArweave && (
                                 <Button
@@ -1320,252 +1454,287 @@ export default function PackManagerPage() {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                              </div>
-                              </div>
+                            </div>
+                          </div>
                         ))}
-                              </div>
+                      </div>
                     )}
                   </CardContent>
                 </Card>
-                            </div>
-                                </div>
-                              </div>
+              </div>
+            </div>
+          </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column - Boxes List */}
             <div className="space-y-4">
-            <Card className="bg-zinc-950 border-zinc-800">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Package className="h-5 w-5" />
-                    Boxes
-                  </CardTitle>
-                  <Button onClick={startDraftBox} className="bg-primary hover:bg-primary/90">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Start New Box
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-        {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin" />
-          </div>
-        ) : (
-                  <div className="space-y-2">
-                    {boxes.map((box) => (
-                      <div
-                        key={box.id}
-                        className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                          selectedBox?.id === box.id
-                            ? "bg-primary/20 border-primary"
-                            : "bg-zinc-900 border-zinc-700 hover:bg-zinc-800"
-                        }`}
-                                    onClick={() => {
-                          setSelectedBox(box);
-                          loadBoxSkins(box.id);
-                        }}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-medium">{box.name}</h3>
-                              <Badge 
-                                variant={collectionFilesStatus[box.id]?.exists ? "default" : "secondary"}
-                                className="text-xs"
-                              >
-                                {collectionFilesStatus[box.id]?.exists ? "Files Ready" : "No Files"}
-                              </Badge>
-                                </div>
-                            <p className="text-sm text-muted-foreground">
-                              {box.itemsAvailable} available • {box.priceSol} SOL • {box.symbol}
-                            </p>
-                            {box.description && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {box.description}
-                              </p>
-                            )}
+              <Card className="bg-zinc-950 border-zinc-800">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2">
+                      <Package className="h-5 w-5" />
+                      Boxes
+                    </CardTitle>
+                    <Button
+                      onClick={startDraftBox}
+                      className="bg-primary hover:bg-primary/90"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Start New Box
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {loading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin" />
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {boxes.map((box) => (
+                        <div
+                          key={box.id}
+                          className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                            selectedBox?.id === box.id
+                              ? "bg-primary/20 border-primary"
+                              : "bg-zinc-900 border-zinc-700 hover:bg-zinc-800"
+                          }`}
+                          onClick={() => {
+                            setSelectedBox(box);
+                            loadBoxSkins(box.id);
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-medium">{box.name}</h3>
+                                <Badge
+                                  variant={
+                                    collectionFilesStatus[box.id]?.exists
+                                      ? "default"
+                                      : "secondary"
+                                  }
+                                  className="text-xs"
+                                >
+                                  {collectionFilesStatus[box.id]?.exists
+                                    ? "Files Ready"
+                                    : "No Files"}
+                                </Badge>
                               </div>
-                          <div className="flex items-center gap-1">
-                            {!collectionFilesStatus[box.id]?.exists && (
-                  <Button
-                                variant="outline"
+                              <p className="text-sm text-muted-foreground">
+                                {box.itemsAvailable} available • {box.priceSol}{" "}
+                                SOL • {box.symbol}
+                              </p>
+                              {box.description && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {box.description}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {!collectionFilesStatus[box.id]?.exists && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleGenerateCollectionFiles(box);
+                                  }}
+                                  className="text-xs"
+                                >
+                                  Generate Files
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
                                 size="sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleGenerateCollectionFiles(box);
+                                  handleDeleteBox(box.id);
                                 }}
-                                className="text-xs"
                               >
-                                Generate Files
-                  </Button>
-                            )}
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteBox(box.id);
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                      </Button>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-              </Card>
-
-                </div>
-                
-          {/* Right Column - Selected Box Skins */}
-                  <div className="space-y-4">
-            {selectedBox ? (
-              <>
-                <Card className="bg-zinc-950 border-zinc-800">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
-                      {selectedBox.name} - Skins
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                  <div className="space-y-2">
-                      {boxSkins.map((skin) => (
-                        <div
-                          key={skin.id}
-                          className="flex items-center justify-between p-3 bg-zinc-900 rounded-lg border border-zinc-700"
-                        >
-                              <div>
-                            <h4 className="font-medium">{skin.name}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {skin.weapon} • {skin.rarity} • Weight: {skin.weight}
-                                </p>
+                      ))}
                     </div>
-                  <Button 
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteSkin(skin.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-                    ))}
-              </div>
-                  </CardContent>
-            </Card>
-
-                {/* Add Skin Form */}
-                <Card className="bg-zinc-950 border-zinc-800">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Plus className="h-5 w-5" />
-                      Add Skin to {selectedBox.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <Label htmlFor="skin-name">Skin Name</Label>
-                    <Input 
-                          id="skin-name"
-                          value={skinForm.name}
-                          onChange={(e) => setSkinForm({ ...skinForm, name: e.target.value })}
-                          placeholder="AK-47 | Redline"
-                    />
-                    </div>
-                    <div>
-                        <Label htmlFor="skin-weapon">Weapon</Label>
-                    <Input 
-                          id="skin-weapon"
-                          value={skinForm.weapon}
-                          onChange={(e) => setSkinForm({ ...skinForm, weapon: e.target.value })}
-                          placeholder="AK-47"
-                    />
-                    </div>
-                  </div>
-                
-                    <div className="grid grid-cols-2 gap-4">
-                  <div>
-                        <Label htmlFor="skin-rarity">Rarity</Label>
-                        <Select
-                          value={skinForm.rarity}
-                          onValueChange={(value) => setSkinForm({ ...skinForm, rarity: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="common">Common</SelectItem>
-                            <SelectItem value="uncommon">Uncommon</SelectItem>
-                            <SelectItem value="rare">Rare</SelectItem>
-                            <SelectItem value="epic">Epic</SelectItem>
-                            <SelectItem value="legendary">Legendary</SelectItem>
-                          </SelectContent>
-                        </Select>
-                  </div>
-                  <div>
-                        <Label htmlFor="skin-weight">Weight</Label>
-                    <Input 
-                          id="skin-weight"
-                      type="number"
-                          min="1"
-                          value={skinForm.weight}
-                          onChange={(e) => setSkinForm({ ...skinForm, weight: parseInt(e.target.value) || 1 })}
-                          placeholder="1"
-                        />
-                  </div>
-                    </div>
-
-                  <div>
-                      <Label htmlFor="skin-price">Base Price (USD)</Label>
-                    <Input 
-                        id="skin-price"
-                        type="number"
-                        step="0.01"
-                        value={skinForm.basePriceUsd}
-                        onChange={(e) => setSkinForm({ ...skinForm, basePriceUsd: parseFloat(e.target.value) || 0 })}
-                        placeholder="0.00"
-                      />
-                  </div>
-
-                  <Button
-                      onClick={handleAddSkin}
-                      disabled={addingSkin || !skinForm.name || !skinForm.weapon}
-                      className="w-full"
-                    >
-                      {addingSkin ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                          Adding...
-                        </>
-                      ) : (
-                        <>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Add Skin
-                        </>
-                      )}
-                  </Button>
-                  </CardContent>
-                </Card>
-              </>
-            ) : (
-              <Card className="bg-zinc-950 border-zinc-800">
-                <CardContent className="p-8 text-center">
-                  <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No Box Selected</h3>
-                  <p className="text-muted-foreground">
-                    Select a box from the list to view and manage its skins.
-                  </p>
+                  )}
                 </CardContent>
               </Card>
-                                      )}
-                                    </div>
-                  </div>
+            </div>
+
+            {/* Right Column - Selected Box Skins */}
+            <div className="space-y-4">
+              {selectedBox ? (
+                <>
+                  <Card className="bg-zinc-950 border-zinc-800">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="h-5 w-5" />
+                        {selectedBox.name} - Skins
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2">
+                        {boxSkins.map((skin) => (
+                          <div
+                            key={skin.id}
+                            className="flex items-center justify-between p-3 bg-zinc-900 rounded-lg border border-zinc-700"
+                          >
+                            <div>
+                              <h4 className="font-medium">{skin.name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {skin.weapon} • {skin.rarity} • Weight:{" "}
+                                {skin.weight}
+                              </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteSkin(skin.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Add Skin Form */}
+                  <Card className="bg-zinc-950 border-zinc-800">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2">
+                        <Plus className="h-5 w-5" />
+                        Add Skin to {selectedBox.name}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="skin-name">Skin Name</Label>
+                          <Input
+                            id="skin-name"
+                            value={skinForm.name}
+                            onChange={(e) =>
+                              setSkinForm({ ...skinForm, name: e.target.value })
+                            }
+                            placeholder="AK-47 | Redline"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="skin-weapon">Weapon</Label>
+                          <Input
+                            id="skin-weapon"
+                            value={skinForm.weapon}
+                            onChange={(e) =>
+                              setSkinForm({
+                                ...skinForm,
+                                weapon: e.target.value,
+                              })
+                            }
+                            placeholder="AK-47"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="skin-rarity">Rarity</Label>
+                          <Select
+                            value={skinForm.rarity}
+                            onValueChange={(value) =>
+                              setSkinForm({ ...skinForm, rarity: value })
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="common">Common</SelectItem>
+                              <SelectItem value="uncommon">Uncommon</SelectItem>
+                              <SelectItem value="rare">Rare</SelectItem>
+                              <SelectItem value="epic">Epic</SelectItem>
+                              <SelectItem value="legendary">
+                                Legendary
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="skin-weight">Weight</Label>
+                          <Input
+                            id="skin-weight"
+                            type="number"
+                            min="1"
+                            value={skinForm.weight}
+                            onChange={(e) =>
+                              setSkinForm({
+                                ...skinForm,
+                                weight: parseInt(e.target.value) || 1,
+                              })
+                            }
+                            placeholder="1"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <Label htmlFor="skin-price">Base Price (USD)</Label>
+                        <Input
+                          id="skin-price"
+                          type="number"
+                          step="0.01"
+                          value={skinForm.basePriceUsd}
+                          onChange={(e) =>
+                            setSkinForm({
+                              ...skinForm,
+                              basePriceUsd: parseFloat(e.target.value) || 0,
+                            })
+                          }
+                          placeholder="0.00"
+                        />
+                      </div>
+
+                      <Button
+                        onClick={handleAddSkin}
+                        disabled={
+                          addingSkin || !skinForm.name || !skinForm.weapon
+                        }
+                        className="w-full"
+                      >
+                        {addingSkin ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                            Adding...
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add Skin
+                          </>
+                        )}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </>
+              ) : (
+                <Card className="bg-zinc-950 border-zinc-800">
+                  <CardContent className="p-8 text-center">
+                    <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">
+                      No Box Selected
+                    </h3>
+                    <p className="text-muted-foreground">
+                      Select a box from the list to view and manage its skins.
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
