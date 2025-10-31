@@ -89,7 +89,7 @@ export class PackOpeningService {
           collectionMint: COLLECTION_MINT ? publicKey(COLLECTION_MINT) : candyMachine.collectionMint,
           collectionUpdateAuthority: COLLECTION_UPDATE_AUTHORITY ? publicKey(COLLECTION_UPDATE_AUTHORITY) : candyMachine.authority,
           mintArgs: {
-            solPayment: some({ destination: publicKey(TREASURY || "v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs") }),
+            solPayment: some({ destination: publicKey(TREASURY || "aboDQRWHMesuZReBn9EZcRQMW9i9KJ7Pmw7CncP8SuB") }),
           },
         })
       )

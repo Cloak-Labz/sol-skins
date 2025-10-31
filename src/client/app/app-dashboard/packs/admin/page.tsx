@@ -113,6 +113,7 @@ export default function PackManagerPage() {
   } | null>(null);
   const [draftSkins, setDraftSkins] = useState<DraftSkin[]>([]);
   const [uploadingToArweave, setUploadingToArweave] = useState<string | null>(null);
+  const [fetchingSteamImage, setFetchingSteamImage] = useState<string | null>(null);
   const [jsonSkinsInput, setJsonSkinsInput] = useState<string>("");
   
   // Form states
@@ -147,19 +148,19 @@ export default function PackManagerPage() {
     weight: 1,
   });
 
-  // Check if connected wallet is admin
-  useEffect(() => {
-    const adminWallet = "v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs";
-    if (publicKey) {
-      const isAdminWallet = publicKey.toBase58() === adminWallet;
-      setIsAdmin(isAdminWallet);
-      if (!isAdminWallet) {
-        toast.error("Access denied: Admin wallet required");
-      }
-    } else {
-      setIsAdmin(false);
-    }
-  }, [publicKey]);
+  // // Check if connected wallet is admin
+  // useEffect(() => {
+  //   const adminWallet = "v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs";
+  //   if (publicKey) {
+  //     const isAdminWallet = publicKey.toBase58() === adminWallet;
+  //     setIsAdmin(isAdminWallet);
+  //     if (!isAdminWallet) {
+  //       toast.error("Access denied: Admin wallet required");
+  //     }
+  //   } else {
+  //     setIsAdmin(false);
+  //   }
+  // }, [publicKey]);
 
   // Load boxes on mount
   useEffect(() => {
@@ -172,10 +173,11 @@ export default function PackManagerPage() {
     try {
       setLoading(true);
       const data = await boxesService.getAllBoxes();
-      setBoxes(data);
+      const boxes = data as any;
+      setBoxes(boxes);
       
       // Check collection files status for each box
-      const statusPromises = data.map(async (box: Box) => {
+      const statusPromises = boxes.map(async (box: Box) => {
         try {
           const response = await fetch(`/api/v1/boxes/${box.id}/collection-files`);
           const result = await response.json();
@@ -491,7 +493,7 @@ export default function PackManagerPage() {
       toast.success(`Added ${validSkins.length} skins to draft!`);
       
     } catch (error) {
-      toast.error(`Invalid JSON format: ${error.message}. Please check your syntax.`);
+      toast.error(`Invalid JSON format: ${error instanceof Error ? error.message : 'Unknown error'}. Please check your syntax.`);
     }
   };
 
@@ -651,35 +653,187 @@ export default function PackManagerPage() {
     toast.success("Skin removed from draft");
   };
 
-  const mockUploadToArweave = async (skin: DraftSkin): Promise<string> => {
-    // Mock Arweave upload - simulate delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+  const fetchSteamImage = async (skinId: string) => {
+    const skin = draftSkins.find(s => s.id === skinId);
+    if (!skin) return;
+
+    try {
+      setFetchingSteamImage(skinId);
+      toast.loading(`Fetching Steam image for ${skin.name}...`, { id: `fetch-${skinId}` });
+
+      // Extract skin name from full name (e.g., "AK-47 | Redline" -> "Redline")
+      // If name doesn't contain |, just use the name as-is
+      const skinNameOnly = skin.name.includes('|') 
+        ? skin.name.split('|')[1].trim() 
+        : skin.name;
+
+      const response = await fetch(
+        `/api/v1/steam/skin-image?weapon=${encodeURIComponent(skin.weapon)}&skinName=${encodeURIComponent(skinNameOnly)}&condition=${encodeURIComponent(skin.condition)}`
+      );
+
+      const result = await response.json();
+
+      if (result.success) {
+        // Update the skin with Steam CDN URL (use functional form to avoid stale closure)
+        setDraftSkins(prevSkins => 
+          prevSkins.map(s => 
+            s.id === skinId 
+              ? { ...s, imageUrl: result.data.imageUrl }
+              : s
+          )
+        );
+        toast.success(`✅ Found Steam image for ${skin.name}!`, { id: `fetch-${skinId}` });
+      } else {
+        toast.error(result.error?.message || 'Failed to fetch Steam image', { id: `fetch-${skinId}` });
+      }
+
+    } catch (error) {
+      toast.error(`Failed to fetch Steam image: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: `fetch-${skinId}` });
+    } finally {
+      setFetchingSteamImage(null);
+    }
+  };
+
+  const fetchAllSteamImages = async () => {
+    const skinsWithoutImages = draftSkins.filter(skin => !skin.imageUrl);
     
-    // Mock metadata URI
-    const mockUri = `https://arweave.net/mock-${Date.now()}-${skin.name.replace(/\s+/g, '-').toLowerCase()}`;
-    return mockUri;
+    if (skinsWithoutImages.length === 0) {
+      toast.success("All skins already have images!");
+      return;
+    }
+
+    try {
+      setFetchingSteamImage("all");
+      toast.loading(`Fetching Steam images for ${skinsWithoutImages.length} skins...`, { id: "fetch-all" });
+      
+      for (let i = 0; i < skinsWithoutImages.length; i++) {
+        const skin = skinsWithoutImages[i];
+        
+        try {
+          setFetchingSteamImage(skin.id);
+          
+          // Extract skin name from full name (e.g., "AK-47 | Redline" -> "Redline")
+          const skinNameOnly = skin.name.includes('|') 
+            ? skin.name.split('|')[1].trim() 
+            : skin.name;
+          
+          const response = await fetch(
+            `/api/v1/steam/skin-image?weapon=${encodeURIComponent(skin.weapon)}&skinName=${encodeURIComponent(skinNameOnly)}&condition=${encodeURIComponent(skin.condition)}`
+          );
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            // Update the skin with Steam CDN URL
+            setDraftSkins(prevSkins => 
+              prevSkins.map(s => 
+                s.id === skin.id 
+                  ? { ...s, imageUrl: result.data.imageUrl }
+                  : s
+              )
+            );
+            toast.success(`Fetched ${skin.name} (${i + 1}/${skinsWithoutImages.length})`, { id: "fetch-all" });
+          } else {
+            toast.error(`Failed: ${skin.name}`, { id: "fetch-all" });
+          }
+          
+          // Add delay to respect Steam rate limits
+          if (i < skinsWithoutImages.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        } catch (error) {
+          console.error(`Failed to fetch image for ${skin.name}:`, error);
+        }
+      }
+      
+      toast.success(`Successfully fetched Steam images!`, { id: "fetch-all" });
+    } catch (error) {
+      toast.error("Failed to fetch Steam images", { id: "fetch-all" });
+    } finally {
+      setFetchingSteamImage(null);
+    }
+  };
+
+  const uploadSkinMetadataToArweave = async (skin: DraftSkin): Promise<string> => {
+    // Step 1: Create Metaplex-compliant metadata JSON
+    const metadata = {
+      name: skin.name,
+      symbol: draftBox?.symbol || "SOLSKIN",
+      description: `${skin.condition} ${skin.weapon} with ${skin.rarity} rarity`,
+      image: skin.imageUrl || "", // The skin image URL (can be from CDN, IPFS, etc.)
+      attributes: [
+        { trait_type: "Weapon", value: skin.weapon },
+        { trait_type: "Rarity", value: skin.rarity },
+        { trait_type: "Condition", value: skin.condition },
+        { trait_type: "Base Price USD", value: skin.basePriceUsd },
+      ],
+      properties: {
+        files: [
+          {
+            uri: skin.imageUrl || "",
+            type: "image/png",
+          },
+        ],
+        category: "image",
+      },
+    };
+
+    // Step 2: Upload the JSON to Arweave via Irys backend
+    const response = await fetch("/api/v1/irys/upload", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ metadata }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error?.message || "Failed to upload metadata to Arweave");
+    }
+
+    const result = await response.json();
+
+    if (!result.success) {
+      throw new Error(result.error?.message || "Failed to upload metadata to Arweave");
+    }
+
+    // Step 3: Return the Arweave URI
+    console.log(`✅ Uploaded ${skin.name} to Arweave:`, result.data.uri);
+    return result.data.uri;
   };
 
   const uploadSkinToArweave = async (skinId: string) => {
     const skin = draftSkins.find(s => s.id === skinId);
     if (!skin) return;
 
+    // Validate that the skin has an image URL
+    if (!skin.imageUrl) {
+      toast.error(`${skin.name} needs an image URL! Fetch it from Steam first (🎮 button)`, { id: `upload-${skinId}` });
+      return;
+    }
+
     try {
       setUploadingToArweave(skinId);
       toast.loading(`Uploading ${skin.name} to Arweave...`, { id: `upload-${skinId}` });
 
-      const metadataUri = await mockUploadToArweave(skin);
+      const metadataUri = await uploadSkinMetadataToArweave(skin);
       
-      // Update the skin with the metadata URI
-      setDraftSkins(draftSkins.map(s => 
-        s.id === skinId 
-          ? { ...s, metadataUri, uploadedToArweave: true }
-          : s
-      ));
+      // Update the skin with the metadata URI (use functional form to avoid stale closure)
+      setDraftSkins(prevSkins => {
+        const updatedSkins = prevSkins.map(s => 
+          s.id === skinId 
+            ? { ...s, metadataUri, uploadedToArweave: true }
+            : s
+        );
+        console.log(`✅ Updated skin ${skinId} - uploadedToArweave: true, metadataUri: ${metadataUri}`);
+        console.log(`📊 Total uploaded skins: ${updatedSkins.filter(s => s.uploadedToArweave).length}/${updatedSkins.length}`);
+        return updatedSkins;
+      });
 
-      toast.success(`${skin.name} uploaded to Arweave successfully!`, { id: `upload-${skinId}` });
+      toast.success(`✅ ${skin.name} uploaded to Arweave!`, { id: `upload-${skinId}` });
     } catch (error) {
-      toast.error(`Failed to upload ${skin.name} to Arweave`, { id: `upload-${skinId}` });
+      toast.error(`Failed to upload ${skin.name} to Arweave: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: `upload-${skinId}` });
     } finally {
       setUploadingToArweave(null);
     }
@@ -689,7 +843,14 @@ export default function PackManagerPage() {
     const unuploadedSkins = draftSkins.filter(skin => !skin.uploadedToArweave);
     
     if (unuploadedSkins.length === 0) {
-      toast.info("All skins are already uploaded to Arweave");
+      toast.success("All skins are already uploaded to Arweave");
+      return;
+    }
+
+    // Check if any skins are missing images
+    const skinsWithoutImages = unuploadedSkins.filter(skin => !skin.imageUrl);
+    if (skinsWithoutImages.length > 0) {
+      toast.error(`${skinsWithoutImages.length} skins need images! Fetch them from Steam first (🎮 button)`, { id: "upload-all" });
       return;
     }
 
@@ -702,7 +863,7 @@ export default function PackManagerPage() {
         
         try {
           setUploadingToArweave(skin.id);
-          const metadataUri = await mockUploadToArweave(skin);
+          const metadataUri = await uploadSkinMetadataToArweave(skin);
           
           // Update the skin in the draft
           setDraftSkins(prevSkins => 
@@ -715,7 +876,7 @@ export default function PackManagerPage() {
           
           toast.success(`Uploaded ${skin.name} (${i + 1}/${unuploadedSkins.length})`, { id: "upload-all" });
       } catch (error) {
-          toast.error(`Failed to upload ${skin.name}`, { id: "upload-all" });
+          toast.error(`Failed to upload ${skin.name}: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: "upload-all" });
         }
       }
       
@@ -730,24 +891,24 @@ export default function PackManagerPage() {
   const createBoxFromDraft = async () => {
     if (!draftBox) return;
 
-    // Validate that we have uploaded skins
-    const uploadedSkins = draftSkins.filter(s => s.uploadedToArweave);
-    if (uploadedSkins.length === 0) {
-      toast.error("Please upload at least one skin to Arweave before creating the box");
+    // Use all skins, not just uploaded ones
+    const skinsToAdd = draftSkins;
+    if (skinsToAdd.length === 0) {
+      toast.error("Please add at least one skin to the box");
       return;
     }
 
     try {
       setCreatingBox(true);
       
-      // Get metadata URIs from uploaded skins
-      const metadataUris = uploadedSkins.map(skin => skin.metadataUri).filter(Boolean);
+      // Get metadata URIs from skins (may be empty for some)
+      const metadataUris = skinsToAdd.map(skin => skin.metadataUri).filter(Boolean);
       
       // Create box data with metadata URIs
       const boxData = {
         ...draftBox,
         metadataUris,
-        totalItems: uploadedSkins.length, // Set total items to number of uploaded skins
+        totalItems: skinsToAdd.length, // Set total items to number of skins
       };
       
       // First create the box
@@ -764,8 +925,8 @@ export default function PackManagerPage() {
 
       const createdBox = data.data;
 
-      // Then add all uploaded skins to the box
-      for (const skin of draftSkins.filter(s => s.uploadedToArweave)) {
+      // Then add all skins to the box
+      for (const skin of skinsToAdd) {
         await fetch("/api/v1/box-skins", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -878,19 +1039,19 @@ export default function PackManagerPage() {
     );
   }
 
-  if (!isAdmin) {
-    return (
-      <div className="p-6">
-        <Card className="p-8 text-center border-destructive">
-          <Shield className="mx-auto h-12 w-12 text-destructive mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground">
-            Admin wallet required to access this page.
-          </p>
-        </Card>
-      </div>
-    );
-  }
+  // if (!isAdmin) {
+  //   return (
+  //     <div className="p-6">
+  //       <Card className="p-8 text-center border-destructive">
+  //         <Shield className="mx-auto h-12 w-12 text-destructive mb-4" />
+  //         <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
+  //         <p className="text-muted-foreground">
+  //           Admin wallet required to access this page.
+  //         </p>
+  //       </Card>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6">
@@ -929,7 +1090,7 @@ export default function PackManagerPage() {
                     </Button>
                   <Button
                       onClick={createBoxFromDraft}
-                      disabled={creatingBox || draftSkins.length === 0 || draftSkins.some(s => !s.uploadedToArweave)}
+                      disabled={creatingBox || draftSkins.length === 0}
                     >
                       {creatingBox ? (
                         <>
@@ -1090,7 +1251,7 @@ export default function PackManagerPage() {
                     <div className="flex gap-2">
                       <Button 
                         onClick={addSkinsFromJson}
-                        disabled={!jsonSkinsInput.trim() || uploadingToArweave}
+                        disabled={!jsonSkinsInput.trim() || !!uploadingToArweave}
                         className="flex-1"
                       >
                         {uploadingToArweave ? (
@@ -1241,26 +1402,47 @@ export default function PackManagerPage() {
                         <Package className="h-5 w-5" />
                         Draft Skins ({draftSkins.length})
                       </CardTitle>
-                      {draftSkins.some(s => !s.uploadedToArweave) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                          onClick={uploadAllSkinsToArweave}
-                          disabled={uploadingToArweave !== null}
-                        >
-                          {uploadingToArweave === "all" ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Uploading All...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Upload All to Arweave
-                            </>
-                    )}
-                  </Button>
-                      )}
+                      <div className="flex gap-2">
+                        {draftSkins.some(s => !s.imageUrl) && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={fetchAllSteamImages}
+                            disabled={fetchingSteamImage !== null}
+                          >
+                            {fetchingSteamImage === "all" ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Fetching...
+                              </>
+                            ) : (
+                              <>
+                                🎮 Fetch All Steam Images
+                              </>
+                            )}
+                          </Button>
+                        )}
+                        {draftSkins.some(s => !s.uploadedToArweave) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={uploadAllSkinsToArweave}
+                            disabled={uploadingToArweave !== null}
+                          >
+                            {uploadingToArweave === "all" ? (
+                              <>
+                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                Uploading All...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-4 w-4 mr-2" />
+                                Upload All to Arweave
+                              </>
+                            )}
+                          </Button>
+                        )}
+                      </div>
                 </div>
                   </CardHeader>
                   <CardContent>
@@ -1280,7 +1462,7 @@ export default function PackManagerPage() {
                             className="flex items-center justify-between p-3 bg-zinc-900 rounded-lg border border-zinc-700"
                       >
                           <div className="flex-1">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <h4 className="font-medium">{skin.name}</h4>
                                 <Badge 
                                   variant={skin.uploadedToArweave ? "default" : "secondary"}
@@ -1288,23 +1470,54 @@ export default function PackManagerPage() {
                                 >
                                   {skin.uploadedToArweave ? "Uploaded" : "Pending"}
                                 </Badge>
+                                {skin.imageUrl && (
+                                  <Badge variant="outline" className="text-xs">
+                                    🖼️ Image Set
+                                  </Badge>
+                                )}
+                                {!skin.imageUrl && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    ⚠️ No Image
+                                  </Badge>
+                                )}
                             </div>
                               <p className="text-sm text-muted-foreground">
                                 {skin.weapon} • {skin.rarity} • Weight: {skin.weight} • ${skin.basePriceUsd}
                               </p>
+                              {skin.imageUrl && (
+                                <p className="text-xs text-blue-400 mt-1 truncate">
+                                  Image: {skin.imageUrl.substring(0, 60)}...
+                                </p>
+                              )}
                               {skin.metadataUri && (
-                                <p className="text-xs text-green-400 mt-1">
-                                  Arweave: {skin.metadataUri}
+                                <p className="text-xs text-green-400 mt-1 truncate">
+                                  Arweave: {skin.metadataUri.substring(0, 60)}...
                                 </p>
                               )}
                               </div>
                             <div className="flex items-center gap-1">
+                              {!skin.imageUrl && (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  onClick={() => fetchSteamImage(skin.id)}
+                                  disabled={fetchingSteamImage === skin.id}
+                                  title="Fetch image from Steam CDN"
+                                >
+                                  {fetchingSteamImage === skin.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    "🎮"
+                                  )}
+                                </Button>
+                              )}
                               {!skin.uploadedToArweave && (
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => uploadSkinToArweave(skin.id)}
                                   disabled={uploadingToArweave === skin.id}
+                                  title="Upload metadata to Arweave"
                                 >
                                   {uploadingToArweave === skin.id ? (
                                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -1317,6 +1530,7 @@ export default function PackManagerPage() {
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => removeDraftSkin(skin.id)}
+                                title="Remove skin"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>

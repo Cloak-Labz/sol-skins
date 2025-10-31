@@ -84,11 +84,21 @@ router.post('/upload', async (req, res) => {
     const isDevnet = rpcUrl.includes('devnet');
     const irysNode = isDevnet ? 'https://devnet.irys.xyz' : 'https://node1.irys.xyz';
     
-    const irys = new WebIrys({
+    // Config object - devnet requires providerUrl to be set
+    const irysConfig: any = {
       url: irysNode,
       token: 'solana',
       wallet: walletAdapter,
-    });
+    };
+    
+    // If using devnet, must provide the RPC URL
+    if (isDevnet) {
+      irysConfig.config = {
+        providerUrl: rpcUrl,
+      };
+    }
+    
+    const irys = new WebIrys(irysConfig);
 
     await irys.ready();
 

@@ -18,6 +18,7 @@ import metadataRoutes from "./metadata";
 import discordRoutes from "./discord";
 import pendingSkinsRoutes from "./pending-skins";
 import { packOpeningRoutes } from "./pack-opening";
+import steamRoutes from "./steam";
 
 export async function createRoutes(): Promise<Router> {
   const router = Router();
@@ -42,6 +43,7 @@ export async function createRoutes(): Promise<Router> {
   router.use("/discord", discordRoutes);
   router.use("/pending-skins", pendingSkinsRoutes);
   router.use("/pack-opening", packOpeningRoutes);
+  router.use("/steam", steamRoutes);
 
   return router;
 }
