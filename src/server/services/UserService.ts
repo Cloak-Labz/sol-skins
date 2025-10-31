@@ -18,7 +18,7 @@ export class UserService {
     try {
       return await this.userRepository.findOne({
         where: { id },
-        relations: ['skins'],
+        relations: ['skins', 'transactions'],
       });
     } catch (error) {
       logger.error('Error finding user by ID:', error);
@@ -30,7 +30,7 @@ export class UserService {
     try {
       const user = await this.userRepository.findOne({
         where: { walletAddress },
-        relations: ['skins'],
+        relations: ['skins', 'transactions'],
       });
       return user; // Returns null if not found, which is expected
     } catch (error) {

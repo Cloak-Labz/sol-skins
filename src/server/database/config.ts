@@ -21,7 +21,7 @@ export default new DataSource({
   username: config.database.username,
   password: config.database.password,
   database: config.database.database,
-  synchronize: true,
+  synchronize: false,
   logging: config.database.logging,
   entities: [
     User,

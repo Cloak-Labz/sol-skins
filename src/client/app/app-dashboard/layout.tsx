@@ -94,7 +94,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 />
               </div>
 
-             
+              {/* Title */}
+              <p className="text-zinc-400 mb-8">
+                Connect your wallet to start trading CS:GO skins
+              </p>
 
               {/* Connect Button */}
               <div className="w-full">
