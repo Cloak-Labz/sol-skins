@@ -466,53 +466,18 @@ export default function LandingPage() {
                   target="_blank"
                   rel="noopener noreferrer"
                 >
-                  <Button
+                  {/* <Button
                     variant="outline"
                     className="border-[#E99500] text-[#E99500] hover:bg-[#E99500] hover:text-black"
                   >
                     View on Solscan
                     <ExternalLink className="w-4 h-4 ml-2" />
-                  </Button>
+                  </Button> */}
                 </Link>
               </div>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-              className="relative"
-            >
-              <div className="bg-[#111] border border-[#333] rounded-2xl p-8">
-                <h3 className="text-xl font-bold text-white mb-6">
-                  Live Platform Stats
-                </h3>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between py-4 border-b border-[#333]">
-                    <span className="text-gray-400">Inventory Value</span>
-                    <span className="text-white font-bold text-lg">
-                      $2,847,392
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between py-4 border-b border-[#333]">
-                    <span className="text-gray-400">Packs Opened (24h)</span>
-                    <span className="text-white font-bold text-lg">1,247</span>
-                  </div>
-                  <div className="flex items-center justify-between py-4 border-b border-[#333]">
-                    <span className="text-gray-400">Avg Payout Time</span>
-                    <span className="text-white font-bold text-lg">4.2s</span>
-                  </div>
-                  <div className="flex items-center justify-between py-4">
-                    <span className="text-gray-400">Platform Status</span>
-                    <span className="text-[#4ade80] flex items-center gap-2">
-                      <div className="w-2 h-2 bg-[#4ade80] rounded-full animate-pulse" />
-                      Operational
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+
           </div>
         </div>
       </section>
