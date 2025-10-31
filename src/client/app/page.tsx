@@ -79,7 +79,7 @@ export default function LandingPage() {
                   className="inline-block mb-4"
                 >
                   <span className="text-[#E99500] font-bold text-sm tracking-wider uppercase bg-[#E99500]/10 px-4 py-2 rounded-full border border-[#E99500]/30">
-                     85% Instant Buyback Guarantee
+                    85% Instant Buyback Guarantee
                   </span>
                 </motion.div>
 
@@ -95,7 +95,8 @@ export default function LandingPage() {
                   On-chain. Transparent. Instant.
                   <br />
                   <span className="text-white font-medium">
-                    Every box is provably fair. Every skin is backed by real inventory.
+                    Every box is provably fair. Every skin is backed by real
+                    inventory.
                   </span>
                 </p>
 
@@ -186,25 +187,29 @@ export default function LandingPage() {
               {
                 icon: Coins,
                 title: "85% Instant Buyback",
-                description: "Sell any skin back instantly for 85% of market value in SOL. No waiting periods.",
+                description:
+                  "Sell any skin back instantly for 85% of market value in SOL. No waiting periods.",
                 color: "from-yellow-500 to-orange-500",
               },
               {
                 icon: Package,
                 title: "On-Chain Minting",
-                description: "True ownership via Metaplex Candy Machine. Verifiable on Solana blockchain.",
+                description:
+                  "True ownership via Metaplex Candy Machine. Verifiable on Solana blockchain.",
                 color: "from-purple-500 to-pink-500",
               },
               {
                 icon: Shield,
                 title: "Real CS:GO Inventory",
-                description: "Every skin backed by actual Steam inventory. Claim directly to your account.",
+                description:
+                  "Every skin backed by actual Steam inventory. Claim directly to your account.",
                 color: "from-blue-500 to-cyan-500",
               },
               {
                 icon: Zap,
                 title: "Provably Fair Odds",
-                description: "Transparent probability calculation. Real-time odds from live database.",
+                description:
+                  "Transparent probability calculation. Real-time odds from live database.",
                 color: "from-green-500 to-emerald-500",
               },
             ].map((item, index) => (
@@ -218,7 +223,9 @@ export default function LandingPage() {
               >
                 <Card className="bg-[#111] border-[#333] hover:border-[#E99500] transition-all duration-300 rounded-xl overflow-hidden h-full">
                   <CardContent className="p-6">
-                    <div className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center mb-4`}>
+                    <div
+                      className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center mb-4`}
+                    >
                       <item.icon className="w-6 h-6 text-white" />
                     </div>
                     <h3 className="text-xl font-bold text-white mb-2">
@@ -259,25 +266,29 @@ export default function LandingPage() {
                 step: "1",
                 icon: Wallet,
                 title: "Connect Wallet",
-                description: "Connect your Solana wallet. No KYC, no email required. Instant access.",
+                description:
+                  "Connect your Solana wallet. No KYC, no email required. Instant access.",
               },
               {
                 step: "2",
                 icon: Package,
                 title: "Buy & Open Pack",
-                description: "Purchase with SOL. Watch the cinematic opening animation as your NFT mints on-chain.",
+                description:
+                  "Purchase with SOL. Watch the cinematic opening animation as your NFT mints on-chain.",
               },
               {
                 step: "3",
                 icon: CheckCircle2,
                 title: "Reveal Your Skin",
-                description: "See your CS:GO skin NFT. Backed by real Steam inventory. Verifiable ownership.",
+                description:
+                  "See your CS:GO skin NFT. Backed by real Steam inventory. Verifiable ownership.",
               },
               {
                 step: "4",
                 icon: TrendingUp,
                 title: "Claim or Sell",
-                description: "Claim to Steam inventory OR take instant 85% SOL payout. Your choice.",
+                description:
+                  "Claim to Steam inventory OR take instant 85% SOL payout. Your choice.",
               },
             ].map((item, index) => (
               <motion.div
@@ -348,7 +359,8 @@ export default function LandingPage() {
                     Metaplex Candy Machine
                   </h3>
                   <p className="text-gray-400 mb-6">
-                    We use Metaplex's industry-standard Candy Machine for NFT minting:
+                    We use Metaplex's industry-standard Candy Machine for NFT
+                    minting:
                   </p>
                   <ul className="space-y-3">
                     {[
@@ -423,7 +435,9 @@ export default function LandingPage() {
                 100% Transparent
               </h2>
               <p className="text-gray-400 text-lg leading-relaxed mb-8">
-                Every skin is backed by real CS:GO inventory. Odds are calculated in real-time from our live database. All transactions are verifiable on-chain.
+                Every skin is backed by real CS:GO inventory. Odds are
+                calculated in real-time from our live database. All transactions
+                are verifiable on-chain.
               </p>
               <div className="space-y-4">
                 {[
@@ -447,7 +461,11 @@ export default function LandingPage() {
               </div>
 
               <div className="mt-8">
-                <Link href="https://solscan.io" target="_blank" rel="noopener noreferrer">
+                <Link
+                  href="https://solscan.io"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
                   <Button
                     variant="outline"
                     className="border-[#E99500] text-[#E99500] hover:bg-[#E99500] hover:text-black"
@@ -467,7 +485,9 @@ export default function LandingPage() {
               className="relative"
             >
               <div className="bg-[#111] border border-[#333] rounded-2xl p-8">
-                <h3 className="text-xl font-bold text-white mb-6">Live Platform Stats</h3>
+                <h3 className="text-xl font-bold text-white mb-6">
+                  Live Platform Stats
+                </h3>
                 <div className="space-y-4">
                   <div className="flex items-center justify-between py-4 border-b border-[#333]">
                     <span className="text-gray-400">Inventory Value</span>
@@ -477,15 +497,11 @@ export default function LandingPage() {
                   </div>
                   <div className="flex items-center justify-between py-4 border-b border-[#333]">
                     <span className="text-gray-400">Packs Opened (24h)</span>
-                    <span className="text-white font-bold text-lg">
-                      1,247
-                    </span>
+                    <span className="text-white font-bold text-lg">1,247</span>
                   </div>
                   <div className="flex items-center justify-between py-4 border-b border-[#333]">
                     <span className="text-gray-400">Avg Payout Time</span>
-                    <span className="text-white font-bold text-lg">
-                      4.2s
-                    </span>
+                    <span className="text-white font-bold text-lg">4.2s</span>
                   </div>
                   <div className="flex items-center justify-between py-4">
                     <span className="text-gray-400">Platform Status</span>
@@ -558,9 +574,7 @@ export default function LandingPage() {
                     <h3 className="text-lg font-bold text-white mb-3">
                       {item.q}
                     </h3>
-                    <p className="text-gray-400 leading-relaxed">
-                      {item.a}
-                    </p>
+                    <p className="text-gray-400 leading-relaxed">{item.a}</p>
                   </CardContent>
                 </Card>
               </motion.div>
