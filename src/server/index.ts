@@ -24,7 +24,7 @@ async function bootstrap() {
   try {
     // Initialize database
     await initializeDatabase();
-    logger.info('🗄️  Database connected successfully');
+    logger.info('Database connected successfully');
 
     // Create Express app
     const app = await createApp();
@@ -32,9 +32,9 @@ async function bootstrap() {
     // Start server
     const port = config.port;
     const server = app.listen(port, () => {
-      logger.info(`🚀 Server running on port ${port}`);
-      logger.info(`📊 Environment: ${config.env}`);
-      logger.info(`📡 API Prefix: ${config.apiPrefix}`);
+      logger.info(`Server running on port ${port}`);
+      logger.info(`Environment: ${config.env}`);
+      logger.info(`API Prefix: ${config.apiPrefix}`);
     });
 
     // Graceful shutdown
@@ -57,7 +57,7 @@ async function bootstrap() {
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
   } catch (error) {
-    logger.error('❌ Application startup failed:', error);
+    logger.error('Application startup failed:', error);
     process.exit(1);
   }
 }

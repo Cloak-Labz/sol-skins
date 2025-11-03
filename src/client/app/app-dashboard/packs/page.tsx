@@ -357,7 +357,7 @@ export default function PacksPage() {
 
     if (openingPhase || !selectedPack) return;
 
-    // FASE 1: Processing - Botão carregando na mesma tela (sem blur)
+    // PHASE 1: Processing - Loading button on the same screen (no blur)
     setOpeningPhase("processing");
     setIsProcessing(true);
     setShowResult(false);
@@ -368,7 +368,7 @@ export default function PacksPage() {
       isOpeningRef.current = true;
 
       {
-        // MODO REAL - Integração completa
+        // REAL MODE - Full integration
         const { packOpeningService } = await import(
           "@/lib/services/pack-opening.service"
         );
@@ -385,16 +385,16 @@ export default function PacksPage() {
           asset: result.nftMint,
         });
 
-        // FASE 2: Flash na tela quando transação confirmada
+        // PHASE 2: Flash on screen when transaction confirmed
         setOpeningPhase("flash");
 
-        // Após flash, iniciar vídeo
+        // After flash, start video
         setTimeout(() => {
           setOpeningPhase("video");
-          // Vídeo fica em loop até o resultado estar pronto
-        }, 500); // 500ms para o flash
+          // Video loops until result is ready
+        }, 500); // 500ms for the flash
 
-        // Processar resultado em background
+        // Process result in background
         setTimeout(async () => {
           try {
             // 2. Prefer server-resolved image URL; graceful fallback to metadata
@@ -445,7 +445,7 @@ export default function PacksPage() {
               // non-critical telemetry failure; ignore
             }
 
-            // FASE 3: Flash + mostrar resultado (quando resultado estiver pronto)
+            // PHASE 3: Flash + show result (when result is ready)
             setOpeningPhase("flash");
             setTimeout(() => {
               setShowResult(true);
@@ -492,7 +492,7 @@ export default function PacksPage() {
             setOpeningPhase(null);
             setIsProcessing(false);
           }
-        }, 8000); // 8 segundos total (6s vídeo + 2s espera)
+        }, 8000); // 8 seconds total (6s video + 2s wait)
       }
     } catch (error: any) {
       dismissOpenPackToast();
