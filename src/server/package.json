@@ -8,11 +8,11 @@
     "dev": "tsx watch index.ts",
     "start": "node dist/index.js",
     "typeorm": "typeorm-ts-node-commonjs",
-    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d src/database/config.ts",
-    "migration:run": "typeorm-ts-node-commonjs migration:run -d src/database/config.ts",
-    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d src/database/config.ts",
-    "schema:sync": "typeorm-ts-node-commonjs schema:sync -d src/database/config.ts",
-    "schema:drop": "typeorm-ts-node-commonjs schema:drop -d src/database/config.ts"
+    "migration:generate": "typeorm-ts-node-commonjs migration:generate -d database/config.ts",
+    "migration:run": "typeorm-ts-node-commonjs migration:run -d database/config.ts",
+    "migration:revert": "typeorm-ts-node-commonjs migration:revert -d database/config.ts",
+    "schema:sync": "typeorm-ts-node-commonjs schema:sync -d database/config.ts",
+    "schema:drop": "typeorm-ts-node-commonjs schema:drop -d database/config.ts"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",

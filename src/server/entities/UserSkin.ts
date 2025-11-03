@@ -47,6 +47,9 @@ export class UserSkin {
   @Column({ type: 'boolean', default: false })
   soldViaBuyback: boolean;
 
+  @Column({ type: 'boolean', default: false })
+  isWaitingTransfer: boolean;
+
   // Alias for compatibility with buyback service
   get isBurnedBack(): boolean {
     return this.soldViaBuyback;
@@ -68,6 +71,9 @@ export class UserSkin {
   // NFT data
   @Column({ type: 'varchar', length: 500, nullable: true })
   metadataUri?: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  imageUrl?: string;
 
   @Column({ type: 'varchar', length: 200, nullable: true })
   name?: string;

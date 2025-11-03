@@ -89,7 +89,7 @@ export class PackOpeningService {
           collectionMint: COLLECTION_MINT ? publicKey(COLLECTION_MINT) : candyMachine.collectionMint,
           collectionUpdateAuthority: COLLECTION_UPDATE_AUTHORITY ? publicKey(COLLECTION_UPDATE_AUTHORITY) : candyMachine.authority,
           mintArgs: {
-            solPayment: some({ destination: publicKey(TREASURY || "v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs") }),
+            solPayment: some({ destination: publicKey(TREASURY || process.env.NEXT_PUBLIC_TREASURY_ADDRESS || "") }),
           },
         })
       )
@@ -132,7 +132,7 @@ export class PackOpeningService {
         signature: signature,
         skinData: {
           name: revealData.data.skinName,
-          weapon: revealData.data.skinName.split(' | ')[0] || 'Unknown',
+          weapon: revealData.data.weapon || (revealData.data.skinName?.split(' | ')[0] || 'Unknown'),
           rarity: revealData.data.skinRarity,
           basePriceUsd: 0, // Will be calculated from rarity
           metadataUri: revealData.data.metadataUri,
@@ -146,6 +146,8 @@ export class PackOpeningService {
     }
 
     // Step 6: Use the skin data from the reveal service
+    const savedUserSkin = transactionData?.data?.userSkin;
+    const resolvedImageUrl: string | undefined = savedUserSkin?.imageUrl || revealData?.data?.imageUrl;
     // The reveal service already selected and updated the NFT metadata
     return {
       nftMint: nftMintAddress,
@@ -153,10 +155,10 @@ export class PackOpeningService {
       skin: {
         id: nftMintAddress, // Use NFT mint as unique ID
         name: revealData.data.skinName,
-        weapon: revealData.data.skinName.split(' | ')[0] || 'Unknown',
+        weapon: revealData.data.weapon || (revealData.data.skinName.split(' | ')[0] || 'Unknown'),
         rarity: revealData.data.skinRarity,
         condition: 'Field-Tested', // Default condition
-        imageUrl: '', // Will be fetched from metadata
+        imageUrl: resolvedImageUrl,
         basePriceUsd: 0, // Will be calculated from rarity
         metadataUri: revealData.data.metadataUri,
       },

@@ -382,12 +382,12 @@ export class CaseOpeningService {
         boxPriceSol = box?.priceSol || 0;
       }
 
-      // use the boxes table but CaseOpening expects a lootBoxTypeId
-      const defaultLootBoxTypeId = '014dfab9-73ca-4701-988c-19e30fda8141'; // Use first available loot box type
+      // Pack openings don't need a lootBoxTypeId (it's nullable now)
+      // We'll leave it null for pack openings
       
       const savedCaseOpening = await this.caseOpeningRepository.create({
         userId: user.id,
-        lootBoxTypeId: defaultLootBoxTypeId,
+        lootBoxTypeId: null, // Null for pack openings since they use boxes, not lootBoxTypes
         nftMintAddress: data.nftMintAddress,
         transactionId: data.transactionId,
         skinName: data.skinName,

@@ -36,7 +36,7 @@ export class ActivityService {
     
     // Filter by confirmed status and combine
     const recentTransactions = [...payoutTransactions[0], ...skinClaimTransactions[0]]
-      .filter(transaction => transaction.status === 'confirmed')
+      .filter(transaction => transaction.status === TransactionStatus.CONFIRMED)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, limit);
 

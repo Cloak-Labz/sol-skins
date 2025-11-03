@@ -53,9 +53,10 @@ export class InventoryService {
       mintAddress: userSkin.nftMintAddress, // Alias for frontend
       openedAt: userSkin.openedAt,
       acquiredAt: userSkin.openedAt, // Alias for frontend
-      canSell: userSkin.isInInventory && !userSkin.soldViaBuyback,
+      canSell: userSkin.isInInventory && !userSkin.soldViaBuyback && !userSkin.isWaitingTransfer,
       condition: userSkin.skinTemplate?.condition || "",
       status: userSkin.isInInventory ? "owned" : "sold",
+      isWaitingTransfer: userSkin.isWaitingTransfer || false,
     }));
 
     const summary = await this.userSkinRepository.getUserInventoryStats(userId);
@@ -87,9 +88,11 @@ export class InventoryService {
       throw new AppError("You do not own this skin", 403, "NOT_SKIN_OWNER");
     }
 
-    if (!userSkin.isInInventory || userSkin.soldViaBuyback) {
+    if (!userSkin.isInInventory || userSkin.soldViaBuyback || userSkin.isWaitingTransfer) {
       throw new AppError(
-        "Skin is not available for sale",
+        userSkin.isWaitingTransfer 
+          ? "Skin is waiting for Steam transfer and cannot be sold"
+          : "Skin is not available for sale",
         400,
         "SKIN_NOT_AVAILABLE"
       );
@@ -172,7 +175,8 @@ export class InventoryService {
       rarity: userSkin.skinTemplate?.rarity,
       condition: userSkin.skinTemplate?.condition,
       currentPriceUsd: userSkin.currentPriceUsd,
-      imageUrl: userSkin.skinTemplate?.imageUrl,
+      imageUrl: userSkin.imageUrl ?? userSkin.skinTemplate?.imageUrl,
+      nftImageUrl: userSkin.imageUrl,
       exteriorImageUrl: userSkin.skinTemplate?.exteriorImageUrl,
       description: userSkin.skinTemplate?.description,
       collection: userSkin.skinTemplate?.collection,

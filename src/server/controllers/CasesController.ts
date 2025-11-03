@@ -68,13 +68,13 @@ export class CasesController {
       isPackOpening 
     } = req.body;
 
-    if (!userId || !lootBoxTypeId || !nftMintAddress || !transactionId) {
-      return ResponseUtil.error(res, 'Missing required fields', 400);
+    if (!userId || !nftMintAddress || !transactionId) {
+      return ResponseUtil.error(res, 'Missing required fields (userId, nftMintAddress, transactionId)', 400);
     }
 
     const result = await this.caseOpeningService.createPackOpeningRecord({
       userId,
-      lootBoxTypeId,
+      lootBoxTypeId: lootBoxTypeId || '', // Can be empty for pack openings
       nftMintAddress,
       transactionId,
       skinName,

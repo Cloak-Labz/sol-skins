@@ -25,8 +25,8 @@ export class CaseOpening {
   @Column('uuid')
   userId: string;
 
-  @Column('uuid')
-  lootBoxTypeId: string;
+  @Column('uuid', { nullable: true })
+  lootBoxTypeId?: string;
 
   // VRF process
   @Column({ type: 'varchar', length: 100, nullable: true })

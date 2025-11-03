@@ -21,6 +21,26 @@ router.post('/create-ticket', catchAsync(async (req: any, res: any) => {
   
   await discordBotService.createSkinClaimTicket(ticketData);
   
+  // Mark UserSkin as waiting transfer
+  if (ticketData.nftMintAddress) {
+    try {
+      const { AppDataSource } = await import('../config/database');
+      const { UserSkin } = await import('../entities/UserSkin');
+      const userSkinRepo = AppDataSource.getRepository(UserSkin);
+      const userSkin = await userSkinRepo.findOne({ 
+        where: { nftMintAddress: ticketData.nftMintAddress } 
+      });
+      if (userSkin) {
+        userSkin.isWaitingTransfer = true;
+        await userSkinRepo.save(userSkin);
+        console.log('✅ UserSkin marked as waiting transfer:', ticketData.nftMintAddress);
+      }
+    } catch (error) {
+      console.error('❌ Failed to mark UserSkin as waiting transfer:', error);
+      // Don't fail the ticket creation if this fails
+    }
+  }
+  
   ResponseUtil.success(res, { message: 'Discord ticket created successfully' });
 }));
 

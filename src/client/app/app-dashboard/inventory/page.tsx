@@ -428,15 +428,31 @@ export default function InventoryPage() {
                           </div>
                         </div>
                         <div className="relative">
-                          <div className="absolute inset-0 bg-green-400/20 rounded-full blur-sm"></div>
-                          <div className="relative bg-gradient-to-r from-green-500/30 to-emerald-500/30 border border-green-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(34,197,94,0.3)] flex items-center justify-center">
-                            <span 
-                              className="text-green-300 text-xs font-black uppercase tracking-wider"
-                              style={{ fontFamily: "monospace" }}
-                            >
-                              OWNED
-                            </span>
-                          </div>
+                          {skin.isWaitingTransfer ? (
+                            <>
+                              <div className="absolute inset-0 bg-yellow-400/20 rounded-full blur-sm"></div>
+                              <div className="relative bg-gradient-to-r from-yellow-500/30 to-amber-500/30 border border-yellow-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(234,179,8,0.3)] flex items-center justify-center">
+                                <span 
+                                  className="text-yellow-300 text-xs font-black uppercase tracking-wider"
+                                  style={{ fontFamily: "monospace" }}
+                                >
+                                  WAITING TRANSFER
+                                </span>
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="absolute inset-0 bg-green-400/20 rounded-full blur-sm"></div>
+                              <div className="relative bg-gradient-to-r from-green-500/30 to-emerald-500/30 border border-green-400/50 rounded-full px-3 py-1.5 shadow-[0_0_8px_rgba(34,197,94,0.3)] flex items-center justify-center">
+                                <span 
+                                  className="text-green-300 text-xs font-black uppercase tracking-wider"
+                                  style={{ fontFamily: "monospace" }}
+                                >
+                                  OWNED
+                                </span>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -482,15 +498,18 @@ export default function InventoryPage() {
                       <div className="mt-6">
                         <Button
                           size="sm"
-                          className="w-full bg-[#FE9310] hover:bg-[#F2840E] text-black text-xs font-black uppercase tracking-wide"
+                          disabled={skin.isWaitingTransfer}
+                          className="w-full bg-[#FE9310] hover:bg-[#F2840E] text-black text-xs font-black uppercase tracking-wide disabled:opacity-50 disabled:cursor-not-allowed"
                           style={{ fontFamily: "monospace" }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleSellSkin(skin);
+                            if (!skin.isWaitingTransfer) {
+                              handleSellSkin(skin);
+                            }
                           }}
                         >
                           <Zap className="w-8 h-8 text-black fill-black" />
-                          Take Payout
+                          {skin.isWaitingTransfer ? 'Transfer Pending' : 'Take Payout'}
                         </Button>
                       </div>
                     </div>

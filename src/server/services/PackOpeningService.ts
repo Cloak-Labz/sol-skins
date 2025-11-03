@@ -8,6 +8,7 @@ import { AppDataSource } from '../config/database';
 import { UserSkin } from '../entities/UserSkin';
 import { User } from '../entities/User';
 import { Box } from '../entities/Box';
+import axios from 'axios';
 
 export interface PackOpeningResult {
   nftMint: string;
@@ -91,12 +92,30 @@ export class PackOpeningService {
         console.error('Failed to look up box skin value:', err);
       }
 
+      // Try resolve image URL from metadata (if provided)
+      let resolvedImageUrl: string | undefined;
+      if (skinData.metadataUri) {
+        try {
+          const metaResp = await axios.get(skinData.metadataUri, { timeout: 8000 });
+          let img: string | undefined = metaResp.data?.image;
+          if (img && img.startsWith('ipfs://')) {
+            img = `https://ipfs.io/ipfs/${img.replace('ipfs://', '')}`;
+          }
+          if (img && /^https?:\/\//.test(img)) {
+            resolvedImageUrl = img;
+          }
+        } catch (err) {
+          // ignore; optional best-effort
+        }
+      }
+
       // Create user skin
       const savedUserSkin = await this.userSkinRepository.create({
         userId,
         nftMintAddress: nftMint,
         name: skinData.name,
         metadataUri: skinData.metadataUri,
+        imageUrl: resolvedImageUrl,
         openedAt: new Date(),
         currentPriceUsd: realValue,
         lastPriceUpdate: new Date(),

@@ -1,5 +1,5 @@
 import { DataSource } from "typeorm";
-import { config } from "../config/env";
+import "dotenv/config";
 import { User } from "../entities/User";
 import { LootBoxType } from "../entities/LootBoxType";
 import { SkinTemplate } from "../entities/SkinTemplate";
@@ -12,17 +12,27 @@ import { UserSession } from "../entities/UserSession";
 import { SkinListing } from "../entities/SkinListing";
 import { SteamInventory } from "../entities/SteamInventory";
 import { Inventory } from "../entities/Inventory";
+import { Box } from "../entities/Box";
+import { BoxSkin } from "../entities/BoxSkin";
+import { BuybackRecord } from "../entities/BuybackRecord";
 
 // DataSource for TypeORM CLI (migrations)
+const dbHost = process.env.DB_HOST || "localhost";
+const dbPort = process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 5432;
+const dbUser = process.env.DB_USERNAME || "postgres";
+const dbPass = process.env.DB_PASSWORD || "postgres";
+const dbName = process.env.DB_DATABASE || "postgres";
+const dbLogging = String(process.env.DB_LOGGING || "false").toLowerCase() === "true";
+
 export default new DataSource({
   type: "postgres",
-  host: config.database.host,
-  port: config.database.port,
-  username: config.database.username,
-  password: config.database.password,
-  database: config.database.database,
+  host: dbHost,
+  port: dbPort,
+  username: dbUser,
+  password: dbPass,
+  database: dbName,
   synchronize: false,
-  logging: config.database.logging,
+  logging: dbLogging,
   entities: [
     User,
     LootBoxType,
@@ -36,9 +46,13 @@ export default new DataSource({
     SkinListing,
     SteamInventory,
     Inventory,
+    Box,
+    BoxSkin,
+    BuybackRecord,
   ],
-  migrations: ["src/server/database/migrations/*{.ts,.js}"],
-  subscribers: ["src/server/database/subscribers/*{.ts,.js}"],
+  // Paths are relative to process.cwd() (the server package root when running npm scripts)
+  migrations: [__dirname + "/migrations/*{.ts,.js}"],
+  subscribers: [__dirname + "/subscribers/*{.ts,.js}"],
 });
 
 

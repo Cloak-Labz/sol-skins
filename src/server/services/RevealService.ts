@@ -3,17 +3,21 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { mplTokenMetadata, updateV1, fetchMetadataFromSeeds } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey, createSignerFromKeypair } from '@metaplex-foundation/umi';
 import { config } from '../config/env';
+import axios from 'axios';
 import { AppDataSource } from '../config/database';
 import { UserSkin } from '../entities/UserSkin';
 import { User } from '../entities/User';
 import { SkinRarity, SkinTemplate } from '../entities/SkinTemplate';
+import { BoxSkin } from '../entities/BoxSkin';
 import { Box } from '../entities/Box';
 import { CaseOpening } from '../entities/CaseOpening';
 
 export interface RevealResult {
   nftMint: string;
   skinName: string;
+  weapon: string;
   skinRarity: string;
+  imageUrl?: string;
   metadataUri: string;
   txSignature: string;
 }
@@ -57,24 +61,42 @@ export class RevealService {
   }
 
   /**
-   * Select a skin from the pool based on rarity
+   * Select a skin from the box's configured pool using weight, constrained by rolled rarity.
    */
-  private async selectSkinByRarity(rarity: string): Promise<SkinTemplate | null> {
+  private async selectBoxSkinByRarity(boxId: string, rarity: string): Promise<{ boxSkin: BoxSkin; skinTemplate: SkinTemplate | null } | null> {
+    const boxSkinRepo = AppDataSource.getRepository(BoxSkin);
     const skinTemplateRepo = AppDataSource.getRepository(SkinTemplate);
-    
-    // Find all skins of this rarity
-    const skins = await skinTemplateRepo.find({
-      where: { rarity: rarity as SkinRarity },
-    });
 
-    if (skins.length === 0) {
-      console.warn(`No skins found for rarity: ${rarity}`);
+    const boxSkins = await boxSkinRepo.find({ where: { boxId, rarity } });
+    if (!boxSkins.length) {
+      console.warn(`No box_skins found for box ${boxId} and rarity ${rarity}`);
       return null;
     }
 
-    // Randomly select one
-    const randomIndex = Math.floor(Math.random() * skins.length);
-    return skins[randomIndex];
+    // Weighted random selection
+    const totalWeight = boxSkins.reduce((sum, s) => sum + (s.weight || 1), 0);
+    let rnd = Math.random() * totalWeight;
+    let selected = boxSkins[0];
+    for (const s of boxSkins) {
+      rnd -= (s.weight || 1);
+      if (rnd <= 0) {
+        selected = s;
+        break;
+      }
+    }
+
+    let matchedTemplate: SkinTemplate | null = null;
+    if (selected.skinTemplateId) {
+      matchedTemplate = await skinTemplateRepo.findOne({ where: { id: selected.skinTemplateId } });
+    } else {
+      // Best-effort lookup by weapon + skinName (selected.name is full name: "Weapon | Skin")
+      const [weapon, skinName] = (selected.name || '').split(' | ').map(x => x?.trim());
+      if (weapon && skinName) {
+        matchedTemplate = await skinTemplateRepo.findOne({ where: { weapon, skinName } });
+      }
+    }
+
+    return { boxSkin: selected, skinTemplate: matchedTemplate };
   }
 
   /**
@@ -82,12 +104,36 @@ export class RevealService {
    */
   async revealNFT(nftMint: string, boxId: string, walletAddress?: string): Promise<RevealResult> {
     try {
-      // Roll rarity
+      // Roll rarity and select from the specific box's pool
       const rarity = this.rollRarity(boxId);
-      const skin = await this.selectSkinByRarity(rarity);
-      if (!skin) {
-        throw new Error(`No skin template found for rarity: ${rarity}`);
+      let selection = await this.selectBoxSkinByRarity(boxId, rarity);
+      if (!selection) {
+        // Fallback: select from all box_skins for this box (weighted), ignoring rarity
+        const boxSkinRepo = AppDataSource.getRepository(BoxSkin);
+        const allBoxSkins = await boxSkinRepo.find({ where: { boxId } });
+        if (!allBoxSkins.length) {
+          throw new Error(`No box skins configured for boxId=${boxId}`);
+        }
+        const totalWeightAll = allBoxSkins.reduce((sum, s) => sum + (s.weight || 1), 0);
+        let rndAll = Math.random() * totalWeightAll;
+        let picked = allBoxSkins[0];
+        for (const s of allBoxSkins) {
+          rndAll -= (s.weight || 1);
+          if (rndAll <= 0) { picked = s; break; }
+        }
+        const skinTemplateRepo = AppDataSource.getRepository(SkinTemplate);
+        let matchedTemplate: SkinTemplate | null = null;
+        if (picked.skinTemplateId) {
+          matchedTemplate = await skinTemplateRepo.findOne({ where: { id: picked.skinTemplateId } });
+        } else {
+          const [weapon, skinName] = (picked.name || '').split(' | ').map(x => x?.trim());
+          if (weapon && skinName) {
+            matchedTemplate = await skinTemplateRepo.findOne({ where: { weapon, skinName } });
+          }
+        }
+        selection = { boxSkin: picked, skinTemplate: matchedTemplate };
       }
+      const { boxSkin, skinTemplate: skin } = selection;
 
       await new Promise(resolve => setTimeout(resolve, 10000));
 
@@ -96,7 +142,11 @@ export class RevealService {
         mint: nftMintPubkey,
       });
 
-      const skinFullName = `${skin.weapon} | ${skin.skinName}`;
+      const namePart = (boxSkin.name || '').includes('|')
+        ? (boxSkin.name || '').split('|')[1].trim()
+        : (boxSkin.name || skin?.skinName || 'Unknown');
+      const weapon = boxSkin.weapon || skin?.weapon || 'Unknown';
+      const skinFullName = `${weapon} | ${namePart}`;
       const metadataUri = `https://arweave.net/${nftMint.slice(0, 32)}`;
       
       // Update metadata with revealed skin data
@@ -129,11 +179,34 @@ export class RevealService {
         userId = user?.id;
       }
 
+      // Try to resolve image URL from metadata
+      let resolvedImageUrl: string | undefined;
+      try {
+        const metaResp = await axios.get(metadataUri, { timeout: 8000 });
+        let img: string | undefined = metaResp.data?.image;
+        if (img && img.startsWith('ipfs://')) {
+          img = `https://ipfs.io/ipfs/${img.replace('ipfs://', '')}`;
+        }
+        if (img && /^https?:\/\//.test(img)) {
+          resolvedImageUrl = img;
+        }
+      } catch (_) {
+        // ignore; will fallback
+      }
+
+      // Prefer resolved image from metadata; fallback to boxSkin.imageUrl
+      if (!resolvedImageUrl && boxSkin.imageUrl) {
+        resolvedImageUrl = boxSkin.imageUrl;
+      }
+
       if (userSkin) {
         // Update existing user skin
-        userSkin.skinTemplateId = skin.id;
+        userSkin.skinTemplateId = skin?.id;
         userSkin.name = skinFullName;
         userSkin.metadataUri = metadataUri;
+        if (resolvedImageUrl) {
+          userSkin.imageUrl = resolvedImageUrl;
+        }
         if (userId) {
           userSkin.userId = userId;
         }
@@ -142,12 +215,13 @@ export class RevealService {
         // Create new user skin
         userSkin = userSkinRepo.create({
           nftMintAddress: nftMint,
-          skinTemplateId: skin.id,
+          skinTemplateId: skin?.id,
           name: skinFullName,
           metadataUri: metadataUri,
+          imageUrl: resolvedImageUrl,
           openedAt: new Date(),
           userId: userId,
-          currentPriceUsd: skin.basePriceUsd,
+          currentPriceUsd: Number(boxSkin.basePriceUsd ?? skin?.basePriceUsd ?? 0),
           lastPriceUpdate: new Date(),
           isInInventory: true,
           symbol: 'SKIN',
@@ -167,7 +241,9 @@ export class RevealService {
       return {
         nftMint,
         skinName: skinFullName,
-        skinRarity: skin.rarity,
+        weapon,
+        skinRarity: boxSkin.rarity,
+        imageUrl: resolvedImageUrl,
         metadataUri: metadataUri,
         txSignature,
       };

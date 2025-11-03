@@ -4,14 +4,16 @@ export class AddPackOpeningColumnsToCaseOpenings1759700000002 implements Migrati
     name = 'AddPackOpeningColumnsToCaseOpenings1759700000002'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "case_openings" ADD "nftMintAddress" character varying(100)`);
-        await queryRunner.query(`ALTER TABLE "case_openings" ADD "transactionId" character varying(100)`);
-        await queryRunner.query(`ALTER TABLE "case_openings" ADD "skinName" character varying(255)`);
-        await queryRunner.query(`ALTER TABLE "case_openings" ADD "skinRarity" character varying(50)`);
-        await queryRunner.query(`ALTER TABLE "case_openings" ADD "skinWeapon" character varying(100)`);
-        await queryRunner.query(`ALTER TABLE "case_openings" ADD "skinValue" numeric(10,2)`);
-        await queryRunner.query(`ALTER TABLE "case_openings" ADD "skinImage" text`);
-        await queryRunner.query(`ALTER TABLE "case_openings" ADD "isPackOpening" boolean NOT NULL DEFAULT false`);
+        const hasCaseOpenings = await queryRunner.hasTable('case_openings');
+        if (!hasCaseOpenings) return;
+        await queryRunner.query(`ALTER TABLE "case_openings" ADD COLUMN IF NOT EXISTS "nftMintAddress" character varying(100)`);
+        await queryRunner.query(`ALTER TABLE "case_openings" ADD COLUMN IF NOT EXISTS "transactionId" character varying(100)`);
+        await queryRunner.query(`ALTER TABLE "case_openings" ADD COLUMN IF NOT EXISTS "skinName" character varying(255)`);
+        await queryRunner.query(`ALTER TABLE "case_openings" ADD COLUMN IF NOT EXISTS "skinRarity" character varying(50)`);
+        await queryRunner.query(`ALTER TABLE "case_openings" ADD COLUMN IF NOT EXISTS "skinWeapon" character varying(100)`);
+        await queryRunner.query(`ALTER TABLE "case_openings" ADD COLUMN IF NOT EXISTS "skinValue" numeric(10,2)`);
+        await queryRunner.query(`ALTER TABLE "case_openings" ADD COLUMN IF NOT EXISTS "skinImage" text`);
+        await queryRunner.query(`ALTER TABLE "case_openings" ADD COLUMN IF NOT EXISTS "isPackOpening" boolean NOT NULL DEFAULT false`);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {

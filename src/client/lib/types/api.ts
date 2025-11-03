@@ -97,6 +97,7 @@ export interface UserSkin {
   canSell: boolean
   condition: string
   status: 'owned' | 'sold' | 'listed'
+  isWaitingTransfer?: boolean
 }
 
 export interface InventorySummary {

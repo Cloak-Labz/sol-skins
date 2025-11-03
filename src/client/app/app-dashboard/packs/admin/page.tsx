@@ -149,9 +149,10 @@ export default function PackManagerPage() {
 
   // Check if connected wallet is admin
   useEffect(() => {
-    const adminWallet = "v1t1nCTfxttsTFW3t7zTQFUsdpznu8kggzYSg7SDJMs";
+    const adminWallets = (process.env.NEXT_PUBLIC_ADMIN_WALLETS || "").split(",").map(w => w.trim()).filter(Boolean);
     if (publicKey) {
-      const isAdminWallet = publicKey.toBase58() === adminWallet;
+      const walletAddress = publicKey.toBase58();
+      const isAdminWallet = adminWallets.length > 0 && adminWallets.includes(walletAddress);
       setIsAdmin(isAdminWallet);
       if (!isAdminWallet) {
         toast.error("Access denied: Admin wallet required");
@@ -730,20 +731,16 @@ export default function PackManagerPage() {
   const createBoxFromDraft = async () => {
     if (!draftBox) return;
 
-    // Validate that we have uploaded skins
-    const uploadedSkins = draftSkins.filter(s => s.uploadedToArweave);
-    if (uploadedSkins.length === 0) {
-      toast.error("Please upload at least one skin to Arweave before creating the box");
-      return;
-    }
+    // Use all draft skins (no Arweave upload requirement)
+    const uploadedSkins = draftSkins;
 
     try {
       setCreatingBox(true);
       
-      // Get metadata URIs from uploaded skins
+      // Optionally collect metadata URIs if present
       const metadataUris = uploadedSkins.map(skin => skin.metadataUri).filter(Boolean);
       
-      // Create box data with metadata URIs
+      // Create box data (metadataUris optional)
       const boxData = {
         ...draftBox,
         metadataUris,
@@ -764,8 +761,8 @@ export default function PackManagerPage() {
 
       const createdBox = data.data;
 
-      // Then add all uploaded skins to the box
-      for (const skin of draftSkins.filter(s => s.uploadedToArweave)) {
+      // Then add all skins to the box
+      for (const skin of draftSkins) {
         await fetch("/api/v1/box-skins", {
           method: "POST",
           headers: { "Content-Type": "application/json" },

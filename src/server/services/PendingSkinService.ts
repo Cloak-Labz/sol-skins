@@ -252,16 +252,31 @@ export class PendingSkinService {
   }
 
   async createSkinClaimedActivity(data: {
-    userId: string;
+    userId: string; // Can be wallet address or user ID
     skinName: string;
     skinRarity: string;
     skinWeapon: string;
     nftMintAddress: string;
   }): Promise<void> {
     try {
+      // Resolve userId if wallet address provided
+      let actualUserId = data.userId;
+      const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      if (!uuidV4Regex.test(data.userId)) {
+        // Treat as wallet address
+        const { UserRepository } = await import('../repositories/UserRepository');
+        const userRepo = new UserRepository();
+        const user = await userRepo.findByWalletAddress(data.userId);
+        if (!user) {
+          logger.warn('User not found for wallet address:', data.userId);
+          return; // Don't fail, just skip activity
+        }
+        actualUserId = user.id;
+      }
+
       // Create SKIN_CLAIMED transaction directly with skin data
       await this.transactionRepository.create({
-        userId: data.userId,
+        userId: actualUserId,
         transactionType: TransactionType.SKIN_CLAIMED,
         amountUsd: 0, // Required field, set to 0 for skin claims
         status: TransactionStatus.CONFIRMED,
@@ -275,10 +290,10 @@ export class PendingSkinService {
         }),
       });
       
-      logger.info('Skin claimed activity created:', { userId: data.userId, skinName: data.skinName });
+      logger.info('Skin claimed activity created:', { userId: actualUserId, skinName: data.skinName });
     } catch (error) {
       logger.error('Error creating skin claimed activity:', error);
-      throw new AppError('Failed to create skin claimed activity', 500);
+      // Don't throw - activity failures shouldn't break the flow
     }
   }
 }

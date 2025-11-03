@@ -4,15 +4,17 @@ export class AddCandyMachineFields1759700000001 implements MigrationInterface {
     name = 'AddCandyMachineFields1759700000001'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "boxes" ADD "candyGuard" character varying(88)`);
-        await queryRunner.query(`ALTER TABLE "boxes" ADD "treasuryAddress" character varying(88)`);
-        await queryRunner.query(`ALTER TABLE "boxes" ADD "itemsRedeemed" integer`);
-        await queryRunner.query(`ALTER TABLE "boxes" ADD "isMutable" boolean NOT NULL DEFAULT false`);
-        await queryRunner.query(`ALTER TABLE "boxes" ADD "sellerFeeBasisPoints" integer NOT NULL DEFAULT '500'`);
-        await queryRunner.query(`ALTER TABLE "boxes" ADD "symbol" character varying(100)`);
+        const hasBoxes = await queryRunner.hasTable('boxes');
+        if (!hasBoxes) return;
+        await queryRunner.query(`ALTER TABLE "boxes" ADD COLUMN IF NOT EXISTS "candyGuard" character varying(88)`);
+        await queryRunner.query(`ALTER TABLE "boxes" ADD COLUMN IF NOT EXISTS "treasuryAddress" character varying(88)`);
+        await queryRunner.query(`ALTER TABLE "boxes" ADD COLUMN IF NOT EXISTS "itemsRedeemed" integer`);
+        await queryRunner.query(`ALTER TABLE "boxes" ADD COLUMN IF NOT EXISTS "isMutable" boolean NOT NULL DEFAULT false`);
+        await queryRunner.query(`ALTER TABLE "boxes" ADD COLUMN IF NOT EXISTS "sellerFeeBasisPoints" integer NOT NULL DEFAULT '500'`);
+        await queryRunner.query(`ALTER TABLE "boxes" ADD COLUMN IF NOT EXISTS "symbol" character varying(100)`);
         
-        await queryRunner.query(`CREATE INDEX "IDX_boxes_candyGuard" ON "boxes" ("candyGuard")`);
-        await queryRunner.query(`CREATE INDEX "IDX_boxes_treasuryAddress" ON "boxes" ("treasuryAddress")`);
+        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_boxes_candyGuard" ON "boxes" ("candyGuard")`);
+        await queryRunner.query(`CREATE INDEX IF NOT EXISTS "IDX_boxes_treasuryAddress" ON "boxes" ("treasuryAddress")`);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
