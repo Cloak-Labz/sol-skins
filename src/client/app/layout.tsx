@@ -40,7 +40,6 @@ export default function RootLayout({
         <SolanaProvider>
           <UserProvider>
             {children}
-            <Analytics/>;
             <Toaster
               position="top-center"
               theme="dark"
@@ -54,6 +53,7 @@ export default function RootLayout({
             />
           </UserProvider>
         </SolanaProvider>
+        <Analytics/>
       </body>
     </html>
   );
