@@ -1,23 +1,8 @@
 import 'reflect-metadata';
 import 'express-async-errors';
-import express from 'express';
 import { config } from './config/env';
 import { initializeDatabase } from './config/database';
-import { logger, httpLogger, correlationId } from './middlewares/logger';
-import { globalErrorHandler } from './middlewares/errorHandler';
-import {
-  corsOptions,
-  generalLimiter,
-  helmetConfig,
-  compressionConfig,
-  securityHeaders,
-  apiVersioning,
-  requestTimeout,
-} from './middlewares/security';
-import { sanitizeBody, sanitizeQuery } from './middlewares/validation';
-import cors from 'cors';
-import helmet from 'helmet';
-import compression from 'compression';
+import { logger } from './middlewares/logger';
 import { createApp } from './app';
 
 async function bootstrap() {
