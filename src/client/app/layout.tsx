@@ -40,7 +40,7 @@ export default function RootLayout({
         <SolanaProvider>
           <UserProvider>
             {children}
-            <Analytics mode="production" />;
+            <Analytics/>;
             <Toaster
               position="top-center"
               theme="dark"
