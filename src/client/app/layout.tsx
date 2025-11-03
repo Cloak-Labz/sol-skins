@@ -53,7 +53,7 @@ export default function RootLayout({
             />
           </UserProvider>
         </SolanaProvider>
-        <Analytics/>
+        <Analytics />
       </body>
     </html>
   );
