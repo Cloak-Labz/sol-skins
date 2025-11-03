@@ -5,6 +5,7 @@ import "./globals.css";
 import { SolanaProvider } from "@/components/solana-provider";
 import { UserProvider } from "@/lib/contexts/UserContext";
 import { Toaster } from "sonner";
+import { Analytics } from '@vercel/analytics/next';
 
 const inter = Inter({
   variable: "--font-inter",
@@ -39,6 +40,7 @@ export default function RootLayout({
         <SolanaProvider>
           <UserProvider>
             {children}
+            <Analytics mode="production" />;
             <Toaster
               position="top-center"
               theme="dark"
