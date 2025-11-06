@@ -165,6 +165,26 @@ export class PackOpeningService {
       const { sanitizeSkinName } = require('../utils/sanitization');
       const sanitizedSkinName = sanitizeSkinName(skinData.name);
 
+      // Try to find SkinTemplate to link it properly
+      let skinTemplateId: string | undefined = undefined;
+      if (skinData.name) {
+        const nameParts = skinData.name.split(' | ');
+        if (nameParts.length === 2) {
+          const [weapon, skinName] = nameParts.map(s => s.trim());
+          const { SkinTemplate } = await import('../entities/SkinTemplate');
+          const skinTemplateRepo = AppDataSource.getRepository(SkinTemplate);
+          const skinTemplate = await skinTemplateRepo.findOne({
+            where: {
+              weapon: weapon,
+              skinName: skinName,
+            },
+          });
+          if (skinTemplate) {
+            skinTemplateId = skinTemplate.id;
+          }
+        }
+      }
+
       // Create user skin
       const savedUserSkin = await this.userSkinRepository.create({
         userId,
@@ -177,6 +197,7 @@ export class PackOpeningService {
         lastPriceUpdate: new Date(),
         isInInventory: true,
         symbol: 'SKIN',
+        skinTemplateId: skinTemplateId,
       });
 
       // Create transaction record

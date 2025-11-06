@@ -122,6 +122,7 @@ export class InventoryController {
       const userSkinRepo = AppDataSource.getRepository(UserSkin);
       const queryBuilder = userSkinRepo.createQueryBuilder('userSkin')
         .leftJoinAndSelect('userSkin.skinTemplate', 'skinTemplate')
+        .leftJoinAndSelect('userSkin.lootBoxType', 'lootBoxType')
         .where('userSkin.userId = :userId', { userId })
         .andWhere('userSkin.isInInventory = :inInventory', { inInventory: true });
 
@@ -161,6 +162,74 @@ export class InventoryController {
 
       const [userSkins, total] = await queryBuilder.getManyAndCount();
 
+      // For skins without skinTemplate, try to get rarity from SkinTemplate or BoxSkin by name
+      const { SkinTemplate } = await import('../entities/SkinTemplate');
+      const { BoxSkin } = await import('../entities/BoxSkin');
+      const skinTemplateRepo = AppDataSource.getRepository(SkinTemplate);
+      const boxSkinRepo = AppDataSource.getRepository(BoxSkin);
+      
+      // Enrich skins with rarity from SkinTemplate or BoxSkin if skinTemplate is missing
+      let enrichedCount = 0;
+      for (const skin of userSkins) {
+        if (!skin.skinTemplate && skin.name) {
+          try {
+            // UserSkin.name is in format "Weapon | SkinName" (e.g., "M4A4 | Desert-Strike")
+            const nameParts = skin.name.split(' | ');
+            if (nameParts.length === 2) {
+              const [weapon, skinName] = nameParts.map(s => s.trim());
+              
+              // First, try to find SkinTemplate by weapon and skinName
+              let skinTemplate = await skinTemplateRepo.findOne({
+                where: {
+                  weapon: weapon,
+                  skinName: skinName,
+                },
+              });
+              
+              // If not found in SkinTemplate, try BoxSkin as fallback
+              if (!skinTemplate) {
+                const boxSkin = await boxSkinRepo.findOne({
+                  where: {
+                    weapon: weapon,
+                    name: skinName,
+                  },
+                });
+                
+                if (boxSkin && boxSkin.rarity) {
+                  // Create a temporary skinTemplate-like object from BoxSkin
+                  skinTemplate = {
+                    id: boxSkin.id,
+                    weapon: boxSkin.weapon,
+                    skinName: boxSkin.name,
+                    rarity: boxSkin.rarity as any, // BoxSkin.rarity is string, SkinTemplate.rarity is enum
+                    condition: boxSkin.condition as any,
+                    basePriceUsd: Number(boxSkin.basePriceUsd),
+                    imageUrl: boxSkin.imageUrl,
+                    collection: null,
+                    isActive: true,
+                    createdAt: boxSkin.createdAt,
+                    updatedAt: boxSkin.updatedAt,
+                  } as any;
+                }
+              }
+              
+              if (skinTemplate) {
+                // Assign the found skinTemplate to the userSkin
+                skin.skinTemplate = skinTemplate;
+                enrichedCount++;
+              }
+            }
+          } catch (err) {
+            // Ignore errors, keep rarity as Unknown
+            console.error('Failed to fetch rarity:', err);
+          }
+        }
+      }
+      
+      if (enrichedCount > 0) {
+        console.log(`Enriched ${enrichedCount} skins with rarity data`);
+      }
+
       // Calculate summary
       const totalValue = userSkins.reduce((sum, skin) => {
         return sum + (skin.currentPriceUsd || skin.skinTemplate?.basePriceUsd || 0);
@@ -185,9 +254,42 @@ export class InventoryController {
         totalPages: Math.ceil(total / limit),
       };
 
+      // Ensure skinTemplate is properly serialized
+      const serializedSkins = userSkins.map(skin => {
+        const base = {
+          id: skin.id,
+          userId: skin.userId,
+          nftMintAddress: skin.nftMintAddress,
+          name: skin.name,
+          imageUrl: skin.imageUrl,
+          metadataUri: skin.metadataUri,
+          currentPriceUsd: skin.currentPriceUsd,
+          openedAt: skin.openedAt,
+          createdAt: skin.createdAt,
+          updatedAt: skin.updatedAt,
+          isInInventory: skin.isInInventory,
+          isWaitingTransfer: skin.isWaitingTransfer,
+          soldViaBuyback: skin.soldViaBuyback,
+        };
+        
+        return {
+          ...base,
+          skinTemplate: skin.skinTemplate ? {
+            id: skin.skinTemplate.id,
+            weapon: skin.skinTemplate.weapon,
+            skinName: skin.skinTemplate.skinName,
+            rarity: skin.skinTemplate.rarity,
+            condition: skin.skinTemplate.condition,
+            basePriceUsd: skin.skinTemplate.basePriceUsd,
+            imageUrl: skin.skinTemplate.imageUrl,
+            collection: skin.skinTemplate.collection,
+          } : null,
+        };
+      });
+
       return res.json({ 
         success: true, 
-        data: userSkins,
+        data: serializedSkins,
         summary,
         pagination
       });
