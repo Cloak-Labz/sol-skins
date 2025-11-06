@@ -80,12 +80,21 @@ export default function PacksPage() {
     showResult ||
     showBuybackModal;
 
+  // Variável para indicar quando uma skin está sendo aberta (qualquer fase de processamento)
+  const isOpeningSkin = openingPhase !== null || isProcessing;
+
   // Share state for claim flow
   const [showClaimShare, setShowClaimShare] = useState(false);
   const [claimedSkin, setClaimedSkin] = useState<CSGOSkin | null>(null);
   const [hideTradePrompt, setHideTradePrompt] = useState(false);
-  const [pendingBuybackAmount, setPendingBuybackAmount] = useState<number | null>(null);
-  const [pendingBuybackInfo, setPendingBuybackInfo] = useState<{skinUsd: number, skinSol: number, payoutSol: number} | null>(null);
+  const [pendingBuybackAmount, setPendingBuybackAmount] = useState<
+    number | null
+  >(null);
+  const [pendingBuybackInfo, setPendingBuybackInfo] = useState<{
+    skinUsd: number;
+    skinSol: number;
+    payoutSol: number;
+  } | null>(null);
 
   useEffect(() => {
     if (shouldHideSidebar) {
@@ -104,7 +113,7 @@ export default function PacksPage() {
   useEffect(() => {
     const send = (hide: boolean) => {
       window.dispatchEvent(
-        new CustomEvent('topbar-visibility', { detail: { hide } })
+        new CustomEvent("topbar-visibility", { detail: { hide } })
       );
     };
     send(shouldHideSidebar);
@@ -227,7 +236,6 @@ export default function PacksPage() {
   useEffect(() => {
     loadBoxes(); // Load boxes from database
   }, []);
-
 
   // Calculate real odds when pack is selected
   useEffect(() => {
@@ -352,7 +360,9 @@ export default function PacksPage() {
 
     // Require Steam Trade URL before allowing opening
     if (!userTradeUrl || userTradeUrl.trim() === "") {
-      openPackToastIdRef.current = toast.error("Set your Steam Trade URL in Profile to open packs.");
+      openPackToastIdRef.current = toast.error(
+        "Set your Steam Trade URL in Profile to open packs."
+      );
       return;
     }
 
@@ -470,7 +480,9 @@ export default function PacksPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm">You won {winnerSkin.name}! 🎉</p>
+                    <p className="font-semibold text-sm">
+                      You won {winnerSkin.name}! 🎉
+                    </p>
                     <a
                       href={getSolscanUrl(result.signature)}
                       target="_blank"
@@ -478,8 +490,18 @@ export default function PacksPage() {
                       className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
                     >
                       View on Solscan
-                      <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      <svg
+                        className="w-3 h-3"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                        />
                       </svg>
                     </a>
                   </div>
@@ -497,7 +519,9 @@ export default function PacksPage() {
       }
     } catch (error: any) {
       dismissOpenPackToast();
-      openPackToastIdRef.current = toast.error(`Failed to open pack: ${error?.message || "Please try again."}`);
+      openPackToastIdRef.current = toast.error(
+        `Failed to open pack: ${error?.message || "Please try again."}`
+      );
       setOpeningPhase(null);
       setIsProcessing(false);
     } finally {
@@ -524,7 +548,9 @@ export default function PacksPage() {
 
     try {
       dismissBuybackToast();
-      buybackToastIdRef.current = toast.loading("Calculating buyback amount...");
+      buybackToastIdRef.current = toast.loading(
+        "Calculating buyback amount..."
+      );
 
       // Calculate buyback amount using buybackService
       const calcData = await buybackService.calculateBuyback(lastPackResult.asset);
@@ -540,7 +566,9 @@ export default function PacksPage() {
 
       if (!signTransaction) {
         dismissBuybackToast();
-        buybackToastIdRef.current = toast.error("Wallet does not support signing transactions.");
+        buybackToastIdRef.current = toast.error(
+          "Wallet does not support signing transactions."
+        );
         return;
       }
 
@@ -550,7 +578,9 @@ export default function PacksPage() {
       );
 
       dismissBuybackToast();
-      buybackToastIdRef.current = toast.loading("Please sign the transaction in your wallet...");
+      buybackToastIdRef.current = toast.loading(
+        "Please sign the transaction in your wallet..."
+      );
       const signedTx = await signTransaction(recoveredTransaction);
       const rawTransaction = signedTx.serialize();
 
@@ -686,12 +716,14 @@ export default function PacksPage() {
   const testToast = () => {
     const testSkin = {
       name: "AK-47 | Redline",
-      image: "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpot7HxfDhjxszJemkV09-5lpKKqPrxN7LEmyVQ7MEpiLuSrYmnjQO3-UdsZGHwddKVcFI2Ml7T_VO5xL_vhZS-tMudyXE36SYgsXiImhWpwUYbeOuVm2I/360fx360f",
+      image:
+        "https://community.cloudflare.steamstatic.com/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpot7HxfDhjxszJemkV09-5lpKKqPrxN7LEmyVQ7MEpiLuSrYmnjQO3-UdsZGHwddKVcFI2Ml7T_VO5xL_vhZS-tMudyXE36SYgsXiImhWpwUYbeOuVm2I/360fx360f",
       rarity: "legendary",
-      value: 45.50
+      value: 45.5,
     };
 
-    const testSignature = "5JKWJwHvN5bUbR8NCMQmJGWNqQYm9FKZvbXxHyVqZQHKhPqZGJR8NwXqHyVqZQHK";
+    const testSignature =
+      "5JKWJwHvN5bUbR8NCMQmJGWNqQYm9FKZvbXxHyVqZQHKhPqZGJR8NwXqHyVqZQHK";
 
     toast.success(
       <div className="flex items-center gap-3">
@@ -711,8 +743,18 @@ export default function PacksPage() {
             className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
           >
             View on Solscan
-            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+            <svg
+              className="w-3 h-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+              />
             </svg>
           </a>
         </div>
@@ -742,10 +784,14 @@ export default function PacksPage() {
   useEffect(() => {
     // Whenever showClaimShare changes, fire the event
     const hide = !!showClaimShare;
-    window.dispatchEvent(new CustomEvent('topbar-visibility', { detail: { hide } }));
+    window.dispatchEvent(
+      new CustomEvent("topbar-visibility", { detail: { hide } })
+    );
     return () => {
       // On unmount/close, force it back to visible just in case
-      window.dispatchEvent(new CustomEvent('topbar-visibility', { detail: { hide: false } }));
+      window.dispatchEvent(
+        new CustomEvent("topbar-visibility", { detail: { hide: false } })
+      );
     };
   }, [showClaimShare]);
 
@@ -819,10 +865,14 @@ export default function PacksPage() {
                         Payout received
                       </div>
                       {(() => {
-                        const payoutVal = Number((buybackAmountSol ?? pendingBuybackInfo?.payoutSol ?? 0));
+                        const payoutVal = Number(
+                          buybackAmountSol ?? pendingBuybackInfo?.payoutSol ?? 0
+                        );
                         return (
                           <div className="text-5xl font-extrabold text-white">
-                            {payoutVal > 0 ? `+${payoutVal.toFixed(3)} SOL` : `+0.00 SOL`}
+                            {payoutVal > 0
+                              ? `+${payoutVal.toFixed(3)} SOL`
+                              : `+0.00 SOL`}
                           </div>
                         );
                       })()}
@@ -875,7 +925,12 @@ export default function PacksPage() {
                       rel="noopener noreferrer"
                       className="flex-1 inline-flex items-center justify-center gap-2 rounded-md bg-black border border-white/20 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900 transition-colors whitespace-nowrap"
                     >
-                      Share on <img src="/assets/x_icon.png" alt="X" className="w-5 h-5" />
+                      Share on{" "}
+                      <img
+                        src="/assets/x_icon.png"
+                        alt="X"
+                        className="w-5 h-5"
+                      />
                     </a>
                   </div>
                 </div>
@@ -895,7 +950,6 @@ export default function PacksPage() {
       >
         {/* Main Content */}
         <div className="max-w-7xl mx-auto space-y-8">
-          
           {/* TEST BUTTON - Remove this later */}
           {/* <div className="flex justify-end mb-4">
             <Button
@@ -969,8 +1023,11 @@ export default function PacksPage() {
                   {boxes.slice(0, 4).map((pack) => (
                     <button
                       key={pack.id}
-                      onClick={() => !openingPhase && setSelectedPack(pack)}
+                      onClick={() => !isOpeningSkin && setSelectedPack(pack)}
+                      disabled={isOpeningSkin}
                       className={`group text-left rounded-lg border px-3 py-3 bg-gradient-to-b from-zinc-950 to-zinc-900 transition-colors ${
+                        isOpeningSkin ? "opacity-50 cursor-not-allowed" : ""
+                      } ${
                         selectedPack?.id === pack.id
                           ? "border-[#E99500]"
                           : "border-zinc-800 hover:border-zinc-700"
@@ -1043,13 +1100,15 @@ export default function PacksPage() {
                   <Button
                     onClick={handleOpenPack}
                     disabled={
-                      openingPhase !== null ||
+                      isOpeningSkin ||
                       !connected ||
                       selectedPack?.supply?.isSoldOut
                     }
                     className={`px-6 py-6 ml-4 font-semibold rounded-lg transition-all duration-300 ${
                       selectedPack?.supply?.isSoldOut
                         ? "bg-red-500/20 text-red-400 cursor-not-allowed"
+                        : isOpeningSkin
+                        ? "bg-zinc-600 text-zinc-300 cursor-not-allowed opacity-50"
                         : "bg-[#E99500] text-black hover:bg-[#d88500] active:bg-[#E99500]"
                     } ${
                       openingPhase === "processing"
@@ -1261,9 +1320,9 @@ export default function PacksPage() {
                         style={{ fontFamily: "monospace" }}
                       >
                         {wonSkin.rarity.toUpperCase()} •
-                        {typeof (pendingBuybackInfo?.skinSol) === 'number'
+                        {typeof pendingBuybackInfo?.skinSol === "number"
                           ? ` ${pendingBuybackInfo.skinSol.toFixed(3)} SOL`
-                          : 'Market value: —'}
+                          : "Market value: —"}
                       </p>
                     </div>
                   </div>
@@ -1280,7 +1339,8 @@ export default function PacksPage() {
                             Steam Trade URL required to claim this skin
                           </div>
                           <p className="text-yellow-100/90 text-sm mt-1">
-                            Add your Trade URL in Profile to enable Steam claims. You can still take a payout now.
+                            Add your Trade URL in Profile to enable Steam
+                            claims. You can still take a payout now.
                           </p>
                           <div className="mt-3 flex gap-2">
                             <Link
@@ -1304,15 +1364,18 @@ export default function PacksPage() {
                             Receive a payout
                           </div>
                           <div className="text-white/60 text-sm">
-                            {typeof (pendingBuybackInfo?.payoutSol) === 'number'
-                              ? `≈ +${pendingBuybackInfo.payoutSol.toFixed(3)} SOL`
-                              : 'Calculated on next step'}
+                            {typeof pendingBuybackInfo?.payoutSol === "number"
+                              ? `≈ +${pendingBuybackInfo.payoutSol.toFixed(
+                                  3
+                                )} SOL`
+                              : "Calculated on next step"}
                           </div>
                         </div>
                       </div>
                       <Button
                         onClick={handleBuyback}
-                        className="mt-4 w-full bg-[#E99500] hover:bg-[#f0a116] text-black font-bold"
+                        disabled={isOpeningSkin}
+                        className="mt-4 w-full bg-[#E99500] hover:bg-[#f0a116] text-black font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Zap className="w-8 h-8 text-black fill-black" />
                         Take payout
@@ -1328,7 +1391,7 @@ export default function PacksPage() {
                         Send this skin to your Steam account
                       </div>
                       <Button
-                        disabled={userTradeUrl === null}
+                        disabled={userTradeUrl === null || isOpeningSkin}
                         onClick={async (e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -1342,16 +1405,20 @@ export default function PacksPage() {
                               return;
                             }
                             if (!lastPackResult?.asset) {
-                              claimToastIdRef.current = toast.error("No NFT to claim");
+                              claimToastIdRef.current =
+                                toast.error("No NFT to claim");
                               return;
                             }
                             if (!wonSkin) {
-                              claimToastIdRef.current = toast.error("No skin to claim");
+                              claimToastIdRef.current =
+                                toast.error("No skin to claim");
                               return;
                             }
 
                             // Only send Discord ticket - no on-chain transactions
-                            claimToastIdRef.current = toast.loading("Creating Discord ticket...");
+                            claimToastIdRef.current = toast.loading(
+                              "Creating Discord ticket..."
+                            );
                             try {
                               await discordService.createSkinClaimTicket({
                                 userId: walletCtx.publicKey?.toString() || 'unknown',
@@ -1359,7 +1426,8 @@ export default function PacksPage() {
                                 steamTradeUrl: userTradeUrl,
                                 skinName: wonSkin.name,
                                 skinRarity: wonSkin.rarity,
-                                skinWeapon: wonSkin.name.split(" | ")[0] || 'Unknown',
+                                skinWeapon:
+                                  wonSkin.name.split(" | ")[0] || "Unknown",
                                 nftMintAddress: lastPackResult.asset,
                                 openedAt: new Date(),
                                 caseOpeningId: `pack-${Date.now()}`,
@@ -1376,14 +1444,22 @@ export default function PacksPage() {
                                 });
                               } catch (activityError) {
                                 // Non-critical, just log
-                                console.warn('Failed to create skin claimed activity:', activityError);
+                                console.warn(
+                                  "Failed to create skin claimed activity:",
+                                  activityError
+                                );
                               }
 
                               toast.dismiss(claimToastIdRef.current!);
                               claimToastIdRef.current = toast.success(
                                 <div className="flex flex-col gap-1">
-                                  <p className="font-semibold text-sm">Discord ticket created! 🎯</p>
-                                  <p className="text-xs text-white/70">Your skin will be sent manually via Steam Trade URL.</p>
+                                  <p className="font-semibold text-sm">
+                                    Discord ticket created! 🎯
+                                  </p>
+                                  <p className="text-xs text-white/70">
+                                    Your skin will be sent manually via Steam
+                                    Trade URL.
+                                  </p>
                                 </div>,
                                 { duration: 6000 }
                               );
@@ -1394,14 +1470,19 @@ export default function PacksPage() {
                               setShowResult(false);
                             } catch (discordError: any) {
                               toast.dismiss(claimToastIdRef.current!);
-                              claimToastIdRef.current = toast.error(discordError?.message || "Failed to create Discord ticket");
+                              claimToastIdRef.current = toast.error(
+                                discordError?.message ||
+                                  "Failed to create Discord ticket"
+                              );
                             }
                           } catch (error: any) {
                             toast.dismiss(claimToastIdRef.current!);
-                            claimToastIdRef.current = toast.error(error?.message || "Failed to claim skin");
+                            claimToastIdRef.current = toast.error(
+                              error?.message || "Failed to claim skin"
+                            );
                           }
                         }}
-                        className="mt-4 w-full bg-white text-black hover:bg-gray-200 font-bold"
+                        className="mt-4 w-full bg-white text-black hover:bg-gray-200 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Take Skin
                       </Button>
@@ -1454,7 +1535,8 @@ export default function PacksPage() {
                 {/* Bottom area (match buyback) */}
                 <div className="mt-6 p-6 bg-[#0d0d0d] border-t border-white/10">
                   <div className="text-xs text-zinc-400 leading-relaxed mb-4">
-                    You will receive this skin via the Steam Trade URL you provided in approximately 24 hours.
+                    You will receive this skin via the Steam Trade URL you
+                    provided in approximately 24 hours.
                   </div>
 
                   <div className="mt-2 flex items-stretch gap-3">
@@ -1464,7 +1546,8 @@ export default function PacksPage() {
                         setClaimedSkin(null);
                         router.push("/app-dashboard/packs");
                       }}
-                      className="flex-1 h-12 px-4 py-0 flex items-center justify-center bg-[#E99500] text-black hover:bg-[#d88500] font-bold"
+                      disabled={isOpeningSkin}
+                      className="flex-1 h-12 px-4 py-0 flex items-center justify-center bg-[#E99500] text-black hover:bg-[#d88500] font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Open a new pack
                     </Button>
@@ -1479,7 +1562,12 @@ export default function PacksPage() {
                       rel="noopener noreferrer"
                       className="flex-1 inline-flex h-12 px-4 py-0 items-center justify-center gap-2 rounded-md bg-black border border-white/20 text-sm font-semibold text-white hover:bg-zinc-900 transition-colors whitespace-nowrap"
                     >
-                      Share on <img src="/assets/x_icon.png" alt="X" className="w-5 h-5" />
+                      Share on{" "}
+                      <img
+                        src="/assets/x_icon.png"
+                        alt="X"
+                        className="w-5 h-5"
+                      />
                     </a>
                   </div>
                 </div>
@@ -1491,4 +1579,3 @@ export default function PacksPage() {
     </div>
   );
 }
-
