@@ -29,7 +29,7 @@ export default function LeaderboardPage() {
   const [userRank, setUserRank] = useState<UserRank | null>(null);
   const [loading, setLoading] = useState(true);
   const [metric, setMetric] = useState<
-    "inventory-value" | "cases-opened" | "profit"
+    "inventory-value" | "cases-opened"
   >("inventory-value");
   const [period, setPeriod] = useState<"all-time" | "monthly" | "weekly">(
     "all-time"
@@ -92,9 +92,7 @@ export default function LeaderboardPage() {
       case "inventory-value":
         return "Inventory Value";
       case "cases-opened":
-        return "Cases Opened";
-      case "profit":
-        return "Net Profit";
+        return "Claw Pulled";
       default:
         return "Inventory Value";
     }
@@ -263,8 +261,7 @@ export default function LeaderboardPage() {
           </SelectTrigger>
           <SelectContent className="bg-zinc-950 border border-zinc-800">
             <SelectItem value="inventory-value">Inventory Value</SelectItem>
-            <SelectItem value="cases-opened">Cases Opened</SelectItem>
-            <SelectItem value="profit">Net Profit</SelectItem>
+            <SelectItem value="cases-opened">Claw Pulled</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -303,14 +300,13 @@ export default function LeaderboardPage() {
       {/* Leaderboard Table */}
       <Card className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         <CardContent className="p-0">
-          <div className="grid p-4 border-b border-zinc-800 bg-zinc-900" style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
+          <div className="grid p-4 border-b border-zinc-800 bg-zinc-900" style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
             <div className="text-muted-foreground text-sm font-medium">#</div>
             <div className="text-muted-foreground text-sm font-medium">Name</div>
             <div className="text-muted-foreground text-sm font-medium">Inventory Value</div>
             <div className="text-muted-foreground text-sm font-medium">Volume</div>
             <div className="text-muted-foreground text-sm font-medium">Claw Pulls</div>
             <div className="text-muted-foreground text-sm font-medium">Points</div>
-            <div className="text-muted-foreground text-sm font-medium">Net Profit</div>
           </div>
           {leaderboard.length === 0 ? (
             <div className="p-8 text-center">
@@ -323,7 +319,7 @@ export default function LeaderboardPage() {
                   className={`grid p-4 border-b border-zinc-800 last:border-b-0 transition-all duration-150 hover:bg-zinc-900 hover:scale-[1.005] ${
                     entry.rank <= 3 ? 'bg-zinc-900/50' : ''
                   }`}
-                  style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}
+                  style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}
                 >
                   <div className="flex items-center">
                     {getRankIcon(entry.rank)}
@@ -365,15 +361,6 @@ export default function LeaderboardPage() {
                     <p className="text-foreground font-bold">
                       {getPoints(entry).toLocaleString()}
                     </p>
-                  </div>
-                  <div className="flex items-center">
-                    <Badge
-                      variant="secondary"
-                      className={`bg-zinc-900 text-zinc-300 border border-zinc-800`}
-                    >
-                      {entry.netProfit >= 0 ? "+" : ""}
-                      {formatCurrency(entry.netProfit)}
-                    </Badge>
                   </div>
                 </div>
               ))
