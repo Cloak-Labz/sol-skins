@@ -14,6 +14,7 @@ import { useUser } from "@/lib/contexts/UserContext";
 import { discordService } from "@/lib/services/discord.service";
 import { pendingSkinsService } from "@/lib/services/pending-skins.service";
 import { apiClient } from "@/lib/services/api.service";
+import { buybackService } from "@/lib/services/buyback.service";
 import { LootBoxType } from "@/lib/types/api";
 import XIconPng from "@/public/assets/x_icon.png";
 import { useRouter } from "next/navigation";
@@ -280,7 +281,7 @@ export default function PacksPage() {
     }
   }, [selectedPack]);
 
-  // Fetch user's trade URL on component mount
+  // Fetch user's trade URL on component mount and whenever user changes
   useEffect(() => {
     const fetchUserTradeUrl = async () => {
       try {
@@ -294,7 +295,7 @@ export default function PacksPage() {
     if (connected) {
       void fetchUserTradeUrl();
     }
-  }, [connected]);
+  }, [connected, user?.tradeUrl]); // Also refresh when user trade URL changes
 
   // Fetch a single metadata JSON and map to CSGOSkin
   const resolveSkinFromMetadata = async (uri: string): Promise<CSGOSkin> => {
@@ -525,53 +526,17 @@ export default function PacksPage() {
       dismissBuybackToast();
       buybackToastIdRef.current = toast.loading("Calculating buyback amount...");
 
-      // Calculate buyback amount
-      const calcResponse = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-        }/api/v1/buyback/calculate/${lastPackResult.asset}`
-      );
-      const calcData = await calcResponse.json();
-
-      if (!calcData.success) {
-        dismissBuybackToast();
-        buybackToastIdRef.current = toast.error("Failed to calculate buyback");
-        return;
-      }
+      // Calculate buyback amount using buybackService
+      const calcData = await buybackService.calculateBuyback(lastPackResult.asset);
 
       dismissBuybackToast();
       buybackToastIdRef.current = toast.loading(
-        `Buyback: ${calcData.data.buybackAmount} SOL - Requesting transaction...`
-      );
-      // buyback calculation received
-
-      const walletAddress = publicKey.toBase58();
-
-      const txResponse = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-        }/api/v1/buyback/request`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            nftMint: lastPackResult.asset,
-            walletAddress: walletAddress,
-          }),
-        }
+        `Buyback: ${calcData.buybackAmount} SOL - Requesting transaction...`
       );
 
-      const txData = await txResponse.json();
-
-      if (!txData.success) {
-        dismissBuybackToast();
-        buybackToastIdRef.current = toast.error("Failed to create buyback transaction");
-        return;
-      }
-
-      const transaction = txData.data.transaction;
+      // Request buyback transaction using buybackService
+      const requestData = await buybackService.requestBuyback(lastPackResult.asset);
+      const transaction = requestData.transaction;
 
       if (!signTransaction) {
         dismissBuybackToast();
@@ -592,107 +557,65 @@ export default function PacksPage() {
       dismissBuybackToast();
       buybackToastIdRef.current = toast.loading("Confirming buyback...");
 
-      // Add timeout to prevent hanging
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
       try {
-        const confirmResponse = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-          }/api/v1/buyback/confirm`,
+        // Confirm buyback using buybackService
+        // The signed transaction itself proves wallet ownership and authorization
+        const confirmData = await buybackService.confirmBuybackSigned({
+          nftMint: lastPackResult.asset,
+          walletAddress: publicKey.toBase58(),
+          signedTransaction: Buffer.from(rawTransaction).toString("base64"),
+        });
+
+        dismissBuybackToast();
+        const txSig: string | undefined =
+          confirmData.transactionSignature ||
+          confirmData.signature ||
+          confirmData.txSignature ||
+          confirmData.hash ||
+          confirmData.tx ||
+          undefined;
+        buybackToastIdRef.current = toast.success(
+          <div className="flex flex-col gap-1">
+            <p className="font-semibold text-sm">Skin successfully bought back! 💰</p>
+            {txSig ? (
+              <a
+                href={getSolscanUrl(txSig)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+              >
+                View transaction on Solscan
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            ) : null}
+          </div>,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              nftMint: lastPackResult.asset,
-              walletAddress: publicKey.toBase58(),
-              signedTransaction: Buffer.from(rawTransaction).toString("base64"),
-            }),
-            signal: controller.signal,
+            duration: 6000,
           }
         );
 
-        clearTimeout(timeoutId);
-
-        if (!confirmResponse.ok) {
-          const errorText = await confirmResponse.text();
-          throw new Error(`HTTP ${confirmResponse.status}: ${errorText}`);
-        }
-
-        const confirmData = await confirmResponse.json();
-
-        if (confirmData.success) {
-          dismissBuybackToast();
-          const txSig: string | undefined =
-            confirmData.data?.transactionSignature ||
-            confirmData.data?.signature ||
-            confirmData.data?.txSignature ||
-            confirmData.data?.hash ||
-            confirmData.data?.tx ||
-            undefined;
-          buybackToastIdRef.current = toast.success(
-            <div className="flex flex-col gap-1">
-              <p className="font-semibold text-sm">Skin successfully bought back! 💰</p>
-              {txSig ? (
-                <a
-                  href={getSolscanUrl(txSig)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
-                >
-                  View transaction on Solscan
-                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
-              ) : null}
-            </div>,
-            {
-              duration: 6000,
-            }
-          );
-
-          // Show summary modal
-          const packPrice = selectedPack
-            ? parseFloat(String((selectedPack as any).priceSol))
-            : 0;
-          const payout = Number(
-            confirmData.data?.amountPaid ??
-              confirmData.data?.buybackAmount ??
-              confirmData.data?.amount ??
-              0
-          );
-          setBuybackAmountSol(payout);
-          setShowResult(false);
-          setWonSkin(null);
-          setLastPackResult(null);
-          setShowBuybackModal(true);
-        } else {
-          dismissBuybackToast();
-          buybackToastIdRef.current = toast.error(
-            confirmData.error?.message || "Failed to confirm buyback"
-          );
-        }
+        // Show summary modal
+        const packPrice = selectedPack
+          ? parseFloat(String((selectedPack as any).priceSol))
+          : 0;
+        const payout = Number(confirmData.amountPaid ?? 0);
+        setBuybackAmountSol(payout);
+        setShowResult(false);
+        setWonSkin(null);
+        setLastPackResult(null);
+        setShowBuybackModal(true);
       } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        let fallbackDisplayed = false;
         // txn might be on chain even if backend timed out
         dismissBuybackToast();
         buybackToastIdRef.current = toast.success(
           <div className="flex flex-col gap-1">
             <p className="font-semibold text-sm">Skin successfully bought back! ✅</p>
-            <p className="text-xs text-zinc-400">(Transaction likely sent. Backend didn’t respond.)</p>
+            <p className="text-xs text-zinc-400">(Transaction likely sent. Backend didn't respond.)</p>
           </div>,
           { duration: 8000 }
         );
-        fallbackDisplayed = true;
-        if (!fallbackDisplayed) {
-          dismissBuybackToast();
-          buybackToastIdRef.current = toast.error(fetchError?.message || "Payout failed, and transaction did not hit the chain.");
-        }
       }
     } catch (error: any) {
       dismissBuybackToast();
@@ -733,11 +656,10 @@ export default function PacksPage() {
   useEffect(() => {
     if (showResult && lastPackResult?.asset) {
       setPendingBuybackAmount(null);
-      fetch(`/api/v1/buyback/calculate/${lastPackResult.asset}`)
-        .then(r => r.json())
-        .then(j => {
-          if (j.success && typeof j.data?.buybackAmount === 'number') {
-            setPendingBuybackAmount(j.data.buybackAmount);
+      buybackService.calculateBuyback(lastPackResult.asset)
+        .then(calcData => {
+          if (typeof calcData.buybackAmount === 'number') {
+            setPendingBuybackAmount(calcData.buybackAmount);
           }
         })
         .catch(() => setPendingBuybackAmount(null));
@@ -748,14 +670,13 @@ export default function PacksPage() {
   useEffect(() => {
     if (showResult && lastPackResult?.asset) {
       setPendingBuybackInfo(null);
-      fetch(`/api/v1/buyback/calculate/${lastPackResult.asset}`)
-        .then(r => r.json())
-        .then(j => {
-          if (j.success && typeof j.data?.buybackAmount === 'number') {
+      buybackService.calculateBuyback(lastPackResult.asset)
+        .then(calcData => {
+          if (typeof calcData.buybackAmount === 'number') {
             setPendingBuybackInfo({
               skinUsd: wonSkin?.value ?? 0,
-              skinSol: j.data.skinPrice ?? 0,
-              payoutSol: j.data.buybackAmount ?? 0,
+              skinSol: calcData.skinPrice ?? 0,
+              payoutSol: calcData.buybackAmount ?? 0,
             });
           }
         })
@@ -1413,11 +1334,8 @@ export default function PacksPage() {
                           e.stopPropagation();
                           dismissClaimToast();
                           try {
-                            const userProfile = await authService.getProfile();
-                            if (
-                              !userProfile.tradeUrl ||
-                              userProfile.tradeUrl.trim() === ""
-                            ) {
+                            // Double-check trade URL is still valid (user might have removed it)
+                            if (!userTradeUrl || userTradeUrl.trim() === "") {
                               claimToastIdRef.current = toast.error(
                                 "Please set your Steam Trade URL in your profile before claiming skins!"
                               );
@@ -1438,7 +1356,7 @@ export default function PacksPage() {
                               await discordService.createSkinClaimTicket({
                                 userId: walletCtx.publicKey?.toString() || 'unknown',
                                 walletAddress: walletCtx.publicKey?.toString() || 'unknown',
-                                steamTradeUrl: userProfile.tradeUrl,
+                                steamTradeUrl: userTradeUrl,
                                 skinName: wonSkin.name,
                                 skinRarity: wonSkin.rarity,
                                 skinWeapon: wonSkin.name.split(" | ")[0] || 'Unknown',
@@ -1447,19 +1365,14 @@ export default function PacksPage() {
                                 caseOpeningId: `pack-${Date.now()}`,
                               });
 
-                              // Create skin claimed activity
+                              // Create skin claimed activity using pendingSkinsService (CSRF token added automatically)
                               try {
-                                const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
-                                await fetch(`${baseUrl}/api/v1/pending-skins/claim-activity`, {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    userId: walletCtx.publicKey?.toString() || 'unknown',
-                                    skinName: wonSkin.name,
-                                    skinRarity: wonSkin.rarity,
-                                    skinWeapon: wonSkin.name.split(" | ")[0] || 'Unknown',
-                                    nftMintAddress: lastPackResult.asset,
-                                  }),
+                                await pendingSkinsService.createSkinClaimedActivity({
+                                  walletAddress: walletCtx.publicKey?.toString() || 'unknown',
+                                  skinName: wonSkin.name,
+                                  skinRarity: wonSkin.rarity,
+                                  skinWeapon: wonSkin.name.split(" | ")[0] || 'Unknown',
+                                  nftMintAddress: lastPackResult.asset,
                                 });
                               } catch (activityError) {
                                 // Non-critical, just log

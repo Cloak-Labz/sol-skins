@@ -76,6 +76,8 @@ export function getProgram(): Program {
 
 /**
  * Get connection (readonly)
+ * Note: Use sendRawTransactionWithTimeout and confirmTransactionWithTimeout
+ * from utils/solanaHelpers for operations with timeout protection
  */
 export function getConnection(): Connection {
   return new Connection(RPC_ENDPOINT, "confirmed");

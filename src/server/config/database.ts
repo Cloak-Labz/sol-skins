@@ -17,6 +17,8 @@ import { BoxSkin } from "../entities/BoxSkin";
 import { Metadata } from "../entities/Metadata";
 import { PendingSkin } from "../entities/PendingSkin";
 import { BuybackRecord } from "../entities/BuybackRecord";
+import { AuditLog } from "../entities/AuditLog";
+import { RequestNonce } from "../entities/RequestNonce";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -45,9 +47,23 @@ export const AppDataSource = new DataSource({
     Metadata,
     PendingSkin,
     BuybackRecord,
+    AuditLog,
+    RequestNonce,
   ],
   migrations: ["src/server/database/migrations/*{.ts,.js}"],
   // subscribers: ["src/server/database/subscribers/*{.ts,.js}"],
+  // SECURITY: Database query timeout protection
+  extra: {
+    // Connection timeout (how long to wait for initial connection)
+    connectionTimeoutMillis: 10000, // 10 seconds
+    // Statement timeout (how long a query can run before being cancelled)
+    statement_timeout: 5000, // 5 seconds (PostgreSQL specific)
+    // Query timeout (TypeORM specific, applies to all queries)
+    query_timeout: 5000, // 5 seconds
+    // Connection pool settings
+    max: 20, // Maximum number of connections in pool
+    idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+  },
 });
 
 export const initializeDatabase = async (): Promise<void> => {

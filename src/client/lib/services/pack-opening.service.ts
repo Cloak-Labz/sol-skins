@@ -4,6 +4,7 @@ import { mplCandyMachine } from "@metaplex-foundation/mpl-candy-machine";
 import { generateSigner, publicKey, transactionBuilder, some } from "@metaplex-foundation/umi";
 import { setComputeUnitLimit } from "@metaplex-foundation/mpl-toolbox";
 import { fetchCandyMachine, mintV2 } from "@metaplex-foundation/mpl-candy-machine";
+import { apiClient } from "./api.service";
 
 export interface PackOpeningResult {
   nftMint: string;
@@ -102,65 +103,62 @@ export class PackOpeningService {
     await new Promise(resolve => setTimeout(resolve, 12000));
 
     // Step 4: Reveal the skin
-    const revealResponse = await fetch(`${this.baseUrl}/api/v1/reveal/${nftMintAddress}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        boxId: boxId,
-        walletAddress: wallet.publicKey.toString(),
-      }),
+    // apiClient.post returns the data directly (not wrapped in { success, data })
+    const revealResponseData = await apiClient.post<{
+      skinName: string;
+      weapon?: string;
+      skinRarity: string;
+      metadataUri?: string;
+      imageUrl?: string;
+      nftMint: string;
+      txSignature: string;
+    }>(`/reveal/${nftMintAddress}`, {
+      boxId: boxId,
+      walletAddress: wallet.publicKey.toString(),
     });
 
-    const revealData = await revealResponse.json();
-    
-    if (!revealData.success) {
-      throw new Error(revealData.error?.message || "Failed to reveal skin");
-    }
-
     // Step 5: Create pack opening transaction in backend
-    const transactionResponse = await fetch(`${this.baseUrl}/api/v1/pack-opening/transaction`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    // apiClient.post returns the data directly (not wrapped in { success, data })
+    let savedUserSkin: { imageUrl?: string } | undefined;
+    try {
+      const transactionData = await apiClient.post<{
+        userSkin?: {
+          imageUrl?: string;
+        };
+      }>("/pack-opening/transaction", {
         userId: wallet.publicKey.toString(), // Will be resolved to user ID by backend
         boxId: boxId,
         nftMint: nftMintAddress,
         signature: signature,
         skinData: {
-          name: revealData.data.skinName,
-          weapon: revealData.data.weapon || (revealData.data.skinName?.split(' | ')[0] || 'Unknown'),
-          rarity: revealData.data.skinRarity,
+          name: revealResponseData.skinName,
+          weapon: revealResponseData.weapon || (revealResponseData.skinName?.split(' | ')[0] || 'Unknown'),
+          rarity: revealResponseData.skinRarity,
           basePriceUsd: 0, // Will be calculated from rarity
-          metadataUri: revealData.data.metadataUri,
+          metadataUri: revealResponseData.metadataUri,
         },
-      }),
-    });
-
-    const transactionData = await transactionResponse.json();
-    
-    if (!transactionData.success) {
+      });
+      savedUserSkin = transactionData?.userSkin;
+    } catch (error) {
+      // Transaction creation failed, but we can continue with reveal data
+      console.warn('Failed to create pack opening transaction:', error);
     }
 
     // Step 6: Use the skin data from the reveal service
-    const savedUserSkin = transactionData?.data?.userSkin;
-    const resolvedImageUrl: string | undefined = savedUserSkin?.imageUrl || revealData?.data?.imageUrl;
+    const resolvedImageUrl: string | undefined = savedUserSkin?.imageUrl || revealResponseData?.imageUrl;
     // The reveal service already selected and updated the NFT metadata
     return {
       nftMint: nftMintAddress,
       signature: signature,
       skin: {
         id: nftMintAddress, // Use NFT mint as unique ID
-        name: revealData.data.skinName,
-        weapon: revealData.data.weapon || (revealData.data.skinName.split(' | ')[0] || 'Unknown'),
-        rarity: revealData.data.skinRarity,
+        name: revealResponseData.skinName,
+        weapon: revealResponseData.weapon || (revealResponseData.skinName?.split(' | ')[0] || 'Unknown'),
+        rarity: revealResponseData.skinRarity,
         condition: 'Field-Tested', // Default condition
         imageUrl: resolvedImageUrl,
         basePriceUsd: 0, // Will be calculated from rarity
-        metadataUri: revealData.data.metadataUri,
+        metadataUri: revealResponseData.metadataUri,
       },
     };
   }
@@ -185,24 +183,15 @@ export class PackOpeningService {
     transaction: string;
     buybackAmount: number;
   }> {
-    const response = await fetch(`${this.baseUrl}/api/v1/buyback/request`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        nftMint,
-        walletAddress,
-      }),
+    // Nonce and timestamp will be added automatically by apiClient interceptor
+    // apiClient.post returns the data directly (not wrapped in { success, data })
+    return apiClient.post<{
+      transaction: string;
+      buybackAmount: number;
+    }>("/buyback/request", {
+      nftMint,
+      walletAddress,
     });
-
-    const data = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.error?.message || "Failed to request buyback");
-    }
-
-    return data.data;
   }
 
   async createPendingSkin(
@@ -220,29 +209,19 @@ export class PackOpeningService {
     nftMint: string,
     transactionHash: string
   ): Promise<void> {
-    const response = await fetch(`${this.baseUrl}/api/v1/pending-skins`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId,
-        skinName: skin.name,
-        skinRarity: skin.rarity,
-        skinWeapon: skin.weapon,
-        skinValue: skin.basePriceUsd,
-        skinImage: skin.imageUrl || "",
-        nftMintAddress: nftMint,
-        transactionHash,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      }),
+    // apiClient.post returns the data directly (not wrapped in { success, data })
+    // If it throws, the error is already handled by apiClient
+    await apiClient.post("/pending-skins", {
+      userId,
+      skinName: skin.name,
+      skinRarity: skin.rarity,
+      skinWeapon: skin.weapon,
+      skinValue: skin.basePriceUsd,
+      skinImage: skin.imageUrl || "",
+      nftMintAddress: nftMint,
+      transactionHash,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
     });
-
-    const data = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.error?.message || "Failed to create pending skin");
-    }
   }
 
   async createCaseOpeningRecord(data: {
@@ -258,57 +237,38 @@ export class PackOpeningService {
   }): Promise<void> {
     // First create the UserSkin record via pack opening transaction
     try {
-      const transactionResponse = await fetch(`${this.baseUrl}/api/v1/pack-opening/transaction`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      await apiClient.post("/pack-opening/transaction", {
+        userId: data.userId,
+        boxId: data.boxId,
+        nftMint: data.nftMint,
+        signature: data.transactionHash,
+        skinData: {
+          name: data.skinName,
+          weapon: data.skinWeapon,
+          rarity: data.skinRarity,
+          basePriceUsd: data.skinValue,
+          metadataUri: `https://arweave.net/${data.nftMint.slice(0, 32)}`,
         },
-        body: JSON.stringify({
-          userId: data.userId,
-          boxId: data.boxId,
-          nftMint: data.nftMint,
-          signature: data.transactionHash,
-          skinData: {
-            name: data.skinName,
-            weapon: data.skinWeapon,
-            rarity: data.skinRarity,
-            basePriceUsd: data.skinValue,
-            metadataUri: `https://arweave.net/${data.nftMint.slice(0, 32)}`,
-          },
-        }),
       });
-
-      if (!transactionResponse.ok) {
-        console.warn('Failed to create pack opening transaction:', await transactionResponse.text());
-      }
     } catch (error) {
+      console.warn('Failed to create pack opening transaction:', error);
     }
 
     // Then create the case opening record for activity tracking
-    const response = await fetch(`${this.baseUrl}/api/v1/cases/pack-opening`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId: data.userId,
-        lootBoxTypeId: data.boxId, // Use boxId as lootBoxTypeId for pack openings
-        nftMintAddress: data.nftMint,
-        transactionId: data.transactionHash,
-        skinName: data.skinName,
-        skinRarity: data.skinRarity,
-        skinWeapon: data.skinWeapon,
-        skinValue: data.skinValue,
-        skinImage: data.skinImage,
-        isPackOpening: true, // Flag to indicate this is a pack opening, not a case opening
-      }),
+    // apiClient.post returns the data directly (not wrapped in { success, data })
+    // If it throws, the error is already handled by apiClient
+    await apiClient.post("/cases/pack-opening", {
+      userId: data.userId,
+      lootBoxTypeId: data.boxId, // Use boxId as lootBoxTypeId for pack openings
+      nftMintAddress: data.nftMint,
+      transactionId: data.transactionHash,
+      skinName: data.skinName,
+      skinRarity: data.skinRarity,
+      skinWeapon: data.skinWeapon,
+      skinValue: data.skinValue,
+      skinImage: data.skinImage,
+      isPackOpening: true, // Flag to indicate this is a pack opening, not a case opening
     });
-
-    const result = await response.json();
-    
-    if (!result.success) {
-      throw new Error(result.error?.message || "Failed to create case opening record");
-    }
   }
 }
 

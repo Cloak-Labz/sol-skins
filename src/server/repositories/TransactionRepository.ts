@@ -58,7 +58,13 @@ export class TransactionRepository {
       queryBuilder.orderBy("transaction.createdAt", "DESC");
     }
 
-    return queryBuilder.skip(skip).take(limit).getManyAndCount();
+    // SECURITY: Apply query timeout to prevent slow query attacks
+    const { queryBuilderWithTimeout, getTimeoutForOperation } = require('../utils/queryTimeout');
+    return queryBuilderWithTimeout(
+      queryBuilder.skip(skip).take(limit).getManyAndCount(),
+      getTimeoutForOperation('complex'),
+      'TransactionRepository.findAll'
+    );
   }
 
   async findByUser(
@@ -102,7 +108,13 @@ export class TransactionRepository {
       queryBuilder.orderBy("transaction.createdAt", "DESC");
     }
 
-    return queryBuilder.skip(skip).take(limit).getManyAndCount();
+    // SECURITY: Apply query timeout to prevent slow query attacks
+    const { queryBuilderWithTimeout, getTimeoutForOperation } = require('../utils/queryTimeout');
+    return queryBuilderWithTimeout(
+      queryBuilder.skip(skip).take(limit).getManyAndCount(),
+      getTimeoutForOperation('complex'),
+      'TransactionRepository.findByUser'
+    );
   }
 
   async create(transactionData: Partial<Transaction>): Promise<Transaction> {

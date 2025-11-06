@@ -63,6 +63,12 @@ export class PackOpeningService {
         throw new AppError('Box not found', 404, 'BOX_NOT_FOUND');
       }
 
+      // SECURITY: Validate NFT mint address format before using
+      const { isValidMintAddress } = require('../utils/solanaValidation');
+      if (!isValidMintAddress(nftMint)) {
+        throw new AppError(`Invalid NFT mint address format: ${nftMint}`, 400);
+      }
+      
       // Check if user skin already exists for this NFT mint
       const existingUserSkin = await this.userSkinRepository.findOne({ nftMintAddress: nftMint });
 
@@ -92,28 +98,78 @@ export class PackOpeningService {
         console.error('Failed to look up box skin value:', err);
       }
 
-      // Try resolve image URL from metadata (if provided)
+      // Try resolve image URL from metadata (if provided) with SSRF protection
       let resolvedImageUrl: string | undefined;
       if (skinData.metadataUri) {
         try {
-          const metaResp = await axios.get(skinData.metadataUri, { timeout: 8000 });
-          let img: string | undefined = metaResp.data?.image;
-          if (img && img.startsWith('ipfs://')) {
-            img = `https://ipfs.io/ipfs/${img.replace('ipfs://', '')}`;
+          // Validate metadata URI before fetching
+          const { validateUrlForSSRF } = require('../utils/ssrfProtection');
+          const metadataValidation = validateUrlForSSRF(skinData.metadataUri, {
+            requireHttps: true,
+            allowArweave: true,
+            allowIpfs: true,
+          });
+
+          if (metadataValidation.isValid && metadataValidation.sanitizedUrl) {
+            const safeMetadataUri = metadataValidation.sanitizedUrl;
+            const metaResp = await axios.get(safeMetadataUri, { timeout: 8000 });
+            let img: string | undefined = metaResp.data?.image;
+            
+            if (img) {
+              // Validate image URL before using it
+              if (img.startsWith('ipfs://')) {
+                const ipfsValidation = validateUrlForSSRF(img, {
+                  requireHttps: true,
+                  allowIpfs: true,
+                });
+                if (ipfsValidation.isValid && ipfsValidation.sanitizedUrl) {
+                  img = ipfsValidation.sanitizedUrl;
+                } else {
+                  const { logger } = require('../middlewares/logger');
+                  logger.warn('Invalid IPFS image URL, skipping:', img);
+                  img = undefined;
+                }
+              } else if (/^https?:\/\//.test(img)) {
+                const imgValidation = validateUrlForSSRF(img, {
+                  requireHttps: true,
+                  allowIpfs: true,
+                  allowArweave: true,
+                });
+                if (imgValidation.isValid && imgValidation.sanitizedUrl) {
+                  img = imgValidation.sanitizedUrl;
+                } else {
+                  const { logger } = require('../middlewares/logger');
+                  logger.warn('Invalid image URL, skipping:', img);
+                  img = undefined;
+                }
+              } else {
+                img = undefined;
+              }
+            }
+            
+            if (img) {
+              resolvedImageUrl = img;
+            }
+          } else {
+            const { logger } = require('../middlewares/logger');
+            logger.warn('Invalid metadata URI, skipping metadata fetch:', metadataValidation.error);
           }
-          if (img && /^https?:\/\//.test(img)) {
-            resolvedImageUrl = img;
-          }
-        } catch (err) {
+        } catch (error) {
+          const { logger } = require('../middlewares/logger');
+          logger.warn('Failed to fetch metadata or validate image URL:', error);
           // ignore; optional best-effort
         }
       }
+
+      // Sanitize skin name to prevent XSS
+      const { sanitizeSkinName } = require('../utils/sanitization');
+      const sanitizedSkinName = sanitizeSkinName(skinData.name);
 
       // Create user skin
       const savedUserSkin = await this.userSkinRepository.create({
         userId,
         nftMintAddress: nftMint,
-        name: skinData.name,
+        name: sanitizedSkinName,
         metadataUri: skinData.metadataUri,
         imageUrl: resolvedImageUrl,
         openedAt: new Date(),
@@ -168,13 +224,21 @@ export class PackOpeningService {
         throw new AppError('User skin not found', 404, 'USER_SKIN_NOT_FOUND');
       }
 
+      // SECURITY: Use safe math to prevent integer overflow
+      const { validateAmount, solToUsd, safeAdd, toNumber } = require('../utils/safeMath');
+      const Decimal = require('decimal.js').default;
+      
+      const buybackAmountDecimal = validateAmount(buybackAmount, 'buyback amount');
+      const solPriceUsd = 200; // Approximate SOL price
+      const amountUsd = solToUsd(buybackAmountDecimal, solPriceUsd);
+      
       // Create buyback transaction
       const savedTransaction = await this.transactionRepository.create({
         userId,
         transactionType: TransactionType.BUYBACK,
-        amountSol: buybackAmount,
-        amountUsdc: buybackAmount * 100, // Approximate SOL to USDC
-        amountUsd: buybackAmount * 100,
+        amountSol: toNumber(buybackAmountDecimal),
+        amountUsdc: toNumber(amountUsd), // USDC ≈ USD
+        amountUsd: toNumber(amountUsd),
         userSkinId: userSkin.id,
         txHash: signature,
         status: TransactionStatus.CONFIRMED,
@@ -182,12 +246,14 @@ export class PackOpeningService {
       });
 
       // Update user skin
-      await this.userSkinRepository.markAsSold(userSkin.id, buybackAmount);
+      await this.userSkinRepository.markAsSold(userSkin.id, toNumber(buybackAmountDecimal));
 
-      // Update user stats
+      // Update user stats (safe addition)
       const user = await this.userRepository.findById(userId);
       if (user) {
-        user.totalEarned = (user.totalEarned || 0) + (buybackAmount * 100);
+        const currentTotal = new Decimal(user.totalEarned || 0);
+        const newTotal = safeAdd(currentTotal, amountUsd, 'total earned');
+        user.totalEarned = toNumber(newTotal);
         await this.userRepository.update(user.id, user);
       }
 

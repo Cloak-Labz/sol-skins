@@ -147,33 +147,30 @@ export default function PackManagerPage() {
     weight: 1,
   });
 
-  // Check if connected wallet is admin
+  // SECURITY: Admin status is ONLY verified by backend - this client-side check is for UX only
+  // Backend will return 403 for non-admin users, which we handle gracefully
+  // This prevents exposing admin wallets in client code and ensures security cannot be bypassed
   useEffect(() => {
-    const adminWallets = (process.env.NEXT_PUBLIC_ADMIN_WALLETS || "").split(",").map(w => w.trim()).filter(Boolean);
-    if (publicKey) {
-      const walletAddress = publicKey.toBase58();
-      const isAdminWallet = adminWallets.length > 0 && adminWallets.includes(walletAddress);
-      setIsAdmin(isAdminWallet);
-      if (!isAdminWallet) {
-        toast.error("Access denied: Admin wallet required");
-      }
+    if (connected && publicKey) {
+      // Try to verify admin access by checking if we can load boxes
+      // Backend will return 403 if not admin (adminMiddleware enforces this)
+      loadBoxes().catch(() => {
+        setIsAdmin(false);
+      });
     } else {
       setIsAdmin(false);
     }
-  }, [publicKey]);
+  }, [connected, publicKey]);
 
-  // Load boxes on mount
-  useEffect(() => {
-    if (isAdmin) {
-      loadBoxes();
-    }
-  }, [isAdmin]);
+  // Load boxes on mount (if connected)
+  // SECURITY: Backend will verify admin status via adminMiddleware on all admin routes
 
   const loadBoxes = async () => {
     try {
       setLoading(true);
       const data = await boxesService.getAllBoxes();
       setBoxes(data);
+      setIsAdmin(true); // If we got here, user is admin
       
       // Check collection files status for each box
       const statusPromises = data.map(async (box: Box) => {
@@ -193,8 +190,15 @@ export default function PackManagerPage() {
       });
       
       setCollectionFilesStatus(statusMap);
-    } catch (error) {
-      toast.error("Failed to load boxes");
+    } catch (error: any) {
+      // SECURITY: If 403, user is not admin (backend adminMiddleware blocked access)
+      // This is the ONLY place where admin status is truly verified
+      if (error?.status === 403 || error?.response?.status === 403) {
+        setIsAdmin(false);
+        toast.error("Access denied: Admin wallet required");
+      } else {
+        toast.error("Failed to load boxes");
+      }
     } finally {
       setLoading(false);
     }

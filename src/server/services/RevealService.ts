@@ -3,7 +3,7 @@ import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { mplTokenMetadata, updateV1, fetchMetadataFromSeeds } from '@metaplex-foundation/mpl-token-metadata';
 import { publicKey, createSignerFromKeypair } from '@metaplex-foundation/umi';
 import { config } from '../config/env';
-import axios from 'axios';
+import { HttpService } from '../utils/httpService';
 import { AppDataSource } from '../config/database';
 import { UserSkin } from '../entities/UserSkin';
 import { User } from '../entities/User';
@@ -11,6 +11,7 @@ import { SkinRarity, SkinTemplate } from '../entities/SkinTemplate';
 import { BoxSkin } from '../entities/BoxSkin';
 import { Box } from '../entities/Box';
 import { CaseOpening } from '../entities/CaseOpening';
+import { logger } from '../middlewares/logger';
 
 export interface RevealResult {
   nftMint: string;
@@ -26,6 +27,7 @@ export class RevealService {
   private connection: Connection;
   private umi: any;
   private updateAuthority: Keypair;
+  private httpService: HttpService;
 
   constructor() {
     this.connection = new Connection(config.solana.rpcUrl, 'confirmed');
@@ -44,6 +46,9 @@ export class RevealService {
     );
     const signer = createSignerFromKeypair(this.umi, umiKeypair);
     this.umi.use({ install: (umi: any) => { umi.payer = signer; } });
+    
+    // Initialize HTTP service for safe external requests
+    this.httpService = new HttpService();
   }
 
   /**
@@ -103,6 +108,12 @@ export class RevealService {
    * Reveal an NFT by updating its metadata
    */
   async revealNFT(nftMint: string, boxId: string, walletAddress?: string): Promise<RevealResult> {
+    // SECURITY: Validate NFT mint address format before using
+    const { isValidMintAddress } = require('../utils/solanaValidation');
+    if (!isValidMintAddress(nftMint)) {
+      throw new Error(`Invalid NFT mint address format: ${nftMint}`);
+    }
+    
     try {
       // Roll rarity and select from the specific box's pool
       const rarity = this.rollRarity(boxId);
@@ -179,19 +190,78 @@ export class RevealService {
         userId = user?.id;
       }
 
-      // Try to resolve image URL from metadata
+      // Try to resolve image URL from metadata with SSRF protection
       let resolvedImageUrl: string | undefined;
       try {
-        const metaResp = await axios.get(metadataUri, { timeout: 8000 });
-        let img: string | undefined = metaResp.data?.image;
-        if (img && img.startsWith('ipfs://')) {
-          img = `https://ipfs.io/ipfs/${img.replace('ipfs://', '')}`;
+        // Validate metadata URI before fetching
+        const { validateUrlForSSRF } = require('../utils/ssrfProtection');
+        const metadataValidation = validateUrlForSSRF(metadataUri, {
+          requireHttps: true,
+          allowArweave: true,
+          allowIpfs: true,
+        });
+
+        if (metadataValidation.isValid && metadataValidation.sanitizedUrl) {
+          const safeMetadataUri = metadataValidation.sanitizedUrl;
+          // Use HttpService for safe external requests with timeout and retry logic
+          // HttpService.get returns the response data directly, not the full response
+          const metaData = await this.httpService.get<{ image?: string }>(safeMetadataUri, {
+            timeout: 10000, // 10 seconds timeout
+            validateStatus: (status) => status >= 200 && status < 400, // Accept 2xx and 3xx
+          }, {
+            serviceName: 'metadata-fetch',
+            timeout: 10000,
+          });
+          let img: string | undefined = metaData?.image;
+          
+          if (img) {
+            // Validate image URL before using it
+            if (img.startsWith('ipfs://')) {
+              // IPFS URLs are automatically sanitized by validateUrlForSSRF
+              const ipfsValidation = validateUrlForSSRF(img, {
+                requireHttps: true,
+                allowIpfs: true,
+              });
+              if (ipfsValidation.isValid && ipfsValidation.sanitizedUrl) {
+                img = ipfsValidation.sanitizedUrl;
+              } else {
+                logger.warn('Invalid IPFS image URL, skipping:', img);
+                img = undefined;
+              }
+            } else if (/^https?:\/\//.test(img)) {
+              // Validate HTTP/HTTPS image URLs
+              const imgValidation = validateUrlForSSRF(img, {
+                requireHttps: true,
+                allowIpfs: true,
+                allowArweave: true,
+              });
+              if (imgValidation.isValid && imgValidation.sanitizedUrl) {
+                img = imgValidation.sanitizedUrl;
+              } else {
+                logger.warn('Invalid image URL, skipping:', img);
+                img = undefined;
+              }
+            } else {
+              // Relative URLs or invalid formats
+              img = undefined;
+            }
+          }
+          
+          if (img) {
+            resolvedImageUrl = img;
+          }
+        } else {
+          logger.warn('Invalid metadata URI, skipping metadata fetch:', metadataValidation.error);
         }
-        if (img && /^https?:\/\//.test(img)) {
-          resolvedImageUrl = img;
-        }
-      } catch (_) {
-        // ignore; will fallback
+      } catch (error: any) {
+        // Log error details but don't fail the reveal process
+        logger.warn('Failed to fetch metadata or validate image URL', {
+          error: error?.message || 'Unknown error',
+          status: error?.response?.status,
+          url: error?.config?.url,
+          nftMint,
+        });
+        // Continue with fallback - will use boxSkin.imageUrl if available
       }
 
       // Prefer resolved image from metadata; fallback to boxSkin.imageUrl
@@ -199,10 +269,14 @@ export class RevealService {
         resolvedImageUrl = boxSkin.imageUrl;
       }
 
+      // Sanitize skin name to prevent XSS
+      const { sanitizeSkinName } = require('../utils/sanitization');
+      const sanitizedSkinName = sanitizeSkinName(skinFullName);
+
       if (userSkin) {
         // Update existing user skin
         userSkin.skinTemplateId = skin?.id;
-        userSkin.name = skinFullName;
+        userSkin.name = sanitizedSkinName;
         userSkin.metadataUri = metadataUri;
         if (resolvedImageUrl) {
           userSkin.imageUrl = resolvedImageUrl;
@@ -216,7 +290,7 @@ export class RevealService {
         userSkin = userSkinRepo.create({
           nftMintAddress: nftMint,
           skinTemplateId: skin?.id,
-          name: skinFullName,
+          name: sanitizedSkinName,
           metadataUri: metadataUri,
           imageUrl: resolvedImageUrl,
           openedAt: new Date(),
@@ -240,15 +314,20 @@ export class RevealService {
 
       return {
         nftMint,
-        skinName: skinFullName,
+        skinName: sanitizedSkinName,
         weapon,
         skinRarity: boxSkin.rarity,
         imageUrl: resolvedImageUrl,
         metadataUri: metadataUri,
         txSignature,
       };
-    } catch (error) {
-      console.error('Failed to reveal NFT:', error);
+    } catch (error: any) {
+      logger.error('Failed to reveal NFT', {
+        nftMint,
+        boxId,
+        error: error?.message || 'Unknown error',
+        stack: error?.stack,
+      });
       throw error;
     }
   }
@@ -257,6 +336,12 @@ export class RevealService {
    * Check if an NFT has been revealed
    */
   async isRevealed(nftMint: string): Promise<boolean> {
+    // SECURITY: Validate NFT mint address format before using
+    const { isValidMintAddress } = require('../utils/solanaValidation');
+    if (!isValidMintAddress(nftMint)) {
+      throw new Error(`Invalid NFT mint address format: ${nftMint}`);
+    }
+    
     const userSkinRepo = AppDataSource.getRepository(UserSkin);
     const userSkin = await userSkinRepo.findOne({
       where: { nftMintAddress: nftMint },
@@ -274,6 +359,12 @@ export class RevealService {
     skinRarity?: string;
     metadataUri?: string;
   }> {
+    // SECURITY: Validate NFT mint address format before using
+    const { isValidMintAddress } = require('../utils/solanaValidation');
+    if (!isValidMintAddress(nftMint)) {
+      throw new Error(`Invalid NFT mint address format: ${nftMint}`);
+    }
+    
     const userSkinRepo = AppDataSource.getRepository(UserSkin);
     const userSkin = await userSkinRepo.findOne({
       where: { nftMintAddress: nftMint },
@@ -302,6 +393,13 @@ export class RevealService {
    * Batch reveal multiple NFTs
    */
   async batchReveal(nftMints: string[], boxId: string): Promise<RevealResult[]> {
+    // SECURITY: Validate all NFT mint addresses before processing
+    const { isValidMintAddress } = require('../utils/solanaValidation');
+    for (const nftMint of nftMints) {
+      if (!isValidMintAddress(nftMint)) {
+        throw new Error(`Invalid NFT mint address format: ${nftMint}`);
+      }
+    }
     const results: RevealResult[] = [];
 
     for (const nftMint of nftMints) {

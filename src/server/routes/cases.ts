@@ -9,14 +9,14 @@ const casesController = new CasesController();
 const userService = new UserService();
 const walletAuth = new WalletAuthMiddleware(userService);
 
-// POST /cases/open - Open a case (requires wallet)
-casesRoutes.post('/open', walletAuth.requireWallet, validateSchema(schemas.openCase), casesController.openCase);
+// POST /cases/open - Open a case (requires wallet with signature)
+casesRoutes.post('/open', walletAuth.requireWalletWithSignature, validateSchema(schemas.openCase), casesController.openCase);
 
 // GET /cases/opening/:id/status - Get case opening status (requires wallet)
 casesRoutes.get('/opening/:id/status', walletAuth.requireWallet, casesController.getOpeningStatus);
 
-// POST /cases/opening/:id/decision - Make decision on case opening (requires wallet)
-casesRoutes.post('/opening/:id/decision', walletAuth.requireWallet, validateSchema(schemas.caseDecision), casesController.makeDecision);
+// POST /cases/opening/:id/decision - Make decision on case opening (requires wallet with signature)
+casesRoutes.post('/opening/:id/decision', walletAuth.requireWalletWithSignature, validateSchema(schemas.caseDecision), casesController.makeDecision);
 
 // GET /cases/openings - Get user's case openings (requires wallet)
 casesRoutes.get('/openings', walletAuth.requireWallet, casesController.getUserCaseOpenings);

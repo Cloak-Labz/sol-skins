@@ -18,9 +18,19 @@ import metadataRoutes from "./metadata";
 import discordRoutes from "./discord";
 import pendingSkinsRoutes from "./pending-skins";
 import { packOpeningRoutes } from "./pack-opening";
+import { initializeAuth } from "../middlewares/auth";
+import { UserService } from "../services/UserService";
+import { generateCSRFToken } from "../middlewares/security";
 
 export async function createRoutes(): Promise<Router> {
+  // Initialize auth middleware before creating routes
+  const userService = new UserService();
+  initializeAuth(userService);
+  
   const router = Router();
+
+  // CSRF token endpoint (must be before other routes)
+  router.get("/csrf-token", generateCSRFToken);
 
   // Mount route modules
   router.use("/auth", authRoutes);

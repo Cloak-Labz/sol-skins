@@ -95,7 +95,22 @@ export class CollectionFileService {
         return;
       }
 
-      const response = await axios.get(imageUrl, {
+      // Validate URL for SSRF protection before downloading
+      const { validateUrlForSSRF } = require('../utils/ssrfProtection');
+      const urlValidation = validateUrlForSSRF(imageUrl, {
+        requireHttps: true,
+        allowIpfs: true,
+        allowArweave: true,
+      });
+
+      if (!urlValidation.isValid || !urlValidation.sanitizedUrl) {
+        logger.warn('Invalid image URL, using default image:', urlValidation.error);
+        await this.copyDefaultImage(filePath);
+        return;
+      }
+
+      const safeImageUrl = urlValidation.sanitizedUrl;
+      const response = await axios.get(safeImageUrl, {
         responseType: 'stream',
         timeout: 30000, // 30 second timeout
       });

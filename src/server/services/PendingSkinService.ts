@@ -36,6 +36,14 @@ export class PendingSkinService {
 
   async createPendingSkin(data: CreatePendingSkinDTO): Promise<PendingSkin> {
     try {
+      // SECURITY: Validate NFT mint address format if provided
+      if (data.nftMintAddress) {
+        const { isValidMintAddress } = require('../utils/solanaValidation');
+        if (!isValidMintAddress(data.nftMintAddress)) {
+          throw new AppError(`Invalid NFT mint address format: ${data.nftMintAddress}`, 400);
+        }
+      }
+      
       // Idempotency: if there's already a pending record for this user + nft mint, return it
       if (data.userId && data.nftMintAddress) {
         const existing = await this.repository.findOne({
@@ -185,6 +193,20 @@ export class PendingSkinService {
 
   async deletePendingSkinByNftMint(nftMintAddress: string, walletAddress: string): Promise<void> {
     try {
+      // SECURITY: Validate wallet address and NFT mint format before query
+      const { isValidWalletAddress, isValidMintAddress } = require('../utils/solanaValidation');
+      
+      if (!isValidWalletAddress(walletAddress)) {
+        logger.warn('Invalid wallet address format in deletePendingSkinByNftMint:', walletAddress);
+        throw new AppError('Invalid wallet address format', 400);
+      }
+      
+      if (!isValidMintAddress(nftMintAddress)) {
+        logger.warn('Invalid NFT mint format in deletePendingSkinByNftMint:', nftMintAddress);
+        throw new AppError('Invalid NFT mint address format', 400);
+      }
+      
+      // TypeORM uses parameterized queries, but we validate format anyway
       const pendingSkin = await this.repository.findOne({
         where: { 
           nftMintAddress,
@@ -259,11 +281,20 @@ export class PendingSkinService {
     nftMintAddress: string;
   }): Promise<void> {
     try {
+      // SECURITY: Validate userId format before using in queries
       // Resolve userId if wallet address provided
       let actualUserId = data.userId;
       const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      
       if (!uuidV4Regex.test(data.userId)) {
-        // Treat as wallet address
+        // Treat as wallet address - validate format first
+        const { isValidWalletAddress } = require('../utils/solanaValidation');
+        if (!isValidWalletAddress(data.userId)) {
+          logger.warn('Invalid wallet address format in createSkinClaimedActivity:', data.userId);
+          return; // Don't fail, just skip activity
+        }
+        
+        // Now safe to query with validated wallet address
         const { UserRepository } = await import('../repositories/UserRepository');
         const userRepo = new UserRepository();
         const user = await userRepo.findByWalletAddress(data.userId);
@@ -272,6 +303,12 @@ export class PendingSkinService {
           return; // Don't fail, just skip activity
         }
         actualUserId = user.id;
+      } else {
+        // Validate UUID format
+        if (!uuidV4Regex.test(actualUserId)) {
+          logger.warn('Invalid UUID format in createSkinClaimedActivity:', actualUserId);
+          return;
+        }
       }
 
       // Create SKIN_CLAIMED transaction directly with skin data

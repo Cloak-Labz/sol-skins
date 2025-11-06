@@ -89,17 +89,17 @@ export default function InventoryPage() {
         sortBy: sortBy as any,
         filterBy: filterBy === "all" ? undefined : (filterBy as any),
       });
-      // The API returns { success: true, data: items } or just the items array directly
-      let inventoryItems = [];
+      // The API returns { success: true, data: items } or { skins: [...] } or just the items array directly
+      let inventoryItems: any[] = [];
       if (Array.isArray(response)) {
         // Response is already the items array
         inventoryItems = response;
-      } else if (response && response.data && Array.isArray(response.data)) {
+      } else if (response && 'data' in response && Array.isArray((response as any).data)) {
         // Response has data property with items array
-        inventoryItems = response.data;
-      } else if (response && response.skins && Array.isArray(response.skins)) {
+        inventoryItems = (response as any).data;
+      } else if (response && 'skins' in response && Array.isArray((response as any).skins)) {
         // Response has skins property (legacy format)
-        inventoryItems = response.skins;
+        inventoryItems = (response as any).skins;
       }
       
       setInventorySkins(inventoryItems);
@@ -489,7 +489,9 @@ export default function InventoryPage() {
                         <div className="flex justify-between items-center">
                           <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Minted At:</span>
                           <span className="text-orange-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
-                            {new Date(skin.mintedAt).toLocaleDateString()}
+                            {(skin.openedAt || (skin as any).createdAt) 
+                              ? new Date(skin.openedAt || (skin as any).createdAt).toLocaleDateString() 
+                              : 'N/A'}
                           </span>
                         </div>
                       </div>

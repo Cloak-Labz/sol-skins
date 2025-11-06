@@ -1,13 +1,15 @@
 import { stringify } from "csv-stringify/sync";
 import NodeCache from "node-cache";
-import axios from "axios";
+import { httpService } from "../../utils/httpService";
 import { XMLParser } from "fast-xml-parser";
 
 const cache = new NodeCache();
 
-// Add default headers to avoid 403 errors
-axios.defaults.headers.common['User-Agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
-axios.defaults.headers.common['Accept'] = 'application/json';
+// Default headers for Steam API requests
+const STEAM_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'application/json',
+};
 
 // Map common currency codes to Steam currency IDs
 const currencyMap: { [key: string]: number } = {
@@ -87,24 +89,38 @@ interface Tag {
 
 async function getSteamMarketPrice(marketHashName: string, currencyId: number): Promise<any> {
   try {
-    const res = await axios.get('https://steamcommunity.com/market/priceoverview/', {
-      params: {
-        appid: 730,
-        currency: currencyId,
-        market_hash_name: marketHashName
+    const data = await httpService.get(
+      'https://steamcommunity.com/market/priceoverview/',
+      {
+        params: {
+          appid: 730,
+          currency: currencyId,
+          market_hash_name: marketHashName
+        },
+        headers: {
+          ...STEAM_HEADERS,
+          'Referer': 'https://steamcommunity.com/market/',
+        },
       },
-      headers: { 'Referer': 'https://steamcommunity.com/market/' },
-      timeout: 15000
-    });
+      {
+        serviceName: 'steam-market-api',
+        timeout: 15000, // 15 seconds (Steam can be slow)
+        retry: {
+          maxRetries: 2,
+          retryDelay: 2000,
+          retryableStatusCodes: [429, 500, 502, 503, 504],
+        },
+      }
+    );
 
-    const data = typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+    const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
     
-    if (data?.success) {
+    if (parsedData?.success) {
       return {
         success: true,
-        lowest_price: data.lowest_price || '',
-        median_price: data.median_price || '',
-        volume: data.volume || '',
+        lowest_price: parsedData.lowest_price || '',
+        median_price: parsedData.median_price || '',
+        volume: parsedData.volume || '',
       };
     }
     
@@ -116,8 +132,23 @@ async function getSteamMarketPrice(marketHashName: string, currencyId: number): 
 
 async function getSteamId64(userId: string): Promise<string> {
   const url = `https://steamcommunity.com/id/${userId}?xml=1`;
-  const res = await axios.get(url);
-  const steamId64 = new XMLParser().parse(res.data).profile.steamID64;
+  const data = await httpService.get(
+    url,
+    {
+      headers: STEAM_HEADERS,
+    },
+    {
+      serviceName: 'steam-profile-api',
+      timeout: 10000,
+      retry: {
+        maxRetries: 2,
+        retryDelay: 2000,
+        retryableStatusCodes: [429, 500, 502, 503, 504],
+      },
+    }
+  );
+  
+  const steamId64 = new XMLParser().parse(data).profile.steamID64;
   
   if (!steamId64) {
     throw new Error("Could not parse SteamID64");
@@ -128,8 +159,22 @@ async function getSteamId64(userId: string): Promise<string> {
 
 async function fetchInventory(steamId64: string): Promise<Inventory> {
   const inventoryUrl = `https://steamcommunity.com/inventory/${steamId64}/730/2?l=english&count=200`;
-  const res = await axios.get(inventoryUrl);
-  return res.data;
+  const data = await httpService.get(
+    inventoryUrl,
+    {
+      headers: STEAM_HEADERS,
+    },
+    {
+      serviceName: 'steam-inventory-api',
+      timeout: 15000, // Inventory can be large
+      retry: {
+        maxRetries: 2,
+        retryDelay: 2000,
+        retryableStatusCodes: [429, 500, 502, 503, 504],
+      },
+    }
+  );
+  return data;
 }
 
 export interface GetInventoryOptions {

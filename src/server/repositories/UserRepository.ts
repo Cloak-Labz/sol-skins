@@ -1,6 +1,9 @@
 import { Repository } from 'typeorm';
 import { AppDataSource } from '../config/database';
 import { User } from '../entities/User';
+import { isValidWalletAddress } from '../utils/solanaValidation';
+import { logger } from '../middlewares/logger';
+import { findWithTimeout, getTimeoutForOperation } from '../utils/queryTimeout';
 
 export class UserRepository {
   private repository: Repository<User>;
@@ -10,11 +13,32 @@ export class UserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
-    return this.repository.findOne({ where: { id } });
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      logger.warn('Invalid UUID format in findById:', id);
+      throw new Error('Invalid user ID format');
+    }
+    // SECURITY: Apply query timeout to prevent slow query attacks
+    return findWithTimeout(
+      this.repository.findOne({ where: { id } }),
+      getTimeoutForOperation('read'),
+      'UserRepository.findById'
+    );
   }
 
   async findByWalletAddress(walletAddress: string): Promise<User | null> {
-    return this.repository.findOne({ where: { walletAddress } });
+    // SECURITY: Validate wallet address format before query to prevent SQL injection
+    if (!isValidWalletAddress(walletAddress)) {
+      logger.warn('Invalid wallet address format in findByWalletAddress:', walletAddress);
+      throw new Error('Invalid wallet address format');
+    }
+    // SECURITY: Apply query timeout to prevent slow query attacks
+    return findWithTimeout(
+      this.repository.findOne({ where: { walletAddress } }),
+      getTimeoutForOperation('read'),
+      'UserRepository.findByWalletAddress'
+    );
   }
 
   async create(userData: Partial<User>): Promise<User> {

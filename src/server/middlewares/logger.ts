@@ -2,6 +2,7 @@ import winston from 'winston';
 import morgan from 'morgan';
 import { Request, Response } from 'express';
 import { config } from '../config/env';
+import { sanitizeObject } from '../utils/sensitiveData';
 
 // Winston logger configuration
 export const logger = winston.createLogger({
@@ -12,11 +13,13 @@ export const logger = winston.createLogger({
     winston.format.json(),
     winston.format.printf(({ timestamp, level, message, stack, ...meta }) => {
       const logMessage = stack || message;
+      // Sanitize metadata to prevent sensitive data exposure
+      const sanitizedMeta = sanitizeObject(meta);
       return JSON.stringify({
         timestamp,
         level,
         message: logMessage,
-        ...meta,
+        ...sanitizedMeta,
       });
     })
   ),

@@ -1,9 +1,12 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
 import { ApiResponse } from "../types/api";
+import { generateRequestNonce } from "../utils/nonce";
 
 class ApiClient {
   public client: AxiosInstance;
   private walletAddress: string | null = null;
+  private csrfToken: string | null = null;
+  private csrfTokenPromise: Promise<string> | null = null;
 
   constructor() {
     // Handle both cases: with and without /api/v1 suffix
@@ -19,18 +22,174 @@ class ApiClient {
     });
 
     this.setupInterceptors();
+    // Fetch CSRF token on initialization (fire and forget - will be fetched on first request if needed)
+    // Don't await to avoid blocking constructor
+    this.fetchCSRFToken().catch(err => {
+      // Token will be fetched on first request if initialization fails
+      console.warn('CSRF token fetch failed on initialization, will retry on first request:', err);
+    });
+  }
+
+  /**
+   * Fetch CSRF token from server
+   */
+  private async fetchCSRFToken(): Promise<string> {
+    // If already fetching, return the existing promise
+    if (this.csrfTokenPromise) {
+      return this.csrfTokenPromise;
+    }
+
+    // Create new promise to fetch CSRF token
+    this.csrfTokenPromise = (async () => {
+      try {
+        // Use the base URL directly, not the axios client (avoid circular dependency)
+        const baseUrl = this.client.defaults.baseURL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+        const url = `${baseUrl}/csrf-token`;
+        
+        const response = await axios.get<{ success: boolean; data: { csrfToken: string } }>(url, {
+          timeout: 5000, // 5 second timeout
+          validateStatus: (status) => status === 200, // Only accept 200
+        });
+        
+        // Handle ApiResponse format: { success: true, data: { csrfToken: string } }
+        // Also check header as fallback
+        const token = response.data?.data?.csrfToken || response.headers['x-csrf-token'] || response.headers['X-CSRF-Token'];
+        
+        if (!token) {
+          throw new Error(`CSRF token not found in response. Response: ${JSON.stringify(response.data)}`);
+        }
+        
+        this.csrfToken = token;
+        this.csrfTokenPromise = null; // Clear promise after success
+        return this.csrfToken;
+      } catch (error: any) {
+        this.csrfTokenPromise = null; // Clear promise on error
+        const errorMessage = error?.response?.data?.error?.message || error?.message || 'Unknown error';
+        const status = error?.response?.status;
+        console.warn('Failed to fetch CSRF token:', { status, error: errorMessage });
+        throw error;
+      }
+    })();
+
+    return this.csrfTokenPromise;
+  }
+
+  /**
+   * Get CSRF token, fetching if necessary
+   */
+  private async ensureCSRFToken(): Promise<string | null> {
+    // If we have a token, return it
+    if (this.csrfToken) {
+      return this.csrfToken;
+    }
+
+    // Otherwise, fetch it
+    try {
+      const token = await this.fetchCSRFToken();
+      if (!token) {
+        // If fetch failed silently, try again once
+        this.csrfToken = null;
+        this.csrfTokenPromise = null;
+        return await this.fetchCSRFToken();
+      }
+      return token;
+    } catch (error) {
+      // Clear promise on error to allow retry
+      this.csrfTokenPromise = null;
+      // Try one more time
+      try {
+        return await this.fetchCSRFToken();
+      } catch (retryError) {
+        console.warn('Could not fetch CSRF token after retry:', retryError);
+        return null;
+      }
+    }
   }
 
   private setupInterceptors() {
-    // Request interceptor to add wallet address to request body
+    // Request interceptor to add wallet address, CSRF token, and nonce to requests
     this.client.interceptors.request.use(
-      (config) => {
-        // silent request interceptor; do not log
+      async (config) => {
+        // Add CSRF token for state-changing operations (POST, PUT, DELETE)
+        // Skip for GET, HEAD, OPTIONS and public endpoints
+        const method = (config.method || "get").toLowerCase();
+        const url = config.url || "";
+        const needsCSRF = ['post', 'put', 'delete'].includes(method) && 
+                          !url.includes('/auth/connect') && // Exclude initial connection
+                          !url.includes('/csrf-token'); // Exclude CSRF endpoint itself
+        
+        // Debug: log interceptor execution
+        if (needsCSRF) {
+          console.log('🔍 Request interceptor executing for CSRF-protected request', {
+            url: config.url,
+            method: config.method,
+            hasToken: !!this.csrfToken,
+          });
+        }
+
+        if (needsCSRF) {
+          // Ensure we have a token before making the request
+          let token = this.csrfToken;
+          if (!token) {
+            console.log('🔐 CSRF token missing, fetching...', { url: config.url, method: config.method });
+            try {
+              token = await this.fetchCSRFToken();
+              if (!token) {
+                console.error('❌ Failed to fetch CSRF token');
+                throw new Error('CSRF token fetch failed');
+              }
+              // Save the token for future requests
+              this.csrfToken = token;
+              console.log('✅ CSRF token fetched and saved', { tokenLength: token.length });
+            } catch (error: any) {
+              console.error('❌ CSRF token fetch error:', error?.message || error);
+              throw error;
+            }
+          } else {
+            // Token exists, verify it's still valid format
+            if (typeof token !== 'string' || token.length < 32) {
+              console.warn('⚠️ CSRF token appears invalid, fetching new one', {
+                tokenType: typeof token,
+                tokenLength: token?.length,
+              });
+              this.csrfToken = null;
+              token = await this.fetchCSRFToken();
+              this.csrfToken = token;
+            }
+          }
+          
+          // Ensure headers object exists
+          if (!config.headers) {
+            config.headers = {};
+          }
+          
+          // Set the token in both formats to be safe
+          config.headers['X-CSRF-Token'] = token;
+          config.headers['x-csrf-token'] = token;
+          
+          // Verify header was actually set
+          if (!config.headers['X-CSRF-Token'] && !config.headers['x-csrf-token']) {
+            console.error('❌ CRITICAL: CSRF token was not set in headers!', {
+              url: config.url,
+              method: config.method,
+              hasToken: !!token,
+              headerKeys: Object.keys(config.headers),
+            });
+          }
+          
+          console.log('🔐 CSRF token added to request', {
+            url: config.url,
+            method: config.method,
+            hasToken: !!token,
+            tokenLength: token?.length,
+            tokenPreview: token?.substring(0, 8) + '...',
+            headerKeys: Object.keys(config.headers),
+            headerXCSRF: config.headers['X-CSRF-Token']?.substring(0, 8) + '...',
+            headerxcsrf: config.headers['x-csrf-token']?.substring(0, 8) + '...',
+          });
+        }
 
         if (this.walletAddress) {
-          const url = config.url || "";
-          const method = (config.method || "get").toLowerCase();
-
           const needsWalletInGetBody =
             url.includes("/leaderboard/rank") ||
             url.includes("/cases/opening") ||
@@ -39,9 +198,23 @@ class ApiClient {
             url.startsWith("/history") ||
             url.startsWith("/auth/profile");
 
-          if (config.data && method !== "get") {
-            // Add wallet address to request body for POST/PUT requests
-            (config.data as any).walletAddress = this.walletAddress;
+          if (method !== "get") {
+            // Ensure data object exists for POST/PUT/DELETE requests
+            if (!config.data) {
+              config.data = {};
+            }
+            
+            // Add wallet address to request body for POST/PUT/DELETE requests
+            if (this.walletAddress) {
+              (config.data as any).walletAddress = this.walletAddress;
+            }
+            
+            // Add nonce and timestamp for replay attack prevention (skip if already present)
+            if (!(config.data as any).nonce) {
+              const { nonce, timestamp } = generateRequestNonce();
+              (config.data as any).nonce = nonce;
+              (config.data as any).timestamp = timestamp;
+            }
           } else if (method === "get" && needsWalletInGetBody) {
             // Browsers ignore GET bodies; pass wallet via query string
             const currentUrl = config.url || "";
@@ -65,8 +238,63 @@ class ApiClient {
       (response: AxiosResponse<ApiResponse<any>>) => {
         return response; // Return the full response to maintain structure
       },
-      (error) => {
+      async (error) => {
         // silent response errors (handled by caller)
+        
+        // Handle CSRF token errors - refresh token and retry once
+        if (error.response?.status === 403 && 
+            (error.response?.data?.error?.code === 'CSRF_TOKEN_MISSING' || 
+             error.response?.data?.error?.code === 'CSRF_TOKEN_INVALID')) {
+          console.warn('🔄 CSRF token error detected, fetching new token and retrying...', {
+            code: error.response?.data?.error?.code,
+            url: error.config?.url,
+            hadToken: !!this.csrfToken,
+            originalHeaders: error.config?.headers ? Object.keys(error.config.headers) : [],
+          });
+          
+          // Clear invalid token and fetch new one
+          this.csrfToken = null;
+          this.csrfTokenPromise = null;
+          
+          // Try to fetch new token and retry request
+          try {
+            const token = await this.fetchCSRFToken();
+            if (token && error.config) {
+              console.log('✅ New CSRF token fetched, retrying request', {
+                url: error.config.url,
+                tokenLength: token.length,
+                tokenPreview: token.substring(0, 8) + '...',
+              });
+              
+              // Create a new config object to ensure headers are properly set
+              const retryConfig = {
+                ...error.config,
+                headers: {
+                  ...error.config.headers,
+                  'X-CSRF-Token': token,
+                  'x-csrf-token': token,
+                },
+              };
+              
+              console.log('🔄 Retrying request with new token', {
+                url: retryConfig.url,
+                method: retryConfig.method,
+                headerKeys: Object.keys(retryConfig.headers || {}),
+                hasXCSRF: !!retryConfig.headers?.['X-CSRF-Token'],
+                hasxcsrf: !!retryConfig.headers?.['x-csrf-token'],
+              });
+              
+              return this.client.request(retryConfig);
+            } else {
+              console.error('❌ Failed to fetch new CSRF token for retry');
+            }
+          } catch (fetchError: any) {
+            console.error('❌ Error fetching new CSRF token:', fetchError?.message || fetchError);
+            // If we can't fetch a new token, reject with the original error
+            return Promise.reject(error);
+          }
+        }
+        
         // Handle common errors
         if (error.response?.status === 401) {
           // Unauthorized - clear wallet session

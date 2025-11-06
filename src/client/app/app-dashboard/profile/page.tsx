@@ -43,7 +43,7 @@ export default function ProfilePage() {
     refreshUser,
     connectWallet,
   } = useUser();
-  const { connected: adapterConnected, publicKey } = useWallet();
+  const { connected: adapterConnected, publicKey, signMessage } = useWallet();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -168,7 +168,9 @@ export default function ProfilePage() {
         return;
       }
 
-      await authService.updateProfile(updates);
+      // Get wallet adapter for signing
+      const walletAdapter = signMessage ? { signMessage } : null;
+      await authService.updateProfile(updates, walletAdapter as any);
       await refreshUser();
 
       toast.success("Profile updated successfully!");

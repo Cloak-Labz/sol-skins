@@ -7,6 +7,7 @@ import { config } from '../config/env';
 import { AppError } from './errorHandler';
 import { logger } from './logger';
 import { UserService } from '../services/UserService';
+import { tokenBlacklistService } from '../services/TokenBlacklistService';
 
 interface JWTPayload {
   userId: string;
@@ -35,23 +36,36 @@ export class AuthMiddleware {
   }
 
   // Verify Solana wallet signature
-  public verifyWalletSignature = (
+  // Note: nacl.sign.detached.verify already uses constant-time comparison internally
+  // We add random delay to mask any remaining timing differences
+  public verifyWalletSignature = async (
     message: string,
     signature: string,
     publicKey: string
-  ): boolean => {
+  ): Promise<boolean> => {
     try {
       const messageBytes = new TextEncoder().encode(message);
       const signatureBytes = bs58.decode(signature);
       const publicKeyBytes = new PublicKey(publicKey).toBytes();
 
-      return nacl.sign.detached.verify(
+      const isValid = nacl.sign.detached.verify(
         messageBytes,
         signatureBytes,
         publicKeyBytes
       );
+
+      // Add random delay to mask timing differences (even though nacl is constant-time)
+      const { randomDelay } = require('../utils/timingAttackProtection');
+      await randomDelay(10, 30); // 10-30ms delay
+
+      return isValid;
     } catch (error) {
       logger.error('Wallet signature verification failed:', error);
+      
+      // Add delay even on error to prevent timing leaks
+      const { randomDelay } = require('../utils/timingAttackProtection');
+      await randomDelay(10, 30);
+      
       return false;
     }
   };
@@ -92,21 +106,31 @@ export class AuthMiddleware {
         return next(new AppError('No token provided', 401, 'NO_TOKEN'));
       }
 
-      // 2) Verify token
+      // 2) Check if token is blacklisted (revoked)
+      if (tokenBlacklistService.isTokenBlacklisted(token)) {
+        logger.warn('Blacklisted token attempted to access protected route', {
+          tokenPrefix: token.substring(0, 10) + '...',
+          ip: req.ip,
+          url: req.url,
+        });
+        return next(new AppError('Token has been revoked', 401, 'TOKEN_REVOKED'));
+      }
+
+      // 3) Verify token
       const decoded = this.verifyToken(token);
 
-      // 3) Check if user still exists
+      // 4) Check if user still exists
       const user = await this.userService.findById(decoded.userId);
       if (!user) {
         return next(new AppError('User no longer exists', 401, 'USER_NOT_FOUND'));
       }
 
-      // 4) Check if user is active
+      // 5) Check if user is active
       if (!user.isActive) {
         return next(new AppError('User account is deactivated', 401, 'ACCOUNT_DEACTIVATED'));
       }
 
-      // 5) Attach user to request
+      // 6) Attach user to request
       req.user = {
         id: user.id,
         walletAddress: user.walletAddress,
@@ -125,14 +149,21 @@ export class AuthMiddleware {
       
       if (authHeader && authHeader.startsWith('Bearer ')) {
         const token = authHeader.split(' ')[1];
-        const decoded = this.verifyToken(token);
         
-        const user = await this.userService.findById(decoded.userId);
-        if (user && user.isActive) {
-          req.user = {
-            id: user.id,
-            walletAddress: user.walletAddress,
-          };
+        // Check if token is blacklisted
+        if (!tokenBlacklistService.isTokenBlacklisted(token)) {
+          try {
+            const decoded = this.verifyToken(token);
+            const user = await this.userService.findById(decoded.userId);
+            if (user && user.isActive) {
+              req.user = {
+                id: user.id,
+                walletAddress: user.walletAddress,
+              };
+            }
+          } catch {
+            // Invalid token, ignore in optional auth
+          }
         }
       }
       
@@ -143,46 +174,18 @@ export class AuthMiddleware {
     }
   };
 
-  // Rate limiting by wallet address
+  // Rate limiting by wallet address (uses in-memory storage)
   public rateLimitByWallet = (maxRequests: number, windowMs: number) => {
-    const requests = new Map<string, { count: number; resetTime: number }>();
-
-    return (req: Request, res: Response, next: NextFunction) => {
-      const walletAddress = req.user?.walletAddress || req.ip || 'unknown';
-      const now = Date.now();
-
-      // Clean up expired entries
-      for (const [key, value] of requests.entries()) {
-        if (now > value.resetTime) {
-          requests.delete(key);
-        }
+    const { rateLimitService } = require('../services/RateLimitService');
+    
+    return rateLimitService.createRateLimitMiddleware(
+      maxRequests,
+      windowMs,
+      (req: Request) => {
+        // Use wallet address if authenticated, otherwise use IP
+        return req.user?.walletAddress || req.ip || 'unknown';
       }
-
-      const userRequests = requests.get(walletAddress);
-
-      if (!userRequests) {
-        requests.set(walletAddress, {
-          count: 1,
-          resetTime: now + windowMs,
-        });
-        return next();
-      }
-
-      if (now > userRequests.resetTime) {
-        requests.set(walletAddress, {
-          count: 1,
-          resetTime: now + windowMs,
-        });
-        return next();
-      }
-
-      if (userRequests.count >= maxRequests) {
-        return next(new AppError('Too many requests', 429, 'RATE_LIMIT_EXCEEDED'));
-      }
-
-      userRequests.count += 1;
-      next();
-    };
+    );
   };
 
   // Validate wallet ownership (for sensitive operations)
@@ -194,7 +197,7 @@ export class AuthMiddleware {
         return next(new AppError('Signature and message required for wallet validation', 400, 'MISSING_SIGNATURE'));
       }
 
-      const isValid = this.verifyWalletSignature(
+      const isValid = await this.verifyWalletSignature(
         message,
         signature,
         req.user!.walletAddress

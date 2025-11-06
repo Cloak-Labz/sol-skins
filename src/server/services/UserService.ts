@@ -32,9 +32,35 @@ export class UserService {
         where: { walletAddress },
         relations: ['skins', 'transactions'],
       });
+
+      // Always execute a dummy query to mask timing differences
+      // This prevents attackers from knowing if a wallet exists or not
+      const { randomDelay, executeWithConstantTime } = require('../utils/timingAttackProtection');
+      
+      await executeWithConstantTime(
+        async () => user,
+        {
+          minDelay: 15,
+          maxDelay: 50,
+          alwaysExecute: async () => {
+            // Dummy operation: always hash something to mask timing
+            // Even if user not found, we do similar work
+            const crypto = require('crypto');
+            const dummyHash = crypto.createHash('sha256').update(walletAddress + Date.now()).digest('hex');
+            // Small delay to ensure similar execution time
+            await randomDelay(5, 15);
+          }
+        }
+      );
+
       return user; // Returns null if not found, which is expected
     } catch (error) {
       logger.error('Error finding user by wallet address:', error);
+      
+      // Add delay even on error
+      const { randomDelay } = require('../utils/timingAttackProtection');
+      await randomDelay(15, 50);
+      
       throw new AppError('Failed to find user', 500);
     }
   }
@@ -91,8 +117,12 @@ export class UserService {
           return obj;
         }, {} as Partial<User>);
 
+      // Sanitize all inputs to prevent XSS
+      const { sanitizeProfileUpdate } = require('../utils/sanitization');
+      const sanitizedUpdates = sanitizeProfileUpdate(filteredUpdates as any);
+
       await this.userRepository.update(id, {
-        ...filteredUpdates,
+        ...sanitizedUpdates,
         updatedAt: new Date(),
       });
 
@@ -134,7 +164,12 @@ export class UserService {
       }
       
       if (stats.totalEarned !== undefined) {
-        updates.totalEarned = user.totalEarned + stats.totalEarned;
+        // SECURITY: Use safe math to prevent integer overflow
+        const { safeAdd, toNumber } = require('../utils/safeMath');
+        const Decimal = require('decimal.js').default;
+        const currentTotal = new Decimal(user.totalEarned || 0);
+        const newEarned = new Decimal(stats.totalEarned || 0);
+        updates.totalEarned = toNumber(safeAdd(currentTotal, newEarned, 'total earned'));
       }
       
       if (stats.casesOpened !== undefined) {

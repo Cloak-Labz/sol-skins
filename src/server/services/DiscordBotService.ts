@@ -141,8 +141,11 @@ class DiscordBotService {
       skinName: data.skinName,
       rarity: data.skinRarity,
       user: data.walletAddress,
+      steamTradeUrl: data.steamTradeUrl || 'NOT PROVIDED',
+      hasSteamTradeUrl: !!data.steamTradeUrl,
       isReady: this.isReady,
-      channelId: config.discord.ticketChannelId
+      channelId: config.discord.ticketChannelId,
+      allFields: Object.keys(data),
     });
 
     if (!this.isReady || !config.discord.ticketChannelId) {

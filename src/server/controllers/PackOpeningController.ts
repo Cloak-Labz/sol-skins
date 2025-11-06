@@ -21,16 +21,27 @@ export class PackOpeningController {
       return ResponseUtil.error(res, 'Missing required fields', 400);
     }
 
-    // Resolve wallet address to user ID if needed
+    // SECURITY: Resolve wallet address to user ID with validation
     const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     let actualUserId = userId;
     if (!uuidV4Regex.test(userId)) {
-      // Treat as wallet address
+      // Treat as wallet address - validate format first
+      const { isValidWalletAddress } = require('../utils/solanaValidation');
+      if (!isValidWalletAddress(userId)) {
+        return ResponseUtil.error(res, 'Invalid wallet address format', 400);
+      }
+      
+      // Now safe to query with validated wallet address
       const user = await this.userService.findByWalletAddress(userId);
       if (!user) {
         return ResponseUtil.error(res, 'User not found', 404);
       }
       actualUserId = user.id;
+    } else {
+      // Validate UUID format
+      if (!uuidV4Regex.test(actualUserId)) {
+        return ResponseUtil.error(res, 'Invalid user ID format', 400);
+      }
     }
 
     const result = await this.packOpeningService.createPackOpeningTransaction(
@@ -51,15 +62,27 @@ export class PackOpeningController {
       return ResponseUtil.error(res, 'Missing required fields', 400);
     }
 
-    // Resolve wallet address to user ID if needed
+    // SECURITY: Resolve wallet address to user ID with validation
     const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
     let actualUserId = userId;
     if (!uuidV4Regex.test(userId)) {
+      // Treat as wallet address - validate format first
+      const { isValidWalletAddress } = require('../utils/solanaValidation');
+      if (!isValidWalletAddress(userId)) {
+        return ResponseUtil.error(res, 'Invalid wallet address format', 400);
+      }
+      
+      // Now safe to query with validated wallet address
       const user = await this.userService.findByWalletAddress(userId);
       if (!user) {
         return ResponseUtil.error(res, 'User not found', 404);
       }
       actualUserId = user.id;
+    } else {
+      // Validate UUID format
+      if (!uuidV4Regex.test(actualUserId)) {
+        return ResponseUtil.error(res, 'Invalid user ID format', 400);
+      }
     }
 
     const result = await this.packOpeningService.createBuybackTransaction(

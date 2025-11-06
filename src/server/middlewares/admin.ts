@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import { constantTimeAdminCheck, randomDelay } from "../utils/timingAttackProtection";
 
 // List of admin wallet addresses (load from environment)
 const ADMIN_WALLETS = (process.env.ADMIN_WALLETS || "")
@@ -16,8 +17,9 @@ export interface AdminRequest extends Request {
 /**
  * Middleware to check if user is an admin
  * Must be used after authMiddleware
+ * Uses constant-time comparison to prevent timing attacks
  */
-export function adminMiddleware(
+export async function adminMiddleware(
   req: AdminRequest,
   res: Response,
   next: NextFunction
@@ -31,8 +33,11 @@ export function adminMiddleware(
       });
     }
 
-    // Check if user wallet is in admin list
-    const isAdmin = ADMIN_WALLETS.includes(req.user.walletAddress);
+    // Check if user wallet is in admin list (constant-time to prevent timing attacks)
+    const isAdmin = constantTimeAdminCheck(req.user.walletAddress, ADMIN_WALLETS);
+
+    // Add random delay to mask timing differences
+    await randomDelay(20, 80); // 20-80ms delay
 
     if (!isAdmin) {
       return res.status(403).json({

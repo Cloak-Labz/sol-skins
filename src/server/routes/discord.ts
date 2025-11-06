@@ -3,6 +3,7 @@ import { discordController } from '../controllers/DiscordController';
 import { discordBotService } from '../services/DiscordBotService';
 import { ResponseUtil } from '../utils/response';
 import { catchAsync } from '../middlewares/errorHandler';
+import { validateSchema, schemas } from '../middlewares/validation';
 
 const router = Router();
 
@@ -10,13 +11,16 @@ const router = Router();
 router.post('/interactions', discordController.handleInteraction);
 
 // Route for creating skin claim tickets
-router.post('/create-ticket', catchAsync(async (req: any, res: any) => {
+router.post('/create-ticket', validateSchema(schemas.createTicket), catchAsync(async (req: any, res: any) => {
   const ticketData = req.body;
   
   console.log('🎫 Creating Discord ticket from frontend:', {
     skinName: ticketData.skinName,
     rarity: ticketData.skinRarity,
-    user: ticketData.walletAddress
+    user: ticketData.walletAddress,
+    steamTradeUrl: ticketData.steamTradeUrl || 'NOT PROVIDED',
+    hasSteamTradeUrl: !!ticketData.steamTradeUrl,
+    allFields: Object.keys(ticketData),
   });
   
   await discordBotService.createSkinClaimTicket(ticketData);
