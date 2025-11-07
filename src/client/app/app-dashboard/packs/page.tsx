@@ -112,6 +112,66 @@ export default function PacksPage() {
     }
   }, [openingPhase]);
 
+  // Prevent navigation and disable topbar during pack opening
+  useEffect(() => {
+    if (isOpeningSkin) {
+      // Prevent page navigation (refresh, close tab, etc.)
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = "A pack opening is in progress. Are you sure you want to leave?";
+        return e.returnValue;
+      };
+
+      // Prevent browser back/forward navigation
+      const handlePopState = (e: PopStateEvent) => {
+        if (isOpeningSkin) {
+          window.history.pushState(null, "", window.location.href);
+        }
+      };
+
+      window.addEventListener("beforeunload", handleBeforeUnload);
+      // Push current state to prevent back navigation
+      window.history.pushState(null, "", window.location.href);
+      window.addEventListener("popstate", handlePopState);
+
+      // Disable body scroll
+      document.body.style.overflow = "hidden";
+
+      // Disable topbar interactions
+      const header = document.querySelector(".app-header");
+      if (header) {
+        (header as HTMLElement).style.pointerEvents = "none";
+        (header as HTMLElement).style.opacity = "0.5";
+      }
+
+      // Disable sidebar interactions
+      const sidebar = document.querySelector(".app-sidebar");
+      if (sidebar) {
+        (sidebar as HTMLElement).style.pointerEvents = "none";
+        (sidebar as HTMLElement).style.opacity = "0.5";
+      }
+
+      return () => {
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+        window.removeEventListener("popstate", handlePopState);
+        document.body.style.overflow = "";
+        
+        // Re-enable topbar and sidebar
+        const header = document.querySelector(".app-header");
+        if (header) {
+          (header as HTMLElement).style.pointerEvents = "";
+          (header as HTMLElement).style.opacity = "";
+        }
+        
+        const sidebar = document.querySelector(".app-sidebar");
+        if (sidebar) {
+          (sidebar as HTMLElement).style.pointerEvents = "";
+          (sidebar as HTMLElement).style.opacity = "";
+        }
+      };
+    }
+  }, [isOpeningSkin]);
+
   useEffect(() => {
     if (shouldHideSidebar) {
       document.documentElement.classList.add("sidebar-hidden");
@@ -815,6 +875,31 @@ export default function PacksPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6 overflow-hidden relative">
+      {/* Lock overlay - blocks all interactions during pack opening */}
+      {isOpeningSkin && (
+        <div
+          className="fixed inset-0 bg-transparent cursor-not-allowed"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          style={{
+            pointerEvents: "auto",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+            zIndex: 99999, // Higher than any other element
+          }}
+        />
+      )}
+
       {/* Fullscreen Opening Animation - Only show after processing */}
       <AnimatePresence>
         {openingPhase && openingPhase !== "processing" && (
