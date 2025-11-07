@@ -197,7 +197,7 @@ export default function PacksPage() {
     return "common";
   };
 
-  // Build X (Twitter) share URL
+  // Build X (Twitter) share URL (adds skin image URL when available)
   const generateXShareUrl = (
     params:
       | {
@@ -219,7 +219,26 @@ export default function PacksPage() {
       const packText = params.packName ? ` from ${params.packName}` : "";
       text = `Claimed ${params.skin.name}${packText} to my Steam inventory via @DUST3fun!`;
     }
-    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+
+    const url = new URL("https://twitter.com/intent/tweet");
+    url.searchParams.set("text", text);
+    url.searchParams.set("via", "DUST3fun");
+
+    // Attach skin image URL if it's a valid http(s) URL (web intents can't upload media)
+    const maybeImage =
+      (params as any).skin?.image &&
+      typeof (params as any).skin.image === "string"
+        ? (params as any).skin.image
+        : undefined;
+    if (
+      maybeImage &&
+      /^https?:\/\//i.test(maybeImage) &&
+      maybeImage !== "icon-fallback"
+    ) {
+      url.searchParams.set("url", maybeImage);
+    }
+
+    return url.toString();
   };
 
   // Set wallet address in API client when wallet connects/disconnects

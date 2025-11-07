@@ -5,8 +5,23 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Box, Coins, CheckCircle, DollarSign, Search, Filter, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Loader2,
+  Box,
+  Coins,
+  CheckCircle,
+  DollarSign,
+  Search,
+  Filter,
+  X,
+} from "lucide-react";
 import { socialService } from "@/lib/services";
 import { ActivityItem } from "@/lib/types/api";
 import { formatCurrency } from "@/lib/utils";
@@ -15,7 +30,8 @@ import { toast } from "react-hot-toast";
 export default function ActivityPage() {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [loading, setLoading] = useState(true);
-  
+  const [useMock, setUseMock] = useState(false);
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<"newest" | "oldest">("newest");
@@ -26,13 +42,170 @@ export default function ActivityPage() {
     // Refresh activity every 30 seconds
     const interval = setInterval(loadActivity, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [useMock]);
+
+  const getMockActivities = (): ActivityItem[] => {
+    const now = Date.now();
+    const usernames = [
+      "Player1",
+      "CryptoKing",
+      "SkinHunter",
+      "LuckyDraw",
+      "ProGamer",
+      "DustMaster",
+      "BoxOpener",
+      "SkinCollector",
+    ];
+    const weapons = [
+      "AK-47",
+      "AWP",
+      "M4A4",
+      "Desert Eagle",
+      "Glock-18",
+      "USP-S",
+      "P250",
+      "Five-SeveN",
+    ];
+    const skinNames = [
+      "Redline",
+      "Asiimov",
+      "Dragon Lore",
+      "Fire Serpent",
+      "Howl",
+      "Medusa",
+      "Poseidon",
+      "Emerald",
+    ];
+    const rarities = ["Common", "Uncommon", "Rare", "Epic", "Legendary"];
+    const conditions = [
+      "Factory New",
+      "Minimal Wear",
+      "Field-Tested",
+      "Well-Worn",
+      "Battle-Scarred",
+    ];
+    const lootBoxNames = [
+      "Dust3 Promo Pack",
+      "Elite Pack",
+      "Premium Pack",
+      "Starter Pack",
+    ];
+
+    const mockActivities: ActivityItem[] = [];
+
+    for (let i = 0; i < 50; i++) {
+      const timestamp = new Date(
+        now - i * 60000 - Math.random() * 300000
+      ).toISOString();
+      const username = usernames[Math.floor(Math.random() * usernames.length)];
+      const weapon = weapons[Math.floor(Math.random() * weapons.length)];
+      const skinName = skinNames[Math.floor(Math.random() * skinNames.length)];
+      const rarity = rarities[Math.floor(Math.random() * rarities.length)];
+      const condition =
+        conditions[Math.floor(Math.random() * conditions.length)];
+      const valueUsd = (Math.random() * 500 + 10).toFixed(2);
+      const solAmount = (Math.random() * 2 + 0.1).toFixed(4);
+
+      const types: ActivityItem["type"][] = [
+        "case_opened",
+        "skin_claimed",
+        "payout",
+      ];
+      const type = types[Math.floor(Math.random() * types.length)];
+
+      if (type === "case_opened") {
+        mockActivities.push({
+          id: `mock-${i}`,
+          type: "case_opened",
+          user: {
+            id: `user-${i}`,
+            username,
+            walletAddress: `${Math.random()
+              .toString(16)
+              .substring(2, 10)}...${Math.random()
+              .toString(16)
+              .substring(2, 6)}`,
+          },
+          lootBox: {
+            id: `box-${i}`,
+            name: lootBoxNames[Math.floor(Math.random() * lootBoxNames.length)],
+            rarity: rarity,
+          },
+          amount: {
+            sol: parseFloat(solAmount),
+            usd: parseFloat(valueUsd) * 0.15,
+          },
+          timestamp,
+        });
+      } else if (type === "skin_claimed") {
+        mockActivities.push({
+          id: `mock-${i}`,
+          type: "skin_claimed",
+          user: {
+            id: `user-${i}`,
+            username,
+            walletAddress: `${Math.random()
+              .toString(16)
+              .substring(2, 10)}...${Math.random()
+              .toString(16)
+              .substring(2, 6)}`,
+          },
+          skin: {
+            id: `skin-${i}`,
+            weapon,
+            skinName,
+            rarity,
+            condition,
+            valueUsd,
+          },
+          timestamp,
+        });
+      } else if (type === "payout") {
+        mockActivities.push({
+          id: `mock-${i}`,
+          type: "payout",
+          user: {
+            id: `user-${i}`,
+            username,
+            walletAddress: `${Math.random()
+              .toString(16)
+              .substring(2, 10)}...${Math.random()
+              .toString(16)
+              .substring(2, 6)}`,
+          },
+          skin: {
+            id: `skin-${i}`,
+            weapon,
+            skinName,
+            rarity,
+            condition,
+            valueUsd,
+          },
+          amount: {
+            sol: parseFloat(solAmount),
+            usd: parseFloat(valueUsd) * 0.85,
+          },
+          timestamp,
+        });
+      }
+    }
+
+    return mockActivities.sort(
+      (a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+  };
 
   const loadActivity = async () => {
     try {
       setLoading(true);
-      const activities = await socialService.getRecentActivity(50);
-      setActivities(activities);
+      if (useMock) {
+        const mockActivities = getMockActivities();
+        setActivities(mockActivities);
+      } else {
+        const activities = await socialService.getRecentActivity(50);
+        setActivities(activities);
+      }
     } catch (err) {
       toast.error("Failed to load activity feed");
     } finally {
@@ -46,17 +219,28 @@ export default function ActivityPage() {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(activity => 
-        activity.skin?.skinName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity.skin?.weapon.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity.user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        activity.lootBox?.name.toLowerCase().includes(searchTerm.toLowerCase())
+      filtered = filtered.filter(
+        (activity) =>
+          activity.skin?.skinName
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          activity.skin?.weapon
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          activity.user.username
+            ?.toLowerCase()
+            .includes(searchTerm.toLowerCase()) ||
+          activity.lootBox?.name
+            .toLowerCase()
+            .includes(searchTerm.toLowerCase())
       );
     }
 
     // Type filter
     if (selectedTypes.length > 0) {
-      filtered = filtered.filter(activity => selectedTypes.includes(activity.type));
+      filtered = filtered.filter((activity) =>
+        selectedTypes.includes(activity.type)
+      );
     }
 
     // Sort by date
@@ -81,10 +265,8 @@ export default function ActivityPage() {
   };
 
   const handleTypeToggle = (type: string) => {
-    setSelectedTypes(prev => 
-      prev.includes(type) 
-        ? prev.filter(t => t !== type)
-        : [...prev, type]
+    setSelectedTypes((prev) =>
+      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
     );
   };
 
@@ -92,6 +274,55 @@ export default function ActivityPage() {
     setSearchTerm("");
     setSelectedTypes([]);
     setSortBy("newest");
+  };
+
+  const getActivityStyles = (type: ActivityItem["type"]) => {
+    switch (type) {
+      case "case_opened":
+        return {
+          borderColor: "border-yellow-500/20",
+          hoverBorderColor: "hover:border-yellow-500/40",
+          iconBg: "bg-yellow-500/10",
+          iconColor: "text-yellow-400",
+          badgeBg: "bg-yellow-500/10",
+          badgeText: "text-yellow-300",
+          badgeBorder: "border-yellow-500/30",
+          leftBorder: "border-l-2 border-l-yellow-500/30",
+        };
+      case "skin_claimed":
+        return {
+          borderColor: "border-orange-500/20",
+          hoverBorderColor: "hover:border-orange-500/40",
+          iconBg: "bg-orange-500/10",
+          iconColor: "text-orange-400",
+          badgeBg: "bg-orange-500/10",
+          badgeText: "text-orange-300",
+          badgeBorder: "border-orange-500/30",
+          leftBorder: "border-l-2 border-l-orange-500/30",
+        };
+      case "payout":
+        return {
+          borderColor: "border-green-500/20",
+          hoverBorderColor: "hover:border-green-500/40",
+          iconBg: "bg-green-500/10",
+          iconColor: "text-green-400",
+          badgeBg: "bg-green-500/10",
+          badgeText: "text-green-300",
+          badgeBorder: "border-green-500/30",
+          leftBorder: "border-l-2 border-l-green-500/30",
+        };
+      default:
+        return {
+          borderColor: "border-zinc-800",
+          hoverBorderColor: "hover:border-zinc-700",
+          iconBg: "bg-zinc-800",
+          iconColor: "text-zinc-400",
+          badgeBg: "bg-zinc-900",
+          badgeText: "text-zinc-300",
+          badgeBorder: "border-zinc-800",
+          leftBorder: "",
+        };
+    }
   };
 
   if (loading && activities.length === 0) {
@@ -111,7 +342,9 @@ export default function ActivityPage() {
     <div className="min-h-screen bg-[#0a0a0a] py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">Activity Feed</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-2">
+            Activity Feed
+          </h1>
           <p className="text-muted-foreground text-lg">
             Real-time activity from the Dust3 community
           </p>
@@ -128,7 +361,10 @@ export default function ActivityPage() {
               className="pl-10 bg-zinc-950 border-zinc-800"
             />
           </div>
-          <Select value={sortBy} onValueChange={(value: "newest" | "oldest") => setSortBy(value)}>
+          <Select
+            value={sortBy}
+            onValueChange={(value: "newest" | "oldest") => setSortBy(value)}
+          >
             <SelectTrigger className="w-full md:w-48 bg-zinc-950 border-zinc-800">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
@@ -137,13 +373,16 @@ export default function ActivityPage() {
               <SelectItem value="oldest">Oldest First</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={selectedTypes.length === 0 ? "all" : selectedTypes[0]} onValueChange={(value) => {
-            if (value === "all") {
-              setSelectedTypes([]);
-            } else {
-              setSelectedTypes([value]);
-            }
-          }}>
+          <Select
+            value={selectedTypes.length === 0 ? "all" : selectedTypes[0]}
+            onValueChange={(value) => {
+              if (value === "all") {
+                setSelectedTypes([]);
+              } else {
+                setSelectedTypes([value]);
+              }
+            }}
+          >
             <SelectTrigger className="w-full md:w-48 bg-zinc-950 border-zinc-800">
               <Filter className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Filter by type" />
@@ -176,91 +415,120 @@ export default function ActivityPage() {
         <Card className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
           <CardContent className="p-4">
             {filteredActivities.length > 0 ? (
-              filteredActivities.map((activity) => (
-              <div
-                key={activity.id}
-                className="flex items-center justify-between p-4 mb-2 last:mb-0 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 transition-transform duration-150 hover:scale-[1.01] hover:border-zinc-700"
-              >
-                <div className="flex items-center space-x-4">
-                  <div className="w-10 h-10 rounded-md flex items-center justify-center text-sm bg-zinc-800 text-zinc-400">
-                    {activity.type === "case_opened" ? (
-                      <Box className="w-4 h-4" />
-                    ) : activity.type === "skin_claimed" ? (
-                      <CheckCircle className="w-4 h-4" />
-                    ) : activity.type === "payout" ? (
-                      <DollarSign className="w-4 h-4" />
-                    ) : (
-                      <Coins className="w-4 h-4" />
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-foreground">
-                      <span className="font-medium">
-                        {activity.user.username ||
-                          `${activity.user.walletAddress.slice(0, 4)}...${activity.user.walletAddress.slice(-4)}`}
-                      </span>
-                      <span className="text-muted-foreground mx-2">
-                        {activity.type === "case_opened" ? "opened" : 
-                         activity.type === "skin_claimed" ? "claimed" :
-                         activity.type === "payout" ? "received payout for" : "sold"}
-                      </span>
-                      <span className="font-medium">
-                        {activity.skin
-                          ? activity.skin.skinName
-                          : activity.lootBox?.name || (activity.type === "payout" ? "sold skin" : "skin")}
-                      </span>
-                    </p>
-                    <p className="text-muted-foreground text-sm">
-                      {getTimeAgo(activity.timestamp)}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-foreground font-bold">
-                    {activity.type === "case_opened" ? 
-                      `-${activity.amount?.sol ? parseFloat(activity.amount.sol.toString()).toFixed(2) : '0'} SOL` :
-                      activity.type === "payout" ? 
-                        `+${formatCurrency(activity.amount?.usd || 0)}` :
-                        activity.amount ? 
-                          `${parseFloat(activity.amount.sol.toString()).toFixed(2)} SOL` :
-                          formatCurrency(parseFloat(activity.skin?.valueUsd || "0"))
-                    }
-                  </p>
-                  <Badge
-                    variant="secondary"
-                    className="text-xs bg-zinc-900 text-zinc-300 border border-zinc-800"
+              filteredActivities.map((activity) => {
+                const styles = getActivityStyles(activity.type);
+                return (
+                  <div
+                    key={activity.id}
+                    className={`flex items-center justify-between p-4 mb-2 last:mb-0 rounded-lg border ${styles.borderColor} ${styles.leftBorder} bg-gradient-to-b from-zinc-950 to-zinc-900 transition-all duration-150 hover:scale-[1.01] ${styles.hoverBorderColor}`}
                   >
-                    {activity.type === "case_opened" ? "open" : 
-                     activity.type === "skin_claimed" ? "claim" :
-                     activity.type === "payout" ? "payout" : "buyback"}
-                  </Badge>
-                </div>
+                    <div className="flex items-center space-x-4">
+                      <div
+                        className={`w-10 h-10 rounded-md flex items-center justify-center text-sm ${styles.iconBg} ${styles.iconColor}`}
+                      >
+                        {activity.type === "case_opened" ? (
+                          <Box className="w-4 h-4" />
+                        ) : activity.type === "skin_claimed" ? (
+                          <CheckCircle className="w-4 h-4" />
+                        ) : activity.type === "payout" ? (
+                          <DollarSign className="w-4 h-4" />
+                        ) : (
+                          <Coins className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-foreground">
+                          <span className="font-medium">
+                            {activity.user.username ||
+                              `${activity.user.walletAddress.slice(
+                                0,
+                                4
+                              )}...${activity.user.walletAddress.slice(-4)}`}
+                          </span>
+                          <span className="text-muted-foreground mx-2">
+                            {activity.type === "case_opened"
+                              ? "opened"
+                              : activity.type === "skin_claimed"
+                              ? "claimed"
+                              : activity.type === "payout"
+                              ? "received payout for"
+                              : "sold"}
+                          </span>
+                          <span className="font-medium">
+                            {activity.skin
+                              ? activity.skin.skinName
+                              : activity.lootBox?.name ||
+                                (activity.type === "payout"
+                                  ? "sold skin"
+                                  : "skin")}
+                          </span>
+                        </p>
+                        <p className="text-muted-foreground text-sm">
+                          {getTimeAgo(activity.timestamp)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-foreground font-bold">
+                        {activity.type === "case_opened"
+                          ? `-${
+                              activity.amount?.sol
+                                ? parseFloat(
+                                    activity.amount.sol.toString()
+                                  ).toFixed(2)
+                                : "0"
+                            } SOL`
+                          : activity.type === "payout"
+                          ? `+${formatCurrency(activity.amount?.usd || 0)}`
+                          : activity.amount
+                          ? `${parseFloat(
+                              activity.amount.sol.toString()
+                            ).toFixed(2)} SOL`
+                          : formatCurrency(
+                              parseFloat(activity.skin?.valueUsd || "0")
+                            )}
+                      </p>
+                      <Badge
+                        variant="secondary"
+                        className={`text-xs ${styles.badgeBg} ${styles.badgeText} border ${styles.badgeBorder}`}
+                      >
+                        {activity.type === "case_opened"
+                          ? "open"
+                          : activity.type === "skin_claimed"
+                          ? "claim"
+                          : activity.type === "payout"
+                          ? "payout"
+                          : "buyback"}
+                      </Badge>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-12 text-center">
+                <h3 className="text-xl font-semibold text-foreground mb-2">
+                  {activities.length === 0
+                    ? "No recent activity"
+                    : "No activities match your filters"}
+                </h3>
+                <p className="text-muted-foreground">
+                  {activities.length === 0
+                    ? "Be the first to open a case!"
+                    : "Try adjusting your search or filter criteria"}
+                </p>
+                {activities.length > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={clearFilters}
+                    className="mt-4 bg-zinc-800 border-zinc-700 hover:bg-zinc-700"
+                  >
+                    Clear Filters
+                  </Button>
+                )}
               </div>
-            ))
-          ) : (
-            <div className="p-12 text-center">
-              <h3 className="text-xl font-semibold text-foreground mb-2">
-                {activities.length === 0 ? 'No recent activity' : 'No activities match your filters'}
-              </h3>
-              <p className="text-muted-foreground">
-                {activities.length === 0 
-                  ? 'Be the first to open a case!' 
-                  : 'Try adjusting your search or filter criteria'
-                }
-              </p>
-              {activities.length > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={clearFilters}
-                  className="mt-4 bg-zinc-800 border-zinc-700 hover:bg-zinc-700"
-                >
-                  Clear Filters
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
