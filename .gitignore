@@ -130,3 +130,4 @@ keypair.json
 *.tsbuildinfo
 .DS_Store
 true-machine
+src/client/.yarn

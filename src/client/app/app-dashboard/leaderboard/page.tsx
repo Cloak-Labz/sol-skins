@@ -25,7 +25,7 @@ export default function LeaderboardPage() {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [userRank, setUserRank] = useState<UserRank | null>(null);
   const [loading, setLoading] = useState(true);
-  const [useMock, setUseMock] = useState(true);
+  const [useMock, setUseMock] = useState(false);
   const [metric, setMetric] = useState<
     "inventory-value" | "cases-opened" | "profit"
   >("inventory-value");
