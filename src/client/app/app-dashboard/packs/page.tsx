@@ -75,12 +75,13 @@ export default function PacksPage() {
   const [buybackAmountSol, setBuybackAmountSol] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoKey, setVideoKey] = useState(0);
   const shouldHideSidebar =
     (openingPhase !== null && openingPhase !== "processing") ||
     showResult ||
     showBuybackModal;
 
-  // Variável para indicar quando uma skin está sendo aberta (qualquer fase de processamento)
+  // Variable to indicate when a skin is being opened (any processing phase)
   const isOpeningSkin = openingPhase !== null || isProcessing;
 
   // Share state for claim flow
@@ -95,6 +96,21 @@ export default function PacksPage() {
     skinSol: number;
     payoutSol: number;
   } | null>(null);
+
+  // Force video reload when entering video phase to avoid cache issues
+  useEffect(() => {
+    if (openingPhase === "video") {
+      // Force reload by changing key (this will remount the video element)
+      setVideoKey(prev => prev + 1);
+      
+      // Also reset video element if it exists
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.load();
+        }
+      }, 100);
+    }
+  }, [openingPhase]);
 
   useEffect(() => {
     if (shouldHideSidebar) {
@@ -808,7 +824,7 @@ export default function PacksPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black"
           >
-            {/* FASE 1: Flash */}
+            {/* Phase 1: Flash */}
             {openingPhase === "flash" && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -818,15 +834,22 @@ export default function PacksPage() {
               />
             )}
 
-            {/* FASE 2: Vídeo com fundo preto e efeitos de smoke */}
+            {/* Phase 2: Video with black background and smoke effects */}
             {openingPhase === "video" && (
               <div className="absolute inset-0 bg-black flex items-center justify-center">
                 <video
+                  key={videoKey}
                   ref={videoRef}
                   autoPlay
                   muted
                   loop
-                  className="max-w-[60vw] max-h-[60vh] w-auto h-auto object-contain"
+                  playsInline
+                  onError={(e) => {
+                    console.error("Video error:", e);
+                    // Fallback: skip video phase if it fails to load
+                    setOpeningPhase(null);
+                  }}
+                  className="w-full h-full object-cover"
                 >
                   <source src="/assets/video.mp4" type="video/mp4" />
                 </video>
