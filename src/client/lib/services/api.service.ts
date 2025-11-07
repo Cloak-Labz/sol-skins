@@ -118,20 +118,10 @@ class ApiClient {
                           !url.includes('/auth/connect') && // Exclude initial connection
                           !url.includes('/csrf-token'); // Exclude CSRF endpoint itself
         
-        // Debug: log interceptor execution
-        if (needsCSRF) {
-          console.log('🔍 Request interceptor executing for CSRF-protected request', {
-            url: config.url,
-            method: config.method,
-            hasToken: !!this.csrfToken,
-          });
-        }
-
         if (needsCSRF) {
           // Ensure we have a token before making the request
           let token = this.csrfToken;
           if (!token) {
-            console.log('🔐 CSRF token missing, fetching...', { url: config.url, method: config.method });
             try {
               token = await this.fetchCSRFToken();
               if (!token) {
@@ -140,18 +130,12 @@ class ApiClient {
               }
               // Save the token for future requests
               this.csrfToken = token;
-              console.log('✅ CSRF token fetched and saved', { tokenLength: token.length });
             } catch (error: any) {
-              console.error('❌ CSRF token fetch error:', error?.message || error);
               throw error;
             }
           } else {
             // Token exists, verify it's still valid format
             if (typeof token !== 'string' || token.length < 32) {
-              console.warn('⚠️ CSRF token appears invalid, fetching new one', {
-                tokenType: typeof token,
-                tokenLength: token?.length,
-              });
               this.csrfToken = null;
               token = await this.fetchCSRFToken();
               this.csrfToken = token;
@@ -176,17 +160,6 @@ class ApiClient {
               headerKeys: Object.keys(config.headers),
             });
           }
-          
-          console.log('🔐 CSRF token added to request', {
-            url: config.url,
-            method: config.method,
-            hasToken: !!token,
-            tokenLength: token?.length,
-            tokenPreview: token?.substring(0, 8) + '...',
-            headerKeys: Object.keys(config.headers),
-            headerXCSRF: config.headers['X-CSRF-Token']?.substring(0, 8) + '...',
-            headerxcsrf: config.headers['x-csrf-token']?.substring(0, 8) + '...',
-          });
         }
 
         if (this.walletAddress) {
@@ -260,12 +233,6 @@ class ApiClient {
           try {
             const token = await this.fetchCSRFToken();
             if (token && error.config) {
-              console.log('✅ New CSRF token fetched, retrying request', {
-                url: error.config.url,
-                tokenLength: token.length,
-                tokenPreview: token.substring(0, 8) + '...',
-              });
-              
               // Create a new config object to ensure headers are properly set
               const retryConfig = {
                 ...error.config,
