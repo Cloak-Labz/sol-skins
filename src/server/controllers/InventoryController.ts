@@ -237,7 +237,8 @@ export class InventoryController {
 
       const rarityBreakdown = userSkins.reduce((acc, skin) => {
         const rarity = skin.skinTemplate?.rarity || 'Unknown';
-        acc[rarity.toLowerCase()] = (acc[rarity.toLowerCase()] || 0) + 1;
+        const rarityLower = rarity.toLowerCase();
+        acc[rarityLower] = (acc[rarityLower] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 
@@ -327,24 +328,87 @@ export class InventoryController {
     try {
       const userId = req.user!.id;
       
-      // Get user's skins from the database
+      // Get user's skins from the database - ONLY in inventory (same filter as getInventory)
       const userSkinRepo = AppDataSource.getRepository(UserSkin);
       const userSkins = await userSkinRepo.find({
-        where: { userId },
+        where: { 
+          userId,
+          isInInventory: true, // Only count skins in inventory
+        },
         relations: ['skinTemplate'],
       });
+
+      // Enrich skins with rarity from SkinTemplate or BoxSkin if skinTemplate is missing (same logic as getInventory)
+      const { SkinTemplate } = await import('../entities/SkinTemplate');
+      const { BoxSkin } = await import('../entities/BoxSkin');
+      const skinTemplateRepo = AppDataSource.getRepository(SkinTemplate);
+      const boxSkinRepo = AppDataSource.getRepository(BoxSkin);
+      
+      for (const skin of userSkins) {
+        if (!skin.skinTemplate && skin.name) {
+          try {
+            const nameParts = skin.name.split(' | ');
+            if (nameParts.length === 2) {
+              const [weapon, skinName] = nameParts.map(s => s.trim());
+              
+              // First, try to find SkinTemplate
+              let skinTemplate = await skinTemplateRepo.findOne({
+                where: {
+                  weapon: weapon,
+                  skinName: skinName,
+                },
+              });
+              
+              // If not found, try BoxSkin as fallback
+              if (!skinTemplate) {
+                const boxSkin = await boxSkinRepo.findOne({
+                  where: {
+                    weapon: weapon,
+                    name: skinName,
+                  },
+                });
+                
+                if (boxSkin && boxSkin.rarity) {
+                  skinTemplate = {
+                    id: boxSkin.id,
+                    weapon: boxSkin.weapon,
+                    skinName: boxSkin.name,
+                    rarity: boxSkin.rarity as any,
+                    condition: boxSkin.condition as any,
+                    basePriceUsd: Number(boxSkin.basePriceUsd),
+                    imageUrl: boxSkin.imageUrl,
+                    collection: null,
+                    isActive: true,
+                    createdAt: boxSkin.createdAt,
+                    updatedAt: boxSkin.updatedAt,
+                  } as any;
+                }
+              }
+              
+              if (skinTemplate) {
+                skin.skinTemplate = skinTemplate;
+              }
+            }
+          } catch (err) {
+            // Ignore errors
+          }
+        }
+      }
 
       // Calculate real inventory stats
       const totalItems = userSkins.length;
       const totalValue = userSkins.reduce((sum, skin) => {
-        const price = parseFloat(skin.currentPriceUsd || skin.skinTemplate?.basePriceUsd || '0');
+        const price = typeof skin.currentPriceUsd === 'number' 
+          ? skin.currentPriceUsd 
+          : parseFloat(String(skin.currentPriceUsd || skin.skinTemplate?.basePriceUsd || '0'));
         return sum + price;
       }, 0);
 
-      // Calculate rarity breakdown
+      // Calculate rarity breakdown - normalize to lowercase for consistency
       const rarityBreakdown = userSkins.reduce((acc, skin) => {
         const rarity = skin.skinTemplate?.rarity || 'Unknown';
-        acc[rarity.toLowerCase()] = (acc[rarity.toLowerCase()] || 0) + 1;
+        const rarityLower = rarity.toLowerCase();
+        acc[rarityLower] = (acc[rarityLower] || 0) + 1;
         return acc;
       }, {} as Record<string, number>);
 

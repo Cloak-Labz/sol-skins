@@ -116,15 +116,16 @@ export default function ProfilePage() {
       if (inventoryData.status === 'fulfilled' && inventoryData.value) {
         const v: any = inventoryData.value as any;
         const rb: any = (v && v.rarityBreakdown) || {};
+        
         setInventorySummary({
           totalValue: v.totalValue || 0,
           totalItems: v.totalItems || 0,
           rarityBreakdown: {
-            common: rb.common || 0,
-            uncommon: rb.uncommon || 0,
-            rare: rb.rare || 0,
-            epic: rb.epic || 0,
-            legendary: rb.legendary || 0,
+            common: rb.common || rb.Common || 0,
+            uncommon: rb.uncommon || rb.Uncommon || 0,
+            rare: rb.rare || rb.Rare || 0,
+            epic: rb.epic || rb.Epic || 0,
+            legendary: rb.legendary || rb.Legendary || 0,
           },
         });
       } else {
