@@ -122,7 +122,9 @@ export class BoxService {
         snapshotTime: data.snapshotTime || Math.floor(Date.now() / 1000),
         itemsAvailable: data.itemsAvailable || data.totalItems,
         itemsOpened: data.itemsOpened || 0,
-        status: data.status || 'active',
+        status: (['active', 'paused', 'sold_out', 'ended'].includes(data.status || '') 
+          ? data.status 
+          : 'active') as 'active' | 'paused' | 'sold_out' | 'ended',
         isSynced: true,
         lastSyncedAt: new Date(),
       });

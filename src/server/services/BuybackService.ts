@@ -19,6 +19,13 @@ export interface BuybackCalculation {
 export interface BuybackTransactionData {
   transaction: string; // Base64 encoded transaction
   buybackCalculation: BuybackCalculation;
+  priceLockId: string;
+}
+
+// Interface for blockchain operations (allows mocking in tests)
+export interface IBlockchainService {
+  buildTransaction(userWallet: string, nftMint: string, buybackAmountLamports: string): Promise<string>;
+  verifyNFTOwnership(nftMint: string, userWallet: string): Promise<boolean>;
 }
 
 export class BuybackService {
@@ -26,8 +33,9 @@ export class BuybackService {
   private program: Program;
   private adminWallet: Keypair;
   private buybackConfigPda: PublicKey;
+  private blockchainService?: IBlockchainService; // Optional: allows injection for testing
 
-  constructor() {
+  constructor(blockchainService?: IBlockchainService) {
     this.connection = new Connection(config.solana.rpcUrl, 'confirmed');
     
     // Initialize admin wallet from private key
@@ -49,6 +57,9 @@ export class BuybackService {
       new PublicKey(config.buyback.programId)
     );
     this.buybackConfigPda = buybackConfigPda;
+    
+    // Allow injection of blockchain service for testing
+    this.blockchainService = blockchainService;
   }
 
   async calculateBuyback(nftMint: string): Promise<BuybackCalculation> {
@@ -64,7 +75,8 @@ export class BuybackService {
     const userSkin = await userSkinRepo.findByNftMintAddress(nftMint);
 
     if (!userSkin) {
-      throw new Error('NFT not found in user inventory');
+      const { AppError } = require('../middlewares/errorHandler');
+      throw new AppError('NFT not found in user inventory', 404, 'NFT_NOT_FOUND');
     }
 
     // Don't throw error if already burned - just log it
@@ -114,7 +126,7 @@ export class BuybackService {
     const buybackCalculation = await this.calculateBuyback(nftMint);
     
     // SECURITY: Lock the buyback price to prevent front-running
-    buybackPriceLockService.lockPrice(
+    const priceLockId = buybackPriceLockService.lockPrice(
       nftMint,
       userWallet,
       buybackCalculation.buybackAmount,
@@ -122,10 +134,41 @@ export class BuybackService {
       buybackCalculation.skinPrice
     );
     
+    // Use injected blockchain service if available (for testing), otherwise use real implementation
+    let transaction: string;
+    if (this.blockchainService) {
+      transaction = await this.blockchainService.buildTransaction(
+        userWallet,
+        nftMint,
+        buybackCalculation.buybackAmountLamports
+      );
+    } else {
+      transaction = await this.buildSolanaTransaction(
+        userWallet,
+        nftMint,
+        buybackCalculation.buybackAmountLamports
+      );
+    }
+    
+    return {
+      transaction,
+      buybackCalculation,
+      priceLockId,
+    };
+  }
+
+  /**
+   * Build actual Solana transaction (production implementation)
+   */
+  private async buildSolanaTransaction(
+    userWallet: string,
+    nftMint: string,
+    buybackAmountLamports: string
+  ): Promise<string> {
     const nftMintPubkey = new PublicKey(nftMint);
     const userPubkey = new PublicKey(userWallet);
     const userNftAccount = await getAssociatedTokenAddress(nftMintPubkey, userPubkey);
-    const buybackAmountBN = new BN(buybackCalculation.buybackAmountLamports);
+    const buybackAmountBN = new BN(buybackAmountLamports);
     
     const tx = await this.program.methods
       .executeBuyback(buybackAmountBN)
@@ -154,10 +197,7 @@ export class BuybackService {
       verifySignatures: false,
     });
 
-    return {
-      transaction: serializedTx.toString('base64'),
-      buybackCalculation,
-    };
+    return serializedTx.toString('base64');
   }
 
   /**
@@ -170,6 +210,18 @@ export class BuybackService {
       throw new Error(`Invalid NFT mint address format: ${nftMint}`);
     }
     
+    // Use injected blockchain service if available (for testing), otherwise use real implementation
+    if (this.blockchainService) {
+      return await this.blockchainService.verifyNFTOwnership(nftMint, userWallet);
+    }
+    
+    return await this.verifyNFTOwnershipOnChain(nftMint, userWallet);
+  }
+
+  /**
+   * Verify NFT ownership on-chain (production implementation)
+   */
+  private async verifyNFTOwnershipOnChain(nftMint: string, userWallet: string): Promise<boolean> {
     try {
       const nftMintPubkey = new PublicKey(nftMint);
       const userPubkey = new PublicKey(userWallet);
@@ -260,4 +312,3 @@ export class BuybackService {
     }
   }
 }
-

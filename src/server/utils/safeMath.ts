@@ -58,8 +58,8 @@ export function safeMultiply(
   b: number | string | DecimalInstance,
   fieldName: string = 'result'
 ): DecimalInstance {
-  const decimalA = validateAmount(a, 'operand A');
-  const decimalB = validateAmount(b, 'operand B');
+  const decimalA = validateAmount(a, 'operand A') as any;
+  const decimalB = validateAmount(b, 'operand B') as any;
   
   const result = decimalA.mul(decimalB);
   
@@ -105,8 +105,8 @@ export function safeAdd(
   b: number | string | DecimalInstance,
   fieldName: string = 'result'
 ): DecimalInstance {
-  const decimalA = validateAmount(a, 'operand A');
-  const decimalB = validateAmount(b, 'operand B');
+  const decimalA = validateAmount(a, 'operand A') as any;
+  const decimalB = validateAmount(b, 'operand B') as any;
   
   const result = decimalA.add(decimalB);
   
@@ -126,8 +126,8 @@ export function safeSubtract(
   b: number | string | DecimalInstance,
   fieldName: string = 'result'
 ): DecimalInstance {
-  const decimalA = validateAmount(a, 'minuend');
-  const decimalB = validateAmount(b, 'subtrahend');
+  const decimalA = validateAmount(a, 'minuend') as any;
+  const decimalB = validateAmount(b, 'subtrahend') as any;
   
   const result = decimalA.sub(decimalB);
   
@@ -249,6 +249,8 @@ export function isApproximatelyEqual(
   const decimalA = new Decimal(a);
   const decimalB = new Decimal(b);
   
-  return decimalA.sub(decimalB).abs().lte(tolerance);
+  const decimalAInstance = validateAmount(decimalA, 'operand A') as any;
+  const decimalBInstance = validateAmount(decimalB, 'operand B') as any;
+  return decimalAInstance.sub(decimalBInstance).abs().lte(tolerance);
 }
 

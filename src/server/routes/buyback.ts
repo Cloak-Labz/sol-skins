@@ -1,12 +1,27 @@
 import { Router } from 'express';
 import { BuybackController } from '../controllers/BuybackController';
+import { BuybackService, IBlockchainService } from '../services/BuybackService';
 import { WalletAuthMiddleware } from '../middlewares/walletAuth';
 import { UserService } from '../services/UserService';
 import { validateSchema, schemas } from '../middlewares/validation';
 import { buybackLimiter, publicEndpointsLimiter } from '../middlewares/security';
+import { config } from '../config/env';
+
+// Create BuybackService with optional blockchain service injection for testing
+function createBuybackService(): BuybackService {
+  let blockchainService: IBlockchainService | undefined;
+  
+  // In test environment, use mock blockchain service
+  if (config.env === 'test') {
+    const { MockBlockchainService } = require('../__tests__/helpers/mockBlockchainService');
+    blockchainService = new MockBlockchainService();
+  }
+  
+  return new BuybackService(blockchainService);
+}
 
 export const buybackRoutes = Router();
-const buybackController = new BuybackController();
+const buybackController = new BuybackController(createBuybackService());
 const userService = new UserService();
 const walletAuth = new WalletAuthMiddleware(userService);
 

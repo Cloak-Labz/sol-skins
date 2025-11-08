@@ -55,7 +55,7 @@ export function validateFileExtension(filename: string): boolean {
   }
   
   // Check if extension is in allowed list
-  const allowedExtensions = Object.values(ALLOWED_MIME_TYPES).flat();
+  const allowedExtensions = Object.values(ALLOWED_MIME_TYPES).flat() as string[];
   return allowedExtensions.includes(extension);
 }
 
@@ -160,11 +160,12 @@ function getObjectDepth(obj: any, currentDepth: number = 0, maxDepth: number = 2
  */
 export function validateFileUpload(req: Request): { valid: boolean; error?: string } {
   // Check if file is present
-  if (!req.file && !req.files) {
+  const reqWithFiles = req as any; // Type assertion for file upload properties
+  if (!reqWithFiles.file && !reqWithFiles.files) {
     return { valid: false, error: 'No file uploaded' };
   }
   
-  const file = req.file || (req.files && (req.files as any)[0]);
+  const file = reqWithFiles.file || (reqWithFiles.files && reqWithFiles.files[0]);
   
   if (!file) {
     return { valid: false, error: 'No file uploaded' };

@@ -93,6 +93,7 @@ router.post('/upload', irysUploadLimiter, validateSchema(schemas.irysUpload), as
     // Create a proper wallet adapter for Irys
     const walletAdapter = {
       publicKey: keypair.publicKey,
+      provider: connection, // Required by Irys SDK
       signMessage: async (message: Uint8Array) => {
         return nacl.sign.detached(message, keypair.secretKey);
       },

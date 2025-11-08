@@ -52,9 +52,9 @@ export const corsOptions: cors.CorsOptions = {
 
     // SECURITY: In production, reject requests without origin header
     if (!origin) {
-      if (config.env === 'development') {
-        // In development, allow requests with no origin (mobile apps, Postman, etc.)
-        logger.debug('CORS: Allowing request without origin in development mode');
+      if (config.env === 'development' || config.env === 'test') {
+        // In development/test, allow requests with no origin (mobile apps, Postman, tests, etc.)
+        logger.debug('CORS: Allowing request without origin in development/test mode');
         return callback(null, true);
       }
       // In production, reject requests without origin (security)
@@ -793,9 +793,16 @@ export const csrfTokenManager = new CSRFTokenManager();
 // CSRF token generation endpoint middleware
 export const generateCSRFToken = (req: Request, res: Response, next: NextFunction) => {
   // Get IP with fallback for localhost variations
+  const xForwardedFor = req.headers['x-forwarded-for'];
+  const forwardedIp = Array.isArray(xForwardedFor) 
+    ? xForwardedFor[0]?.trim() 
+    : typeof xForwardedFor === 'string' 
+      ? xForwardedFor.split(',')[0]?.trim() 
+      : undefined;
+  
   const ip = req.ip || 
              req.socket.remoteAddress || 
-             req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 
+             forwardedIp || 
              'unknown';
   
   // Normalize localhost IPs to avoid mismatches
@@ -804,15 +811,14 @@ export const generateCSRFToken = (req: Request, res: Response, next: NextFunctio
     : ip;
   
   const token = csrfTokenManager.generateToken(normalizedIp);
+  const stats = csrfTokenManager.getStats();
 
   logger.debug('CSRF token endpoint response', {
     ip: normalizedIp,
     originalIp: ip,
     tokenLength: token.length,
     tokenPreview: token.substring(0, 8) + '...',
-    totalTokensInManager: csrfTokenManager.tokens.size,
-    // Verify token exists
-    tokenExists: csrfTokenManager.tokens.has(token),
+    totalTokensInManager: stats.activeTokens,
   });
 
   res.setHeader('X-CSRF-Token', token);
@@ -846,25 +852,43 @@ export const validateCSRF = (req: Request, res: Response, next: NextFunction) =>
 
   // Check both lowercase and camelCase versions of the header
   // Also check for any case variations (Express normalizes to lowercase)
-  const token = (req.headers['x-csrf-token'] || req.headers['x-csrftoken'] || req.headers['csrf-token'] || req.headers['X-CSRF-Token']) as string | undefined;
+  const getHeaderValue = (header: string | string[] | undefined): string | undefined => {
+    if (!header) return undefined;
+    return Array.isArray(header) ? header[0] : header;
+  };
+  
+  const token = getHeaderValue(req.headers['x-csrf-token']) ||
+                getHeaderValue(req.headers['x-csrftoken']) ||
+                getHeaderValue(req.headers['csrf-token']) ||
+                getHeaderValue(req.headers['X-CSRF-Token']);
   
   // Get IP with fallback for localhost variations, then normalize
-  const rawIp = req.ip || req.socket.remoteAddress || req.headers['x-forwarded-for']?.split(',')[0]?.trim() || 'unknown';
+  const xForwardedFor = req.headers['x-forwarded-for'];
+  const forwardedIp = Array.isArray(xForwardedFor) 
+    ? xForwardedFor[0]?.trim() 
+    : typeof xForwardedFor === 'string' 
+      ? xForwardedFor.split(',')[0]?.trim() 
+      : undefined;
+  
+  const rawIp = req.ip || req.socket.remoteAddress || forwardedIp || 'unknown';
   // Normalize localhost IPs to avoid mismatches
   const ip = (rawIp === '::1' || rawIp === '127.0.0.1' || rawIp === 'localhost') 
     ? '127.0.0.1' 
     : rawIp;
 
   // Debug: Log token detection
+  const xCsrfTokenHeader = getHeaderValue(req.headers['x-csrf-token']);
+  const XCsrfTokenHeader = getHeaderValue(req.headers['X-CSRF-Token']);
+  
   logger.debug('CSRF validation attempt', {
     hasToken: !!token,
     tokenLength: token?.length,
-    tokenPreview: token?.substring(0, 8) + '...',
+    tokenPreview: token ? token.substring(0, 8) + '...' : undefined,
     ip,
     rawIp,
     headerKeys: Object.keys(req.headers).filter(h => h.toLowerCase().includes('csrf')),
-    xCsrfToken: req.headers['x-csrf-token']?.substring(0, 8) + '...',
-    XCsrfToken: req.headers['X-CSRF-Token']?.substring(0, 8) + '...',
+    xCsrfToken: xCsrfTokenHeader ? xCsrfTokenHeader.substring(0, 8) + '...' : undefined,
+    XCsrfToken: XCsrfTokenHeader ? XCsrfTokenHeader.substring(0, 8) + '...' : undefined,
   });
 
   if (!token) {

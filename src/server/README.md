@@ -1,152 +1,152 @@
 # SolSkins Backend
 
-Backend completo da plataforma SolSkins implementado em Express.js + TypeScript + TypeORM + PostgreSQL.
+Complete backend platform for SolSkins implemented with Express.js + TypeScript + TypeORM + PostgreSQL.
 
-## Instalação
+## Installation
 
-### 1. Instalar Dependências
+### 1. Install Dependencies
 
 ```bash
 cd src/server
 npm install
 ```
 
-### 2. Configurar Banco de Dados
+### 2. Configure Database
 
 ```bash
-# Iniciar PostgreSQL e Redis via Docker
+# Start PostgreSQL and Redis via Docker
 cd ../../deployment
 docker-compose up -d
 ```
 
-### 3. Configurar Variáveis de Ambiente
+### 3. Configure Environment Variables
 
 ```bash
-# Copiar arquivo de exemplo
+# Copy example file
 cp .env.example .env
 
-# Editar as variáveis conforme necessário
+# Edit variables as needed
 nano .env
 ```
 
-### 4. Executar Migrações
+### 4. Run Migrations
 
 ```bash
-# Sincronizar schema do banco (desenvolvimento)
+# Sync database schema (development)
 npm run schema:sync
 
-# Ou executar migrações (produção)
+# Or run migrations (production)
 npm run migration:run
 ```
 
-### 5. Iniciar Servidor
+### 5. Start Server
 
 ```bash
-# Desenvolvimento
+# Development
 npm run dev
 
-# Produção
+# Production
 npm run build
 npm start
 ```
 
-## Estrutura do Projeto
+## Project Structure
 
 ```
 src/server/
-├── config/          # Configurações (DB, Swagger, Env)
-├── controllers/     # Controladores da API
-├── entities/        # Entidades TypeORM
+├── config/          # Configurations (DB, Swagger, Env)
+├── controllers/     # API Controllers
+├── entities/        # TypeORM Entities
 ├── middlewares/     # Middlewares (Auth, Security, Validation)
-├── repositories/    # Camada de acesso a dados
-├── routes/          # Definição de rotas
-├── services/        # Lógica de negócio
-├── utils/           # Utilitários
-├── app.ts           # Configuração do Express
-├── index.ts         # Entry point
-└── package.json     # Dependências
+├── repositories/    # Data Access Layer
+├── routes/          # Route Definitions
+├── services/        # Business Logic
+├── utils/           # Utilities
+├── app.ts           # Express Configuration
+├── index.ts         # Entry Point
+└── package.json     # Dependencies
 ```
 
-## Scripts Disponíveis
+## Available Scripts
 
 ```bash
-npm run dev           # Desenvolvimento com hot reload
-npm run build         # Build para produção
-npm start             # Executar versão buildada
-npm run typeorm       # CLI do TypeORM
-npm run migration:generate  # Gerar migração
-npm run migration:run       # Executar migrações
-npm run schema:sync         # Sincronizar schema (dev only)
+npm run dev           # Development with hot reload
+npm run build         # Build for production
+npm start             # Run built version
+npm run typeorm       # TypeORM CLI
+npm run migration:generate  # Generate migration
+npm run migration:run       # Run migrations
+npm run schema:sync         # Sync schema (dev only)
 ```
 
-## Endpoints da API
+## API Endpoints
 
-### Autenticação
-- `POST /api/v1/auth/connect` - Conectar wallet
-- `POST /api/v1/auth/disconnect` - Desconectar
+### Authentication
+- `POST /api/v1/auth/connect` - Connect wallet
+- `POST /api/v1/auth/disconnect` - Disconnect
 
 ### Marketplace
-- `GET /api/v1/marketplace/loot-boxes` - Listar loot boxes
-- `GET /api/v1/marketplace/loot-boxes/:id` - Detalhes do loot box
+- `GET /api/v1/marketplace/loot-boxes` - List loot boxes
+- `GET /api/v1/marketplace/loot-boxes/:id` - Loot box details
 
 ### Cases
-- `POST /api/v1/cases/open` - Abrir caso
-- `GET /api/v1/cases/opening/:id/status` - Status da abertura
-- `POST /api/v1/cases/opening/:id/decision` - Decisão pós-abertura
+- `POST /api/v1/cases/open` - Open case
+- `GET /api/v1/cases/opening/:id/status` - Opening status
+- `POST /api/v1/cases/opening/:id/decision` - Post-opening decision
 
 ### Inventory
-- `GET /api/v1/inventory` - Listar inventário
-- `POST /api/v1/inventory/:skinId/buyback` - Buyback de skin
+- `GET /api/v1/inventory` - List inventory
+- `POST /api/v1/inventory/:skinId/buyback` - Skin buyback
 
 ### History
-- `GET /api/v1/history/transactions` - Histórico de transações
+- `GET /api/v1/history/transactions` - Transaction history
 
 ### Social
-- `GET /api/v1/leaderboard` - Ranking de usuários
-- `GET /api/v1/activity/recent` - Atividade recente
+- `GET /api/v1/leaderboard` - User rankings
+- `GET /api/v1/activity/recent` - Recent activity
 
 ### Admin
-- `GET /api/v1/admin/stats/overview` - Estatísticas da plataforma
+- `GET /api/v1/admin/stats/overview` - Platform statistics
 
-## Documentação
+## Documentation
 
 - **Swagger UI**: http://localhost:4000/api-docs
 - **API Testing Guide**: `docs/api-testing-guide.md`
 - **Backend Knowledge Base**: `docs/backend-knowledge-base.md`
 
-## Tecnologias Utilizadas
+## Technologies Used
 
-- **Express.js** - Framework web
-- **TypeScript** - Tipagem estática
-- **TypeORM** - ORM para PostgreSQL
-- **PostgreSQL** - Banco de dados
-- **Redis** - Cache e sessões
-- **JWT** - Autenticação
-- **Joi** - Validação de dados
+- **Express.js** - Web framework
+- **TypeScript** - Static typing
+- **TypeORM** - ORM for PostgreSQL
+- **PostgreSQL** - Database
+- **Redis** - Cache and sessions
+- **JWT** - Authentication
+- **Joi** - Data validation
 - **Winston** - Logging
-- **Helmet** - Segurança
-- **Swagger** - Documentação da API
+- **Helmet** - Security
+- **Swagger** - API documentation
 
-## Integração Solana
+## Solana Integration
 
-O backend integra com:
+The backend integrates with:
 - **Anchor Program** - Smart contracts
-- **Switchboard VRF** - Aleatoriedade verificável
-- **Solana Web3.js** - Interação com blockchain
-- **NFT Minting** - Criação de skins como NFTs
+- **Switchboard VRF** - Verifiable randomness
+- **Solana Web3.js** - Blockchain interaction
+- **NFT Minting** - Creating skins as NFTs
 
-## Monitoramento e Logs
+## Monitoring and Logs
 
-- Logs em `logs/` (error.log, combined.log)
-- Correlation ID para rastreamento de requests
-- Health check em `/health`
-- Métricas de performance via Winston
+- Logs in `logs/` (error.log, combined.log)
+- Correlation ID for request tracking
+- Health check at `/health`
+- Performance metrics via Winston
 
-## Segurança
+## Security
 
-- Rate limiting por IP e wallet
-- Validação e sanitização de inputs
-- CORS configurado
-- Headers de segurança
-- Autenticação via assinatura de wallet
-- Proteção contra ataques comuns 
+- Rate limiting by IP and wallet
+- Input validation and sanitization
+- CORS configured
+- Security headers
+- Wallet signature authentication
+- Protection against common attacks

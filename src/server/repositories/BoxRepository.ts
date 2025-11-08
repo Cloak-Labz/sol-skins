@@ -49,8 +49,8 @@ export class BoxRepository {
       { batchId },
       { 
         isSynced,
-        lastSyncError: errorMessage || null,
-        lastSyncAt: new Date()
+        syncError: errorMessage || null,
+        lastSyncedAt: new Date()
       }
     );
   }

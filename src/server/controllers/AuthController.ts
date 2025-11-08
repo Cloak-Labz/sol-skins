@@ -8,16 +8,19 @@ import { tokenBlacklistService } from "../services/TokenBlacklistService";
 import { AuditService } from "../services/AuditService";
 import { AuditEventType } from "../entities/AuditLog";
 import { logger } from "../middlewares/logger";
+import { AuthMiddleware } from "../middlewares/auth";
 
 export class AuthController {
   private userService: UserService;
   private walletAuth: WalletAuthMiddleware;
   private auditService: AuditService;
+  private auth: AuthMiddleware;
 
   constructor() {
     this.userService = new UserService();
     this.walletAuth = new WalletAuthMiddleware(this.userService);
     this.auditService = new AuditService();
+    this.auth = new AuthMiddleware(this.userService);
   }
 
   connect = catchAsync(async (req: Request, res: Response) => {
@@ -46,6 +49,9 @@ export class AuthController {
     // Update last login
     await this.userService.updateLastLogin(user.id);
 
+    // Generate JWT token
+    const token = this.auth.generateToken(user.id, user.walletAddress);
+
     return ResponseUtil.success(res, {
       user: {
         id: user.id,
@@ -55,6 +61,7 @@ export class AuthController {
         totalEarned: user.totalEarned,
         casesOpened: user.casesOpened,
       },
+      token,
       message: "Wallet connected successfully",
     });
   });

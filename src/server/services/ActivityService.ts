@@ -136,7 +136,7 @@ export class ActivityService {
               weapon: transaction.userSkin.name?.split(' | ')[0] || 'Unknown',
               skinName: transaction.userSkin.name || 'Unknown Skin',
               rarity: transaction.userSkin.skinTemplate?.rarity || 'Unknown',
-              condition: transaction.userSkin.condition || 'Unknown',
+              condition: transaction.userSkin.skinTemplate?.condition || 'Unknown',
               imageUrl: transaction.userSkin.imageUrl || '',
               valueUsd: transaction.userSkin.currentPriceUsd?.toString() || '0',
             } : undefined,

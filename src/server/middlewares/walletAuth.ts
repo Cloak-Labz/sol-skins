@@ -132,6 +132,7 @@ export class WalletAuthMiddleware {
 
       return isValid;
     } catch (error) {
+      // Logger is configured to be silent in test environment
       logger.error('Wallet signature verification failed:', error);
       
       // Add delay even on error to prevent timing leaks
@@ -145,8 +146,48 @@ export class WalletAuthMiddleware {
   // Middleware to protect routes with wallet authentication (signature optional for GET requests)
   public requireWallet = async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // For GET requests, check query params; for POST/PUT, check body
-      const walletAddress = req.body.walletAddress || req.query.walletAddress as string;
+      let walletAddress: string | undefined;
+      
+      // First, try to get wallet address from JWT token (if Authorization header is present)
+      const authHeader = req.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        try {
+          const { getAuth } = require('./auth');
+          const { tokenBlacklistService } = require('../services/TokenBlacklistService');
+          const token = authHeader.split(' ')[1];
+          
+          // Check if token is blacklisted
+          if (tokenBlacklistService.isTokenBlacklisted(token)) {
+            return next(new AppError('Token has been revoked', 401, 'TOKEN_REVOKED'));
+          }
+          
+          const decoded = getAuth().verifyToken(token);
+          walletAddress = decoded.walletAddress;
+          
+          // Verify user exists and is active
+          const user = await this.userService.findById(decoded.userId);
+          if (!user || !user.isActive) {
+            return next(new AppError('User not found or inactive', 401, 'USER_NOT_FOUND'));
+          }
+          
+          // Attach user to request
+          req.user = {
+            id: user.id,
+            walletAddress: user.walletAddress,
+          };
+          
+          return next();
+        } catch (error) {
+          // JWT token invalid or expired, fall through to check body/query
+          logger.debug('JWT token validation failed, falling back to body/query', { error });
+        }
+      }
+      
+      // Fallback: Check header, then body, then query params
+      walletAddress = walletAddress || 
+        (req.headers['x-wallet-address'] as string) ||
+        req.body.walletAddress || 
+        req.query.walletAddress as string;
       const { signature, message } = req.body;
 
       if (!walletAddress) {

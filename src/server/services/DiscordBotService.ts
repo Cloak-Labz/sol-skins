@@ -27,6 +27,11 @@ class DiscordBotService {
       ],
     });
 
+    // Skip Discord bot initialization in test environment
+    if (process.env.NODE_ENV === 'test' || !config.discord.botToken) {
+      return;
+    }
+
     if (config.discord.botToken) {
       this.client.login(config.discord.botToken)
         .then(() => console.log('Discord bot logged in successfully!'))

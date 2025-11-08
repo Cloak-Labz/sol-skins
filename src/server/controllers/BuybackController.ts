@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { BuybackService } from '../services/BuybackService';
 import { TransactionValidationService } from '../services/TransactionValidationService';
 import { ResponseUtil } from '../utils/response';
-import { catchAsync } from '../middlewares/errorHandler';
+import { catchAsync, AppError } from '../middlewares/errorHandler';
 import { Connection } from '@solana/web3.js';
 import { config } from '../config/env';
 import { AppDataSource } from '../config/database';
@@ -21,8 +21,9 @@ export class BuybackController {
   private transactionValidator: TransactionValidationService;
   private auditService: AuditService;
 
-  constructor() {
-    this.buybackService = new BuybackService();
+  constructor(buybackService?: BuybackService) {
+    // Allow injection of BuybackService for testing
+    this.buybackService = buybackService || new BuybackService();
     this.connection = new Connection(config.solana.rpcUrl, 'confirmed');
     this.transactionRepository = new TransactionRepository();
     this.transactionValidator = new TransactionValidationService(this.connection);
@@ -71,6 +72,7 @@ export class BuybackController {
         buybackAmountLamports: transactionData.buybackCalculation.buybackAmountLamports,
         skinPrice: transactionData.buybackCalculation.skinPrice,
         nftMint: transactionData.buybackCalculation.nftMint,
+        priceLockId: transactionData.priceLockId,
       });
     } catch (error) {
       console.error('Buyback request error:', error);

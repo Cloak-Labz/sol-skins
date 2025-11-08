@@ -58,7 +58,6 @@ export enum AuditSeverity {
 }
 
 @Entity('audit_logs')
-@Index(['userId'])
 @Index(['eventType'])
 @Index(['severity'])
 @Index(['createdAt'])
@@ -70,11 +69,9 @@ export class AuditLog {
 
   // User information
   @Column('uuid', { nullable: true })
-  @Index()
   userId?: string;
 
   @Column({ type: 'varchar', length: 44, nullable: true })
-  @Index()
   walletAddress?: string;
 
   // Event information
@@ -82,7 +79,6 @@ export class AuditLog {
     type: 'enum',
     enum: AuditEventType,
   })
-  @Index()
   eventType: AuditEventType;
 
   @Column({
@@ -90,12 +86,10 @@ export class AuditLog {
     enum: AuditSeverity,
     default: AuditSeverity.MEDIUM,
   })
-  @Index()
   severity: AuditSeverity;
 
   // Request information
   @Column({ type: 'varchar', length: 45, nullable: true })
-  @Index()
   ipAddress?: string;
 
   @Column({ type: 'text', nullable: true })
@@ -136,7 +130,6 @@ export class AuditLog {
   amountUsd?: number;
 
   @CreateDateColumn()
-  @Index()
   createdAt: Date;
 }
 

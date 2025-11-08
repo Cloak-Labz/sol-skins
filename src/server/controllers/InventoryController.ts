@@ -134,7 +134,9 @@ export class InventoryController {
       }
 
       if (filterBy !== 'all') {
-        queryBuilder.andWhere('skinTemplate.rarity = :rarity', { rarity: filterBy });
+        // Convert filterBy to proper case (first letter uppercase)
+        const rarityValue = filterBy.charAt(0).toUpperCase() + filterBy.slice(1).toLowerCase();
+        queryBuilder.andWhere('skinTemplate.rarity = :rarity', { rarity: rarityValue });
       }
 
       // Sorting

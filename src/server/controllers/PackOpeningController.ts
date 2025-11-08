@@ -52,7 +52,7 @@ export class PackOpeningController {
       skinData
     );
 
-    ResponseUtil.success(res, result);
+    ResponseUtil.success(res, result, 201);
   });
 
   createBuybackTransaction = catchAsync(async (req: Request, res: Response) => {

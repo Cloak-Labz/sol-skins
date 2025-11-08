@@ -27,12 +27,20 @@ export const validateSchema = (
   source: "body" | "query" | "params" = "body"
 ) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const data =
+    let data =
       source === "body"
         ? req.body
         : source === "query"
         ? req.query
         : req.params;
+
+    // For body validation, check if walletAddress is in header and add to body if missing
+    if (source === "body" && !data.walletAddress) {
+      const headerWalletAddress = req.headers['x-wallet-address'] as string;
+      if (headerWalletAddress) {
+        data = { ...data, walletAddress: headerWalletAddress };
+      }
+    }
 
     const { error, value } = schema.validate(data, {
       abortEarly: false,
@@ -165,9 +173,6 @@ export const schemas = {
   }),
 
   // Activity schemas
-  activityQuery: Joi.object({
-    limit: Joi.number().integer().min(1).max(100).default(50),
-  }),
 
   // Buyback schemas
   buybackRequest: Joi.object({

@@ -5,8 +5,12 @@ import { config } from '../config/env';
 import { sanitizeObject } from '../utils/sensitiveData';
 
 // Winston logger configuration
+// In test environment, use silent logger to avoid cluttering test output
+const isTest = config.env === 'test';
+
 export const logger = winston.createLogger({
-  level: config.logging.level,
+  level: isTest ? 'error' : config.logging.level, // Only log errors in test
+  silent: isTest, // Completely silent in test (can be overridden if needed)
   format: winston.format.combine(
     winston.format.timestamp(),
     winston.format.errors({ stack: true }),
@@ -24,7 +28,7 @@ export const logger = winston.createLogger({
     })
   ),
   defaultMeta: { service: 'sol-skins-api' },
-  transports: [
+  transports: isTest ? [] : [ // No file transports in test
     new winston.transports.File({ 
       filename: 'logs/error.log', 
       level: 'error',
@@ -39,8 +43,8 @@ export const logger = winston.createLogger({
   ],
 });
 
-// Add console transport in development
-if (config.env !== 'production') {
+// Add console transport in development (not in test)
+if (config.env === 'development') {
   logger.add(new winston.transports.Console({
     format: winston.format.combine(
       winston.format.colorize(),
