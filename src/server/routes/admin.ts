@@ -5,6 +5,7 @@ import { AuditController } from "../controllers/AuditController";
 import { adminMiddleware } from "../middlewares/admin";
 import { getAuth } from "../middlewares/auth";
 import { adminLimiter } from "../middlewares/security";
+import { validateSchema, schemas } from "../middlewares/validation";
 
 export const adminRoutes = Router();
 const adminController = new AdminController();
@@ -17,7 +18,7 @@ adminRoutes.use((req, res, next) => {
   authMiddleware.protect(req, res, next);
 });
 
-// SECURITY: Apply strict rate limiting to admin endpoints (5 req/min)
+// SECURITY: Apply strict rate limiting to admin endpoints (30 req/min)
 adminRoutes.use(adminLimiter);
 
 adminRoutes.use(adminMiddleware);
@@ -56,3 +57,17 @@ adminRoutes.get("/audit-logs", auditController.getAuditLogs);
 
 // GET /admin/audit-stats - Get audit log statistics
 adminRoutes.get("/audit-stats", auditController.getAuditStats);
+
+// User management routes
+// GET /admin/users/:userId - Get user details
+adminRoutes.get("/users/:userId", adminController.getUser);
+
+// GET /admin/users/:userId/inventory - Get user inventory
+adminRoutes.get("/users/:userId/inventory", adminController.getUserInventory);
+
+// Skin management routes
+// GET /admin/skins/waiting-transfer - Get all skins waiting for transfer
+adminRoutes.get("/skins/waiting-transfer", adminController.getSkinsWaitingTransfer);
+
+// PATCH /admin/skins/:skinId/status - Update skin status
+adminRoutes.patch("/skins/:skinId/status", validateSchema(schemas.updateSkinStatus), adminController.updateSkinStatus);

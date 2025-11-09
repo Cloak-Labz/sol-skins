@@ -10,19 +10,22 @@ class AuthService {
     walletAddress: string,
     signature?: string,
     message?: string
-  ): Promise<{ user: User; message: string }> {
+  ): Promise<{ user: User; token: string; message: string }> {
     const request: ConnectWalletRequest = {
       walletAddress,
       signature,
       message,
     };
 
-    const response = await apiClient.post<{ user: User; message: string }>("/auth/connect", request);
+    const response = await apiClient.post<{ user: User; token: string; message: string }>("/auth/connect", request);
 
-    // Set wallet address in API client for future requests
+    // Set wallet address and JWT token in API client for future requests
     apiClient.setWalletAddress(walletAddress);
+    if (response.token) {
+      apiClient.setJwtToken(response.token);
+    }
 
-    // ApiClient returns the inner data already: { user, message }
+    // ApiClient returns the inner data already: { user, token, message }
     return response;
   }
 
@@ -30,8 +33,9 @@ class AuthService {
   async disconnectWallet(): Promise<{ message: string }> {
     const response = await apiClient.post<{ message: string }>("/auth/disconnect");
 
-    // Clear wallet address from API client
+    // Clear wallet address and JWT token from API client
     apiClient.setWalletAddress(null);
+    apiClient.setJwtToken(null);
 
     return response;
   }

@@ -5,8 +5,12 @@ import { generateRequestNonce } from "../utils/nonce";
 class ApiClient {
   public client: AxiosInstance;
   private walletAddress: string | null = null;
+  private jwtToken: string | null = null;
   private csrfToken: string | null = null;
-  private csrfTokenPromise: Promise<string> | null = null;
+  private csrfTokenPromise: Promise<string | null> | null = null;
+
+  private readonly JWT_TOKEN_KEY = 'sol_skins_jwt_token';
+  private readonly WALLET_ADDRESS_KEY = 'sol_skins_wallet_address';
 
   constructor() {
     // Handle both cases: with and without /api/v1 suffix
@@ -21,6 +25,18 @@ class ApiClient {
       },
     });
 
+    // Load persisted token and wallet address from localStorage
+    if (typeof window !== 'undefined') {
+      const savedToken = localStorage.getItem(this.JWT_TOKEN_KEY);
+      const savedWallet = localStorage.getItem(this.WALLET_ADDRESS_KEY);
+      if (savedToken) {
+        this.jwtToken = savedToken;
+      }
+      if (savedWallet) {
+        this.walletAddress = savedWallet;
+      }
+    }
+
     this.setupInterceptors();
     // Fetch CSRF token on initialization (fire and forget - will be fetched on first request if needed)
     // Don't await to avoid blocking constructor
@@ -33,7 +49,7 @@ class ApiClient {
   /**
    * Fetch CSRF token from server
    */
-  private async fetchCSRFToken(): Promise<string> {
+  private async fetchCSRFToken(): Promise<string | null> {
     // If already fetching, return the existing promise
     if (this.csrfTokenPromise) {
       return this.csrfTokenPromise;
@@ -107,13 +123,30 @@ class ApiClient {
   }
 
   private setupInterceptors() {
-    // Request interceptor to add wallet address, CSRF token, and nonce to requests
+    // Request interceptor to add wallet address, JWT token, CSRF token, and nonce to requests
     this.client.interceptors.request.use(
       async (config) => {
+        // Add JWT token to Authorization header for authenticated requests
+        // Skip for public endpoints
+        const url = config.url || "";
+        const isPublicEndpoint = 
+          url.includes('/auth/connect') || 
+          url.includes('/csrf-token') ||
+          url.startsWith('/boxes') && ['get'].includes((config.method || "get").toLowerCase()); // Public GET /boxes
+        
+        // Ensure we have the latest token (in case it was updated)
+        const token = this.jwtToken || (typeof window !== 'undefined' ? localStorage.getItem(this.JWT_TOKEN_KEY) : null);
+        
+        if (token && !isPublicEndpoint) {
+          if (!config.headers) {
+            config.headers = {} as any;
+          }
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
+
         // Add CSRF token for state-changing operations (POST, PUT, DELETE)
         // Skip for GET, HEAD, OPTIONS and public endpoints
         const method = (config.method || "get").toLowerCase();
-        const url = config.url || "";
         const needsCSRF = ['post', 'put', 'delete'].includes(method) && 
                           !url.includes('/auth/connect') && // Exclude initial connection
                           !url.includes('/csrf-token'); // Exclude CSRF endpoint itself
@@ -123,11 +156,12 @@ class ApiClient {
           let token = this.csrfToken;
           if (!token) {
             try {
-              token = await this.fetchCSRFToken();
-              if (!token) {
+              const fetchedToken = await this.fetchCSRFToken();
+              if (!fetchedToken) {
                 console.error('❌ Failed to fetch CSRF token');
                 throw new Error('CSRF token fetch failed');
               }
+              token = fetchedToken;
               // Save the token for future requests
               this.csrfToken = token;
             } catch (error: any) {
@@ -144,7 +178,7 @@ class ApiClient {
           
           // Ensure headers object exists
           if (!config.headers) {
-            config.headers = {};
+            config.headers = {} as any;
           }
           
           // Set the token in both formats to be safe
@@ -264,8 +298,9 @@ class ApiClient {
         
         // Handle common errors
         if (error.response?.status === 401) {
-          // Unauthorized - clear wallet session
-          this.walletAddress = null;
+          // Unauthorized - clear wallet session and token
+          this.setWalletAddress(null);
+          this.setJwtToken(null);
           // You might want to redirect to login or show a modal
         }
 
@@ -277,10 +312,34 @@ class ApiClient {
   // Authentication methods
   setWalletAddress(address: string | null) {
     this.walletAddress = address;
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      if (address) {
+        localStorage.setItem(this.WALLET_ADDRESS_KEY, address);
+      } else {
+        localStorage.removeItem(this.WALLET_ADDRESS_KEY);
+      }
+    }
   }
 
   getWalletAddress(): string | null {
     return this.walletAddress;
+  }
+
+  setJwtToken(token: string | null) {
+    this.jwtToken = token;
+    // Persist to localStorage
+    if (typeof window !== 'undefined') {
+      if (token) {
+        localStorage.setItem(this.JWT_TOKEN_KEY, token);
+      } else {
+        localStorage.removeItem(this.JWT_TOKEN_KEY);
+      }
+    }
+  }
+
+  getJwtToken(): string | null {
+    return this.jwtToken;
   }
 
   // Generic request method

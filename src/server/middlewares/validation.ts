@@ -640,6 +640,15 @@ export const schemas = {
     timestamp: Joi.number().integer().required(),
   }),
 
+  // Admin schemas
+  updateSkinStatus: Joi.object({
+    isWaitingTransfer: Joi.boolean().optional(),
+    isInInventory: Joi.boolean().optional(),
+    soldViaBuyback: Joi.boolean().optional(),
+  }).min(1).messages({
+    'object.min': 'At least one field must be provided for update',
+  }),
+
   // Irys schemas
   irysUpload: Joi.object({
     metadata: Joi.object()

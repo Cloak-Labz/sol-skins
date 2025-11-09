@@ -391,10 +391,10 @@ export const irysUploadLimiter = rateLimit({
 });
 
 // Strict rate limiting for admin endpoints
-// SECURITY: Only 5 requests per minute to prevent brute-force attacks
+// SECURITY: 30 requests per minute for admin operations (more lenient for admin UI)
 export const adminLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 5, // Only 5 requests per minute
+  max: 30, // 30 requests per minute (allows for UI navigation and multiple requests)
   message: {
     success: false,
     error: {
@@ -429,7 +429,7 @@ export const adminLimiter = rateLimit({
       userAgent: req.get('User-Agent'),
       requestPath: req.path,
       httpMethod: req.method,
-      description: 'Admin rate limit exceeded (5 req/min)',
+      description: 'Admin rate limit exceeded (30 req/min)',
     }).catch(err => logger.error('Failed to log audit event:', err));
     
     res.status(429).json({
