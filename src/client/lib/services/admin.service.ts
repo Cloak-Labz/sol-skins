@@ -157,27 +157,75 @@ class AdminService {
   }
 
   // Analytics methods
-  async getAnalytics(days: number = 30): Promise<AnalyticsData> {
+  async getAnalytics(
+    days: number = 30,
+    startDate?: string,
+    endDate?: string
+  ): Promise<AnalyticsData> {
     const params = new URLSearchParams();
-    params.append('days', days.toString());
+    if (days > 0) {
+      params.append('days', days.toString());
+    }
+    if (startDate) {
+      params.append('startDate', startDate);
+    }
+    if (endDate) {
+      params.append('endDate', endDate);
+    }
     return apiClient.get<AnalyticsData>(`${this.baseUrl}/analytics?${params.toString()}`);
   }
 
-  async getCaseOpeningsTimeSeries(days: number = 30): Promise<TimeSeriesData[]> {
+  async getCaseOpeningsTimeSeries(
+    days: number = 30,
+    startDate?: string,
+    endDate?: string
+  ): Promise<TimeSeriesData[]> {
     const params = new URLSearchParams();
-    params.append('days', days.toString());
+    if (days > 0) {
+      params.append('days', days.toString());
+    }
+    if (startDate) {
+      params.append('startDate', startDate);
+    }
+    if (endDate) {
+      params.append('endDate', endDate);
+    }
     return apiClient.get<TimeSeriesData[]>(`${this.baseUrl}/analytics/case-openings?${params.toString()}`);
   }
 
-  async getBuybacksTimeSeries(days: number = 30): Promise<BuybackTimeSeriesData[]> {
+  async getBuybacksTimeSeries(
+    days: number = 30,
+    startDate?: string,
+    endDate?: string
+  ): Promise<BuybackTimeSeriesData[]> {
     const params = new URLSearchParams();
-    params.append('days', days.toString());
+    if (days > 0) {
+      params.append('days', days.toString());
+    }
+    if (startDate) {
+      params.append('startDate', startDate);
+    }
+    if (endDate) {
+      params.append('endDate', endDate);
+    }
     return apiClient.get<BuybackTimeSeriesData[]>(`${this.baseUrl}/analytics/buybacks?${params.toString()}`);
   }
 
-  async getTransfersTimeSeries(days: number = 30): Promise<TimeSeriesData[]> {
+  async getTransfersTimeSeries(
+    days: number = 30,
+    startDate?: string,
+    endDate?: string
+  ): Promise<TimeSeriesData[]> {
     const params = new URLSearchParams();
-    params.append('days', days.toString());
+    if (days > 0) {
+      params.append('days', days.toString());
+    }
+    if (startDate) {
+      params.append('startDate', startDate);
+    }
+    if (endDate) {
+      params.append('endDate', endDate);
+    }
     return apiClient.get<TimeSeriesData[]>(`${this.baseUrl}/analytics/transfers?${params.toString()}`);
   }
 }

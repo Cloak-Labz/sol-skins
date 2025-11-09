@@ -3,9 +3,13 @@
 import { useEffect, useState } from "react";
 import { adminService, type AnalyticsData, type TimeSeriesData, type BuybackTimeSeriesData } from "@/lib/services/admin.service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Shield, Loader2, TrendingUp, TrendingDown, Users, DollarSign, Package, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Shield, Loader2, TrendingUp, TrendingDown, Users, DollarSign, Package, ArrowUpRight, ArrowDownRight, CalendarIcon } from "lucide-react";
 import { toast } from "react-hot-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Button } from "@/components/ui/button";
+import { format } from "date-fns";
 import {
   LineChart,
   Line,
@@ -26,15 +30,23 @@ export default function AnalyticsPage() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [days, setDays] = useState(30);
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
+    from: undefined,
+    to: undefined,
+  });
 
   useEffect(() => {
     loadAnalytics();
-  }, [days]);
+  }, [days, dateRange.from, dateRange.to]);
 
   const loadAnalytics = async () => {
     try {
       setLoading(true);
-      const data = await adminService.getAnalytics(days);
+      const data = await adminService.getAnalytics(
+        days,
+        dateRange.from ? dateRange.from.toISOString().split('T')[0] : undefined,
+        dateRange.to ? dateRange.to.toISOString().split('T')[0] : undefined
+      );
       setAnalytics(data);
       setIsAdmin(true);
     } catch (error: any) {
@@ -48,6 +60,23 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDateRangeSelect = (range: { from?: Date; to?: Date } | undefined) => {
+    if (range) {
+      setDateRange({ from: range.from, to: range.to });
+      // Clear days filter when date range is selected
+      if (range.from || range.to) {
+        setDays(0);
+      }
+    } else {
+      setDateRange({ from: undefined, to: undefined });
+    }
+  };
+
+  const clearDateRange = () => {
+    setDateRange({ from: undefined, to: undefined });
+    setDays(30);
   };
 
   if (!isAdmin) {
@@ -127,17 +156,72 @@ export default function AnalyticsPage() {
               </p>
             </div>
           </div>
-          <Select value={days.toString()} onValueChange={(value) => setDays(parseInt(value))}>
-            <SelectTrigger className="w-32 bg-zinc-950 border-zinc-800">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7">Last 7 days</SelectItem>
-              <SelectItem value="30">Last 30 days</SelectItem>
-              <SelectItem value="90">Last 90 days</SelectItem>
-              <SelectItem value="180">Last 180 days</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-3">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="w-[280px] justify-start text-left font-normal bg-zinc-950 border-zinc-800 hover:bg-zinc-900"
+                >
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {dateRange.from ? (
+                    dateRange.to ? (
+                      <>
+                        {format(dateRange.from, "LLL dd, y")} -{" "}
+                        {format(dateRange.to, "LLL dd, y")}
+                      </>
+                    ) : (
+                      format(dateRange.from, "LLL dd, y")
+                    )
+                  ) : (
+                    <span>Pick a date range</span>
+                  )}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0 bg-zinc-950 border-zinc-800" align="end">
+                <Calendar
+                  initialFocus
+                  mode="range"
+                  defaultMonth={dateRange.from}
+                  selected={{ from: dateRange.from, to: dateRange.to }}
+                  onSelect={handleDateRangeSelect}
+                  numberOfMonths={2}
+                />
+                {(dateRange.from || dateRange.to) && (
+                  <div className="p-3 border-t border-zinc-800">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={clearDateRange}
+                      className="w-full text-xs"
+                    >
+                      Clear date range
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
+            <Select 
+              value={days.toString()} 
+              onValueChange={(value) => {
+                setDays(parseInt(value));
+                // Clear date range when days filter is selected
+                if (parseInt(value) > 0) {
+                  setDateRange({ from: undefined, to: undefined });
+                }
+              }}
+            >
+              <SelectTrigger className="w-32 bg-zinc-950 border-zinc-800">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="7">Last 7 days</SelectItem>
+                <SelectItem value="30">Last 30 days</SelectItem>
+                <SelectItem value="90">Last 90 days</SelectItem>
+                <SelectItem value="180">Last 180 days</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* First Row: Key Metrics */}

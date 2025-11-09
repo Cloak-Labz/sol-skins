@@ -60,33 +60,41 @@ export class AdminController {
   });
 
   getAnalytics = catchAsync(async (req: Request, res: Response) => {
-    const { days } = req.query;
+    const { days, startDate, endDate } = req.query;
     const daysNum = days ? parseInt(days as string) : 30;
-    const analytics = await this.adminService.getAnalyticsData(daysNum);
+    const start = startDate ? (startDate as string) : undefined;
+    const end = endDate ? (endDate as string) : undefined;
+    const analytics = await this.adminService.getAnalyticsData(daysNum, start, end);
 
     ResponseUtil.success(res, analytics);
   });
 
   getCaseOpeningsTimeSeries = catchAsync(async (req: Request, res: Response) => {
-    const { days } = req.query;
+    const { days, startDate, endDate } = req.query;
     const daysNum = days ? parseInt(days as string) : 30;
-    const data = await this.adminService.getCaseOpeningsTimeSeries(daysNum);
+    const start = startDate ? (startDate as string) : undefined;
+    const end = endDate ? (endDate as string) : undefined;
+    const data = await this.adminService.getCaseOpeningsTimeSeries(daysNum, start, end);
 
     ResponseUtil.success(res, data);
   });
 
   getBuybacksTimeSeries = catchAsync(async (req: Request, res: Response) => {
-    const { days } = req.query;
+    const { days, startDate, endDate } = req.query;
     const daysNum = days ? parseInt(days as string) : 30;
-    const data = await this.adminService.getBuybacksTimeSeries(daysNum);
+    const start = startDate ? (startDate as string) : undefined;
+    const end = endDate ? (endDate as string) : undefined;
+    const data = await this.adminService.getBuybacksTimeSeries(daysNum, start, end);
 
     ResponseUtil.success(res, data);
   });
 
   getTransfersTimeSeries = catchAsync(async (req: Request, res: Response) => {
-    const { days } = req.query;
+    const { days, startDate, endDate } = req.query;
     const daysNum = days ? parseInt(days as string) : 30;
-    const data = await this.adminService.getTransfersTimeSeries(daysNum);
+    const start = startDate ? (startDate as string) : undefined;
+    const end = endDate ? (endDate as string) : undefined;
+    const data = await this.adminService.getTransfersTimeSeries(daysNum, start, end);
 
     ResponseUtil.success(res, data);
   });

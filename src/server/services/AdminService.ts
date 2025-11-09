@@ -392,18 +392,34 @@ export class AdminService {
   /**
    * Get time series data for case openings
    */
-  async getCaseOpeningsTimeSeries(days: number = 30) {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+  async getCaseOpeningsTimeSeries(days: number = 30, startDateStr?: string, endDateStr?: string) {
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (startDateStr && endDateStr) {
+      // Use provided date range
+      startDate = new Date(startDateStr);
+      endDate = new Date(endDateStr);
+      // Set endDate to end of day
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      // Use days filter
+      startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
+    }
     
     const { CaseOpening } = require('../entities/CaseOpening');
     const caseOpeningRepo = AppDataSource.getRepository(CaseOpening);
     
-    const openings = await caseOpeningRepo
+    const queryBuilder = caseOpeningRepo
       .createQueryBuilder('opening')
       .where('opening.openedAt >= :startDate', { startDate })
-      .orderBy('opening.openedAt', 'ASC')
-      .getMany();
+      .andWhere('opening.openedAt <= :endDate', { endDate })
+      .orderBy('opening.openedAt', 'ASC');
+    
+    const openings = await queryBuilder.getMany();
 
     // Group by date
     const grouped = new Map<string, number>();
@@ -416,14 +432,14 @@ export class AdminService {
 
     // Fill missing dates with 0
     const result: { date: string; count: number }[] = [];
-    for (let i = 0; i < days; i++) {
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
       result.push({
         date: dateStr,
         count: grouped.get(dateStr) || 0,
       });
+      currentDate.setDate(currentDate.getDate() + 1);
     }
 
     return result;
@@ -432,14 +448,29 @@ export class AdminService {
   /**
    * Get time series data for buybacks
    */
-  async getBuybacksTimeSeries(days: number = 30) {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+  async getBuybacksTimeSeries(days: number = 30, startDateStr?: string, endDateStr?: string) {
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (startDateStr && endDateStr) {
+      // Use provided date range
+      startDate = new Date(startDateStr);
+      endDate = new Date(endDateStr);
+      // Set endDate to end of day
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      // Use days filter
+      startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
+    }
     
     const buybackRepo = AppDataSource.getRepository(BuybackRecord);
     const buybacks = await buybackRepo
       .createQueryBuilder('buyback')
       .where('buyback.createdAt >= :startDate', { startDate })
+      .andWhere('buyback.createdAt <= :endDate', { endDate })
       .orderBy('buyback.createdAt', 'ASC')
       .getMany();
 
@@ -456,16 +487,16 @@ export class AdminService {
 
     // Fill missing dates with 0
     const result: { date: string; count: number; totalAmount: number }[] = [];
-    for (let i = 0; i < days; i++) {
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
       const existing = grouped.get(dateStr);
       result.push({
         date: dateStr,
         count: existing?.count || 0,
         totalAmount: existing?.totalAmount || 0,
       });
+      currentDate.setDate(currentDate.getDate() + 1);
     }
 
     return result;
@@ -474,15 +505,30 @@ export class AdminService {
   /**
    * Get time series data for transfers (skins marked as sent)
    */
-  async getTransfersTimeSeries(days: number = 30) {
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - days);
+  async getTransfersTimeSeries(days: number = 30, startDateStr?: string, endDateStr?: string) {
+    let startDate: Date;
+    let endDate: Date;
+    
+    if (startDateStr && endDateStr) {
+      // Use provided date range
+      startDate = new Date(startDateStr);
+      endDate = new Date(endDateStr);
+      // Set endDate to end of day
+      endDate.setHours(23, 59, 59, 999);
+    } else {
+      // Use days filter
+      startDate = new Date();
+      startDate.setDate(startDate.getDate() - days);
+      endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
+    }
     
     const userSkinRepo = AppDataSource.getRepository(UserSkin);
     const skins = await userSkinRepo
       .createQueryBuilder('skin')
       .where('skin.isWaitingTransfer = :waiting', { waiting: false })
       .andWhere('skin.updatedAt >= :startDate', { startDate })
+      .andWhere('skin.updatedAt <= :endDate', { endDate })
       .andWhere('skin.isInInventory = :inInventory', { inInventory: false })
       .andWhere('skin.soldViaBuyback = :sold', { sold: false })
       .orderBy('skin.updatedAt', 'ASC')
@@ -499,14 +545,14 @@ export class AdminService {
 
     // Fill missing dates with 0
     const result: { date: string; count: number }[] = [];
-    for (let i = 0; i < days; i++) {
-      const date = new Date(startDate);
-      date.setDate(date.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+    const currentDate = new Date(startDate);
+    while (currentDate <= endDate) {
+      const dateStr = currentDate.toISOString().split('T')[0];
       result.push({
         date: dateStr,
         count: grouped.get(dateStr) || 0,
       });
+      currentDate.setDate(currentDate.getDate() + 1);
     }
 
     return result;
@@ -515,7 +561,7 @@ export class AdminService {
   /**
    * Get comprehensive analytics data
    */
-  async getAnalyticsData(days: number = 30) {
+  async getAnalyticsData(days: number = 30, startDate?: string, endDate?: string) {
     const [
       caseOpenings,
       buybacks,
@@ -524,9 +570,9 @@ export class AdminService {
       transactionStats,
       caseOpeningStats,
     ] = await Promise.all([
-      this.getCaseOpeningsTimeSeries(days),
-      this.getBuybacksTimeSeries(days),
-      this.getTransfersTimeSeries(days),
+      this.getCaseOpeningsTimeSeries(days, startDate, endDate),
+      this.getBuybacksTimeSeries(days, startDate, endDate),
+      this.getTransfersTimeSeries(days, startDate, endDate),
       this.getOverviewStats(),
       this.getTransactionStats(days),
       this.getCaseOpeningStats(days),
