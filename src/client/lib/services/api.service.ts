@@ -46,6 +46,16 @@ class ApiClient {
   }
 
   /**
+   * Fetch CSRF token from server (public method to force refresh)
+   */
+  async refreshCSRFToken(): Promise<string | null> {
+    // Clear existing token and promise to force refresh
+    this.csrfToken = null;
+    this.csrfTokenPromise = null;
+    return this.fetchCSRFToken();
+  }
+
+  /**
    * Fetch CSRF token from server
    */
   private async fetchCSRFToken(): Promise<string | null> {

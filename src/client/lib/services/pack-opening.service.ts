@@ -4,6 +4,7 @@ import { mplCandyMachine } from "@metaplex-foundation/mpl-candy-machine";
 import { generateSigner, publicKey, transactionBuilder, some } from "@metaplex-foundation/umi";
 import { setComputeUnitLimit } from "@metaplex-foundation/mpl-toolbox";
 import { fetchCandyMachine, mintV2 } from "@metaplex-foundation/mpl-candy-machine";
+import bs58 from "bs58";
 import { apiClient } from "./api.service";
 
 export interface PackOpeningResult {
@@ -97,7 +98,26 @@ export class PackOpeningService {
       .sendAndConfirm(umi, { confirm: { commitment: 'confirmed' } });
 
     const nftMintAddress = nftMint.publicKey.toString();
-    const signature = Buffer.from(mintResult.signature).toString('base64');
+    // Convert signature to base58 string (Solana format)
+    // mintResult.signature from Umi might be Uint8Array, base64 string, or base58 string
+    let signature: string;
+    if (typeof mintResult.signature === 'string') {
+      const sigStr = mintResult.signature as string;
+      // Check if it's base64 (has +, /, or ends with =)
+      if (sigStr.includes('+') || sigStr.includes('/') || sigStr.endsWith('=')) {
+        // It's base64 - decode and convert to base58
+        const decoded = Buffer.from(sigStr, 'base64');
+        signature = bs58.encode(decoded);
+      } else {
+        // Assume it's already base58
+        signature = sigStr;
+      }
+    } else if (mintResult.signature instanceof Uint8Array) {
+      signature = bs58.encode(mintResult.signature);
+    } else {
+      // Fallback: try to convert to base58
+      signature = bs58.encode(new Uint8Array(mintResult.signature as any));
+    }
 
     // Step 3: Wait for metadata propagation
     await new Promise(resolve => setTimeout(resolve, 12000));
@@ -118,6 +138,10 @@ export class PackOpeningService {
     });
 
     // Step 5: Create pack opening transaction in backend
+    // IMPORTANT: Refresh CSRF token after the 12-second wait to prevent expiration
+    // The transaction was already signed, so we MUST register it even if there are errors
+    await apiClient.refreshCSRFToken();
+    
     // apiClient.post returns the data directly (not wrapped in { success, data })
     let savedUserSkin: { imageUrl?: string } | undefined;
     try {
@@ -146,18 +170,36 @@ export class PackOpeningService {
         timestamp: timestamp,
       });
       savedUserSkin = transactionData?.userSkin;
-    } catch (error) {
-      // Transaction creation failed, but we can continue with reveal data
-      // Re-throw to prevent duplicate calls
-      throw error;
+    } catch (error: any) {
+      // Transaction creation failed, but the transaction was already signed on-chain
+      // This is a critical error - the user spent SOL but we couldn't register it
+      // Log the error details for debugging but still return the reveal data
+      console.error('Failed to register pack opening transaction after signing:', error);
+      
+      // Re-throw with a more user-friendly message
+      const errorMessage = error?.message || 'Unknown error';
+      let userFriendlyMessage = 'Failed to register your pack opening. ';
+      
+      if (errorMessage.includes('CSRF') || errorMessage.includes('csrf')) {
+        userFriendlyMessage += 'Please refresh the page and try again.';
+      } else if (errorMessage.includes('walletId') || errorMessage.includes('wallet') || errorMessage.includes('user')) {
+        userFriendlyMessage += 'Please reconnect your wallet and try again.';
+      } else if (errorMessage.includes('nonce') || errorMessage.includes('timestamp')) {
+        userFriendlyMessage += 'The request timed out. Please try again.';
+      } else {
+        userFriendlyMessage += 'Your transaction was successful, but we couldn\'t update your inventory. Please contact support with your transaction signature.';
+      }
+      
+      throw new Error(userFriendlyMessage);
     }
 
     // Step 6: Use the skin data from the reveal service
     const resolvedImageUrl: string | undefined = savedUserSkin?.imageUrl || revealResponseData?.imageUrl;
-    // The reveal service already selected and updated the NFT metadata
+    // Use the mint transaction signature (complete transaction with transfers, mint, etc.)
+    // instead of the metadata update transaction for the Solscan link
     return {
       nftMint: nftMintAddress,
-      signature: signature,
+      signature: signature, // This is the complete mint transaction signature
       skin: {
         id: nftMintAddress, // Use NFT mint as unique ID
         name: revealResponseData.skinName,

@@ -171,7 +171,29 @@ export class RevealService {
         },
       }).sendAndConfirm(this.umi);
 
-      const txSignature = Buffer.from(tx.signature).toString('base64');
+      // Convert tx.signature to base58 string (Solana format)
+      // It might be base64 string, base58 string, or Uint8Array/Buffer
+      let txSignature: string;
+      const bs58 = require('bs58');
+      
+      if (typeof tx.signature === 'string') {
+        const sigStr = tx.signature as string;
+        // Check if it's base64 (has +, /, or ends with =)
+        if (sigStr.includes('+') || sigStr.includes('/') || sigStr.endsWith('=')) {
+          // It's base64 - decode and convert to base58
+          const decoded = Buffer.from(sigStr, 'base64');
+          txSignature = bs58.encode(decoded);
+        } else {
+          // Assume it's already base58
+          txSignature = sigStr;
+        }
+      } else if (tx.signature instanceof Uint8Array || Buffer.isBuffer(tx.signature)) {
+        // It's a buffer/array - convert directly to base58
+        txSignature = bs58.encode(tx.signature);
+      } else {
+        // Fallback: try to convert
+        txSignature = bs58.encode(Buffer.from(tx.signature as any));
+      }
 
       // Create or update user skin with proper user association
       const userSkinRepo = AppDataSource.getRepository(UserSkin);

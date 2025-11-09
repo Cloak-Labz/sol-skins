@@ -47,7 +47,6 @@ const envSchema = Joi.object({
   JWT_REFRESH_EXPIRE: Joi.string().default('7d'),
   
   // Security
-  BCRYPT_ROUNDS: Joi.number().default(12),
   RATE_LIMIT_WINDOW_MS: Joi.number().default(900000), // 15 minutes
   RATE_LIMIT_MAX_REQUESTS: Joi.number().default(200), // Increased from 100 to 200
   
@@ -91,9 +90,7 @@ const envSchema = Joi.object({
   
   // Solana
   SOLANA_RPC_URL: Joi.string().required(),
-  SOLANA_WS_URL: Joi.string().required(),
   PROGRAM_ID: Joi.string().required(),
-  ORACLE_PRIVATE_KEY: Joi.string().allow('').default(''),
   
   // Buyback Program
   BUYBACK_PROGRAM_ID: Joi.string().required(),
@@ -123,6 +120,25 @@ const envSchema = Joi.object({
     }),
   BUYBACK_RATE: Joi.number().default(0.85),
   
+  // Admin authorization (public addresses only - no private keys)
+  ADMIN_WALLETS: Joi.string()
+    .allow('')
+    .default('')
+    .custom((value, helpers) => {
+      if (!value) return value; // Empty is allowed (no admins)
+      const addresses = value.split(',').map(a => a.trim()).filter(Boolean);
+      // Basic validation: Solana addresses are base58 and 32-44 chars
+      for (const addr of addresses) {
+        if (addr.length < 32 || addr.length > 44) {
+          return helpers.error('string.pattern.base');
+        }
+      }
+      return value;
+    })
+    .messages({
+      'string.pattern.base': 'ADMIN_WALLETS must be comma-separated valid Solana addresses',
+    }),
+  
   // External APIs
   STEAM_API_KEY: Joi.string().allow('').default(''),
   CSGOFLOAT_API_KEY: Joi.string().allow('').default(''),
@@ -135,7 +151,6 @@ const envSchema = Joi.object({
   
   // Monitoring
   LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug').default('info'),
-  LOG_FORMAT: Joi.string().default('combined'),
 }).unknown();
 
 const { error, value: envVars } = envSchema.validate(process.env);
@@ -167,14 +182,12 @@ export const config = {
   },
   
   security: {
-    bcryptRounds: envVars.BCRYPT_ROUNDS,
     rateLimitWindowMs: envVars.RATE_LIMIT_WINDOW_MS,
     rateLimitMaxRequests: envVars.RATE_LIMIT_MAX_REQUESTS,
   },
   
   solana: {
     rpcUrl: envVars.SOLANA_RPC_URL,
-    wsUrl: envVars.SOLANA_WS_URL,
     programId: envVars.PROGRAM_ID,
   },
   
@@ -182,6 +195,13 @@ export const config = {
     programId: envVars.BUYBACK_PROGRAM_ID,
     adminWalletPrivateKey: envVars.ADMIN_WALLET_PRIVATE_KEY,
     buybackRate: envVars.BUYBACK_RATE,
+  },
+  
+  admin: {
+    wallets: (envVars.ADMIN_WALLETS || '')
+      .split(',')
+      .map((addr: string) => addr.trim())
+      .filter((addr: string) => addr.length > 0),
   },
   
   externalApis: {
@@ -198,6 +218,5 @@ export const config = {
   
   logging: {
     level: envVars.LOG_LEVEL,
-    format: envVars.LOG_FORMAT,
   },
 }; 

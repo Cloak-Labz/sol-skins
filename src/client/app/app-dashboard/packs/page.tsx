@@ -595,9 +595,29 @@ export default function PacksPage() {
       }
     } catch (error: any) {
       dismissOpenPackToast();
-      openPackToastIdRef.current = toast.error(
-        `Failed to open pack: ${error?.message || "Please try again."}`
-      );
+      
+      // Extract user-friendly error message
+      let errorMessage = error?.message || "An unexpected error occurred. Please try again.";
+      
+      // Make error messages more user-friendly
+      if (errorMessage.includes('CSRF') || errorMessage.includes('csrf')) {
+        errorMessage = "Session expired. Please refresh the page and try again.";
+      } else if (errorMessage.includes('walletId') || errorMessage.includes('wallet') || errorMessage.includes('user')) {
+        errorMessage = "Wallet connection issue. Please reconnect your wallet and try again.";
+      } else if (errorMessage.includes('nonce') || errorMessage.includes('timestamp')) {
+        errorMessage = "Request timed out. Please try again.";
+      } else if (errorMessage.includes('transaction') && errorMessage.includes('successful')) {
+        // Transaction was signed but registration failed - show success with warning
+        openPackToastIdRef.current = toast.success("Pack opened successfully!", { 
+          duration: 10000,
+          description: "Your transaction was confirmed on-chain. The inventory sync may be delayed. Please refresh the page if you don't see your new skin."
+        });
+        setOpeningPhase(null);
+        setIsProcessing(false);
+        return;
+      }
+      
+      openPackToastIdRef.current = toast.error(errorMessage);
       setOpeningPhase(null);
       setIsProcessing(false);
     } finally {

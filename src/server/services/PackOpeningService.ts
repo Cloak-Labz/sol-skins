@@ -49,6 +49,54 @@ export class PackOpeningService {
       metadataUri?: string;
     }
   ) {
+    // Convert signature to base58 if needed (Solana tx signatures are base58)
+    // Frontend may send base64, array string, or already base58
+    let txHash: string;
+    try {
+      const bs58 = require('bs58');
+      
+      // Check if signature is a comma-separated array string (from JSON serialization)
+      if (signature.includes(',') && /^\d+/.test(signature.trim())) {
+        // It's an array string like "110,35,146,..." - convert to base58
+        const bytes = signature.split(',').map((n: string) => parseInt(n.trim(), 10));
+        if (bytes.length === 64) {
+          txHash = bs58.encode(new Uint8Array(bytes));
+        } else {
+          logger.warn('Invalid signature array length', { length: bytes.length });
+          throw new Error('Invalid signature format: array length must be 64');
+        }
+      } else if (signature.includes('+') || signature.includes('/') || signature.endsWith('=')) {
+        // It's base64 - decode and convert to base58
+        const decoded = Buffer.from(signature, 'base64');
+        txHash = bs58.encode(decoded);
+      } else {
+        // Assume it's already base58
+        txHash = signature;
+      }
+      
+      // Validate length (Solana signatures are 64 bytes = 88 chars in base58)
+      if (txHash.length > 88) {
+        logger.warn('Transaction signature too long, truncating', { 
+          originalLength: txHash.length,
+          signature: txHash.substring(0, 20) + '...',
+        });
+        txHash = txHash.substring(0, 88);
+      }
+      
+      logger.debug('Signature converted to base58', { 
+        originalLength: signature.length,
+        convertedLength: txHash.length,
+        originalFormat: signature.includes(',') ? 'array' : signature.includes('+') || signature.includes('/') ? 'base64' : 'base58',
+      });
+    } catch (error) {
+      logger.error('Failed to convert signature to base58', { 
+        error,
+        signatureLength: signature.length,
+        signaturePreview: signature.substring(0, 50) + '...',
+      });
+      // Fallback: use signature as-is but truncate if too long
+      txHash = signature.length > 88 ? signature.substring(0, 88) : signature;
+    }
     try {
       // Get user and box data
       const user = await this.userRepository.findById(userId);
@@ -265,7 +313,7 @@ export class PackOpeningService {
         amountUsd: -priceUsdc, // Use USDC price for USD amount
         lootBoxTypeId: lootBoxType.id, // Use actual LootBoxType ID
         userSkinId: savedUserSkin.id,
-        txHash: signature,
+        txHash: txHash, // Use converted base58 signature
         status: TransactionStatus.CONFIRMED,
         confirmedAt: new Date(),
       });
