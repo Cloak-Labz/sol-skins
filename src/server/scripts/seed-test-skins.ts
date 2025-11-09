@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { AppDataSource } from '../config/database';
-import { SkinTemplate } from '../entities/SkinTemplate';
+import { SkinTemplate, SkinCondition } from '../entities/SkinTemplate';
 
 const testSkins = [
   // Common skins (50% drop rate)
@@ -123,11 +123,14 @@ async function seed() {
     // Insert test skins (upsert to handle existing data)
     for (const skinData of testSkins) {
       try {
+        // Convert string condition to SkinCondition enum
+        const conditionEnum = skinData.condition as SkinCondition;
+        
         const existingSkin = await skinTemplateRepo.findOne({
           where: {
             weapon: skinData.weapon,
             skinName: skinData.skinName,
-            condition: skinData.condition,
+            condition: conditionEnum,
           },
         });
 
