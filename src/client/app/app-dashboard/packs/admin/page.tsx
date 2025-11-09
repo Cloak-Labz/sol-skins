@@ -745,10 +745,12 @@ export default function PackManagerPage() {
       const metadataUris = uploadedSkins.map(skin => skin.metadataUri).filter(Boolean);
       
       // Create box data (metadataUris optional)
+      // Use draftBox.totalItems (user-defined supply) instead of uploadedSkins.length
       const boxData = {
         ...draftBox,
         metadataUris,
-        totalItems: uploadedSkins.length, // Set total items to number of uploaded skins
+        totalItems: draftBox.totalItems || uploadedSkins.length, // Use user-defined totalItems, fallback to skins count
+        itemsAvailable: draftBox.totalItems || uploadedSkins.length, // Initialize itemsAvailable to totalItems
       };
       
       // First create the box
@@ -1380,7 +1382,7 @@ export default function PackManagerPage() {
                               </Badge>
                                 </div>
                             <p className="text-sm text-muted-foreground">
-                              {box.itemsAvailable}/{box.totalItems} available • {box.priceSol} SOL • {box.symbol}
+                              <span className="font-medium text-foreground">{box.itemsAvailable}/{box.totalItems}</span> items available • {box.priceSol} SOL • {box.symbol}
                             </p>
                             {box.description && (
                               <p className="text-xs text-muted-foreground mt-1">
@@ -1429,10 +1431,18 @@ export default function PackManagerPage() {
               <>
                 <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:border-zinc-700">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
-                      {selectedBox.name} - Skins
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="h-5 w-5" />
+                        {selectedBox.name} - Skins
+                      </CardTitle>
+                      <div className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">{selectedBox.itemsAvailable}</span>/{selectedBox.totalItems} items available
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {boxSkins.length} skin type{boxSkins.length !== 1 ? 's' : ''} configured
+                    </p>
                   </CardHeader>
                   <CardContent>
                   <div className="space-y-2">

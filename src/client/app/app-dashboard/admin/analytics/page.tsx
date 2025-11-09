@@ -50,7 +50,6 @@ export default function AnalyticsPage() {
       setAnalytics(data);
       setIsAdmin(true);
     } catch (error: any) {
-      console.error('Error loading analytics:', error);
       if (error?.status === 403 || error?.response?.status === 403) {
         setIsAdmin(false);
         toast.error("Access denied: Admin wallet required");

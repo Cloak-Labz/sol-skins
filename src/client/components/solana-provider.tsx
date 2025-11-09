@@ -31,10 +31,6 @@ export const SolanaProvider: FC<SolanaProviderProps> = ({ children }) => {
 
   // Error handler for wallet errors
   const onError = useCallback((error: WalletError) => {
-    console.error("Wallet error:", error);
-    console.error("Error name:", error.name);
-    console.error("Error message:", error.message);
-    console.error("Error stack:", error.stack);
 
     // Handle specific error types
     if (error.name === "WalletNotReadyError") {

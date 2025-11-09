@@ -844,7 +844,8 @@ export const validateCSRF = (req: Request, res: Response, next: NextFunction) =>
     '/auth/connect', // Initial wallet connection doesn't need CSRF (wallet signature provides security)
     '/buyback/calculate',
     '/boxes/active',
-    '/boxes/stats'
+    '/boxes/stats',
+    '/reveal', // Reveal endpoint is public (rate limited and validated)
   ];
   if (publicPaths.some(path => req.path.includes(path))) {
     return next();

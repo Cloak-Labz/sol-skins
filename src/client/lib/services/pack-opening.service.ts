@@ -121,6 +121,11 @@ export class PackOpeningService {
     // apiClient.post returns the data directly (not wrapped in { success, data })
     let savedUserSkin: { imageUrl?: string } | undefined;
     try {
+      // Generate nonce and timestamp RIGHT BEFORE making the request
+      // This ensures the timestamp is fresh and not too old after all the async operations
+      const nonce = `pack-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const timestamp = Date.now(); // Use milliseconds to match backend expectation
+      
       const transactionData = await apiClient.post<{
         userSkin?: {
           imageUrl?: string;
@@ -137,11 +142,14 @@ export class PackOpeningService {
           basePriceUsd: 0, // Will be calculated from rarity
           metadataUri: revealResponseData.metadataUri,
         },
+        nonce: nonce,
+        timestamp: timestamp,
       });
       savedUserSkin = transactionData?.userSkin;
     } catch (error) {
       // Transaction creation failed, but we can continue with reveal data
-      console.warn('Failed to create pack opening transaction:', error);
+      // Re-throw to prevent duplicate calls
+      throw error;
     }
 
     // Step 6: Use the skin data from the reveal service
@@ -235,24 +243,9 @@ export class PackOpeningService {
     skinImage: string;
     transactionHash: string;
   }): Promise<void> {
-    // First create the UserSkin record via pack opening transaction
-    try {
-      await apiClient.post("/pack-opening/transaction", {
-        userId: data.userId,
-        boxId: data.boxId,
-        nftMint: data.nftMint,
-        signature: data.transactionHash,
-        skinData: {
-          name: data.skinName,
-          weapon: data.skinWeapon,
-          rarity: data.skinRarity,
-          basePriceUsd: data.skinValue,
-          metadataUri: `https://arweave.net/${data.nftMint.slice(0, 32)}`,
-        },
-      });
-    } catch (error) {
-      console.warn('Failed to create pack opening transaction:', error);
-    }
+    // NOTE: Pack opening transaction is already created in openPack()
+    // This method only creates the case opening record for activity tracking
+    // We don't need to call /pack-opening/transaction again here to avoid duplicates
 
     // Then create the case opening record for activity tracking
     // apiClient.post returns the data directly (not wrapped in { success, data })

@@ -17,7 +17,23 @@ export class PackOpeningController {
   createPackOpeningTransaction = catchAsync(async (req: Request, res: Response) => {
     const { userId, boxId, nftMint, signature, skinData } = req.body;
 
+    const { logger } = require('../middlewares/logger');
+    logger.info('Pack opening transaction request received', {
+      boxId,
+      userId: userId?.substring(0, 8) + '...',
+      nftMint: nftMint?.substring(0, 8) + '...',
+      hasSignature: !!signature,
+      hasSkinData: !!skinData,
+    });
+
     if (!userId || !boxId || !nftMint || !signature || !skinData) {
+      logger.warn('Missing required fields in pack opening transaction', {
+        hasUserId: !!userId,
+        hasBoxId: !!boxId,
+        hasNftMint: !!nftMint,
+        hasSignature: !!signature,
+        hasSkinData: !!skinData,
+      });
       return ResponseUtil.error(res, 'Missing required fields', 400);
     }
 

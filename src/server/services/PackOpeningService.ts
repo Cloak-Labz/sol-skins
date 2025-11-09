@@ -5,9 +5,7 @@ import { UserSkinRepository } from '../repositories/UserSkinRepository';
 import { AppError } from '../middlewares/errorHandler';
 import { TransactionType, TransactionStatus } from '../entities/Transaction';
 import { AppDataSource } from '../config/database';
-import { UserSkin } from '../entities/UserSkin';
-import { User } from '../entities/User';
-import { Box } from '../entities/Box';
+import { logger } from '../middlewares/logger';
 import axios from 'axios';
 
 export interface PackOpeningResult {
@@ -63,9 +61,32 @@ export class PackOpeningService {
         throw new AppError('Trade URL is required to open packs', 400, 'TRADE_URL_REQUIRED');
       }
 
+      logger.info('Looking up box for pack opening', { boxId, userId });
+      
       const box = await this.boxRepository.findById(boxId);
       if (!box) {
+        logger.error('Box not found for pack opening', { boxId, userId });
         throw new AppError('Box not found', 404, 'BOX_NOT_FOUND');
+      }
+
+      logger.info('Box found for pack opening', {
+        boxId: box.id,
+        boxName: box.name,
+        itemsAvailable: box.itemsAvailable,
+        itemsOpened: box.itemsOpened,
+        status: box.status,
+      });
+
+      // Check if box has available supply
+      if (box.itemsAvailable <= 0) {
+        logger.warn('Box is sold out', { boxId: box.id, boxName: box.name });
+        throw new AppError('Box is sold out', 400, 'BOX_SOLD_OUT');
+      }
+
+      // Check if box is active
+      if (box.status !== 'active') {
+        logger.warn('Box is not active', { boxId: box.id, boxName: box.name, status: box.status });
+        throw new AppError(`Box is ${box.status}`, 400, 'BOX_NOT_AVAILABLE');
       }
 
       // SECURITY: Validate NFT mint address format before using
@@ -78,8 +99,11 @@ export class PackOpeningService {
       const existingUserSkin = await this.userSkinRepository.findOne({ nftMintAddress: nftMint });
 
       if (existingUserSkin) {
-        console.log('UserSkin already exists for NFT mint:', nftMint);
-        return existingUserSkin;
+        logger.warn('UserSkin already exists for NFT mint, but continuing to update box supply', { 
+          nftMint: nftMint.substring(0, 8) + '...',
+          userSkinId: existingUserSkin.id,
+        });
+        // Don't return early - we still need to update box supply even if UserSkin exists
       }
 
       // --- PATCH: Attempt to look up box skin value via BoxSkinService ---
@@ -196,20 +220,23 @@ export class PackOpeningService {
         }
       }
 
-      // Create user skin
-      const savedUserSkin = await this.userSkinRepository.create({
-        userId,
-        nftMintAddress: nftMint,
-        name: sanitizedSkinName,
-        metadataUri: skinData.metadataUri,
-        imageUrl: resolvedImageUrl,
-        openedAt: new Date(),
-        currentPriceUsd: realValue,
-        lastPriceUpdate: new Date(),
-        isInInventory: true,
-        symbol: 'SKIN',
-        skinTemplateId: skinTemplateId,
-      });
+      // Create user skin (only if it doesn't already exist)
+      let savedUserSkin = existingUserSkin;
+      if (!existingUserSkin) {
+        savedUserSkin = await this.userSkinRepository.create({
+          userId,
+          nftMintAddress: nftMint,
+          name: sanitizedSkinName,
+          metadataUri: skinData.metadataUri,
+          imageUrl: resolvedImageUrl,
+          openedAt: new Date(),
+          currentPriceUsd: realValue,
+          lastPriceUpdate: new Date(),
+          isInInventory: true,
+          symbol: 'SKIN',
+          skinTemplateId: skinTemplateId,
+        });
+      }
 
       // Find or create corresponding LootBoxType for transaction foreign key
       const { LootBoxType, LootBoxRarity } = await import('../entities/LootBoxType');
@@ -273,6 +300,43 @@ export class PackOpeningService {
       user.casesOpened = (user.casesOpened || 0) + 1;
       user.totalSpent = (user.totalSpent || 0) + priceUsdc;
       await this.userRepository.update(user.id, user);
+
+      // Update box supply: decrement itemsAvailable and increment itemsOpened
+      const newItemsAvailable = Math.max(0, box.itemsAvailable - 1);
+      const newItemsOpened = (box.itemsOpened || 0) + 1;
+      const newStatus = newItemsAvailable === 0 ? 'sold_out' : box.status;
+      
+      logger.info('Updating box supply', {
+        boxId: box.id,
+        boxName: box.name,
+        oldItemsAvailable: box.itemsAvailable,
+        newItemsAvailable,
+        oldItemsOpened: box.itemsOpened,
+        newItemsOpened,
+        newStatus,
+      });
+      
+      const updateResult = await this.boxRepository.update(box.id, {
+        itemsAvailable: newItemsAvailable,
+        itemsOpened: newItemsOpened,
+        status: newStatus as 'active' | 'paused' | 'sold_out' | 'ended',
+      });
+      
+      if (!updateResult) {
+        logger.error('Failed to update box supply - box not found after update', { boxId: box.id });
+        throw new AppError('Failed to update box supply', 500);
+      }
+      
+      logger.info('Box supply updated successfully', {
+        boxId: box.id,
+        boxName: box.name,
+        oldItemsAvailable: box.itemsAvailable,
+        newItemsAvailable: updateResult.itemsAvailable,
+        oldItemsOpened: box.itemsOpened,
+        newItemsOpened: updateResult.itemsOpened,
+        oldStatus: box.status,
+        newStatus: updateResult.status,
+      });
 
       return {
         transaction: savedTransaction,

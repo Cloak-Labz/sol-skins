@@ -42,7 +42,6 @@ class ApiClient {
     // Don't await to avoid blocking constructor
     this.fetchCSRFToken().catch(err => {
       // Token will be fetched on first request if initialization fails
-      console.warn('CSRF token fetch failed on initialization, will retry on first request:', err);
     });
   }
 
@@ -82,7 +81,6 @@ class ApiClient {
         this.csrfTokenPromise = null; // Clear promise on error
         const errorMessage = error?.response?.data?.error?.message || error?.message || 'Unknown error';
         const status = error?.response?.status;
-        console.warn('Failed to fetch CSRF token:', { status, error: errorMessage });
         throw error;
       }
     })();
@@ -116,7 +114,6 @@ class ApiClient {
       try {
         return await this.fetchCSRFToken();
       } catch (retryError) {
-        console.warn('Could not fetch CSRF token after retry:', retryError);
         return null;
       }
     }
@@ -158,7 +155,6 @@ class ApiClient {
             try {
               const fetchedToken = await this.fetchCSRFToken();
               if (!fetchedToken) {
-                console.error('❌ Failed to fetch CSRF token');
                 throw new Error('CSRF token fetch failed');
               }
               token = fetchedToken;
@@ -187,12 +183,6 @@ class ApiClient {
           
           // Verify header was actually set
           if (!config.headers['X-CSRF-Token'] && !config.headers['x-csrf-token']) {
-            console.error('❌ CRITICAL: CSRF token was not set in headers!', {
-              url: config.url,
-              method: config.method,
-              hasToken: !!token,
-              headerKeys: Object.keys(config.headers),
-            });
           }
         }
 
@@ -252,13 +242,7 @@ class ApiClient {
         if (error.response?.status === 403 && 
             (error.response?.data?.error?.code === 'CSRF_TOKEN_MISSING' || 
              error.response?.data?.error?.code === 'CSRF_TOKEN_INVALID')) {
-          console.warn('🔄 CSRF token error detected, fetching new token and retrying...', {
-            code: error.response?.data?.error?.code,
-            url: error.config?.url,
-            hadToken: !!this.csrfToken,
-            originalHeaders: error.config?.headers ? Object.keys(error.config.headers) : [],
-          });
-          
+
           // Clear invalid token and fetch new one
           this.csrfToken = null;
           this.csrfTokenPromise = null;
@@ -277,20 +261,11 @@ class ApiClient {
                 },
               };
               
-              console.log('🔄 Retrying request with new token', {
-                url: retryConfig.url,
-                method: retryConfig.method,
-                headerKeys: Object.keys(retryConfig.headers || {}),
-                hasXCSRF: !!retryConfig.headers?.['X-CSRF-Token'],
-                hasxcsrf: !!retryConfig.headers?.['x-csrf-token'],
-              });
-              
               return this.client.request(retryConfig);
             } else {
-              console.error('❌ Failed to fetch new CSRF token for retry');
+
             }
           } catch (fetchError: any) {
-            console.error('❌ Error fetching new CSRF token:', fetchError?.message || fetchError);
             // If we can't fetch a new token, reject with the original error
             return Promise.reject(error);
           }

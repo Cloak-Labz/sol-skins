@@ -930,7 +930,6 @@ export default function PacksPage() {
                   loop
                   playsInline
                   onError={(e) => {
-                    console.error("Video error:", e);
                     // Fallback: skip video phase if it fails to load
                     setOpeningPhase(null);
                   }}
@@ -1348,14 +1347,6 @@ export default function PacksPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden">
-                <button
-                  type="button"
-                  aria-label="Close"
-                  onClick={handleCloseResult}
-                  className="absolute top-0 right-0 z-20 inline-flex items-center justify-center rounded-full border border-white/20 bg-black/60 text-white hover:bg-black/80 hover:border-white/40 transition-colors p-2 w-8 h-8 m-4"
-                >
-                  <X className="w-4 h-4" />
-                </button>
                 {/* Top area with bright glow */}
                 <div className="relative p-6 pb-0">
                   {/* Skin Display Area - Inspired by the reference image */}
@@ -1552,10 +1543,6 @@ export default function PacksPage() {
                                 });
                               } catch (activityError) {
                                 // Non-critical, just log
-                                console.warn(
-                                  "Failed to create skin claimed activity:",
-                                  activityError
-                                );
                               }
 
                               toast.dismiss(claimToastIdRef.current!);
