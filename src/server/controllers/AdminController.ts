@@ -59,6 +59,38 @@ export class AdminController {
     ResponseUtil.success(res, stats);
   });
 
+  getAnalytics = catchAsync(async (req: Request, res: Response) => {
+    const { days } = req.query;
+    const daysNum = days ? parseInt(days as string) : 30;
+    const analytics = await this.adminService.getAnalyticsData(daysNum);
+
+    ResponseUtil.success(res, analytics);
+  });
+
+  getCaseOpeningsTimeSeries = catchAsync(async (req: Request, res: Response) => {
+    const { days } = req.query;
+    const daysNum = days ? parseInt(days as string) : 30;
+    const data = await this.adminService.getCaseOpeningsTimeSeries(daysNum);
+
+    ResponseUtil.success(res, data);
+  });
+
+  getBuybacksTimeSeries = catchAsync(async (req: Request, res: Response) => {
+    const { days } = req.query;
+    const daysNum = days ? parseInt(days as string) : 30;
+    const data = await this.adminService.getBuybacksTimeSeries(daysNum);
+
+    ResponseUtil.success(res, data);
+  });
+
+  getTransfersTimeSeries = catchAsync(async (req: Request, res: Response) => {
+    const { days } = req.query;
+    const daysNum = days ? parseInt(days as string) : 30;
+    const data = await this.adminService.getTransfersTimeSeries(daysNum);
+
+    ResponseUtil.success(res, data);
+  });
+
   getPacks = catchAsync(async (req: Request, res: Response) => {
     // Return boxes from database instead of empty array
     const boxes = await this.boxService.getAllBoxes();

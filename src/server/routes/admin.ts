@@ -35,6 +35,19 @@ adminRoutes.get("/stats/transactions", adminController.getTransactionStats);
 // GET /admin/stats/case-openings
 adminRoutes.get("/stats/case-openings", adminController.getCaseOpeningStats);
 
+// Analytics routes
+// GET /admin/analytics - Get comprehensive analytics data
+adminRoutes.get("/analytics", adminController.getAnalytics);
+
+// GET /admin/analytics/case-openings - Get case openings time series
+adminRoutes.get("/analytics/case-openings", adminController.getCaseOpeningsTimeSeries);
+
+// GET /admin/analytics/buybacks - Get buybacks time series
+adminRoutes.get("/analytics/buybacks", adminController.getBuybacksTimeSeries);
+
+// GET /admin/analytics/transfers - Get transfers time series
+adminRoutes.get("/analytics/transfers", adminController.getTransfersTimeSeries);
+
 // Inventory admin routes (JSON store for minted NFTs)
 // GET /admin/inventory - List all minted NFTs
 adminRoutes.get("/inventory", InventoryController.list);

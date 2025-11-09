@@ -375,6 +375,15 @@ class ApiClient {
     return this.request<T>({ ...config, method: "POST", url, data });
   }
 
+  // PATCH request helper
+  async patch<T>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig
+  ): Promise<T> {
+    return this.request<T>({ ...config, method: "PATCH", url, data });
+  }
+
   // PUT request helper
   async put<T>(
     url: string,

@@ -155,6 +155,89 @@ class AdminService {
   ): Promise<UserSkin> {
     return apiClient.patch<UserSkin>(`${this.baseUrl}/skins/${skinId}/status`, updates);
   }
+
+  // Analytics methods
+  async getAnalytics(days: number = 30): Promise<AnalyticsData> {
+    const params = new URLSearchParams();
+    params.append('days', days.toString());
+    return apiClient.get<AnalyticsData>(`${this.baseUrl}/analytics?${params.toString()}`);
+  }
+
+  async getCaseOpeningsTimeSeries(days: number = 30): Promise<TimeSeriesData[]> {
+    const params = new URLSearchParams();
+    params.append('days', days.toString());
+    return apiClient.get<TimeSeriesData[]>(`${this.baseUrl}/analytics/case-openings?${params.toString()}`);
+  }
+
+  async getBuybacksTimeSeries(days: number = 30): Promise<BuybackTimeSeriesData[]> {
+    const params = new URLSearchParams();
+    params.append('days', days.toString());
+    return apiClient.get<BuybackTimeSeriesData[]>(`${this.baseUrl}/analytics/buybacks?${params.toString()}`);
+  }
+
+  async getTransfersTimeSeries(days: number = 30): Promise<TimeSeriesData[]> {
+    const params = new URLSearchParams();
+    params.append('days', days.toString());
+    return apiClient.get<TimeSeriesData[]>(`${this.baseUrl}/analytics/transfers?${params.toString()}`);
+  }
+}
+
+export interface TimeSeriesData {
+  date: string;
+  count: number;
+}
+
+export interface BuybackTimeSeriesData {
+  date: string;
+  count: number;
+  totalAmount: number;
+}
+
+export interface AnalyticsData {
+  timeSeries: {
+    caseOpenings: TimeSeriesData[];
+    buybacks: BuybackTimeSeriesData[];
+    transfers: TimeSeriesData[];
+  };
+  overview: {
+    users: {
+      total: number;
+      active30d: number;
+      active7d: number;
+    };
+    revenue: {
+      totalSol: number;
+      totalUsd: number;
+      last30dSol: number;
+      last30dUsd: number;
+    };
+    cases: {
+      totalOpened: number;
+      last30d: number;
+      last7d: number;
+    };
+    inventory: {
+      totalNfts: number;
+      totalValueUsd: number;
+      buybacksSold: number;
+      totalTransfers: number;
+      pendingTransfers: number;
+    };
+  };
+  transactions: {
+    totalSol: number;
+    totalUsd: number;
+    transactionCount: number;
+    grossRevenueSol?: number;
+    grossRevenueUsd?: number;
+    buybackCostSol?: number;
+    buybackCostUsd?: number;
+  };
+  caseOpenings: {
+    totalOpened: number;
+    successfulOpenings: number;
+    pendingOpenings: number;
+  };
 }
 
 export const adminService = new AdminService();

@@ -20,6 +20,7 @@ import {
   Shield,
   Users,
   Truck,
+  BarChart3,
 } from "lucide-react";
 import { memo, useMemo } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
@@ -84,6 +85,11 @@ function SidebarComponent() {
       href: "/app-dashboard/packs/admin",
       label: "Pack Manager",
       icon: Shield,
+    },
+    {
+      href: "/app-dashboard/admin/analytics",
+      label: "Analytics",
+      icon: BarChart3,
     },
     {
       href: "/app-dashboard/admin/users",

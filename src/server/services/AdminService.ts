@@ -4,6 +4,10 @@ import { TransactionRepository } from '../repositories/TransactionRepository';
 import { CaseOpeningRepository } from '../repositories/CaseOpeningRepository';
 import { LootBoxTypeRepository } from '../repositories/LootBoxTypeRepository';
 import { AppError } from '../middlewares/errorHandler';
+import { AppDataSource } from '../config/database';
+import { BuybackRecord } from '../entities/BuybackRecord';
+import { UserSkin } from '../entities/UserSkin';
+import { MoreThanOrEqual } from 'typeorm';
 
 export class AdminService {
   private userRepository: UserRepository;
@@ -44,6 +48,24 @@ export class AdminService {
     let totalNfts = 0;
     let totalValueUsd = 0;
     let buybacksSold = 0;
+    let totalTransfers = 0;
+
+    // Count transfers (skins that were claimed/transferred)
+    const userSkinRepo = AppDataSource.getRepository(UserSkin);
+    totalTransfers = await userSkinRepo
+      .createQueryBuilder('skin')
+      .where('skin.isWaitingTransfer = :waiting', { waiting: false })
+      .andWhere('skin.isInInventory = :inInventory', { inInventory: false })
+      .andWhere('skin.soldViaBuyback = :sold', { sold: false })
+      .getCount();
+
+    // Count pending transfers (skins waiting for transfer)
+    const pendingTransfers = await userSkinRepo
+      .createQueryBuilder('skin')
+      .where('skin.isWaitingTransfer = :waiting', { waiting: true })
+      .andWhere('skin.isInInventory = :inInventory', { inInventory: true })
+      .andWhere('skin.soldViaBuyback = :sold', { sold: false })
+      .getCount();
 
     for (const user of users) {
       const inventoryValue = await this.userSkinRepository.getUserInventoryValue(user.id);
@@ -75,6 +97,8 @@ export class AdminService {
         totalNfts,
         totalValueUsd,
         buybacksSold,
+        totalTransfers,
+        pendingTransfers,
       },
     };
   }
@@ -363,5 +387,160 @@ export class AdminService {
     await this.userSkinRepository.update(skinId, updateData);
     
     return await this.userSkinRepository.findById(skinId);
+  }
+
+  /**
+   * Get time series data for case openings
+   */
+  async getCaseOpeningsTimeSeries(days: number = 30) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const { CaseOpening } = require('../entities/CaseOpening');
+    const caseOpeningRepo = AppDataSource.getRepository(CaseOpening);
+    
+    const openings = await caseOpeningRepo
+      .createQueryBuilder('opening')
+      .where('opening.openedAt >= :startDate', { startDate })
+      .orderBy('opening.openedAt', 'ASC')
+      .getMany();
+
+    // Group by date
+    const grouped = new Map<string, number>();
+    openings.forEach(opening => {
+      if (opening.openedAt) {
+        const date = new Date(opening.openedAt).toISOString().split('T')[0];
+        grouped.set(date, (grouped.get(date) || 0) + 1);
+      }
+    });
+
+    // Fill missing dates with 0
+    const result: { date: string; count: number }[] = [];
+    for (let i = 0; i < days; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      result.push({
+        date: dateStr,
+        count: grouped.get(dateStr) || 0,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Get time series data for buybacks
+   */
+  async getBuybacksTimeSeries(days: number = 30) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const buybackRepo = AppDataSource.getRepository(BuybackRecord);
+    const buybacks = await buybackRepo
+      .createQueryBuilder('buyback')
+      .where('buyback.createdAt >= :startDate', { startDate })
+      .orderBy('buyback.createdAt', 'ASC')
+      .getMany();
+
+    // Group by date
+    const grouped = new Map<string, { count: number; totalAmount: number }>();
+    buybacks.forEach(buyback => {
+      const date = new Date(buyback.createdAt).toISOString().split('T')[0];
+      const existing = grouped.get(date) || { count: 0, totalAmount: 0 };
+      grouped.set(date, {
+        count: existing.count + 1,
+        totalAmount: existing.totalAmount + Number(buyback.amountPaid),
+      });
+    });
+
+    // Fill missing dates with 0
+    const result: { date: string; count: number; totalAmount: number }[] = [];
+    for (let i = 0; i < days; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      const existing = grouped.get(dateStr);
+      result.push({
+        date: dateStr,
+        count: existing?.count || 0,
+        totalAmount: existing?.totalAmount || 0,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Get time series data for transfers (skins marked as sent)
+   */
+  async getTransfersTimeSeries(days: number = 30) {
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - days);
+    
+    const userSkinRepo = AppDataSource.getRepository(UserSkin);
+    const skins = await userSkinRepo
+      .createQueryBuilder('skin')
+      .where('skin.isWaitingTransfer = :waiting', { waiting: false })
+      .andWhere('skin.updatedAt >= :startDate', { startDate })
+      .andWhere('skin.isInInventory = :inInventory', { inInventory: false })
+      .andWhere('skin.soldViaBuyback = :sold', { sold: false })
+      .orderBy('skin.updatedAt', 'ASC')
+      .getMany();
+
+    // Group by date
+    const grouped = new Map<string, number>();
+    skins.forEach(skin => {
+      if (skin.updatedAt) {
+        const date = new Date(skin.updatedAt).toISOString().split('T')[0];
+        grouped.set(date, (grouped.get(date) || 0) + 1);
+      }
+    });
+
+    // Fill missing dates with 0
+    const result: { date: string; count: number }[] = [];
+    for (let i = 0; i < days; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      const dateStr = date.toISOString().split('T')[0];
+      result.push({
+        date: dateStr,
+        count: grouped.get(dateStr) || 0,
+      });
+    }
+
+    return result;
+  }
+
+  /**
+   * Get comprehensive analytics data
+   */
+  async getAnalyticsData(days: number = 30) {
+    const [
+      caseOpenings,
+      buybacks,
+      transfers,
+      overviewStats,
+      transactionStats,
+      caseOpeningStats,
+    ] = await Promise.all([
+      this.getCaseOpeningsTimeSeries(days),
+      this.getBuybacksTimeSeries(days),
+      this.getTransfersTimeSeries(days),
+      this.getOverviewStats(),
+      this.getTransactionStats(days),
+      this.getCaseOpeningStats(days),
+    ]);
+
+    return {
+      timeSeries: {
+        caseOpenings,
+        buybacks,
+        transfers,
+      },
+      overview: overviewStats,
+      transactions: transactionStats,
+      caseOpenings: caseOpeningStats,
+    };
   }
 }

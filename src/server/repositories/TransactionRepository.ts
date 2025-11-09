@@ -202,32 +202,99 @@ export class TransactionRepository {
     totalSol: number;
     totalUsd: number;
     transactionCount: number;
+    grossRevenueSol?: number;
+    grossRevenueUsd?: number;
+    buybackCostSol?: number;
+    buybackCostUsd?: number;
   }> {
-    // Simple approach: get all transactions and calculate in memory
+    // Calculate revenue from case openings (box sales) minus buyback costs
+    const { AppDataSource } = require('../config/database');
+    const { CaseOpening } = require('../entities/CaseOpening');
+    const { LootBoxType } = require('../entities/LootBoxType');
+    const { BuybackRecord } = require('../entities/BuybackRecord');
+    
+    const caseOpeningRepo = AppDataSource.getRepository(CaseOpening);
+    const buybackRepo = AppDataSource.getRepository(BuybackRecord);
+    
+    // Build query for case openings
+    let caseOpeningsQuery = caseOpeningRepo
+      .createQueryBuilder('opening')
+      .leftJoinAndSelect('opening.lootBoxType', 'lootBoxType')
+      .where('opening.completedAt IS NOT NULL');
+    
+    if (days) {
+      const date = new Date();
+      date.setDate(date.getDate() - days);
+      caseOpeningsQuery = caseOpeningsQuery.andWhere('opening.openedAt >= :date', { date });
+    }
+    
+    const caseOpenings = await caseOpeningsQuery.getMany();
+    
+    // Calculate revenue from case openings
+    // Use boxPriceSol if available, otherwise use lootBoxType.priceSol
+    // Convert SOL to USD (assuming ~$200 per SOL, or use priceUsdc if available)
+    const SOL_TO_USD = 200; // Default conversion rate
+    let totalRevenueSol = 0;
+    let totalRevenueUsd = 0;
+    
+    caseOpenings.forEach(opening => {
+      let priceSol = 0;
+      let priceUsd = 0;
+      
+      // Try to get price from boxPriceSol first (for pack openings)
+      if (opening.boxPriceSol) {
+        priceSol = Number(opening.boxPriceSol);
+        priceUsd = priceSol * SOL_TO_USD; // Convert SOL to USD
+      } else if (opening.lootBoxType) {
+        priceSol = Number(opening.lootBoxType.priceSol || 0);
+        // Use priceUsdc if available, otherwise convert from SOL
+        if (opening.lootBoxType.priceUsdc) {
+          priceUsd = Number(opening.lootBoxType.priceUsdc);
+        } else {
+          priceUsd = priceSol * SOL_TO_USD;
+        }
+      }
+      
+      totalRevenueSol += priceSol;
+      totalRevenueUsd += priceUsd;
+    });
+    
+    // Calculate buyback costs
+    let buybackQuery = buybackRepo.createQueryBuilder('buyback');
+    if (days) {
+      const date = new Date();
+      date.setDate(date.getDate() - days);
+      buybackQuery = buybackQuery.where('buyback.createdAt >= :date', { date });
+    }
+    
+    const buybacks = await buybackQuery.getMany();
+    const totalBuybackCostSol = buybacks.reduce((sum, b) => sum + Number(b.amountPaid || 0), 0);
+    const totalBuybackCostUsd = totalBuybackCostSol * SOL_TO_USD;
+    
+    // Net revenue = revenue from boxes - buyback costs
+    const netRevenueSol = totalRevenueSol - totalBuybackCostSol;
+    const netRevenueUsd = totalRevenueUsd - totalBuybackCostUsd;
+    
+    // Get transaction count (for compatibility)
     const whereCondition: any = { status: TransactionStatus.CONFIRMED };
-
     if (days) {
       const date = new Date();
       date.setDate(date.getDate() - days);
       whereCondition.createdAt = MoreThanOrEqual(date);
     }
-
     const transactions = await this.repository.find({
       where: whereCondition,
     });
-
-    const totalSol = transactions
-      .filter((t) => t.amountSol && t.amountSol > 0)
-      .reduce((sum, t) => sum + (t.amountSol || 0), 0);
-
-    const totalUsd = transactions
-      .filter((t) => t.amountUsd > 0)
-      .reduce((sum, t) => sum + t.amountUsd, 0);
-
+    
     return {
-      totalSol,
-      totalUsd,
+      totalSol: netRevenueSol,
+      totalUsd: netRevenueUsd,
       transactionCount: transactions.length,
+      // Additional breakdown for analytics
+      grossRevenueSol: totalRevenueSol,
+      grossRevenueUsd: totalRevenueUsd,
+      buybackCostSol: totalBuybackCostSol,
+      buybackCostUsd: totalBuybackCostUsd,
     };
   }
 }
