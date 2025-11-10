@@ -15,6 +15,8 @@ import { Inventory } from "../entities/Inventory";
 import { Box } from "../entities/Box";
 import { BoxSkin } from "../entities/BoxSkin";
 import { BuybackRecord } from "../entities/BuybackRecord";
+import { AuditLog } from "../entities/AuditLog";
+import { RequestNonce } from "../entities/RequestNonce";
 
 // DataSource for TypeORM CLI (migrations)
 const dbHost = process.env.DB_HOST || "localhost";
@@ -49,6 +51,8 @@ export default new DataSource({
     Box,
     BoxSkin,
     BuybackRecord,
+    AuditLog,
+    RequestNonce,
   ],
   // Paths are relative to process.cwd() (the server package root when running npm scripts)
   migrations: [__dirname + "/migrations/*{.ts,.js}"],

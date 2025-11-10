@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { httpService } from '../utils/httpService';
 
 export interface DiscordTicketData {
   userId: string;
@@ -47,7 +47,7 @@ export class DiscordService {
       console.log('✅ Discord embed created:', embed.title);
       
       console.log('📤 Sending Discord message to channel:', this.channelId);
-      const response = await axios.post(
+      const response = await httpService.post(
         `https://discord.com/api/v10/channels/${this.channelId}/messages`,
         {
           embeds: [embed],
@@ -82,13 +82,20 @@ export class DiscordService {
             'Authorization': `Bot ${this.botToken}`,
             'Content-Type': 'application/json',
           },
+        },
+        {
+          serviceName: 'discord-api',
+          timeout: 10000, // 10 seconds
+          retry: {
+            maxRetries: 2,
+            retryableStatusCodes: [429, 500, 502, 503, 504],
+          },
         }
       );
 
       console.log('✅ Discord message sent successfully! Response:', {
-        status: response.status,
-        messageId: response.data.id,
-        channelId: response.data.channel_id
+        messageId: response.id,
+        channelId: response.channel_id
       });
       console.log(`Discord ticket created for skin claim: ${data.skinName}`);
     } catch (error: any) {

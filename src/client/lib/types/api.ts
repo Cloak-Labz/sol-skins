@@ -37,6 +37,8 @@ export interface LootBoxType {
   description: string
   priceSol: string
   priceUsdc?: string
+  priceUsd?: string | number
+  solPriceUsd?: number
   imageUrl?: string
   rarity: 'Standard' | 'Premium' | 'Special' | 'Limited' | 'Legendary'
   isActive: boolean

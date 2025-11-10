@@ -1,9 +1,12 @@
 import { Router } from 'express';
 import { Connection, Keypair, Transaction } from '@solana/web3.js';
 import { AppError } from '../middlewares/errorHandler';
-import logger from '../middlewares/logger';
+import { logger } from '../middlewares/logger';
 import { WebIrys } from '@irys/sdk';
 import nacl from 'tweetnacl';
+import { validateSchema, schemas } from '../middlewares/validation';
+import { irysUploadLimiter } from '../middlewares/security';
+import { validateMetadata, MAX_METADATA_SIZE } from '../utils/fileValidation';
 
 const router = Router();
 
@@ -15,12 +18,25 @@ async function resolveArweaveUri(txId: string): Promise<string | null> {
   ];
   const deadline = Date.now() + 30000; // 30s overall
 
+  // SSRF protection: validate gateways (whitelist approach)
+  const { validateUrlForSSRF } = require('../utils/ssrfProtection');
+
   while (Date.now() < deadline) {
     for (const base of gateways) {
       const url = `${base}/${txId}`;
       try {
-        const resp = await fetch(url, { method: 'HEAD' });
-        if (resp.ok) return url;
+        // Validate URL before fetching (gateways are whitelisted, but validate anyway)
+        const validation = validateUrlForSSRF(url, {
+          requireHttps: true,
+          allowArweave: true,
+          allowedHostnames: ['arweave.net', 'ar-io.net'], // Whitelist Arweave gateways
+        });
+
+        if (validation.isValid && validation.sanitizedUrl) {
+          const safeUrl = validation.sanitizedUrl;
+          const resp = await fetch(safeUrl, { method: 'HEAD' });
+          if (resp.ok) return safeUrl;
+        }
       } catch (_) {
         // ignore and continue
       }
@@ -31,12 +47,26 @@ async function resolveArweaveUri(txId: string): Promise<string | null> {
 }
 
 // Server-side Irys upload using admin private key
-router.post('/upload', async (req, res) => {
+// SECURITY: Rate limited to prevent DoS (5 req/min)
+// SECURITY: File validation applied to metadata
+router.post('/upload', irysUploadLimiter, validateSchema(schemas.irysUpload), async (req, res) => {
   try {
     const { metadata } = req.body;
     
-    if (!metadata) {
-      throw new AppError('Metadata is required', 400, 'MISSING_METADATA');
+    // Additional validation (redundant but ensures safety)
+    const metadataValidation = validateMetadata(metadata);
+    if (!metadataValidation.valid) {
+      throw new AppError(metadataValidation.error || 'Invalid metadata', 400, 'INVALID_METADATA');
+    }
+    
+    // Check size again (defense in depth)
+    const metadataString = JSON.stringify(metadata);
+    if (metadataString.length > MAX_METADATA_SIZE) {
+      throw new AppError(
+        `Metadata size (${(metadataString.length / 1024 / 1024).toFixed(2)}MB) exceeds maximum allowed (${MAX_METADATA_SIZE / 1024 / 1024}MB)`,
+        400,
+        'METADATA_TOO_LARGE'
+      );
     }
 
     // Initialize Irys with server-side key
@@ -63,6 +93,7 @@ router.post('/upload', async (req, res) => {
     // Create a proper wallet adapter for Irys
     const walletAdapter = {
       publicKey: keypair.publicKey,
+      provider: connection, // Required by Irys SDK
       signMessage: async (message: Uint8Array) => {
         return nacl.sign.detached(message, keypair.secretKey);
       },

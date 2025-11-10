@@ -13,7 +13,9 @@ import {
   securityHeaders,
   apiVersioning,
   requestTimeout,
+  validateCSRF,
 } from './middlewares/security';
+import { validateNonce } from './middlewares/nonceValidation';
 import { sanitizeBody, sanitizeQuery } from './middlewares/validation';
 import { createRoutes } from './routes';
 import { setupSwagger } from './config/swagger';
@@ -44,8 +46,24 @@ export async function createApp(): Promise<Express> {
   app.use(sanitizeBody);
   app.use(sanitizeQuery);
 
-  // Rate limiting
-  app.use(generalLimiter);
+  // Rate limiting - exclude some endpoints from global limiter
+  app.use((req, res, next) => {
+    // Exclude health check and calculate endpoints from global rate limit
+    // (they have their own rate limiting or are lightweight)
+    if (req.path === '/health' || 
+        req.path.includes('/buyback/calculate') ||
+        req.path.includes('/boxes/active') ||
+        req.path.includes('/boxes/stats')) {
+      return next();
+    }
+    generalLimiter(req, res, next);
+  });
+
+  // CSRF protection for state-changing operations (before routes)
+  app.use(config.apiPrefix, validateCSRF);
+  
+  // Nonce validation for replay attack prevention (after CSRF, before routes)
+  app.use(config.apiPrefix, validateNonce);
 
   // Setup Swagger documentation
   setupSwagger(app);

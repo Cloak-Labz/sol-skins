@@ -98,9 +98,13 @@ export class InventoryService {
       );
     }
 
+    // SECURITY: Use safe math to prevent integer overflow
+    const { validateAmount, applyPercentage, toNumber } = require('../utils/safeMath');
+    
     const currentPrice =
       userSkin.currentPriceUsd || userSkin.skinTemplate?.basePriceUsd || 0;
-    const buybackPrice = currentPrice * 0.85; // 85% of current market value
+    const currentPriceDecimal = validateAmount(currentPrice, 'current price');
+    const buybackPrice = toNumber(applyPercentage(currentPriceDecimal, 85, 'buyback price')); // 85% of current market value
 
     if (minAcceptablePrice && buybackPrice < minAcceptablePrice) {
       throw new AppError(

@@ -52,10 +52,10 @@ export class PendingSkinsService {
   }
 
   async createSkinClaimedActivity(data: {
-    userId: string;
-    skinName: string;
-    skinRarity: string;
-    skinWeapon: string;
+    walletAddress: string;
+    skinName?: string;
+    skinRarity?: string;
+    skinWeapon?: string;
     nftMintAddress: string;
   }): Promise<void> {
     await apiClient.post('/pending-skins/claim-activity', data);

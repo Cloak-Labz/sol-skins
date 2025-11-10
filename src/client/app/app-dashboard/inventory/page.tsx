@@ -89,17 +89,17 @@ export default function InventoryPage() {
         sortBy: sortBy as any,
         filterBy: filterBy === "all" ? undefined : (filterBy as any),
       });
-      // The API returns { success: true, data: items } or just the items array directly
-      let inventoryItems = [];
+      // The API returns { success: true, data: items } or { skins: [...] } or just the items array directly
+      let inventoryItems: any[] = [];
       if (Array.isArray(response)) {
         // Response is already the items array
         inventoryItems = response;
-      } else if (response && response.data && Array.isArray(response.data)) {
+      } else if (response && 'data' in response && Array.isArray((response as any).data)) {
         // Response has data property with items array
-        inventoryItems = response.data;
-      } else if (response && response.skins && Array.isArray(response.skins)) {
+        inventoryItems = (response as any).data;
+      } else if (response && 'skins' in response && Array.isArray((response as any).skins)) {
         // Response has skins property (legacy format)
-        inventoryItems = response.skins;
+        inventoryItems = (response as any).skins;
       }
       
       setInventorySkins(inventoryItems);
@@ -337,7 +337,7 @@ export default function InventoryPage() {
             </div>
             <div className="text-right">
               <div className="text-sm text-muted-foreground">
-                Total Portfolio Value
+                Total Intentory Value
               </div>
               <div className="text-3xl font-bold text-foreground">
                 ${totalValue.toFixed(2)}
@@ -393,9 +393,6 @@ export default function InventoryPage() {
         {/* Owned Skins */}
         {filteredSkins.length > 0 && (
           <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <h3 className="text-lg font-semibold text-orange-200">Owned Skins</h3>
-            </div>
             {/* Full-page scroll; grid flows naturally */}
             <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8 auto-rows-auto">
             {filteredSkins.map((skin) => (
@@ -458,28 +455,25 @@ export default function InventoryPage() {
                     </div>
                   }
                   bottomContent={
-                    <div className="space-y-1 flex-1 pt-2">
-                      {/* Skin Image */}
-                      <div className="flex items-center justify-center h-8 mb-20 mt-10">
+                    <div className="flex flex-col min-h-[350px]">
+                      {/* Skin Image - Top */}
+                      <div className="flex items-center justify-center pt-2">
                         {skin.imageUrl ? (
                           <img
                             src={skin.imageUrl}
                             alt={skin.name}
-                            className="max-h-16 max-w-16 object-contain"
+                            className="max-h-40 max-w-40 object-contain"
                           />
                         ) : (
-                          <Package className="w-16 h-16 text-orange-400" />
+                          <Package className="w-20 h-20 text-orange-400" />
                         )}
                       </div>
 
-                      {/* Skin Stats */}
-                      <div className="space-y-1 flex-1">
-                        <div className="flex justify-between items-center">
-                          <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Wear:</span>
-                          <span className="text-orange-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
-                            {skin.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
-                          </span>
-                        </div>
+                      {/* Spacer to push content down */}
+                      <div className="flex-1"></div>
+
+                      {/* Skin Stats - Bottom */}
+                      <div className="space-y-2 mt-auto">
                         <div className="flex justify-between items-center">
                           <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Value:</span>
                           <span className="text-orange-400 text-base font-black uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
@@ -489,13 +483,15 @@ export default function InventoryPage() {
                         <div className="flex justify-between items-center">
                           <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Minted At:</span>
                           <span className="text-orange-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
-                            {new Date(skin.mintedAt).toLocaleDateString()}
+                            {(skin.openedAt || (skin as any).createdAt) 
+                              ? new Date(skin.openedAt || (skin as any).createdAt).toLocaleDateString() 
+                              : 'N/A'}
                           </span>
                         </div>
                       </div>
 
-                      {/* Sell Button */}
-                      <div className="mt-6">
+                      {/* Sell Button - Bottom */}
+                      <div className="mt-8 mb-6">
                         <Button
                           size="sm"
                           disabled={skin.isWaitingTransfer}
@@ -577,7 +573,7 @@ export default function InventoryPage() {
                         {selectedSkin?.name}
                       </h3>
                       <p className="text-sm text-muted-foreground">
-                        {selectedSkin?.attributes?.find(attr => attr.trait_type === 'Wear')?.value || 'Unknown'}
+                        {(selectedSkin?.skinTemplate as any)?.collection || 'Unknown'}
                       </p>
                       <Badge
                         className={`${getRarityColor(selectedSkin?.skinTemplate?.rarity || 'Unknown')} hover:bg-transparent hover:text-inherit hover:border-inherit transition-none`}

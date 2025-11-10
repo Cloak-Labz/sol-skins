@@ -7,6 +7,7 @@ import { UserSkin } from '../entities/UserSkin';
 import { SkinTemplate } from '../entities/SkinTemplate';
 import { UserSkinRepository } from '../repositories/UserSkinRepository';
 import buybackIdl from '../../client/lib/idl/buyback.json';
+import { buybackPriceLockService } from './BuybackPriceLockService';
 
 export interface BuybackCalculation {
   nftMint: string;
@@ -18,6 +19,13 @@ export interface BuybackCalculation {
 export interface BuybackTransactionData {
   transaction: string; // Base64 encoded transaction
   buybackCalculation: BuybackCalculation;
+  priceLockId: string;
+}
+
+// Interface for blockchain operations (allows mocking in tests)
+export interface IBlockchainService {
+  buildTransaction(userWallet: string, nftMint: string, buybackAmountLamports: string): Promise<string>;
+  verifyNFTOwnership(nftMint: string, userWallet: string): Promise<boolean>;
 }
 
 export class BuybackService {
@@ -25,8 +33,9 @@ export class BuybackService {
   private program: Program;
   private adminWallet: Keypair;
   private buybackConfigPda: PublicKey;
+  private blockchainService?: IBlockchainService; // Optional: allows injection for testing
 
-  constructor() {
+  constructor(blockchainService?: IBlockchainService) {
     this.connection = new Connection(config.solana.rpcUrl, 'confirmed');
     
     // Initialize admin wallet from private key
@@ -48,16 +57,26 @@ export class BuybackService {
       new PublicKey(config.buyback.programId)
     );
     this.buybackConfigPda = buybackConfigPda;
+    
+    // Allow injection of blockchain service for testing
+    this.blockchainService = blockchainService;
   }
 
   async calculateBuyback(nftMint: string): Promise<BuybackCalculation> {
+    // SECURITY: Validate NFT mint address format before using
+    const { isValidMintAddress } = require('../utils/solanaValidation');
+    if (!isValidMintAddress(nftMint)) {
+      throw new Error(`Invalid NFT mint address format: ${nftMint}`);
+    }
+    
     const userSkinRepo = new UserSkinRepository();
     const skinTemplateRepo = AppDataSource.getRepository(SkinTemplate);
 
     const userSkin = await userSkinRepo.findByNftMintAddress(nftMint);
 
     if (!userSkin) {
-      throw new Error('NFT not found in user inventory');
+      const { AppError } = require('../middlewares/errorHandler');
+      throw new AppError('NFT not found in user inventory', 404, 'NFT_NOT_FOUND');
     }
 
     // Don't throw error if already burned - just log it
@@ -73,17 +92,37 @@ export class BuybackService {
       throw new Error('Skin template not found');
     }
 
-    const skinPriceUsd = parseFloat(skinTemplate.basePriceUsd.toString());
-    const solPriceUsd = 200;
-    const skinPriceSol = skinPriceUsd / solPriceUsd;
-    const buybackAmount = skinPriceSol * config.buyback.buybackRate;
-    const buybackAmountLamports = Math.floor(buybackAmount * 1_000_000_000);
+    // SECURITY: Use safe math to prevent integer overflow
+    const { validateAmount, usdToSol, applyPercentage, solToLamports, toNumber } = require('../utils/safeMath');
+    const { priceService } = require('./PriceService');
+    
+    // Determine the most accurate USD price we have for this skin
+    const priceCandidates = [
+      userSkin.currentPriceUsd != null ? Number(userSkin.currentPriceUsd) : null,
+      skinTemplate?.basePriceUsd != null ? Number(skinTemplate.basePriceUsd) : null,
+    ].filter((value): value is number => value != null && Number.isFinite(value) && value > 0);
+
+    if (priceCandidates.length === 0) {
+      throw new Error('Unable to determine skin USD price for buyback calculation');
+    }
+
+    const effectivePriceUsd = priceCandidates[0]; // prefer currentPriceUsd if available
+    const skinPriceUsd = validateAmount(effectivePriceUsd, 'skin price USD');
+    // Fetch live SOL price in USD (cached, with safe fallbacks)
+    const solPriceUsd = validateAmount(await priceService.getSolPriceUsd(), 'SOL price USD');
+    const skinPriceSol = usdToSol(skinPriceUsd, solPriceUsd);
+    const buybackAmount = applyPercentage(skinPriceSol, config.buyback.buybackRate * 100, 'buyback amount'); // Convert rate to percentage
+    const buybackAmountLamports = solToLamports(buybackAmount);
+    
+    // Convert to numbers for return (validated)
+    const skinPriceSolNum = toNumber(skinPriceSol);
+    const buybackAmountNum = toNumber(buybackAmount);
 
     return {
       nftMint,
-      skinPrice: skinPriceSol,
-      buybackAmount,
-      buybackAmountLamports: buybackAmountLamports.toString(),
+      skinPrice: skinPriceSolNum,
+      buybackAmount: buybackAmountNum,
+      buybackAmountLamports: buybackAmountLamports,
     };
   }
 
@@ -91,11 +130,58 @@ export class BuybackService {
     userWallet: string,
     nftMint: string
   ): Promise<BuybackTransactionData> {
+    // SECURITY: Validate NFT mint address format before using
+    const { isValidMintAddress } = require('../utils/solanaValidation');
+    if (!isValidMintAddress(nftMint)) {
+      throw new Error(`Invalid NFT mint address format: ${nftMint}`);
+    }
+    
     const buybackCalculation = await this.calculateBuyback(nftMint);
+    
+    // SECURITY: Lock the buyback price to prevent front-running
+    const priceLockId = buybackPriceLockService.lockPrice(
+      nftMint,
+      userWallet,
+      buybackCalculation.buybackAmount,
+      buybackCalculation.buybackAmountLamports,
+      buybackCalculation.skinPrice
+    );
+    
+    // Use injected blockchain service if available (for testing), otherwise use real implementation
+    let transaction: string;
+    if (this.blockchainService) {
+      transaction = await this.blockchainService.buildTransaction(
+        userWallet,
+        nftMint,
+        buybackCalculation.buybackAmountLamports
+      );
+    } else {
+      transaction = await this.buildSolanaTransaction(
+        userWallet,
+        nftMint,
+        buybackCalculation.buybackAmountLamports
+      );
+    }
+    
+    return {
+      transaction,
+      buybackCalculation,
+      priceLockId,
+    };
+  }
+
+  /**
+   * Build actual Solana transaction (production implementation)
+   */
+  private async buildSolanaTransaction(
+    userWallet: string,
+    nftMint: string,
+    buybackAmountLamports: string
+  ): Promise<string> {
     const nftMintPubkey = new PublicKey(nftMint);
     const userPubkey = new PublicKey(userWallet);
     const userNftAccount = await getAssociatedTokenAddress(nftMintPubkey, userPubkey);
-    const buybackAmountBN = new BN(buybackCalculation.buybackAmountLamports);
+    const buybackAmountBN = new BN(buybackAmountLamports);
     
     const tx = await this.program.methods
       .executeBuyback(buybackAmountBN)
@@ -124,16 +210,31 @@ export class BuybackService {
       verifySignatures: false,
     });
 
-    return {
-      transaction: serializedTx.toString('base64'),
-      buybackCalculation,
-    };
+    return serializedTx.toString('base64');
   }
 
   /**
    * Verify NFT ownership
    */
   async verifyNFTOwnership(nftMint: string, userWallet: string): Promise<boolean> {
+    // SECURITY: Validate NFT mint address format before using
+    const { isValidMintAddress } = require('../utils/solanaValidation');
+    if (!isValidMintAddress(nftMint)) {
+      throw new Error(`Invalid NFT mint address format: ${nftMint}`);
+    }
+    
+    // Use injected blockchain service if available (for testing), otherwise use real implementation
+    if (this.blockchainService) {
+      return await this.blockchainService.verifyNFTOwnership(nftMint, userWallet);
+    }
+    
+    return await this.verifyNFTOwnershipOnChain(nftMint, userWallet);
+  }
+
+  /**
+   * Verify NFT ownership on-chain (production implementation)
+   */
+  private async verifyNFTOwnershipOnChain(nftMint: string, userWallet: string): Promise<boolean> {
     try {
       const nftMintPubkey = new PublicKey(nftMint);
       const userPubkey = new PublicKey(userWallet);
@@ -153,6 +254,12 @@ export class BuybackService {
    * Mark NFT as burned in database after successful buyback
    */
   async markNFTAsBurned(nftMint: string, txSignature: string): Promise<void> {
+    // SECURITY: Validate NFT mint address format before using
+    const { isValidMintAddress } = require('../utils/solanaValidation');
+    if (!isValidMintAddress(nftMint)) {
+      throw new Error(`Invalid NFT mint address format: ${nftMint}`);
+    }
+    
     const userSkinRepo = new UserSkinRepository();
     const skinTemplateRepo = AppDataSource.getRepository(SkinTemplate);
 
@@ -171,16 +278,34 @@ export class BuybackService {
       throw new Error('Skin template not found');
     }
 
-    const skinPriceUsd = parseFloat(skinTemplate.basePriceUsd.toString());
-    const solPriceUsd = 200;
-    const skinPriceSol = skinPriceUsd / solPriceUsd;
-    const buybackAmount = skinPriceSol * config.buyback.buybackRate;
+    // SECURITY: Use safe math to prevent integer overflow
+    const { validateAmount, usdToSol, applyPercentage, toNumber } = require('../utils/safeMath');
+    const { priceService } = require('./PriceService');
+    
+    const priceCandidates = [
+      userSkin.currentPriceUsd != null ? Number(userSkin.currentPriceUsd) : null,
+      skinTemplate?.basePriceUsd != null ? Number(skinTemplate.basePriceUsd) : null,
+    ].filter((value): value is number => value != null && Number.isFinite(value) && value > 0);
+
+    if (priceCandidates.length === 0) {
+      throw new Error('Unable to determine skin USD price for buyback finalization');
+    }
+
+    const effectivePriceUsd = priceCandidates[0];
+    const skinPriceUsd = validateAmount(effectivePriceUsd, 'skin price USD');
+    // Fetch live SOL price in USD (cached, with safe fallbacks)
+    const solPriceUsd = validateAmount(await priceService.getSolPriceUsd(), 'SOL price USD');
+    const skinPriceSol = usdToSol(skinPriceUsd, solPriceUsd);
+    const buybackAmount = applyPercentage(skinPriceSol, config.buyback.buybackRate * 100, 'buyback amount');
+    
+    // Convert Decimal to number for database storage
+    const buybackAmountNum = toNumber(buybackAmount);
     
     // Mark as sold (removes from inventory) and set burn-specific fields
     await userSkinRepo.update(userSkin.id, {
       soldViaBuyback: true,
       isInInventory: false,
-      buybackAmount,
+      buybackAmount: buybackAmountNum,
       buybackAt: new Date(),
       buybackTxSignature: txSignature,
     });
@@ -212,4 +337,3 @@ export class BuybackService {
     }
   }
 }
-

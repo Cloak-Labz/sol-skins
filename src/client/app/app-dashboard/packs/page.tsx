@@ -14,6 +14,7 @@ import { useUser } from "@/lib/contexts/UserContext";
 import { discordService } from "@/lib/services/discord.service";
 import { pendingSkinsService } from "@/lib/services/pending-skins.service";
 import { apiClient } from "@/lib/services/api.service";
+import { buybackService } from "@/lib/services/buyback.service";
 import { LootBoxType } from "@/lib/types/api";
 import XIconPng from "@/public/assets/x_icon.png";
 import { useRouter } from "next/navigation";
@@ -74,12 +75,13 @@ export default function PacksPage() {
   const [buybackAmountSol, setBuybackAmountSol] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [videoKey, setVideoKey] = useState(0);
   const shouldHideSidebar =
     (openingPhase !== null && openingPhase !== "processing") ||
     showResult ||
     showBuybackModal;
 
-  // Variável para indicar quando uma skin está sendo aberta (qualquer fase de processamento)
+  // Variable to indicate when a skin is being opened (any processing phase)
   const isOpeningSkin = openingPhase !== null || isProcessing;
 
   // Share state for claim flow
@@ -94,6 +96,81 @@ export default function PacksPage() {
     skinSol: number;
     payoutSol: number;
   } | null>(null);
+
+  // Force video reload when entering video phase to avoid cache issues
+  useEffect(() => {
+    if (openingPhase === "video") {
+      // Force reload by changing key (this will remount the video element)
+      setVideoKey(prev => prev + 1);
+      
+      // Also reset video element if it exists
+      setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.load();
+        }
+      }, 100);
+    }
+  }, [openingPhase]);
+
+  // Prevent navigation and disable topbar during pack opening
+  useEffect(() => {
+    if (isOpeningSkin) {
+      // Prevent page navigation (refresh, close tab, etc.)
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        e.preventDefault();
+        e.returnValue = "A pack opening is in progress. Are you sure you want to leave?";
+        return e.returnValue;
+      };
+
+      // Prevent browser back/forward navigation
+      const handlePopState = (e: PopStateEvent) => {
+        if (isOpeningSkin) {
+          window.history.pushState(null, "", window.location.href);
+        }
+      };
+
+      window.addEventListener("beforeunload", handleBeforeUnload);
+      // Push current state to prevent back navigation
+      window.history.pushState(null, "", window.location.href);
+      window.addEventListener("popstate", handlePopState);
+
+      // Disable body scroll
+      document.body.style.overflow = "hidden";
+
+      // Disable topbar interactions
+      const header = document.querySelector(".app-header");
+      if (header) {
+        (header as HTMLElement).style.pointerEvents = "none";
+        (header as HTMLElement).style.opacity = "0.5";
+      }
+
+      // Disable sidebar interactions
+      const sidebar = document.querySelector(".app-sidebar");
+      if (sidebar) {
+        (sidebar as HTMLElement).style.pointerEvents = "none";
+        (sidebar as HTMLElement).style.opacity = "0.5";
+      }
+
+      return () => {
+        window.removeEventListener("beforeunload", handleBeforeUnload);
+        window.removeEventListener("popstate", handlePopState);
+        document.body.style.overflow = "";
+        
+        // Re-enable topbar and sidebar
+        const header = document.querySelector(".app-header");
+        if (header) {
+          (header as HTMLElement).style.pointerEvents = "";
+          (header as HTMLElement).style.opacity = "";
+        }
+        
+        const sidebar = document.querySelector(".app-sidebar");
+        if (sidebar) {
+          (sidebar as HTMLElement).style.pointerEvents = "";
+          (sidebar as HTMLElement).style.opacity = "";
+        }
+      };
+    }
+  }, [isOpeningSkin]);
 
   useEffect(() => {
     if (shouldHideSidebar) {
@@ -292,7 +369,7 @@ export default function PacksPage() {
     }
   }, [selectedPack]);
 
-  // Fetch user's trade URL on component mount
+  // Fetch user's trade URL on component mount and whenever user changes
   useEffect(() => {
     const fetchUserTradeUrl = async () => {
       try {
@@ -306,7 +383,7 @@ export default function PacksPage() {
     if (connected) {
       void fetchUserTradeUrl();
     }
-  }, [connected]);
+  }, [connected, user?.tradeUrl]); // Also refresh when user trade URL changes
 
   // Fetch a single metadata JSON and map to CSGOSkin
   const resolveSkinFromMetadata = async (uri: string): Promise<CSGOSkin> => {
@@ -522,9 +599,29 @@ export default function PacksPage() {
       }
     } catch (error: any) {
       dismissOpenPackToast();
-      openPackToastIdRef.current = toast.error(
-        `Failed to open pack: ${error?.message || "Please try again."}`
-      );
+      
+      // Extract user-friendly error message
+      let errorMessage = error?.message || "An unexpected error occurred. Please try again.";
+      
+      // Make error messages more user-friendly
+      if (errorMessage.includes('CSRF') || errorMessage.includes('csrf')) {
+        errorMessage = "Session expired. Please refresh the page and try again.";
+      } else if (errorMessage.includes('walletId') || errorMessage.includes('wallet') || errorMessage.includes('user')) {
+        errorMessage = "Wallet connection issue. Please reconnect your wallet and try again.";
+      } else if (errorMessage.includes('nonce') || errorMessage.includes('timestamp')) {
+        errorMessage = "Request timed out. Please try again.";
+      } else if (errorMessage.includes('transaction') && errorMessage.includes('successful')) {
+        // Transaction was signed but registration failed - show success with warning
+        openPackToastIdRef.current = toast.success("Pack opened successfully!", { 
+          duration: 10000,
+          description: "Your transaction was confirmed on-chain. The inventory sync may be delayed. Please refresh the page if you don't see your new skin."
+        });
+        setOpeningPhase(null);
+        setIsProcessing(false);
+        return;
+      }
+      
+      openPackToastIdRef.current = toast.error(errorMessage);
       setOpeningPhase(null);
       setIsProcessing(false);
     } finally {
@@ -555,55 +652,17 @@ export default function PacksPage() {
         "Calculating buyback amount..."
       );
 
-      // Calculate buyback amount
-      const calcResponse = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-        }/api/v1/buyback/calculate/${lastPackResult.asset}`
-      );
-      const calcData = await calcResponse.json();
-
-      if (!calcData.success) {
-        dismissBuybackToast();
-        buybackToastIdRef.current = toast.error("Failed to calculate buyback");
-        return;
-      }
+      // Calculate buyback amount using buybackService
+      const calcData = await buybackService.calculateBuyback(lastPackResult.asset);
 
       dismissBuybackToast();
       buybackToastIdRef.current = toast.loading(
-        `Buyback: ${calcData.data.buybackAmount} SOL - Requesting transaction...`
-      );
-      // buyback calculation received
-
-      const walletAddress = publicKey.toBase58();
-
-      const txResponse = await fetch(
-        `${
-          process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-        }/api/v1/buyback/request`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            nftMint: lastPackResult.asset,
-            walletAddress: walletAddress,
-          }),
-        }
+        `Buyback: ${calcData.buybackAmount} SOL - Requesting transaction...`
       );
 
-      const txData = await txResponse.json();
-
-      if (!txData.success) {
-        dismissBuybackToast();
-        buybackToastIdRef.current = toast.error(
-          "Failed to create buyback transaction"
-        );
-        return;
-      }
-
-      const transaction = txData.data.transaction;
+      // Request buyback transaction using buybackService
+      const requestData = await buybackService.requestBuyback(lastPackResult.asset);
+      const transaction = requestData.transaction;
 
       if (!signTransaction) {
         dismissBuybackToast();
@@ -628,126 +687,65 @@ export default function PacksPage() {
       dismissBuybackToast();
       buybackToastIdRef.current = toast.loading("Confirming buyback...");
 
-      // Add timeout to prevent hanging
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
-
       try {
-        const confirmResponse = await fetch(
-          `${
-            process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000"
-          }/api/v1/buyback/confirm`,
+        // Confirm buyback using buybackService
+        // The signed transaction itself proves wallet ownership and authorization
+        const confirmData = await buybackService.confirmBuybackSigned({
+          nftMint: lastPackResult.asset,
+          walletAddress: publicKey.toBase58(),
+          signedTransaction: Buffer.from(rawTransaction).toString("base64"),
+        });
+
+        dismissBuybackToast();
+        const txSig: string | undefined =
+          confirmData.transactionSignature ||
+          confirmData.signature ||
+          confirmData.txSignature ||
+          confirmData.hash ||
+          confirmData.tx ||
+          undefined;
+        buybackToastIdRef.current = toast.success(
+          <div className="flex flex-col gap-1">
+            <p className="font-semibold text-sm">Skin successfully bought back! 💰</p>
+            {txSig ? (
+              <a
+                href={getSolscanUrl(txSig)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+              >
+                View transaction on Solscan
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            ) : null}
+          </div>,
           {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              nftMint: lastPackResult.asset,
-              walletAddress: publicKey.toBase58(),
-              signedTransaction: Buffer.from(rawTransaction).toString("base64"),
-            }),
-            signal: controller.signal,
+            duration: 6000,
           }
         );
 
-        clearTimeout(timeoutId);
-
-        if (!confirmResponse.ok) {
-          const errorText = await confirmResponse.text();
-          throw new Error(`HTTP ${confirmResponse.status}: ${errorText}`);
-        }
-
-        const confirmData = await confirmResponse.json();
-
-        if (confirmData.success) {
-          dismissBuybackToast();
-          const txSig: string | undefined =
-            confirmData.data?.transactionSignature ||
-            confirmData.data?.signature ||
-            confirmData.data?.txSignature ||
-            confirmData.data?.hash ||
-            confirmData.data?.tx ||
-            undefined;
-          buybackToastIdRef.current = toast.success(
-            <div className="flex flex-col gap-1">
-              <p className="font-semibold text-sm">
-                Skin successfully bought back! 💰
-              </p>
-              {txSig ? (
-                <a
-                  href={getSolscanUrl(txSig)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
-                >
-                  View transaction on Solscan
-                  <svg
-                    className="w-3 h-3"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
-                    />
-                  </svg>
-                </a>
-              ) : null}
-            </div>,
-            {
-              duration: 6000,
-            }
-          );
-
-          // Show summary modal
-          const packPrice = selectedPack
-            ? parseFloat(String((selectedPack as any).priceSol))
-            : 0;
-          const payout = Number(
-            confirmData.data?.amountPaid ??
-              confirmData.data?.buybackAmount ??
-              confirmData.data?.amount ??
-              0
-          );
-          setBuybackAmountSol(payout);
-          setShowResult(false);
-          setWonSkin(null);
-          setLastPackResult(null);
-          setShowBuybackModal(true);
-        } else {
-          dismissBuybackToast();
-          buybackToastIdRef.current = toast.error(
-            confirmData.error?.message || "Failed to confirm buyback"
-          );
-        }
+        // Show summary modal
+        const packPrice = selectedPack
+          ? parseFloat(String((selectedPack as any).priceSol))
+          : 0;
+        const payout = Number(confirmData.amountPaid ?? 0);
+        setBuybackAmountSol(payout);
+        setShowResult(false);
+        setWonSkin(null);
+        setLastPackResult(null);
+        setShowBuybackModal(true);
       } catch (fetchError: any) {
-        clearTimeout(timeoutId);
-        let fallbackDisplayed = false;
         // txn might be on chain even if backend timed out
         dismissBuybackToast();
         buybackToastIdRef.current = toast.success(
           <div className="flex flex-col gap-1">
-            <p className="font-semibold text-sm">
-              Skin successfully bought back! ✅
-            </p>
-            <p className="text-xs text-zinc-400">
-              (Transaction likely sent. Backend didn’t respond.)
-            </p>
+            <p className="font-semibold text-sm">Skin successfully bought back! ✅</p>
+            <p className="text-xs text-zinc-400">(Transaction likely sent. Backend didn't respond.)</p>
           </div>,
           { duration: 8000 }
         );
-        fallbackDisplayed = true;
-        if (!fallbackDisplayed) {
-          dismissBuybackToast();
-          buybackToastIdRef.current = toast.error(
-            fetchError?.message ||
-              "Payout failed, and transaction did not hit the chain."
-          );
-        }
       }
     } catch (error: any) {
       dismissBuybackToast();
@@ -788,11 +786,10 @@ export default function PacksPage() {
   useEffect(() => {
     if (showResult && lastPackResult?.asset) {
       setPendingBuybackAmount(null);
-      fetch(`/api/v1/buyback/calculate/${lastPackResult.asset}`)
-        .then((r) => r.json())
-        .then((j) => {
-          if (j.success && typeof j.data?.buybackAmount === "number") {
-            setPendingBuybackAmount(j.data.buybackAmount);
+      buybackService.calculateBuyback(lastPackResult.asset)
+        .then(calcData => {
+          if (typeof calcData.buybackAmount === 'number') {
+            setPendingBuybackAmount(calcData.buybackAmount);
           }
         })
         .catch(() => setPendingBuybackAmount(null));
@@ -803,14 +800,13 @@ export default function PacksPage() {
   useEffect(() => {
     if (showResult && lastPackResult?.asset) {
       setPendingBuybackInfo(null);
-      fetch(`/api/v1/buyback/calculate/${lastPackResult.asset}`)
-        .then((r) => r.json())
-        .then((j) => {
-          if (j.success && typeof j.data?.buybackAmount === "number") {
+      buybackService.calculateBuyback(lastPackResult.asset)
+        .then(calcData => {
+          if (typeof calcData.buybackAmount === 'number') {
             setPendingBuybackInfo({
               skinUsd: wonSkin?.value ?? 0,
-              skinSol: j.data.skinPrice ?? 0,
-              payoutSol: j.data.buybackAmount ?? 0,
+              skinSol: calcData.skinPrice ?? 0,
+              payoutSol: calcData.buybackAmount ?? 0,
             });
           }
         })
@@ -903,6 +899,31 @@ export default function PacksPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6 overflow-hidden relative">
+      {/* Lock overlay - blocks all interactions during pack opening */}
+      {isOpeningSkin && (
+        <div
+          className="fixed inset-0 bg-transparent cursor-not-allowed"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          onTouchStart={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          style={{
+            pointerEvents: "auto",
+            userSelect: "none",
+            WebkitUserSelect: "none",
+            zIndex: 99999, // Higher than any other element
+          }}
+        />
+      )}
+
       {/* Fullscreen Opening Animation - Only show after processing */}
       <AnimatePresence>
         {openingPhase && openingPhase !== "processing" && (
@@ -912,7 +933,7 @@ export default function PacksPage() {
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-50 bg-black"
           >
-            {/* FASE 1: Flash */}
+            {/* Phase 1: Flash */}
             {openingPhase === "flash" && (
               <motion.div
                 initial={{ opacity: 0 }}
@@ -922,15 +943,21 @@ export default function PacksPage() {
               />
             )}
 
-            {/* FASE 2: Vídeo com fundo preto e efeitos de smoke */}
+            {/* Phase 2: Video with black background and smoke effects */}
             {openingPhase === "video" && (
               <div className="absolute inset-0 bg-black flex items-center justify-center">
                 <video
+                  key={videoKey}
                   ref={videoRef}
                   autoPlay
                   muted
                   loop
-                  className="max-w-[60vw] max-h-[60vh] w-auto h-auto object-contain"
+                  playsInline
+                  onError={(e) => {
+                    // Fallback: skip video phase if it fails to load
+                    setOpeningPhase(null);
+                  }}
+                  className="w-full h-full object-cover"
                 >
                   <source src="/assets/video.mp4" type="video/mp4" />
                 </video>
@@ -1193,11 +1220,18 @@ export default function PacksPage() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {selectedPack
-                        ? `$${parseFloat(
-                            String(
-                              selectedPack.priceUsdc ?? selectedPack.priceSol
-                            )
-                          ).toFixed(2)}`
+                        ? (() => {
+                            const priceSol = Number(selectedPack.priceSol ?? 0);
+                            const priceUsd =
+                              selectedPack.priceUsd ??
+                              selectedPack.priceUsdc ??
+                              (selectedPack.solPriceUsd
+                                ? priceSol * Number(selectedPack.solPriceUsd)
+                                : undefined);
+                            return priceUsd !== undefined && !Number.isNaN(priceUsd)
+                              ? `$${Number(priceUsd).toFixed(2)}`
+                              : "";
+                          })()
                         : ""}
                     </p>
                   </div>
@@ -1344,14 +1378,6 @@ export default function PacksPage() {
               onClick={(e) => e.stopPropagation()}
             >
               <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden">
-                <button
-                  type="button"
-                  aria-label="Close"
-                  onClick={handleCloseResult}
-                  className="absolute top-0 right-0 z-20 inline-flex items-center justify-center rounded-full border border-white/20 bg-black/60 text-white hover:bg-black/80 hover:border-white/40 transition-colors p-2 w-8 h-8 m-4"
-                >
-                  <X className="w-4 h-4" />
-                </button>
                 {/* Top area with bright glow */}
                 <div className="relative p-6 pb-0">
                   {/* Skin Display Area - Inspired by the reference image */}
@@ -1501,11 +1527,8 @@ export default function PacksPage() {
                           e.stopPropagation();
                           dismissClaimToast();
                           try {
-                            const userProfile = await authService.getProfile();
-                            if (
-                              !userProfile.tradeUrl ||
-                              userProfile.tradeUrl.trim() === ""
-                            ) {
+                            // Double-check trade URL is still valid (user might have removed it)
+                            if (!userTradeUrl || userTradeUrl.trim() === "") {
                               claimToastIdRef.current = toast.error(
                                 "Please set your Steam Trade URL in your profile before claiming skins!"
                               );
@@ -1528,11 +1551,9 @@ export default function PacksPage() {
                             );
                             try {
                               await discordService.createSkinClaimTicket({
-                                userId:
-                                  walletCtx.publicKey?.toString() || "unknown",
-                                walletAddress:
-                                  walletCtx.publicKey?.toString() || "unknown",
-                                steamTradeUrl: userProfile.tradeUrl,
+                                userId: walletCtx.publicKey?.toString() || 'unknown',
+                                walletAddress: walletCtx.publicKey?.toString() || 'unknown',
+                                steamTradeUrl: userTradeUrl,
                                 skinName: wonSkin.name,
                                 skinRarity: wonSkin.rarity,
                                 skinWeapon:
@@ -1542,37 +1563,17 @@ export default function PacksPage() {
                                 caseOpeningId: `pack-${Date.now()}`,
                               });
 
-                              // Create skin claimed activity
+                              // Create skin claimed activity using pendingSkinsService (CSRF token added automatically)
                               try {
-                                const baseUrl =
-                                  process.env.NEXT_PUBLIC_API_URL ||
-                                  "http://localhost:4000";
-                                await fetch(
-                                  `${baseUrl}/api/v1/pending-skins/claim-activity`,
-                                  {
-                                    method: "POST",
-                                    headers: {
-                                      "Content-Type": "application/json",
-                                    },
-                                    body: JSON.stringify({
-                                      userId:
-                                        walletCtx.publicKey?.toString() ||
-                                        "unknown",
-                                      skinName: wonSkin.name,
-                                      skinRarity: wonSkin.rarity,
-                                      skinWeapon:
-                                        wonSkin.name.split(" | ")[0] ||
-                                        "Unknown",
-                                      nftMintAddress: lastPackResult.asset,
-                                    }),
-                                  }
-                                );
+                                await pendingSkinsService.createSkinClaimedActivity({
+                                  walletAddress: walletCtx.publicKey?.toString() || 'unknown',
+                                  skinName: wonSkin.name,
+                                  skinRarity: wonSkin.rarity,
+                                  skinWeapon: wonSkin.name.split(" | ")[0] || 'Unknown',
+                                  nftMintAddress: lastPackResult.asset,
+                                });
                               } catch (activityError) {
                                 // Non-critical, just log
-                                console.warn(
-                                  "Failed to create skin claimed activity:",
-                                  activityError
-                                );
                               }
 
                               toast.dismiss(claimToastIdRef.current!);

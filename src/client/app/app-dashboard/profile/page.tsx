@@ -43,7 +43,7 @@ export default function ProfilePage() {
     refreshUser,
     connectWallet,
   } = useUser();
-  const { connected: adapterConnected, publicKey } = useWallet();
+  const { connected: adapterConnected, publicKey, signMessage } = useWallet();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
@@ -51,6 +51,7 @@ export default function ProfilePage() {
     email: "",
     tradeUrl: "",
   });
+  const [memberSince, setMemberSince] = useState<string>('N/A');
 
   // Dashboard data state
   const [inventorySummary, setInventorySummary] = useState<InventorySummary | null>(null);
@@ -66,6 +67,24 @@ export default function ProfilePage() {
         email: user.email || "",
         tradeUrl: (user as any).tradeUrl || "",
       });
+      // Compute Member Since from user or fetch profile fallback
+      const raw = (user as any)?.createdAt || (user as any)?.created_at;
+      const setFromDate = (val: any) => {
+        const d = val ? new Date(val) : null;
+        if (d && !isNaN(d.getTime())) {
+          const dd = String(d.getDate()).padStart(2, '0');
+          const mm = String(d.getMonth() + 1).padStart(2, '0');
+          const yyyy = d.getFullYear();
+          setMemberSince(`${dd}/${mm}/${yyyy}`);
+        } else {
+          setMemberSince('N/A');
+        }
+      };
+      if (raw) {
+        setFromDate(raw);
+      } else {
+        authService.getProfile().then((p: any) => setFromDate((p as any)?.createdAt || (p as any)?.created_at)).catch(() => {});
+      }
     }
   }, [user]);
 
@@ -95,7 +114,20 @@ export default function ProfilePage() {
 
       // Set inventory summary
       if (inventoryData.status === 'fulfilled' && inventoryData.value) {
-        setInventorySummary(inventoryData.value);
+        const v: any = inventoryData.value as any;
+        const rb: any = (v && v.rarityBreakdown) || {};
+        
+        setInventorySummary({
+          totalValue: v.totalValue || 0,
+          totalItems: v.totalItems || 0,
+          rarityBreakdown: {
+            common: rb.common || rb.Common || 0,
+            uncommon: rb.uncommon || rb.Uncommon || 0,
+            rare: rb.rare || rb.Rare || 0,
+            epic: rb.epic || rb.Epic || 0,
+            legendary: rb.legendary || rb.Legendary || 0,
+          },
+        });
       } else {
         // ignore
       }
@@ -168,7 +200,9 @@ export default function ProfilePage() {
         return;
       }
 
-      await authService.updateProfile(updates);
+      // Get wallet adapter for signing
+      const walletAdapter = signMessage ? { signMessage } : null;
+      await authService.updateProfile(updates, walletAdapter as any);
       await refreshUser();
 
       toast.success("Profile updated successfully!");
@@ -249,13 +283,13 @@ export default function ProfilePage() {
         {/* Dashboard Grid */}
         <div className="grid gap-6">
           {/* Top Stats Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Total Portfolio Value */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Total Intentory Value */}
             <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.015] hover:border-zinc-700">
               <CardContent className="p-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Portfolio Value</p>
+                    <p className="text-sm text-muted-foreground">Intentory Value</p>
                     <p className="text-2xl font-bold text-foreground">
                       {isLoadingData ? (
                         <Loader2 className="w-6 h-6 animate-spin" />
@@ -288,27 +322,7 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            {/* Net Profit */}
-            <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.015] hover:border-zinc-700">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Net Profit</p>
-                    <p className={`text-2xl font-bold text-foreground`}>
-                      {totalEarnedNum - totalSpentNum >= 0 ? "+" : ""}
-                      {formatCurrency(totalEarnedNum - totalSpentNum)}
-                    </p>
-                  </div>
-                  <div className={`p-3 rounded-md bg-zinc-800`}>
-                    {totalEarnedNum - totalSpentNum >= 0 ? (
-                      <TrendingUpIcon className="w-6 h-6 text-zinc-400" />
-                    ) : (
-                      <TrendingDown className="w-6 h-6 text-zinc-400" />
-                    )}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            
 
             {/* Member Since */}
             <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.015] hover:border-zinc-700">
@@ -316,9 +330,7 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Member Since</p>
-                    <p className="text-lg font-bold text-foreground">
-                      {new Date(currentUser.createdAt).toLocaleDateString()}
-                    </p>
+                    <p className="text-lg font-bold text-foreground">{memberSince}</p>
                   </div>
                   <div className="p-3 rounded-md bg-zinc-800">
                     <Calendar className="w-6 h-6 text-zinc-400" />
@@ -460,7 +472,7 @@ export default function ProfilePage() {
                       <Loader2 className="w-6 h-6 animate-spin" />
                     </div>
                   ) : inventorySummary ? (
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                       <div className="text-center">
                         <p className="text-2xl font-bold text-foreground">
                           {inventorySummary.totalItems || 0}
@@ -475,9 +487,21 @@ export default function ProfilePage() {
                       </div>
                       <div className="text-center">
                         <p className="text-2xl font-bold text-foreground">
+                          {inventorySummary.rarityBreakdown?.uncommon || 0}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Uncommon</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-foreground">
                           {inventorySummary.rarityBreakdown?.rare || 0}
                         </p>
                         <p className="text-sm text-muted-foreground">Rare</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-bold text-foreground">
+                          {inventorySummary.rarityBreakdown?.epic || 0}
+                        </p>
+                        <p className="text-sm text-muted-foreground">Epic</p>
                       </div>
                       <div className="text-center">
                         <p className="text-2xl font-bold text-foreground">

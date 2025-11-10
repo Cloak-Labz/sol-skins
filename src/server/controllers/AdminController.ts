@@ -38,7 +38,7 @@ export class AdminController {
       order: order as any,
     });
 
-    ResponseUtil.success(res, result.users, 200, result.pagination);
+    ResponseUtil.success(res, { users: result.users, pagination: result.pagination });
   });
 
   getTransactionStats = catchAsync(async (req: Request, res: Response) => {
@@ -57,6 +57,46 @@ export class AdminController {
     );
 
     ResponseUtil.success(res, stats);
+  });
+
+  getAnalytics = catchAsync(async (req: Request, res: Response) => {
+    const { days, startDate, endDate } = req.query;
+    const daysNum = days ? parseInt(days as string) : 30;
+    const start = startDate ? (startDate as string) : undefined;
+    const end = endDate ? (endDate as string) : undefined;
+    const analytics = await this.adminService.getAnalyticsData(daysNum, start, end);
+
+    ResponseUtil.success(res, analytics);
+  });
+
+  getCaseOpeningsTimeSeries = catchAsync(async (req: Request, res: Response) => {
+    const { days, startDate, endDate } = req.query;
+    const daysNum = days ? parseInt(days as string) : 30;
+    const start = startDate ? (startDate as string) : undefined;
+    const end = endDate ? (endDate as string) : undefined;
+    const data = await this.adminService.getCaseOpeningsTimeSeries(daysNum, start, end);
+
+    ResponseUtil.success(res, data);
+  });
+
+  getBuybacksTimeSeries = catchAsync(async (req: Request, res: Response) => {
+    const { days, startDate, endDate } = req.query;
+    const daysNum = days ? parseInt(days as string) : 30;
+    const start = startDate ? (startDate as string) : undefined;
+    const end = endDate ? (endDate as string) : undefined;
+    const data = await this.adminService.getBuybacksTimeSeries(daysNum, start, end);
+
+    ResponseUtil.success(res, data);
+  });
+
+  getTransfersTimeSeries = catchAsync(async (req: Request, res: Response) => {
+    const { days, startDate, endDate } = req.query;
+    const daysNum = days ? parseInt(days as string) : 30;
+    const start = startDate ? (startDate as string) : undefined;
+    const end = endDate ? (endDate as string) : undefined;
+    const data = await this.adminService.getTransfersTimeSeries(daysNum, start, end);
+
+    ResponseUtil.success(res, data);
   });
 
   getPacks = catchAsync(async (req: Request, res: Response) => {
@@ -103,5 +143,78 @@ export class AdminController {
       console.error('Error details:', JSON.stringify(error, null, 2));
       ResponseUtil.error(res, `Failed to create pack: ${error.message}`, 500);
     }
+  });
+
+  // GET /admin/users/:userId - Get user details
+  getUser = catchAsync(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const user = await this.adminService.getUserById(userId);
+    
+    if (!user) {
+      return ResponseUtil.error(res, 'User not found', 404);
+    }
+    
+    ResponseUtil.success(res, user);
+  });
+
+  // GET /admin/users/:userId/inventory - Get user inventory
+  getUserInventory = catchAsync(async (req: Request, res: Response) => {
+    const { userId } = req.params;
+    const { 
+      page = 1, 
+      limit = 50,
+      filterBy,
+      search,
+      sortBy = 'openedAt',
+      order = 'DESC'
+    } = req.query;
+
+    const result = await this.adminService.getUserInventory(userId, {
+      page: parseInt(page as string),
+      limit: parseInt(limit as string),
+      filterBy: filterBy as string,
+      search: search as string,
+      sortBy: sortBy as string,
+      order: order as 'ASC' | 'DESC',
+    });
+
+    ResponseUtil.success(res, { skins: result.skins, pagination: result.pagination });
+  });
+
+  // GET /admin/skins/waiting-transfer - Get all skins waiting for transfer
+  getSkinsWaitingTransfer = catchAsync(async (req: Request, res: Response) => {
+    const { 
+      page = 1, 
+      limit = 50 
+    } = req.query;
+
+    const result = await this.adminService.getSkinsWaitingTransfer({
+      page: parseInt(page as string),
+      limit: parseInt(limit as string),
+    });
+
+    ResponseUtil.success(res, { skins: result.skins, pagination: result.pagination });
+  });
+
+  // PATCH /admin/skins/:skinId/status - Update skin status
+  updateSkinStatus = catchAsync(async (req: Request, res: Response) => {
+    const { skinId } = req.params;
+    const { 
+      isWaitingTransfer,
+      isInInventory,
+      soldViaBuyback 
+    } = req.body;
+
+    const updatedSkin = await this.adminService.updateSkinStatus(skinId, {
+      isWaitingTransfer,
+      isInInventory,
+      soldViaBuyback,
+    });
+
+    if (!updatedSkin) {
+      return ResponseUtil.error(res, 'Skin not found', 404);
+    }
+
+    ResponseUtil.success(res, updatedSkin);
   });
 } 

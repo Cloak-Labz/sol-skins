@@ -10,6 +10,7 @@ import { Box } from '../entities/Box';
 import { AppDataSource } from '../config/database';
 import { v4 as uuidv4 } from 'uuid';
 import { discordService } from './DiscordService';
+import { logger } from '../middlewares/logger';
 
 export class CaseOpeningService {
   private caseOpeningRepository: CaseOpeningRepository;
@@ -346,7 +347,19 @@ export class CaseOpeningService {
     isPackOpening: boolean;
   }) {
     try {
+      // SECURITY: Validate userId format before using in queries
       // Look up the user by wallet address to get the actual user ID
+      const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      
+      if (!uuidV4Regex.test(data.userId)) {
+        // Treat as wallet address - validate format first
+        const { isValidWalletAddress } = require('../utils/solanaValidation');
+        if (!isValidWalletAddress(data.userId)) {
+          logger.warn('Invalid wallet address format in createPackOpeningRecord:', data.userId);
+          throw new AppError('Invalid wallet address format', 400);
+        }
+      }
+      
       const user = await this.userRepository.findByWalletAddress(data.userId);
       if (!user) {
         throw new AppError('User not found for wallet address', 404, 'USER_NOT_FOUND');

@@ -166,6 +166,13 @@ export class SkinMarketplaceController {
     
     // Find buyer
     const buyerRepository = AppDataSource.getRepository(require('../entities/User').User);
+    // SECURITY: Validate wallet address before query
+    const { isValidWalletAddress } = require('../utils/solanaValidation');
+    if (!isValidWalletAddress(walletAddress)) {
+      ResponseUtil.error(res, 'Invalid wallet address format', 400);
+      return;
+    }
+    
     const buyer = await buyerRepository.findOne({ where: { walletAddress } });
     
     if (buyer) {
@@ -227,6 +234,13 @@ export class SkinMarketplaceController {
     const { walletAddress } = req.body;
 
     const userRepository = AppDataSource.getRepository(require('../entities/User').User);
+    // SECURITY: Validate wallet address before query
+    const { isValidWalletAddress } = require('../utils/solanaValidation');
+    if (!isValidWalletAddress(walletAddress)) {
+      ResponseUtil.error(res, 'Invalid wallet address format', 400);
+      return;
+    }
+    
     const user = await userRepository.findOne({ where: { walletAddress } });
 
     if (!user) {

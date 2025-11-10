@@ -66,8 +66,9 @@ export function UserProvider({ children }: UserProviderProps) {
       setUser(null);
       setWalletAddress(null);
       
-      // Clear wallet address from API client
+      // Clear wallet address and JWT token from API client
       apiClient.setWalletAddress(null);
+      apiClient.setJwtToken(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to disconnect wallet';
       setError(errorMessage);

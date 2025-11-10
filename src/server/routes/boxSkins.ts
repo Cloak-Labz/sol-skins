@@ -1,38 +1,42 @@
 import { Router } from "express";
 import { BoxSkinController } from "../controllers/BoxSkinController";
+import { adminMiddleware } from "../middlewares/admin";
+import { getAuth } from "../middlewares/auth";
+import { adminLimiter, publicEndpointsLimiter } from "../middlewares/security";
 
 export const boxSkinRoutes = Router();
 const boxSkinController = new BoxSkinController();
 
-// POST /box-skins - Create new box skin
-boxSkinRoutes.post("/", boxSkinController.createBoxSkin);
+// Public read endpoints
+// SECURITY: Rate limited to prevent API abuse (100 req/min per IP)
+boxSkinRoutes.get("/box/:boxId", publicEndpointsLimiter, boxSkinController.getBoxSkinsByBoxId);
+boxSkinRoutes.get("/:id", publicEndpointsLimiter, boxSkinController.getBoxSkinById);
+boxSkinRoutes.get("/box/:boxId/distribution", publicEndpointsLimiter, boxSkinController.getRarityDistribution);
+boxSkinRoutes.get("/box/:boxId/random", publicEndpointsLimiter, boxSkinController.getRandomSkin);
+boxSkinRoutes.get("/templates", publicEndpointsLimiter, boxSkinController.getAvailableSkinTemplates);
+boxSkinRoutes.get("/box/:boxId/with-templates", publicEndpointsLimiter, boxSkinController.getBoxSkinsWithTemplates);
 
-// GET /box-skins/box/:boxId - Get all skins for a box
-boxSkinRoutes.get("/box/:boxId", boxSkinController.getBoxSkinsByBoxId);
+// Admin-only write endpoints - require authentication and admin access
+// Use lazy loading to avoid initialization order issues
+const adminBoxSkinRoutes = Router();
+adminBoxSkinRoutes.use((req, res, next) => {
+  const authMiddleware = getAuth();
+  authMiddleware.protect(req, res, next);
+});
 
-// GET /box-skins/:id - Get box skin by ID
-boxSkinRoutes.get("/:id", boxSkinController.getBoxSkinById);
+// SECURITY: Apply strict rate limiting to admin endpoints (5 req/min)
+adminBoxSkinRoutes.use(adminLimiter);
 
-// PUT /box-skins/:id - Update box skin
-boxSkinRoutes.put("/:id", boxSkinController.updateBoxSkin);
+adminBoxSkinRoutes.use(adminMiddleware);
 
-// DELETE /box-skins/:id - Delete box skin
-boxSkinRoutes.delete("/:id", boxSkinController.deleteBoxSkin);
+// Admin-only write endpoints
+adminBoxSkinRoutes.post("/", boxSkinController.createBoxSkin);
 
-// DELETE /box-skins/box/:boxId - Delete all skins for a box
-boxSkinRoutes.delete("/box/:boxId", boxSkinController.deleteBoxSkinsByBoxId);
+// Admin-only write endpoints (continued)
+adminBoxSkinRoutes.put("/:id", boxSkinController.updateBoxSkin);
+adminBoxSkinRoutes.delete("/:id", boxSkinController.deleteBoxSkin);
+adminBoxSkinRoutes.delete("/box/:boxId", boxSkinController.deleteBoxSkinsByBoxId);
+adminBoxSkinRoutes.post("/from-template", boxSkinController.createBoxSkinFromTemplate);
 
-// GET /box-skins/box/:boxId/distribution - Get rarity distribution
-boxSkinRoutes.get("/box/:boxId/distribution", boxSkinController.getRarityDistribution);
-
-// GET /box-skins/box/:boxId/random - Get random skin (weighted)
-boxSkinRoutes.get("/box/:boxId/random", boxSkinController.getRandomSkin);
-
-// POST /box-skins/from-template - Create box skin from skin template
-boxSkinRoutes.post("/from-template", boxSkinController.createBoxSkinFromTemplate);
-
-// GET /box-skins/templates - Get available skin templates
-boxSkinRoutes.get("/templates", boxSkinController.getAvailableSkinTemplates);
-
-// GET /box-skins/box/:boxId/with-templates - Get box skins with template info
-boxSkinRoutes.get("/box/:boxId/with-templates", boxSkinController.getBoxSkinsWithTemplates);
+// Mount admin routes
+boxSkinRoutes.use(adminBoxSkinRoutes);

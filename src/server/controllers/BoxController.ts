@@ -4,12 +4,16 @@ import { collectionFileService } from '../services/CollectionFileService';
 import { BoxSkinService } from '../services/BoxSkinService';
 import { ResponseUtil } from '../utils/response';
 import { catchAsync } from '../middlewares/errorHandler';
+import { AuditService } from '../services/AuditService';
+import { AuditEventType } from '../entities/AuditLog';
 
 export class BoxController {
   private boxService: BoxService;
+  private auditService: AuditService;
 
   constructor() {
     this.boxService = new BoxService();
+    this.auditService = new AuditService();
   }
 
   // GET /boxes - List all boxes
@@ -42,6 +46,20 @@ export class BoxController {
   createBox = catchAsync(async (req: Request, res: Response) => {
     const data: CreateBoxDTO = req.body;
     const box = await this.boxService.createBox(data);
+    
+    // Audit log admin operation
+    await this.auditService.logAdmin(AuditEventType.ADMIN_BOX_CREATE, {
+      userId: (req as any).user?.id,
+      walletAddress: (req as any).user?.walletAddress,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      requestPath: req.path,
+      httpMethod: req.method,
+      description: `Box created: ${box.name}`,
+      metadata: { boxId: box.id, boxName: box.name },
+      success: true,
+    }).catch(err => console.error('Failed to log audit event:', err));
+    
     ResponseUtil.success(res, box, 201);
   });
 
@@ -50,6 +68,20 @@ export class BoxController {
     const { id } = req.params;
     const data: UpdateBoxDTO = req.body;
     const box = await this.boxService.updateBox(id, data);
+    
+    // Audit log admin operation
+    await this.auditService.logAdmin(AuditEventType.ADMIN_BOX_UPDATE, {
+      userId: (req as any).user?.id,
+      walletAddress: (req as any).user?.walletAddress,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      requestPath: req.path,
+      httpMethod: req.method,
+      description: `Box updated: ${box.name}`,
+      metadata: { boxId: box.id, boxName: box.name, changes: data },
+      success: true,
+    }).catch(err => console.error('Failed to log audit event:', err));
+    
     ResponseUtil.success(res, box);
   });
 
@@ -83,6 +115,20 @@ export class BoxController {
     }
 
     await this.boxService.deleteBox(id, { force });
+    
+    // Audit log admin operation
+    await this.auditService.logAdmin(AuditEventType.ADMIN_BOX_DELETE, {
+      userId: (req as any).user?.id,
+      walletAddress: (req as any).user?.walletAddress,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      requestPath: req.path,
+      httpMethod: req.method,
+      description: `Box deleted: ${id}`,
+      metadata: { boxId: id, force },
+      success: true,
+    }).catch(err => console.error('Failed to log audit event:', err));
+    
     ResponseUtil.success(res, null, 204);
   });
 

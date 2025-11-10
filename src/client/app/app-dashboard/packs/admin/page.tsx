@@ -147,33 +147,30 @@ export default function PackManagerPage() {
     weight: 1,
   });
 
-  // Check if connected wallet is admin
+  // SECURITY: Admin status is ONLY verified by backend - this client-side check is for UX only
+  // Backend will return 403 for non-admin users, which we handle gracefully
+  // This prevents exposing admin wallets in client code and ensures security cannot be bypassed
   useEffect(() => {
-    const adminWallets = (process.env.NEXT_PUBLIC_ADMIN_WALLETS || "").split(",").map(w => w.trim()).filter(Boolean);
-    if (publicKey) {
-      const walletAddress = publicKey.toBase58();
-      const isAdminWallet = adminWallets.length > 0 && adminWallets.includes(walletAddress);
-      setIsAdmin(isAdminWallet);
-      if (!isAdminWallet) {
-        toast.error("Access denied: Admin wallet required");
-      }
+    if (connected && publicKey) {
+      // Try to verify admin access by checking if we can load boxes
+      // Backend will return 403 if not admin (adminMiddleware enforces this)
+      loadBoxes().catch(() => {
+        setIsAdmin(false);
+      });
     } else {
       setIsAdmin(false);
     }
-  }, [publicKey]);
+  }, [connected, publicKey]);
 
-  // Load boxes on mount
-  useEffect(() => {
-    if (isAdmin) {
-      loadBoxes();
-    }
-  }, [isAdmin]);
+  // Load boxes on mount (if connected)
+  // SECURITY: Backend will verify admin status via adminMiddleware on all admin routes
 
   const loadBoxes = async () => {
     try {
       setLoading(true);
       const data = await boxesService.getAllBoxes();
       setBoxes(data);
+      setIsAdmin(true); // If we got here, user is admin
       
       // Check collection files status for each box
       const statusPromises = data.map(async (box: Box) => {
@@ -193,8 +190,15 @@ export default function PackManagerPage() {
       });
       
       setCollectionFilesStatus(statusMap);
-    } catch (error) {
-      toast.error("Failed to load boxes");
+    } catch (error: any) {
+      // SECURITY: If 403, user is not admin (backend adminMiddleware blocked access)
+      // This is the ONLY place where admin status is truly verified
+      if (error?.status === 403 || error?.response?.status === 403) {
+        setIsAdmin(false);
+        toast.error("Access denied: Admin wallet required");
+      } else {
+        toast.error("Failed to load boxes");
+      }
     } finally {
       setLoading(false);
     }
@@ -741,10 +745,12 @@ export default function PackManagerPage() {
       const metadataUris = uploadedSkins.map(skin => skin.metadataUri).filter(Boolean);
       
       // Create box data (metadataUris optional)
+      // Use draftBox.totalItems (user-defined supply) instead of uploadedSkins.length
       const boxData = {
         ...draftBox,
         metadataUris,
-        totalItems: uploadedSkins.length, // Set total items to number of uploaded skins
+        totalItems: draftBox.totalItems || uploadedSkins.length, // Use user-defined totalItems, fallback to skins count
+        itemsAvailable: draftBox.totalItems || uploadedSkins.length, // Initialize itemsAvailable to totalItems
       };
       
       // First create the box
@@ -907,7 +913,7 @@ export default function PackManagerPage() {
         {draftBox ? (
           <div className="space-y-6">
             {/* Draft Box Header */}
-            <Card className="bg-zinc-950 border-zinc-800">
+            <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:border-zinc-700">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
@@ -948,7 +954,7 @@ export default function PackManagerPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Left Column - Draft Box Form */}
               <div className="space-y-4">
-                <Card className="bg-zinc-950 border-zinc-800">
+                <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:border-zinc-700">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Package className="h-5 w-5" />
@@ -1045,7 +1051,7 @@ export default function PackManagerPage() {
                 </Card>
 
                 {/* Add Multiple Skins via JSON */}
-                <Card className="bg-zinc-950 border-zinc-800">
+                <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:border-zinc-700">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <FileText className="h-5 w-5" />
@@ -1134,7 +1140,7 @@ export default function PackManagerPage() {
                 </Card>
 
                 {/* Add Skin Form */}
-                <Card className="bg-zinc-950 border-zinc-800">
+                <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:border-zinc-700">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Plus className="h-5 w-5" />
@@ -1231,7 +1237,7 @@ export default function PackManagerPage() {
 
               {/* Right Column - Draft Skins */}
               <div className="space-y-4">
-                <Card className="bg-zinc-950 border-zinc-800">
+                <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:border-zinc-700">
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <CardTitle className="flex items-center gap-2">
@@ -1274,7 +1280,7 @@ export default function PackManagerPage() {
                         {draftSkins.map((skin) => (
                       <div
                             key={skin.id}
-                            className="flex items-center justify-between p-3 bg-zinc-900 rounded-lg border border-zinc-700"
+                            className="flex items-center justify-between p-3 bg-gradient-to-b from-zinc-950 to-zinc-900 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors"
                       >
                           <div className="flex-1">
                               <div className="flex items-center gap-2">
@@ -1331,7 +1337,7 @@ export default function PackManagerPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Left Column - Boxes List */}
             <div className="space-y-4">
-            <Card className="bg-zinc-950 border-zinc-800">
+            <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:border-zinc-700">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
@@ -1357,7 +1363,7 @@ export default function PackManagerPage() {
                         className={`p-3 rounded-lg border cursor-pointer transition-colors ${
                           selectedBox?.id === box.id
                             ? "bg-primary/20 border-primary"
-                            : "bg-zinc-900 border-zinc-700 hover:bg-zinc-800"
+                            : "bg-gradient-to-b from-zinc-950 to-zinc-900 border-zinc-800 hover:border-zinc-700"
                         }`}
                                     onClick={() => {
                           setSelectedBox(box);
@@ -1376,7 +1382,7 @@ export default function PackManagerPage() {
                               </Badge>
                                 </div>
                             <p className="text-sm text-muted-foreground">
-                              {box.itemsAvailable} available • {box.priceSol} SOL • {box.symbol}
+                              <span className="font-medium text-foreground">{box.itemsAvailable}/{box.totalItems}</span> items available • {box.priceSol} SOL • {box.symbol}
                             </p>
                             {box.description && (
                               <p className="text-xs text-muted-foreground mt-1">
@@ -1423,12 +1429,20 @@ export default function PackManagerPage() {
                   <div className="space-y-4">
             {selectedBox ? (
               <>
-                <Card className="bg-zinc-950 border-zinc-800">
+                <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:border-zinc-700">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Package className="h-5 w-5" />
-                      {selectedBox.name} - Skins
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <Package className="h-5 w-5" />
+                        {selectedBox.name} - Skins
+                      </CardTitle>
+                      <div className="text-sm text-muted-foreground">
+                        <span className="font-medium text-foreground">{selectedBox.itemsAvailable}</span>/{selectedBox.totalItems} items available
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      {boxSkins.length} skin type{boxSkins.length !== 1 ? 's' : ''} configured
+                    </p>
                   </CardHeader>
                   <CardContent>
                   <div className="space-y-2">
@@ -1457,7 +1471,7 @@ export default function PackManagerPage() {
             </Card>
 
                 {/* Add Skin Form */}
-                <Card className="bg-zinc-950 border-zinc-800">
+                <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:border-zinc-700">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Plus className="h-5 w-5" />
@@ -1551,7 +1565,7 @@ export default function PackManagerPage() {
                 </Card>
               </>
             ) : (
-              <Card className="bg-zinc-950 border-zinc-800">
+              <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:border-zinc-700">
                 <CardContent className="p-8 text-center">
                   <Package className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-semibold mb-2">No Box Selected</h3>

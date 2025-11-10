@@ -27,28 +27,41 @@ export const RPC_ENDPOINT = RPC_ENDPOINTS[CLUSTER];
 
 /**
  * Load admin wallet from environment or file
+ * Uses ADMIN_WALLET_PRIVATE_KEY (consolidated from ADMIN_PRIVATE_KEY)
  */
 export function loadAdminWallet(): Keypair {
   const privateKeyPath =
     process.env.ADMIN_WALLET_PATH || "~/.config/solana/id.json";
-  const privateKeyEnv = process.env.ADMIN_PRIVATE_KEY;
-
-  if (privateKeyEnv) {
-    // Load from environment variable (base58 or JSON array)
+  
+  // Try ADMIN_WALLET_PRIVATE_KEY first (primary, used by BuybackService and RevealService)
+  const adminWalletPrivateKey = process.env.ADMIN_WALLET_PRIVATE_KEY;
+  if (adminWalletPrivateKey) {
     try {
-      const decoded = JSON.parse(privateKeyEnv);
-      return Keypair.fromSecretKey(Uint8Array.from(decoded));
+      // Try as JSON array (bytearray format)
+      const decoded = JSON.parse(adminWalletPrivateKey);
+      if (Array.isArray(decoded)) {
+        return Keypair.fromSecretKey(Uint8Array.from(decoded));
+      }
     } catch {
-      // Try as base58
+      // Not JSON, try as base58
       const bs58 = require("bs58");
-      return Keypair.fromSecretKey(bs58.decode(privateKeyEnv));
+      try {
+        return Keypair.fromSecretKey(bs58.decode(adminWalletPrivateKey));
+      } catch {
+        // Invalid format
+        throw new Error("ADMIN_WALLET_PRIVATE_KEY must be a JSON array or base58 string");
+      }
     }
   }
 
-  // Load from file
+  // Fallback: Load from file (for local development)
   const resolvedPath = privateKeyPath.replace("~", process.env.HOME || "");
-  const keypairData = JSON.parse(fs.readFileSync(resolvedPath, "utf-8"));
-  return Keypair.fromSecretKey(Uint8Array.from(keypairData));
+  if (fs.existsSync(resolvedPath)) {
+    const keypairData = JSON.parse(fs.readFileSync(resolvedPath, "utf-8"));
+    return Keypair.fromSecretKey(Uint8Array.from(keypairData));
+  }
+
+  throw new Error("ADMIN_WALLET_PRIVATE_KEY not configured and no wallet file found");
 }
 
 /**
@@ -76,6 +89,8 @@ export function getProgram(): Program {
 
 /**
  * Get connection (readonly)
+ * Note: Use sendRawTransactionWithTimeout and confirmTransactionWithTimeout
+ * from utils/solanaHelpers for operations with timeout protection
  */
 export function getConnection(): Connection {
   return new Connection(RPC_ENDPOINT, "confirmed");

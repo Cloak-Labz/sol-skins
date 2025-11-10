@@ -10,6 +10,8 @@ export interface Box {
   imageUrl: string;
   priceSol: number;
   priceUsdc: number;
+  priceUsd?: number;
+  solPriceUsd?: number;
   totalItems: number;
   itemsAvailable: number;
   itemsOpened: number;
@@ -40,42 +42,44 @@ class BoxesService {
   private baseUrl = '/boxes';
 
   async getAllBoxes(): Promise<Box[]> {
-    const response = await apiClient.get(this.baseUrl);
-    return response || [];
+    const response = await apiClient.get<Box[]>(this.baseUrl);
+    return response ?? [];
   }
 
   async getActiveBoxes(): Promise<Box[]> {
-    const response = await apiClient.get(`${this.baseUrl}/active`);
-    return response || [];
+    const response = await apiClient.get<Box[]>(`${this.baseUrl}/active`);
+    return response ?? [];
   }
 
   async getBoxById(id: string): Promise<Box> {
-    const response = await apiClient.get(`${this.baseUrl}/${id}`);
+    const response = await apiClient.get<Box>(`${this.baseUrl}/${id}`);
     return response;
   }
 
   async getBoxByBatchId(batchId: number): Promise<Box> {
-    const response = await apiClient.get(`${this.baseUrl}/batch/${batchId}`);
+    const response = await apiClient.get<Box>(`${this.baseUrl}/batch/${batchId}`);
     return response;
   }
 
   async createBox(data: Partial<Box>): Promise<Box> {
-    const response = await apiClient.post(this.baseUrl, data);
+    const response = await apiClient.post<Box>(this.baseUrl, data);
     return response;
   }
 
   async updateBox(id: string, data: Partial<Box>): Promise<Box> {
-    const response = await apiClient.put(`${this.baseUrl}/${id}`, data);
+    const response = await apiClient.put<Box>(`${this.baseUrl}/${id}`, data);
     return response;
   }
 
   async syncBox(batchId: number): Promise<Box> {
-    const response = await apiClient.post(`${this.baseUrl}/${batchId}/sync`);
+    const response = await apiClient.post<Box>(`${this.baseUrl}/${batchId}/sync`);
     return response;
   }
 
   async syncAllBoxes(): Promise<{ synced: number; failed: number; errors: string[] }> {
-    const response = await apiClient.post(`${this.baseUrl}/sync-all`);
+    const response = await apiClient.post<{ synced: number; failed: number; errors: string[] }>(
+      `${this.baseUrl}/sync-all`
+    );
     return response;
   }
 
@@ -84,8 +88,8 @@ class BoxesService {
   }
 
   async getBoxStats(): Promise<BoxStats> {
-    const response = await apiClient.get(`${this.baseUrl}/stats`);
-    return response.data;
+    const response = await apiClient.get<BoxStats>(`${this.baseUrl}/stats`);
+    return response;
   }
 }
 

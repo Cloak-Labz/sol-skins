@@ -17,31 +17,127 @@ const envSchema = Joi.object({
   DB_SYNCHRONIZE: Joi.boolean().default(false),
   DB_LOGGING: Joi.boolean().default(false),
   
-  // Redis
-  REDIS_HOST: Joi.string().default('localhost'),
-  REDIS_PORT: Joi.number().default(6379),
-  REDIS_PASSWORD: Joi.string().allow('').default(''),
   
   // JWT
-  JWT_SECRET: Joi.string().required(),
+  JWT_SECRET: Joi.string()
+    .min(32)
+    .required()
+    .custom((value, helpers) => {
+      // SECURITY: Ensure JWT secret is cryptographically strong
+      // Check for common weak patterns
+      if (value.length < 32) {
+        return helpers.error('string.min');
+      }
+      
+      // Warn about weak secrets (but don't fail in development)
+      const weakPatterns = ['secret', 'password', '12345', 'admin', 'jwt'];
+      const lowerValue = value.toLowerCase();
+      const hasWeakPattern = weakPatterns.some(pattern => lowerValue.includes(pattern));
+      
+      if (hasWeakPattern && process.env.NODE_ENV === 'production') {
+        throw new Error('JWT_SECRET contains weak patterns. Use a cryptographically random secret.');
+      }
+      
+      return value;
+    })
+    .messages({
+      'string.min': 'JWT_SECRET must be at least 32 characters long for security',
+    }),
   JWT_EXPIRE: Joi.string().default('24h'),
   JWT_REFRESH_EXPIRE: Joi.string().default('7d'),
   
   // Security
-  BCRYPT_ROUNDS: Joi.number().default(12),
-  RATE_LIMIT_WINDOW_MS: Joi.number().default(900000),
-  RATE_LIMIT_MAX_REQUESTS: Joi.number().default(100),
+  RATE_LIMIT_WINDOW_MS: Joi.number().default(900000), // 15 minutes
+  RATE_LIMIT_MAX_REQUESTS: Joi.number().default(200), // Increased from 100 to 200
+  
+  // CORS - Allowed origins (comma-separated, no wildcards allowed)
+  ALLOWED_ORIGINS: Joi.string()
+    .optional()
+    .custom((value, helpers) => {
+      if (!value) return value; // Optional, will use defaults
+      
+      const origins = value.split(',').map(o => o.trim()).filter(Boolean);
+      
+      // SECURITY: Never allow wildcards in production
+      if (process.env.NODE_ENV === 'production') {
+        const hasWildcard = origins.some(origin => 
+          origin.includes('*') || 
+          origin === '*' || 
+          origin === 'null' || 
+          origin === 'undefined'
+        );
+        
+        if (hasWildcard) {
+          throw new Error('CORS wildcards are not allowed in production. Use explicit origins only.');
+        }
+      }
+      
+      // Validate each origin is a valid URL
+      for (const origin of origins) {
+        try {
+          const url = new URL(origin);
+          // Only allow http and https
+          if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+            throw new Error(`Invalid origin protocol: ${origin}. Only http:// and https:// are allowed.`);
+          }
+        } catch (error) {
+          throw new Error(`Invalid origin format: ${origin}. Must be a valid URL.`);
+        }
+      }
+      
+      return value;
+    }),
   
   // Solana
   SOLANA_RPC_URL: Joi.string().required(),
-  SOLANA_WS_URL: Joi.string().required(),
   PROGRAM_ID: Joi.string().required(),
-  ORACLE_PRIVATE_KEY: Joi.string().allow('').default(''),
   
   // Buyback Program
   BUYBACK_PROGRAM_ID: Joi.string().required(),
-  ADMIN_WALLET_PRIVATE_KEY: Joi.string().required(),
+  ADMIN_WALLET_PRIVATE_KEY: Joi.string()
+    .required()
+    .custom((value, helpers) => {
+      // SECURITY: Validate private key format but never log the value
+      try {
+        // Should be a JSON array string
+        const parsed = JSON.parse(value);
+        if (!Array.isArray(parsed) || parsed.length < 32) {
+          return helpers.error('string.base');
+        }
+        // Valid format, but value is never logged
+        return value;
+      } catch {
+        // Not JSON, might be base58 - still valid
+        if (value.length < 32) {
+          return helpers.error('string.min');
+        }
+        return value;
+      }
+    })
+    .messages({
+      'string.base': 'ADMIN_WALLET_PRIVATE_KEY must be a valid JSON array or base58 string',
+      'string.min': 'ADMIN_WALLET_PRIVATE_KEY appears to be invalid',
+    }),
   BUYBACK_RATE: Joi.number().default(0.85),
+  
+  // Admin authorization (public addresses only - no private keys)
+  ADMIN_WALLETS: Joi.string()
+    .allow('')
+    .default('')
+    .custom((value, helpers) => {
+      if (!value) return value; // Empty is allowed (no admins)
+      const addresses = value.split(',').map(a => a.trim()).filter(Boolean);
+      // Basic validation: Solana addresses are base58 and 32-44 chars
+      for (const addr of addresses) {
+        if (addr.length < 32 || addr.length > 44) {
+          return helpers.error('string.pattern.base');
+        }
+      }
+      return value;
+    })
+    .messages({
+      'string.pattern.base': 'ADMIN_WALLETS must be comma-separated valid Solana addresses',
+    }),
   
   // External APIs
   STEAM_API_KEY: Joi.string().allow('').default(''),
@@ -55,7 +151,6 @@ const envSchema = Joi.object({
   
   // Monitoring
   LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug').default('info'),
-  LOG_FORMAT: Joi.string().default('combined'),
 }).unknown();
 
 const { error, value: envVars } = envSchema.validate(process.env);
@@ -79,11 +174,6 @@ export const config = {
     logging: envVars.DB_LOGGING,
   },
   
-  redis: {
-    host: envVars.REDIS_HOST,
-    port: envVars.REDIS_PORT,
-    password: envVars.REDIS_PASSWORD,
-  },
   
   jwt: {
     secret: envVars.JWT_SECRET,
@@ -92,14 +182,12 @@ export const config = {
   },
   
   security: {
-    bcryptRounds: envVars.BCRYPT_ROUNDS,
     rateLimitWindowMs: envVars.RATE_LIMIT_WINDOW_MS,
     rateLimitMaxRequests: envVars.RATE_LIMIT_MAX_REQUESTS,
   },
   
   solana: {
     rpcUrl: envVars.SOLANA_RPC_URL,
-    wsUrl: envVars.SOLANA_WS_URL,
     programId: envVars.PROGRAM_ID,
   },
   
@@ -107,6 +195,13 @@ export const config = {
     programId: envVars.BUYBACK_PROGRAM_ID,
     adminWalletPrivateKey: envVars.ADMIN_WALLET_PRIVATE_KEY,
     buybackRate: envVars.BUYBACK_RATE,
+  },
+  
+  admin: {
+    wallets: (envVars.ADMIN_WALLETS || '')
+      .split(',')
+      .map((addr: string) => addr.trim())
+      .filter((addr: string) => addr.length > 0),
   },
   
   externalApis: {
@@ -123,6 +218,5 @@ export const config = {
   
   logging: {
     level: envVars.LOG_LEVEL,
-    format: envVars.LOG_FORMAT,
   },
 }; 

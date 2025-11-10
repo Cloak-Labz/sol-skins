@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from './logger';
 import { config } from '../config/env';
+import { sanitizeObject, maskSensitiveData } from '../utils/sensitiveData';
 
 export class AppError extends Error {
   public statusCode: number;
@@ -71,24 +72,65 @@ const sendErrorDev = (err: AppError, res: Response) => {
   });
 };
 
+// Sanitize error messages to prevent information leakage
+const sanitizeErrorMessage = (message: string): string => {
+  // Use the centralized maskSensitiveData function
+  let sanitized = maskSensitiveData(message);
+  
+  // Additional patterns specific to error messages
+  const errorPatterns = [
+    // File paths
+    /\/home\/[^\s]+/g,
+    /\/Users\/[^\s]+/g,
+    /C:\\[^\s]+/gi,
+    // Database connection strings
+    /postgresql:\/\/[^\s]+/gi,
+    /mongodb:\/\/[^\s]+/gi,
+    // JWT tokens
+    /eyJ[A-Za-z0-9-_=]+\.eyJ[A-Za-z0-9-_=]+\.?[A-Za-z0-9-_.]*/g,
+    // Stack traces
+    /at\s+[\w.]+ \([\w/\\-]+:\d+:\d+\)/g,
+    /at\s+[\w/\\-]+:\d+:\d+/g,
+    // JSON arrays that might be private keys
+    /\[[\d\s,]{50,}\]/g,
+  ];
+
+  for (const pattern of errorPatterns) {
+    sanitized = sanitized.replace(pattern, '[REDACTED]');
+  }
+
+  // Remove stack trace indicators
+  sanitized = sanitized.replace(/Stack\s*:/gi, '');
+  sanitized = sanitized.replace(/Error\s*:/gi, '');
+
+  return sanitized.trim();
+};
+
 const sendErrorProd = (err: AppError, res: Response) => {
-  // Operational, trusted error: send message to client
+  // Operational, trusted error: send sanitized message to client
   if (err.isOperational) {
+    // Sanitize error message to prevent information leakage
+    const sanitizedMessage = sanitizeErrorMessage(err.message);
+    
     res.status(err.statusCode).json({
       success: false,
       error: {
-        message: err.message,
-        code: err.code,
+        message: sanitizedMessage,
+        code: err.code || 'ERROR',
       },
     });
   } else {
     // Programming or other unknown error: don't leak error details
-    logger.error('ERROR:', err);
+    logger.error('ERROR:', {
+      message: err.message,
+      stack: err.stack,
+      name: err.name,
+    });
 
     res.status(500).json({
       success: false,
       error: {
-        message: 'Something went wrong!',
+        message: 'An unexpected error occurred. Please try again later.',
         code: 'INTERNAL_ERROR',
       },
     });
@@ -106,16 +148,26 @@ export const globalErrorHandler = (
   let error = { ...err };
   error.message = err.message;
 
-  // Log error
-  logger.error('Error occurred:', {
-    error: err.message,
-    stack: err.stack,
+  // Log error (full details server-side only, sanitized)
+  // Never log request body in production to prevent private key exposure
+  const errorDetails: any = {
+    error: maskSensitiveData(err.message),
+    stack: err.stack ? maskSensitiveData(err.stack) : undefined,
+    name: err.name,
+    statusCode: err.statusCode,
     url: req.url,
     method: req.method,
     ip: req.ip,
     userAgent: req.get('User-Agent'),
-    correlationId: req.correlationId,
-  });
+    correlationId: (req as any).correlationId,
+  };
+
+  // Only log body in development, and sanitize it
+  if (config.env === 'development' && req.body) {
+    errorDetails.body = sanitizeObject(req.body);
+  }
+
+  logger.error('Error occurred:', errorDetails);
 
   // Handle specific error types
   if (error.name === 'QueryFailedError') error = handleDatabaseError(error);

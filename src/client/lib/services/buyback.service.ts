@@ -65,10 +65,13 @@ class BuybackService {
 
   /**
    * Confirm buyback with backend using signed transaction
+   * The signed transaction itself proves wallet ownership and authorization
    */
   async confirmBuybackSigned(
     params: { nftMint: string; walletAddress: string; signedTransaction: string }
   ): Promise<BuybackConfirmResponse> {
+    // The signed transaction already proves wallet ownership and authorization
+    // No need for additional off-chain signature
     const response = await apiClient.post<BuybackConfirmResponse>('/buyback/confirm', params);
     return response;
   }

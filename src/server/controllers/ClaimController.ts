@@ -9,14 +9,18 @@ import { UserSkin } from '../entities/UserSkin';
 import { UserSkinRepository } from '../repositories/UserSkinRepository';
 import { TransactionRepository } from '../repositories/TransactionRepository';
 import { TransactionStatus, TransactionType } from '../entities/Transaction';
+import { logger } from '../middlewares/logger';
+import { TransactionValidationService } from '../services/TransactionValidationService';
 
 export class ClaimController {
   private connection: Connection;
   private txRepo: TransactionRepository;
+  private transactionValidator: TransactionValidationService;
 
   constructor() {
     this.connection = new Connection(config.solana.rpcUrl, 'confirmed');
     this.txRepo = new TransactionRepository();
+    this.transactionValidator = new TransactionValidationService(this.connection);
   }
 
   // POST /api/v1/claim/request
@@ -26,6 +30,12 @@ export class ClaimController {
 
     if (!nftMint) return ResponseUtil.error(res, 'nftMint is required', 400);
     if (!userWallet) return ResponseUtil.error(res, 'User wallet not found', 401);
+
+    // SECURITY: Validate NFT mint address format before using
+    const { isValidMintAddress } = require('../utils/solanaValidation');
+    if (!isValidMintAddress(nftMint)) {
+      return ResponseUtil.error(res, `Invalid NFT mint address format: ${nftMint}`, 400);
+    }
 
     const nftMintPk = new PublicKey(nftMint);
     const userPk = new PublicKey(userWallet);
@@ -46,21 +56,78 @@ export class ClaimController {
 
   // POST /api/v1/claim/confirm
   confirm = catchAsync(async (req: Request, res: Response) => {
-    const { signedTransaction, nftMint } = req.body as { signedTransaction?: string; nftMint?: string };
-    if (!signedTransaction || !nftMint) {
-      return ResponseUtil.error(res, 'signedTransaction and nftMint are required', 400);
+    const { signedTransaction, nftMint, walletAddress } = req.body;
+
+    if (!signedTransaction || !nftMint || !walletAddress) {
+      return ResponseUtil.error(res, 'signedTransaction, nftMint, and walletAddress are required', 400);
+    }
+
+    // SECURITY: Validate NFT mint address format before using
+    const { isValidMintAddress } = require('../utils/solanaValidation');
+    if (!isValidMintAddress(nftMint)) {
+      return ResponseUtil.error(res, `Invalid NFT mint address format: ${nftMint}`, 400);
+    }
+
+    // Validate wallet address matches authenticated user
+    if (req.user?.walletAddress && req.user.walletAddress !== walletAddress) {
+      logger.warn('Wallet address mismatch in claim:', {
+        authenticated: req.user?.walletAddress,
+        provided: walletAddress,
+      });
+      return ResponseUtil.error(res, 'Wallet address does not match authenticated user', 403);
+    }
+
+    // SECURITY: Validate transaction before processing
+    logger.info('Validating claim transaction...', { 
+      nftMint, 
+      walletAddress,
+      transactionSize: Buffer.from(signedTransaction, 'base64').length 
+    });
+    
+    const validationResult = await this.transactionValidator.validateTransaction(
+      signedTransaction,
+      nftMint,
+      walletAddress
+    );
+
+    if (!validationResult.isValid) {
+      logger.error('Claim transaction validation failed:', {
+        error: validationResult.error,
+        nftMint,
+        walletAddress,
+      });
+      return ResponseUtil.error(res, `Transaction validation failed: ${validationResult.error}`, 400);
     }
 
     let txSignature: string;
     try {
+      // Use validated transaction buffer
       const buf = Buffer.from(signedTransaction, 'base64');
-      txSignature = await this.connection.sendRawTransaction(buf, { skipPreflight: false, preflightCommitment: 'confirmed' });
+      const { sendRawTransactionWithTimeout } = require('../utils/solanaHelpers');
+      txSignature = await sendRawTransactionWithTimeout(
+        this.connection,
+        buf,
+        {
+          skipPreflight: false,
+          preflightCommitment: 'confirmed',
+          maxRetries: 2,
+          timeout: 30000,
+        }
+      );
+
+      // Mark signature as processed to prevent replay
+      if (validationResult.signature) {
+        this.transactionValidator.markSignatureAsProcessed(validationResult.signature);
+      }
     } catch (err: any) {
+      logger.error('Failed to submit claim transaction:', err);
       return ResponseUtil.error(res, `Failed to submit transaction: ${err.message}`, 400);
     }
 
     try {
-      const conf = await this.connection.confirmTransaction(txSignature, 'confirmed');
+      const { confirmTransactionWithTimeout } = require('../utils/solanaHelpers');
+      await confirmTransactionWithTimeout(this.connection, txSignature, 'confirmed', 60000);
+      const conf = { value: { err: null } }; // Confirmation successful
       if (conf.value.err) {
         return ResponseUtil.error(res, 'Transaction failed', 400);
       }

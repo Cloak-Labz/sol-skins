@@ -149,6 +149,11 @@ export class UserSkinRepository {
   }
 
   async findByNftMintAddress(nftMintAddress: string): Promise<UserSkin | null> {
+    // SECURITY: Validate NFT mint address format before query
+    const { isValidMintAddress } = require('../utils/solanaValidation');
+    if (!isValidMintAddress(nftMintAddress)) {
+      throw new Error(`Invalid NFT mint address format: ${nftMintAddress}`);
+    }
     return this.repository.findOne({
       where: { nftMintAddress },
       relations: ['user', 'skinTemplate', 'lootBoxType'],

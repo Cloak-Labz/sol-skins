@@ -25,15 +25,15 @@ inventoryRoutes.get('/steam/stats', walletAuth.requireWallet, inventoryControlle
 // GET /inventory/steam - Get imported Steam inventory (requires wallet)
 inventoryRoutes.get('/steam', walletAuth.requireWallet, inventoryController.getSteamInventory);
 
-// POST /inventory/steam/import - Import CS2 Steam inventory (requires wallet)
-inventoryRoutes.post('/steam/import', walletAuth.requireWallet, inventoryController.importSteamInventory);
+// POST /inventory/steam/import - Import CS2 Steam inventory (requires wallet with signature)
+inventoryRoutes.post('/steam/import', walletAuth.requireWalletWithSignature, validateSchema(schemas.importSteam), inventoryController.importSteamInventory);
 
-// POST /inventory/claim - Mark a skin as claimed by nft mint (requires wallet)
-inventoryRoutes.post('/claim', walletAuth.requireWallet, inventoryController.claimByMint);
+// POST /inventory/claim - Mark a skin as claimed by nft mint (requires wallet with signature)
+inventoryRoutes.post('/claim', walletAuth.requireWalletWithSignature, validateSchema(schemas.claimByMint), inventoryController.claimByMint);
 
 // Dynamic routes (must come LAST)
 // GET /inventory/:skinId - Get skin details (requires wallet)
 inventoryRoutes.get('/:skinId', walletAuth.requireWallet, inventoryController.getSkinDetails);
 
-// POST /inventory/:skinId/buyback - Sell skin via buyback (requires wallet)
-inventoryRoutes.post('/:skinId/buyback', walletAuth.requireWallet, validateSchema(schemas.buyback), inventoryController.sellSkin);
+// POST /inventory/:skinId/buyback - Sell skin via buyback (requires wallet with signature)
+inventoryRoutes.post('/:skinId/buyback', walletAuth.requireWalletWithSignature, validateSchema(schemas.buyback), inventoryController.sellSkin);

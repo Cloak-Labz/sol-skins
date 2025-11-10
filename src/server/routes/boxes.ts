@@ -1,37 +1,39 @@
 import { Router } from "express";
 import { BoxController } from "../controllers/BoxController";
+import { adminMiddleware } from "../middlewares/admin";
+import { getAuth } from "../middlewares/auth";
+import { adminLimiter, publicEndpointsLimiter } from "../middlewares/security";
 
 export const boxRoutes = Router();
 const boxController = new BoxController();
 
-// GET /boxes - List all boxes
-boxRoutes.get("/", boxController.getAllBoxes);
+// Public read endpoints
+// SECURITY: Rate limited to prevent API abuse (100 req/min per IP)
+boxRoutes.get("/", publicEndpointsLimiter, boxController.getAllBoxes);
+boxRoutes.get("/active", publicEndpointsLimiter, boxController.getActiveBoxes);
+boxRoutes.get("/stats", publicEndpointsLimiter, boxController.getBoxStats);
+boxRoutes.get("/:id", publicEndpointsLimiter, boxController.getBoxById);
+boxRoutes.get("/:id/collection-files", publicEndpointsLimiter, boxController.getCollectionFiles);
+boxRoutes.get("/batch/:batchId", publicEndpointsLimiter, boxController.getBoxByBatchId);
 
-// GET /boxes/active - List active boxes
-boxRoutes.get("/active", boxController.getActiveBoxes);
+// Admin-only write endpoints - require authentication and admin access
+// Use lazy loading to avoid initialization order issues
+const adminBoxRoutes = Router();
+adminBoxRoutes.use((req, res, next) => {
+  const authMiddleware = getAuth();
+  authMiddleware.protect(req, res, next);
+});
 
-// GET /boxes/stats - Get box statistics
-boxRoutes.get("/stats", boxController.getBoxStats);
+// SECURITY: Apply strict rate limiting to admin endpoints (5 req/min)
+adminBoxRoutes.use(adminLimiter);
 
-// POST /boxes/generate-collection-files - Generate collection files
-boxRoutes.post("/generate-collection-files", boxController.generateCollectionFiles);
+adminBoxRoutes.use(adminMiddleware);
 
-// GET /boxes/:id - Get box by ID
-boxRoutes.get("/:id", boxController.getBoxById);
+// Admin-only write endpoints
+adminBoxRoutes.post("/generate-collection-files", boxController.generateCollectionFiles);
+adminBoxRoutes.post("/", boxController.createBox);
+adminBoxRoutes.put("/:id", boxController.updateBox);
+adminBoxRoutes.delete("/:id", boxController.deleteBox);
 
-// GET /boxes/:id/collection-files - Get collection files status
-boxRoutes.get("/:id/collection-files", boxController.getCollectionFiles);
-
-// GET /boxes/batch/:batchId - Get box by batch ID
-boxRoutes.get("/batch/:batchId", boxController.getBoxByBatchId);
-
-// POST /boxes - Create new box
-boxRoutes.post("/", boxController.createBox);
-
-// PUT /boxes/:id - Update box
-boxRoutes.put("/:id", boxController.updateBox);
-
-// Removed legacy sync endpoints (on-chain sync deprecated)
-
-// DELETE /boxes/:id - Delete box
-boxRoutes.delete("/:id", boxController.deleteBox);
+// Mount admin routes
+boxRoutes.use(adminBoxRoutes);

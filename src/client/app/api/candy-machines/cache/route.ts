@@ -29,17 +29,14 @@ export async function GET(request: NextRequest) {
         if (fs.existsSync(fullPath)) {
           const fileContent = fs.readFileSync(fullPath, "utf8");
           cacheData = JSON.parse(fileContent);
-          console.log(`✅ Found cache file at: ${fullPath}`);
           break;
         }
       } catch (error) {
-        console.log(`❌ Cache file not found at: ${cachePath}`);
         continue;
       }
     }
 
     if (!cacheData) {
-      console.log("📭 No Sugar cache file found");
       return NextResponse.json({
         success: false,
         message: "No Sugar cache file found",
@@ -49,7 +46,6 @@ export async function GET(request: NextRequest) {
 
     // Validate cache structure according to Metaplex documentation
     if (!cacheData.program || !cacheData.items) {
-      console.log("❌ Invalid cache structure");
       return NextResponse.json({
         success: false,
         message: "Invalid cache file structure",
@@ -57,17 +53,12 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    console.log(`✅ Cache file loaded successfully`);
-    console.log(`📊 Program data:`, cacheData.program);
-    console.log(`📊 Items count:`, Object.keys(cacheData.items).length);
-
     return NextResponse.json({
       success: true,
       message: "Cache file loaded successfully",
       cacheData: cacheData,
     });
   } catch (error) {
-    console.error("❌ Error loading cache file:", error);
     return NextResponse.json(
       {
         success: false,
