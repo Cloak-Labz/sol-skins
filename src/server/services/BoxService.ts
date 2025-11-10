@@ -1,6 +1,8 @@
 import { BoxRepository } from '../repositories/BoxRepository';
 import { logger } from '../middlewares/logger';
 import { AppError } from '../middlewares/errorHandler';
+import { priceService } from './PriceService';
+import { Box } from '../entities/Box';
 
 export interface CreateBoxDTO {
   batchId?: number;
@@ -47,9 +49,29 @@ export class BoxService {
     this.boxRepository = new BoxRepository();
   }
 
+  private formatBoxPricing(box: Box, solPriceUsd: number) {
+    const priceSolNumber = Number(box.priceSol ?? 0);
+    const storedUsd = Number(box.priceUsdc ?? 0);
+    const computedUsd =
+      storedUsd > 0 ? storedUsd : Number((priceSolNumber * solPriceUsd).toFixed(2));
+
+    return {
+      ...box,
+      priceSol: priceSolNumber,
+      priceUsdc: computedUsd,
+      priceUsd: computedUsd,
+      solPriceUsd,
+    };
+  }
+
   async getAllBoxes(): Promise<any[]> {
     try {
-      return await this.boxRepository.findAll();
+      const boxes = await this.boxRepository.findAll();
+      if (!boxes || boxes.length === 0) {
+        return boxes;
+      }
+      const solPriceUsd = await priceService.getSolPriceUsd();
+      return boxes.map((box) => this.formatBoxPricing(box, solPriceUsd));
     } catch (error) {
       logger.error('Error fetching all boxes:', error);
       throw new AppError('Failed to fetch boxes', 500);
@@ -64,7 +86,8 @@ export class BoxService {
         logger.info('Delete box requested, but box not found; treating as no-op', { id });
         return;
       }
-      return box;
+      const solPriceUsd = await priceService.getSolPriceUsd();
+      return this.formatBoxPricing(box, solPriceUsd);
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error('Error fetching box by ID:', error);
@@ -78,7 +101,8 @@ export class BoxService {
       if (!box) {
         throw new AppError('Box not found', 404, 'BOX_NOT_FOUND');
       }
-      return box;
+      const solPriceUsd = await priceService.getSolPriceUsd();
+      return this.formatBoxPricing(box, solPriceUsd);
     } catch (error) {
       if (error instanceof AppError) throw error;
       logger.error('Error fetching box by batch ID:', error);
@@ -88,7 +112,12 @@ export class BoxService {
 
   async getActiveBoxes(): Promise<any[]> {
     try {
-      return await this.boxRepository.findAllActive();
+      const boxes = await this.boxRepository.findAllActive();
+      if (!boxes || boxes.length === 0) {
+        return boxes;
+      }
+      const solPriceUsd = await priceService.getSolPriceUsd();
+      return boxes.map((box) => this.formatBoxPricing(box, solPriceUsd));
     } catch (error) {
       logger.error('Error fetching active boxes:', error);
       throw new AppError('Failed to fetch active boxes', 500);

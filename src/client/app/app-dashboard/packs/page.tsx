@@ -1216,11 +1216,18 @@ export default function PacksPage() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {selectedPack
-                        ? `$${parseFloat(
-                            String(
-                              selectedPack.priceUsdc ?? selectedPack.priceSol
-                            )
-                          ).toFixed(2)}`
+                        ? (() => {
+                            const priceSol = Number(selectedPack.priceSol ?? 0);
+                            const priceUsd =
+                              selectedPack.priceUsd ??
+                              selectedPack.priceUsdc ??
+                              (selectedPack.solPriceUsd
+                                ? priceSol * Number(selectedPack.solPriceUsd)
+                                : undefined);
+                            return priceUsd !== undefined && !Number.isNaN(priceUsd)
+                              ? `$${Number(priceUsd).toFixed(2)}`
+                              : "";
+                          })()
                         : ""}
                     </p>
                   </div>

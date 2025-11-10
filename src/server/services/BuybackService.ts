@@ -94,9 +94,22 @@ export class BuybackService {
 
     // SECURITY: Use safe math to prevent integer overflow
     const { validateAmount, usdToSol, applyPercentage, solToLamports, toNumber } = require('../utils/safeMath');
+    const { priceService } = require('./PriceService');
     
-    const skinPriceUsd = validateAmount(skinTemplate.basePriceUsd.toString(), 'skin price USD');
-    const solPriceUsd = validateAmount(200, 'SOL price USD');
+    // Determine the most accurate USD price we have for this skin
+    const priceCandidates = [
+      userSkin.currentPriceUsd != null ? Number(userSkin.currentPriceUsd) : null,
+      skinTemplate?.basePriceUsd != null ? Number(skinTemplate.basePriceUsd) : null,
+    ].filter((value): value is number => value != null && Number.isFinite(value) && value > 0);
+
+    if (priceCandidates.length === 0) {
+      throw new Error('Unable to determine skin USD price for buyback calculation');
+    }
+
+    const effectivePriceUsd = priceCandidates[0]; // prefer currentPriceUsd if available
+    const skinPriceUsd = validateAmount(effectivePriceUsd, 'skin price USD');
+    // Fetch live SOL price in USD (cached, with safe fallbacks)
+    const solPriceUsd = validateAmount(await priceService.getSolPriceUsd(), 'SOL price USD');
     const skinPriceSol = usdToSol(skinPriceUsd, solPriceUsd);
     const buybackAmount = applyPercentage(skinPriceSol, config.buyback.buybackRate * 100, 'buyback amount'); // Convert rate to percentage
     const buybackAmountLamports = solToLamports(buybackAmount);
@@ -267,9 +280,21 @@ export class BuybackService {
 
     // SECURITY: Use safe math to prevent integer overflow
     const { validateAmount, usdToSol, applyPercentage, toNumber } = require('../utils/safeMath');
+    const { priceService } = require('./PriceService');
     
-    const skinPriceUsd = validateAmount(skinTemplate.basePriceUsd.toString(), 'skin price USD');
-    const solPriceUsd = validateAmount(200, 'SOL price USD');
+    const priceCandidates = [
+      userSkin.currentPriceUsd != null ? Number(userSkin.currentPriceUsd) : null,
+      skinTemplate?.basePriceUsd != null ? Number(skinTemplate.basePriceUsd) : null,
+    ].filter((value): value is number => value != null && Number.isFinite(value) && value > 0);
+
+    if (priceCandidates.length === 0) {
+      throw new Error('Unable to determine skin USD price for buyback finalization');
+    }
+
+    const effectivePriceUsd = priceCandidates[0];
+    const skinPriceUsd = validateAmount(effectivePriceUsd, 'skin price USD');
+    // Fetch live SOL price in USD (cached, with safe fallbacks)
+    const solPriceUsd = validateAmount(await priceService.getSolPriceUsd(), 'SOL price USD');
     const skinPriceSol = usdToSol(skinPriceUsd, solPriceUsd);
     const buybackAmount = applyPercentage(skinPriceSol, config.buyback.buybackRate * 100, 'buyback amount');
     
