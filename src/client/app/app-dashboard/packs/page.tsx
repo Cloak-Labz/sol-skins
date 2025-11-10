@@ -296,7 +296,11 @@ export default function PacksPage() {
       const packText = params.packName ? ` from ${params.packName}` : "";
       text = `Claimed ${params.skin.name}${packText} to my Steam inventory via @DUST3fun!`;
     }
-    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+
+    const url = new URL("https://twitter.com/intent/tweet");
+    url.searchParams.set("text", text);
+
+    return url.toString();
   };
 
   // Set wallet address in API client when wallet connects/disconnects
