@@ -575,15 +575,3 @@ The reveal service uses:
 - [Candy Guard Documentation](https://developers.metaplex.com/candy-machine/guard)
 
 ---
-
-## Summary
-
-This configuration creates a Candy Machine optimized for our pack opening system:
-
-✅ **Hidden Settings**: Enables placeholder metadata for mystery packs  
-✅ **Mutable NFTs**: Allows metadata updates during reveal  
-✅ **Candy Guard**: Manages payments and access control  
-✅ **Collection NFT**: Groups all NFTs from this box  
-✅ **500 Supply**: Matches box total items configuration  
-
-The Candy Machine is now ready to mint NFTs when users purchase and open packs!
