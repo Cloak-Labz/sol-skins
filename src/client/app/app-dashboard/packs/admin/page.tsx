@@ -22,13 +22,12 @@ import {
   Edit,
   Save,
   X,
-  Upload,
   FileText,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { toast } from "react-hot-toast";
 import { useWallet } from "@solana/wallet-adapter-react";
-import { boxesService } from "@/lib/services";
+import { boxesService, apiClient } from "@/lib/services";
 
 interface Box {
   id: string;
@@ -77,7 +76,6 @@ interface DraftSkin {
   metadataUri?: string;
   weight: number;
   skinTemplateId?: string;
-  uploadedToArweave?: boolean;
 }
 
 export default function PackManagerPage() {
@@ -112,7 +110,6 @@ export default function PackManagerPage() {
     isMutable: boolean;
   } | null>(null);
   const [draftSkins, setDraftSkins] = useState<DraftSkin[]>([]);
-  const [uploadingToArweave, setUploadingToArweave] = useState<string | null>(null);
   const [jsonSkinsInput, setJsonSkinsInput] = useState<string>("");
   
   // Form states
@@ -175,9 +172,8 @@ export default function PackManagerPage() {
       // Check collection files status for each box
       const statusPromises = data.map(async (box: Box) => {
         try {
-          const response = await fetch(`/api/v1/boxes/${box.id}/collection-files`);
-          const result = await response.json();
-          return { boxId: box.id, status: result.success ? result.data : null };
+          const result = await apiClient.get(`/boxes/${box.id}/collection-files`);
+          return { boxId: box.id, status: result };
           } catch (error) {
           return { boxId: box.id, status: null };
         }
@@ -206,11 +202,8 @@ export default function PackManagerPage() {
 
   const loadBoxSkins = async (boxId: string) => {
     try {
-      const response = await fetch(`/api/v1/box-skins/box/${boxId}`);
-      const data = await response.json();
-      if (data.success) {
-        setBoxSkins(data.data);
-      }
+      const data = await apiClient.get(`/box-skins/box/${boxId}`);
+      setBoxSkins(data);
       } catch (error) {
       toast.error("Failed to load box skins");
     }
@@ -236,25 +229,14 @@ export default function PackManagerPage() {
         }
       };
 
-      // Send to backend to generate files
-      const response = await fetch("/api/v1/boxes/generate-collection-files", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          boxId: boxData.id,
-          collectionData: collectionJson,
-          imageUrl: boxData.imageUrl,
-        }),
+      // Send to backend to generate files using apiClient (includes CSRF token)
+      const data = await apiClient.post("/boxes/generate-collection-files", {
+        boxId: boxData.id,
+        collectionData: collectionJson,
+        imageUrl: boxData.imageUrl,
       });
 
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error?.message || "Failed to generate collection files");
-      }
-
-      return data.data;
+      return data;
       } catch (error) {
       throw error;
     }
@@ -263,45 +245,36 @@ export default function PackManagerPage() {
   const handleCreateBox = async () => {
     try {
       setCreatingBox(true);
-      const response = await fetch("/api/v1/boxes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(boxForm),
-      });
+      const createdBox = await boxesService.createBox(boxForm);
       
-      const data = await response.json();
-      if (data.success) {
-        toast.success("Box created successfully");
-        
-        // Generate collection files
-        try {
-          await generateCollectionFiles(data.data);
-          toast.success("Collection files generated successfully");
-        } catch (fileError) {
-          toast.error("Box created but failed to generate collection files");
-        }
-        
-        setBoxForm({
-          name: "",
-          description: "",
-          imageUrl: "",
-          symbol: "SKIN",
-          priceSol: 0,
-          priceUsdc: 0,
-          totalItems: 100,
-          candyMachine: "",
-          collectionMint: "",
-          candyGuard: "",
-          treasuryAddress: "",
-          sellerFeeBasisPoints: 500,
-          isMutable: false,
-        });
-        loadBoxes();
-      } else {
-        throw new Error(data.error?.message || "Failed to create box");
+      toast.success("Box created successfully");
+      
+      // Generate collection files
+      try {
+        await generateCollectionFiles(createdBox);
+        toast.success("Collection files generated successfully");
+      } catch (fileError) {
+        toast.error("Box created but failed to generate collection files");
       }
-    } catch (error) {
-      toast.error("Failed to create box");
+      
+      setBoxForm({
+        name: "",
+        description: "",
+        imageUrl: "",
+        symbol: "SKIN",
+        priceSol: 0,
+        priceUsdc: 0,
+        totalItems: 100,
+        candyMachine: "",
+        collectionMint: "",
+        candyGuard: "",
+        treasuryAddress: "",
+        sellerFeeBasisPoints: 500,
+        isMutable: false,
+      });
+      loadBoxes();
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to create box");
     } finally {
       setCreatingBox(false);
     }
@@ -312,34 +285,25 @@ export default function PackManagerPage() {
     
     try {
       setAddingSkin(true);
-      const response = await fetch("/api/v1/box-skins", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...skinForm,
-          boxId: selectedBox.id,
-        }),
+      await apiClient.post("/box-skins", {
+        ...skinForm,
+        boxId: selectedBox.id,
       });
       
-      const data = await response.json();
-      if (data.success) {
-        toast.success("Skin added successfully");
-        setSkinForm({
-          name: "",
-          weapon: "",
-          rarity: "common",
-          condition: "factory_new",
-          imageUrl: "",
-          basePriceUsd: 0,
-          metadataUri: "",
-          weight: 1,
-        });
-        loadBoxSkins(selectedBox.id);
-      } else {
-        throw new Error(data.error?.message || "Failed to add skin");
-      }
-    } catch (error) {
-      toast.error("Failed to add skin");
+      toast.success("Skin added successfully");
+      setSkinForm({
+        name: "",
+        weapon: "",
+        rarity: "common",
+        condition: "factory_new",
+        imageUrl: "",
+        basePriceUsd: 0,
+        metadataUri: "",
+        weight: 1,
+      });
+      loadBoxSkins(selectedBox.id);
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to add skin");
     } finally {
       setAddingSkin(false);
     }
@@ -363,20 +327,13 @@ export default function PackManagerPage() {
     if (!confirm("Are you sure you want to delete this skin?")) return;
     
     try {
-      const response = await fetch(`/api/v1/box-skins/${skinId}`, {
-        method: "DELETE",
-      });
-      
-      if (response.ok) {
-        toast.success("Skin deleted successfully");
+      await apiClient.delete(`/box-skins/${skinId}`);
+      toast.success("Skin deleted successfully");
       if (selectedBox) {
-          loadBoxSkins(selectedBox.id);
-        }
-      } else {
-        throw new Error("Failed to delete skin");
+        loadBoxSkins(selectedBox.id);
       }
-    } catch (error) {
-      toast.error("Failed to delete skin");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to delete skin");
     }
   };
 
@@ -411,7 +368,6 @@ export default function PackManagerPage() {
       basePriceUsd: skinForm.basePriceUsd,
       metadataUri: skinForm.metadataUri,
       weight: skinForm.weight,
-      uploadedToArweave: false,
     };
 
     setDraftSkins([...draftSkins, newSkin]);
@@ -484,7 +440,6 @@ export default function PackManagerPage() {
           basePriceUsd: skin.basePriceUsd || 0,
           metadataUri: skin.metadataUri || "",
           weight: skin.weight || 1,
-          uploadedToArweave: false,
         };
 
         validSkins.push(newSkin);
@@ -656,93 +611,17 @@ export default function PackManagerPage() {
     toast.success("Skin removed from draft");
   };
 
-  const mockUploadToArweave = async (skin: DraftSkin): Promise<string> => {
-    // Mock Arweave upload - simulate delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    // Mock metadata URI
-    const mockUri = `https://arweave.net/mock-${Date.now()}-${skin.name.replace(/\s+/g, '-').toLowerCase()}`;
-    return mockUri;
-  };
-
-  const uploadSkinToArweave = async (skinId: string) => {
-    const skin = draftSkins.find(s => s.id === skinId);
-    if (!skin) return;
-
-    try {
-      setUploadingToArweave(skinId);
-      toast.loading(`Uploading ${skin.name} to Arweave...`, { id: `upload-${skinId}` });
-
-      const metadataUri = await mockUploadToArweave(skin);
-      
-      // Update the skin with the metadata URI
-      setDraftSkins(draftSkins.map(s => 
-        s.id === skinId 
-          ? { ...s, metadataUri, uploadedToArweave: true }
-          : s
-      ));
-
-      toast.success(`${skin.name} uploaded to Arweave successfully!`, { id: `upload-${skinId}` });
-    } catch (error) {
-      toast.error(`Failed to upload ${skin.name} to Arweave`, { id: `upload-${skinId}` });
-    } finally {
-      setUploadingToArweave(null);
-    }
-  };
-
-  const uploadAllSkinsToArweave = async () => {
-    const unuploadedSkins = draftSkins.filter(skin => !skin.uploadedToArweave);
-    
-    if (unuploadedSkins.length === 0) {
-      toast.info("All skins are already uploaded to Arweave");
-      return;
-    }
-
-    try {
-      setUploadingToArweave("all");
-      toast.loading(`Uploading ${unuploadedSkins.length} skins to Arweave...`, { id: "upload-all" });
-      
-      for (let i = 0; i < unuploadedSkins.length; i++) {
-        const skin = unuploadedSkins[i];
-        
-        try {
-          setUploadingToArweave(skin.id);
-          const metadataUri = await mockUploadToArweave(skin);
-          
-          // Update the skin in the draft
-          setDraftSkins(prevSkins => 
-            prevSkins.map(s => 
-              s.id === skin.id 
-                ? { ...s, metadataUri, uploadedToArweave: true }
-                : s
-            )
-          );
-          
-          toast.success(`Uploaded ${skin.name} (${i + 1}/${unuploadedSkins.length})`, { id: "upload-all" });
-      } catch (error) {
-          toast.error(`Failed to upload ${skin.name}`, { id: "upload-all" });
-        }
-      }
-      
-      toast.success(`Successfully uploaded all ${unuploadedSkins.length} skins to Arweave!`, { id: "upload-all" });
-    } catch (error) {
-      toast.error("Failed to upload skins to Arweave", { id: "upload-all" });
-    } finally {
-      setUploadingToArweave(null);
-    }
-  };
-
   const createBoxFromDraft = async () => {
     if (!draftBox) return;
 
-    // Use all draft skins (no Arweave upload requirement)
+    // Use all draft skins
     const uploadedSkins = draftSkins;
 
     try {
       setCreatingBox(true);
       
       // Optionally collect metadata URIs if present
-      const metadataUris = uploadedSkins.map(skin => skin.metadataUri).filter(Boolean);
+      const metadataUris = uploadedSkins.map(skin => skin.metadataUri).filter((uri): uri is string => Boolean(uri));
       
       // Create box data (metadataUris optional)
       // Use draftBox.totalItems (user-defined supply) instead of uploadedSkins.length
@@ -753,38 +632,25 @@ export default function PackManagerPage() {
         itemsAvailable: draftBox.totalItems || uploadedSkins.length, // Initialize itemsAvailable to totalItems
       };
       
-      // First create the box
-      const response = await fetch("/api/v1/boxes", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(boxData),
-      });
-      
-      const data = await response.json();
-      if (!data.success) {
-        throw new Error(data.error?.message || "Failed to create box");
-      }
+      // First create the box using boxesService (includes CSRF token)
+      const createdBox = await boxesService.createBox(boxData);
 
-      const createdBox = data.data;
+      // Then add all skins to the box using batch endpoint (much faster!)
+      // This creates all skins in a single database transaction
+      const skinsData = draftSkins.map(skin => ({
+        boxId: createdBox.id,
+        name: skin.name,
+        weapon: skin.weapon,
+        rarity: skin.rarity,
+        condition: skin.condition,
+        imageUrl: skin.imageUrl,
+        basePriceUsd: skin.basePriceUsd,
+        metadataUri: skin.metadataUri,
+        weight: skin.weight,
+      }));
 
-      // Then add all skins to the box
-      for (const skin of draftSkins) {
-        await fetch("/api/v1/box-skins", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            boxId: createdBox.id,
-            name: skin.name,
-            weapon: skin.weapon,
-            rarity: skin.rarity,
-            condition: skin.condition,
-            imageUrl: skin.imageUrl,
-            basePriceUsd: skin.basePriceUsd,
-            metadataUri: skin.metadataUri,
-            weight: skin.weight,
-          }),
-        });
-      }
+      // Create all skins in a single batch request
+      await apiClient.post("/box-skins/batch", { skins: skinsData });
 
       toast.success("Box created successfully with all skins!");
       
@@ -922,7 +788,7 @@ export default function PackManagerPage() {
                       Draft Box: {draftBox.name || "Untitled Box"}
                     </CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Add skins to your box, upload to Arweave, then create the box
+                      Add skins to your box, then create the box
                     </p>
                   </div>
                   <div className="flex gap-2">
@@ -932,7 +798,7 @@ export default function PackManagerPage() {
                     </Button>
                   <Button
                       onClick={createBoxFromDraft}
-                      disabled={creatingBox || draftSkins.length === 0 || draftSkins.some(s => !s.uploadedToArweave)}
+                      disabled={creatingBox || draftSkins.length === 0}
                     >
                       {creatingBox ? (
                         <>
@@ -942,7 +808,7 @@ export default function PackManagerPage() {
                       ) : (
                         <>
                           <Package className="h-4 w-4 mr-2" />
-                          Create Box ({draftSkins.filter(s => s.uploadedToArweave).length}/{draftSkins.length} skins ready)
+                          Create Box ({draftSkins.length} skins)
                         </>
                       )}
                   </Button>
@@ -1093,20 +959,11 @@ export default function PackManagerPage() {
                     <div className="flex gap-2">
                       <Button 
                         onClick={addSkinsFromJson}
-                        disabled={!jsonSkinsInput.trim() || uploadingToArweave}
+                        disabled={!jsonSkinsInput.trim()}
                         className="flex-1"
                       >
-                        {uploadingToArweave ? (
-                          <>
-                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                            Adding Skins...
-                          </>
-                        ) : (
-                          <>
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add All Skins from JSON
-                          </>
-                        )}
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add All Skins from JSON
                       </Button>
                       <Button 
                         variant="outline"
@@ -1244,26 +1101,6 @@ export default function PackManagerPage() {
                         <Package className="h-5 w-5" />
                         Draft Skins ({draftSkins.length})
                       </CardTitle>
-                      {draftSkins.some(s => !s.uploadedToArweave) && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                          onClick={uploadAllSkinsToArweave}
-                          disabled={uploadingToArweave !== null}
-                        >
-                          {uploadingToArweave === "all" ? (
-                            <>
-                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                              Uploading All...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="h-4 w-4 mr-2" />
-                              Upload All to Arweave
-                            </>
-                    )}
-                  </Button>
-                      )}
                 </div>
                   </CardHeader>
                   <CardContent>
@@ -1285,37 +1122,17 @@ export default function PackManagerPage() {
                           <div className="flex-1">
                               <div className="flex items-center gap-2">
                                 <h4 className="font-medium">{skin.name}</h4>
-                                <Badge 
-                                  variant={skin.uploadedToArweave ? "default" : "secondary"}
-                                  className="text-xs"
-                                >
-                                  {skin.uploadedToArweave ? "Uploaded" : "Pending"}
-                                </Badge>
                             </div>
                               <p className="text-sm text-muted-foreground">
                                 {skin.weapon} • {skin.rarity} • Weight: {skin.weight} • ${skin.basePriceUsd}
                               </p>
                               {skin.metadataUri && (
-                                <p className="text-xs text-green-400 mt-1">
-                                  Arweave: {skin.metadataUri}
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Metadata URI: {skin.metadataUri}
                                 </p>
                               )}
                               </div>
                             <div className="flex items-center gap-1">
-                              {!skin.uploadedToArweave && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => uploadSkinToArweave(skin.id)}
-                                  disabled={uploadingToArweave === skin.id}
-                                >
-                                  {uploadingToArweave === skin.id ? (
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                  ) : (
-                                    <Upload className="h-4 w-4" />
-                                  )}
-                                </Button>
-                              )}
                               <Button
                                 variant="ghost"
                                 size="sm"

@@ -8,9 +8,12 @@ class ApiClient {
   private jwtToken: string | null = null;
   private csrfToken: string | null = null;
   private csrfTokenPromise: Promise<string | null> | null = null;
+  private csrfTokenTimestamp: number | null = null; // Timestamp when token was obtained
 
   private readonly JWT_TOKEN_KEY = 'sol_skins_jwt_token';
   private readonly WALLET_ADDRESS_KEY = 'sol_skins_wallet_address';
+  private readonly CSRF_TOKEN_TTL_MS = 30 * 60 * 1000; // 30 minutes (matches backend)
+  private readonly CSRF_TOKEN_RENEWAL_THRESHOLD_MS = 5 * 60 * 1000; // Renew if less than 5 minutes remaining
 
   constructor() {
     // Handle both cases: with and without /api/v1 suffix
@@ -46,11 +49,33 @@ class ApiClient {
   }
 
   /**
+   * Check if CSRF token is expiring soon and needs renewal
+   */
+  private isCSRFTokenExpiringSoon(): boolean {
+    if (!this.csrfToken || !this.csrfTokenTimestamp) {
+      return true; // No token or timestamp, needs fetching
+    }
+    
+    const elapsed = Date.now() - this.csrfTokenTimestamp;
+    const remaining = this.CSRF_TOKEN_TTL_MS - elapsed;
+    
+    // Renew if less than threshold time remaining
+    // Also renew if token is very old (possible server restart)
+    const MAX_TOKEN_AGE_MS = 5 * 60 * 1000; // 5 minutes - if token is older, server may have restarted
+    if (elapsed > MAX_TOKEN_AGE_MS) {
+      return true; // Token is too old, might be from before server restart
+    }
+    
+    return remaining < this.CSRF_TOKEN_RENEWAL_THRESHOLD_MS;
+  }
+
+  /**
    * Fetch CSRF token from server (public method to force refresh)
    */
   async refreshCSRFToken(): Promise<string | null> {
     // Clear existing token and promise to force refresh
     this.csrfToken = null;
+    this.csrfTokenTimestamp = null;
     this.csrfTokenPromise = null;
     return this.fetchCSRFToken();
   }
@@ -71,9 +96,11 @@ class ApiClient {
         const baseUrl = this.client.defaults.baseURL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
         const url = `${baseUrl}/csrf-token`;
         
+        // Use plain axios to avoid interceptors that might interfere
         const response = await axios.get<{ success: boolean; data: { csrfToken: string } }>(url, {
           timeout: 5000, // 5 second timeout
           validateStatus: (status) => status === 200, // Only accept 200
+          // Don't use the client's interceptors for CSRF token fetch
         });
         
         // Handle ApiResponse format: { success: true, data: { csrfToken: string } }
@@ -85,12 +112,11 @@ class ApiClient {
         }
         
         this.csrfToken = token;
+        this.csrfTokenTimestamp = Date.now(); // Store timestamp when token was obtained
         this.csrfTokenPromise = null; // Clear promise after success
         return this.csrfToken;
       } catch (error: any) {
         this.csrfTokenPromise = null; // Clear promise on error
-        const errorMessage = error?.response?.data?.error?.message || error?.message || 'Unknown error';
-        const status = error?.response?.status;
         throw error;
       }
     })();
@@ -99,20 +125,27 @@ class ApiClient {
   }
 
   /**
-   * Get CSRF token, fetching if necessary
+   * Get CSRF token, fetching if necessary or if expiring soon
    */
   private async ensureCSRFToken(): Promise<string | null> {
-    // If we have a token, return it
-    if (this.csrfToken) {
+    // If we have a valid, non-expiring token, return it
+    if (this.csrfToken && !this.isCSRFTokenExpiringSoon()) {
       return this.csrfToken;
     }
 
-    // Otherwise, fetch it
+    // Otherwise, fetch it (missing, invalid, or expiring soon)
     try {
+      // Clear if expiring soon
+      if (this.isCSRFTokenExpiringSoon()) {
+        this.csrfToken = null;
+        this.csrfTokenTimestamp = null;
+      }
+      
       const token = await this.fetchCSRFToken();
       if (!token) {
         // If fetch failed silently, try again once
         this.csrfToken = null;
+        this.csrfTokenTimestamp = null;
         this.csrfTokenPromise = null;
         return await this.fetchCSRFToken();
       }
@@ -159,28 +192,29 @@ class ApiClient {
                           !url.includes('/csrf-token'); // Exclude CSRF endpoint itself
         
         if (needsCSRF) {
-          // Ensure we have a token before making the request
-          let token = this.csrfToken;
-          if (!token) {
+          // Ensure we have a valid, non-expiring token before making the request
+          // Always fetch a fresh token if we don't have one or if it's expiring soon
+          // This prevents issues when the server restarts (tokens are stored in memory)
+          if (!this.csrfToken || typeof this.csrfToken !== 'string' || this.csrfToken.length < 32 || this.isCSRFTokenExpiringSoon()) {
             try {
+              // Clear existing token if it's invalid or expiring
+              if (this.isCSRFTokenExpiringSoon()) {
+                // Proactively refresh token before it expires or if server may have restarted
+                this.csrfToken = null;
+                this.csrfTokenTimestamp = null;
+              }
+              
               const fetchedToken = await this.fetchCSRFToken();
               if (!fetchedToken) {
                 throw new Error('CSRF token fetch failed');
               }
-              token = fetchedToken;
-              // Save the token for future requests
-              this.csrfToken = token;
+              this.csrfToken = fetchedToken;
             } catch (error: any) {
               throw error;
             }
-          } else {
-            // Token exists, verify it's still valid format
-            if (typeof token !== 'string' || token.length < 32) {
-              this.csrfToken = null;
-              token = await this.fetchCSRFToken();
-              this.csrfToken = token;
-            }
           }
+          
+          const token = this.csrfToken;
           
           // Ensure headers object exists
           if (!config.headers) {
@@ -255,6 +289,7 @@ class ApiClient {
 
           // Clear invalid token and fetch new one
           this.csrfToken = null;
+          this.csrfTokenTimestamp = null;
           this.csrfTokenPromise = null;
           
           // Try to fetch new token and retry request
@@ -262,6 +297,7 @@ class ApiClient {
             const token = await this.fetchCSRFToken();
             if (token && error.config) {
               // Create a new config object to ensure headers are properly set
+              // Also need to recreate data if it was modified
               const retryConfig = {
                 ...error.config,
                 headers: {
@@ -269,11 +305,15 @@ class ApiClient {
                   'X-CSRF-Token': token,
                   'x-csrf-token': token,
                 },
+                // Ensure data is properly set if it exists
+                data: error.config.data,
               };
               
+              // Retry the request with new token
               return this.client.request(retryConfig);
             } else {
-
+              // If we can't get a token, reject with the original error
+              return Promise.reject(error);
             }
           } catch (fetchError: any) {
             // If we can't fetch a new token, reject with the original error

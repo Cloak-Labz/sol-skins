@@ -17,6 +17,23 @@ export class BoxSkinController {
     ResponseUtil.success(res, boxSkin, 201);
   });
 
+  // POST /box-skins/batch - Create multiple box skins in a single request
+  createBoxSkinsBatch = catchAsync(async (req: Request, res: Response) => {
+    const { skins } = req.body;
+    
+    if (!Array.isArray(skins) || skins.length === 0) {
+      return ResponseUtil.error(res, 'Skins must be a non-empty array', 400, 'INVALID_SKINS_ARRAY');
+    }
+
+    // Limit batch size to prevent abuse (max 1000 skins per request)
+    if (skins.length > 1000) {
+      return ResponseUtil.error(res, 'Batch size cannot exceed 1000 skins', 400, 'BATCH_SIZE_EXCEEDED');
+    }
+
+    const boxSkins = await this.boxSkinService.createBoxSkinsBatch(skins);
+    ResponseUtil.success(res, boxSkins, 201);
+  });
+
   // GET /box-skins/box/:boxId - Get all skins for a box
   getBoxSkinsByBoxId = catchAsync(async (req: Request, res: Response) => {
     const { boxId } = req.params;

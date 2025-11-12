@@ -273,7 +273,7 @@ cd src/server
 npm install
 ```
 
-#### Smart Contracts Setup
+#### Program Testing Setup
 
 ```bash
 cd programs
@@ -289,7 +289,7 @@ cd deployment
 docker-compose up -d
 ```
 
-This starts PostgreSQL on port 5433 and Redis on port 6379.
+This starts PostgreSQL on port 5433.
 
 #### Option 2: Manual Setup
 
@@ -400,7 +400,7 @@ NEXT_PUBLIC_ENABLE_MARKETPLACE=true
 NEXT_PUBLIC_ENABLE_LOOTBOXES=true
 ```
 
-### Smart Contract Configuration
+### Program Configuration
 
 Update `programs/Anchor.toml`:
 

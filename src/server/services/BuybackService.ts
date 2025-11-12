@@ -6,7 +6,7 @@ import { AppDataSource } from '../config/database';
 import { UserSkin } from '../entities/UserSkin';
 import { SkinTemplate } from '../entities/SkinTemplate';
 import { UserSkinRepository } from '../repositories/UserSkinRepository';
-import buybackIdl from '../../client/lib/idl/buyback.json';
+import buybackIdl from '../lib/solana/buyback.json';
 import { buybackPriceLockService } from './BuybackPriceLockService';
 
 export interface BuybackCalculation {

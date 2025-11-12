@@ -56,6 +56,50 @@ export class BoxSkinService {
     }
   }
 
+  /**
+   * Create multiple box skins in a single transaction
+   * This is much more efficient than creating them one by one
+   */
+  async createBoxSkinsBatch(skins: CreateBoxSkinDTO[]): Promise<BoxSkin[]> {
+    try {
+      if (!skins || skins.length === 0) {
+        throw new AppError('No skins provided', 400, 'NO_SKINS_PROVIDED');
+      }
+
+      // Validate all skins have required fields
+      for (const skin of skins) {
+        if (!skin.boxId || !skin.name || !skin.weapon || !skin.rarity || !skin.condition) {
+          throw new AppError('All skins must have boxId, name, weapon, rarity, and condition', 400, 'INVALID_SKIN_DATA');
+        }
+      }
+
+      // Create all skins in a single transaction
+      const boxSkins = skins.map(skin => 
+        this.repository.create({
+          ...skin,
+          basePriceUsd: skin.basePriceUsd || 0,
+          weight: skin.weight || 1,
+        })
+      );
+
+      // Save all at once (TypeORM will use a transaction)
+      const saved = await this.repository.save(boxSkins);
+      
+      logger.info('BoxSkins created in batch:', { 
+        count: saved.length, 
+        boxId: skins[0]?.boxId,
+        firstSkin: saved[0]?.name,
+        lastSkin: saved[saved.length - 1]?.name
+      });
+      
+      return saved;
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      logger.error('Error creating BoxSkins in batch:', error);
+      throw new AppError('Failed to create box skins in batch', 500);
+    }
+  }
+
   async getBoxSkinsByBoxId(boxId: string): Promise<BoxSkin[]> {
     try {
       return await this.repository.find({

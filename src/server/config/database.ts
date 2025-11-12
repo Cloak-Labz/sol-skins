@@ -63,6 +63,10 @@ export const AppDataSource = new DataSource({
     // Connection pool settings
     max: 20, // Maximum number of connections in pool
     idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+    // SSL configuration for AWS RDS
+    ssl: process.env.DB_SSL === 'true' ? {
+      rejectUnauthorized: false, // AWS RDS uses self-signed certificates
+    } : false,
   },
 });
 

@@ -31,6 +31,7 @@ adminBoxSkinRoutes.use(adminMiddleware);
 
 // Admin-only write endpoints
 adminBoxSkinRoutes.post("/", boxSkinController.createBoxSkin);
+adminBoxSkinRoutes.post("/batch", boxSkinController.createBoxSkinsBatch);
 
 // Admin-only write endpoints (continued)
 adminBoxSkinRoutes.put("/:id", boxSkinController.updateBoxSkin);

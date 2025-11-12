@@ -3,29 +3,8 @@ import Footer from "@/components/footer";
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-lg border-b border-[#333]">
-        <div className="max-w-7xl mx-auto px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-auto">
-              <img
-                src="/assets/DUST3-SVG.svg"
-                alt="Dust3 logo"
-                className="h-8 w-auto"
-              />
-            </div>
-          </div>
-          <nav className="hidden md:flex items-center gap-8">
-            <Link
-              href="/app-dashboard/packs"
-              className="bg-[#E99500] hover:bg-[#c77f00] text-black font-bold rounded-md px-4 py-2"
-            >
-              Launch App
-            </Link>
-          </nav>
-        </div>
-      </header>
-      <div className="max-w-4xl mx-auto px-8 pt-32 pb-28">
+    <div className="min-h-screen bg-[#0A0A0A] text-white">
+      <div className="max-w-4xl mx-auto px-8 pt-4 pb-28">
         <h1 className="text-5xl lg:text-6xl font-bold mb-4">Privacy Policy</h1>
         <p className="text-sm text-[#888] mb-12">Last updated: 17/02/2025</p>
 
@@ -223,7 +202,6 @@ export default function PrivacyPolicyPage() {
           </p>
         </div>
       </div>
-      <Footer />
     </div>
   );
 }

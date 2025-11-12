@@ -1,0 +1,63 @@
+# Dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+yarn.lock
+
+# Build outputs
+dist
+*.map
+
+# Test files
+__tests__
+*.test.ts
+*.spec.ts
+*.e2e.test.ts
+jest.config.js
+jest.e2e.config.js
+coverage
+
+# Development files
+.env
+.env.local
+.env.*.local
+*.log
+logs/*.log
+server.log
+sugar.log
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+*.md
+
+# Scripts (not needed in production)
+scripts
+test-*.sh
+test-*.ts
+
+# Temporary files
+*.tmp
+*.temp
+.cache
+
+# Programs directory (if not needed at runtime)
+programs/candy-machine-random/node_modules
+programs/candy-machine-random/cache.json
+programs/candy-machine-random/sugar.log
+

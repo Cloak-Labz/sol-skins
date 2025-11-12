@@ -6,7 +6,7 @@ pub mod errors;
 
 use instructions::*;
 
-declare_id!("Bwx4dpTtC72nyzTwdCH3rRJVvFg1SatKqgrFNcqNFSAJ");
+declare_id!("2ytrjrhp3XS72snNCzczVAZN11j5SXMu1qJiHAmNPg7F");
 
 #[program]
 pub mod programs {
