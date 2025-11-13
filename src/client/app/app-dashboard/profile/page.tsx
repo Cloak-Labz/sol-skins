@@ -189,8 +189,10 @@ export default function ProfilePage() {
       setIsSaving(true);
 
       const updates: any = {};
-      if (formData.username !== user?.username)
-        updates.username = formData.username;
+      const sanitizedUsername = formData.username.slice(0, 15);
+      if (sanitizedUsername !== (user?.username || "")) {
+        updates.username = sanitizedUsername;
+      }
       if (formData.email !== user?.email) updates.email = formData.email;
       if ((formData as any).tradeUrl !== (user as any)?.tradeUrl) (updates as any).tradeUrl = (formData as any).tradeUrl;
 
@@ -437,9 +439,13 @@ export default function ProfilePage() {
                       id="username"
                       value={formData.username}
                       onChange={(e) =>
-                        setFormData({ ...formData, username: e.target.value })
+                        setFormData({
+                          ...formData,
+                          username: e.target.value.slice(0, 15),
+                        })
                       }
                       disabled={!isEditing}
+                      maxLength={15}
                       placeholder="Enter your username"
                       className="bg-zinc-950 border-zinc-800"
                     />

@@ -12,7 +12,7 @@ export class CaseOpeningRepository {
   async findById(id: string): Promise<CaseOpening | null> {
     return this.repository.findOne({
       where: { id },
-      relations: ['user', 'lootBoxType', 'skinTemplate', 'userSkin'],
+      relations: ['user', 'lootBoxType', 'skinTemplate', 'userSkin', 'userSkin.skinTemplate'],
     });
   }
 
@@ -115,7 +115,7 @@ export class CaseOpeningRepository {
       where: {
         completedAt: Not(IsNull()),
       },
-      relations: ['user', 'lootBoxType', 'skinTemplate'],
+      relations: ['user', 'lootBoxType', 'skinTemplate', 'userSkin'],
       order: { completedAt: 'DESC' },
       take: limit,
     });
