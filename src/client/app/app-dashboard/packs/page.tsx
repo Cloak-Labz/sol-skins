@@ -444,9 +444,7 @@ export default function PacksPage() {
 
     // Require Steam Trade URL before allowing opening
     if (!userTradeUrl || userTradeUrl.trim() === "") {
-      openPackToastIdRef.current = toast.error(
-        "Set your Steam Trade URL in Profile to open packs."
-      );
+      setShowTradeUrlModal(true);
       return;
     }
 
