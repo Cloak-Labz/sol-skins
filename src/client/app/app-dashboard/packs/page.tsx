@@ -103,10 +103,12 @@ export default function PacksPage() {
       // Force reload by changing key (this will remount the video element)
       setVideoKey(prev => prev + 1);
       
-      // Also reset video element if it exists
+      // Also reset video element if it exists and ensure volume is set
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.load();
+          videoRef.current.volume = 1.0;
+          videoRef.current.muted = false;
         }
       }, 100);
     }
@@ -950,7 +952,6 @@ export default function PacksPage() {
                   key={videoKey}
                   ref={videoRef}
                   autoPlay
-                  muted
                   loop
                   playsInline
                   onError={(e) => {
