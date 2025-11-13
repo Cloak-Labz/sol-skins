@@ -26,10 +26,42 @@ interface UserProviderProps {
 export function UserProvider({ children }: UserProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // Start as loading to check session
   const [error, setError] = useState<string | null>(null);
+  const [hasCheckedSession, setHasCheckedSession] = useState(false);
 
   const isConnected = walletAddress !== null;
+
+  // Check for existing session on mount
+  useEffect(() => {
+    const checkExistingSession = async () => {
+      // Only check once
+      if (hasCheckedSession) return;
+
+      setHasCheckedSession(true);
+
+      // Check if we have a saved wallet address and token
+      const savedWallet = apiClient.getWalletAddress();
+      const savedToken = apiClient.getJwtToken();
+
+      if (savedWallet && savedToken) {
+        try {
+          // Try to fetch user profile with existing session
+          const userData = await authService.getProfile();
+          setUser(userData);
+          setWalletAddress(savedWallet);
+        } catch (err) {
+          // Session expired or invalid, clear it
+          apiClient.setWalletAddress(null);
+          apiClient.setJwtToken(null);
+        }
+      }
+
+      setIsLoading(false);
+    };
+
+    checkExistingSession();
+  }, [hasCheckedSession]);
 
   const connectWallet = async (address: string, signature?: string, message?: string) => {
     // Prevent multiple simultaneous connection attempts

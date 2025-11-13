@@ -46,7 +46,11 @@ export function WalletConnect() {
       connectWallet(walletAddress)
         .then(() => {
           clearTimeout(timeout);
-          toast.success("Wallet connected!");
+          // Only show success toast if this is a fresh connection (not auto-reconnect)
+          if (!sessionStorage.getItem("wallet_auto_connected")) {
+            toast.success("Wallet connected!");
+            sessionStorage.setItem("wallet_auto_connected", "true");
+          }
         })
         .catch((error) => {
           clearTimeout(timeout);
@@ -64,11 +68,13 @@ export function WalletConnect() {
           connectingRef.current = false;
         });
     }
-  }, [connected, publicKey, user, isLoading]);
+  }, [connected, publicKey, user, isLoading, connectWallet]);
 
   // Handle wallet disconnection
   const handleDisconnect = async () => {
     try {
+      // Clear auto-connect flag
+      sessionStorage.removeItem("wallet_auto_connected");
       // First disconnect the wallet adapter to stop auto-connect effect
       await walletDisconnect();
       // Then disconnect from backend session
