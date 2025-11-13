@@ -26,6 +26,7 @@ export const corsOptions: cors.CorsOptions = {
       // Default origins (development + production)
       allowedOrigins = [
         'http://localhost:3000',
+        'http://localhost:3001',
         'http://localhost:4000',
         'https://dust3.vercel.app',
         'https://dust3.fun',

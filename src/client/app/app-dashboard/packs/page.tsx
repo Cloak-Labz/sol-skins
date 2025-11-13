@@ -18,6 +18,7 @@ import { buybackService } from "@/lib/services/buyback.service";
 import { LootBoxType } from "@/lib/types/api";
 import XIconPng from "@/public/assets/x_icon.png";
 import { useRouter } from "next/navigation";
+import { SteamTradeUrlModal } from "@/components/steam-trade-url-modal";
 
 interface CSGOSkin {
   id: string;
@@ -96,6 +97,9 @@ export default function PacksPage() {
     skinSol: number;
     payoutSol: number;
   } | null>(null);
+
+  // Steam Trade URL modal state
+  const [showTradeUrlModal, setShowTradeUrlModal] = useState(false);
 
   // Force video reload when entering video phase to avoid cache issues
   useEffect(() => {
@@ -1081,15 +1085,7 @@ export default function PacksPage() {
       >
         {/* Main Content */}
         <div className="max-w-7xl mx-auto space-y-8">
-          {/* TEST BUTTON - Remove this later */}
-          {/* <div className="flex justify-end mb-4">
-            <Button
-              onClick={testToast}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold px-4 py-2 rounded-lg"
-            >
-              🧪 Test Toast (Remove Later)
-            </Button>
-          </div> */}
+
 
           {/* Hero */}
           <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
@@ -1579,19 +1575,19 @@ export default function PacksPage() {
                         Send this skin to your Steam account
                       </div>
                       <Button
-                        disabled={userTradeUrl === null || isOpeningSkin}
+                        disabled={isOpeningSkin}
                         onClick={async (e) => {
                           e.preventDefault();
                           e.stopPropagation();
                           dismissClaimToast();
+
+                          // Check if user has Trade URL, if not show modal
+                          if (!userTradeUrl || userTradeUrl.trim() === "") {
+                            setShowTradeUrlModal(true);
+                            return;
+                          }
+
                           try {
-                            // Double-check trade URL is still valid (user might have removed it)
-                            if (!userTradeUrl || userTradeUrl.trim() === "") {
-                              claimToastIdRef.current = toast.error(
-                                "Please set your Steam Trade URL in your profile before claiming skins!"
-                              );
-                              return;
-                            }
                             if (!lastPackResult?.asset) {
                               claimToastIdRef.current =
                                 toast.error("No NFT to claim");
@@ -1668,7 +1664,9 @@ export default function PacksPage() {
                         }}
                         className="mt-4 w-full bg-white text-black hover:bg-gray-200 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        Take Skin
+                        {!userTradeUrl || userTradeUrl.trim() === ""
+                          ? "Set Up Steam Trade URL"
+                          : "Take Skin"}
                       </Button>
                     </div>
                   </div>
@@ -1760,6 +1758,26 @@ export default function PacksPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Steam Trade URL Modal */}
+      <SteamTradeUrlModal
+        open={showTradeUrlModal}
+        onOpenChange={setShowTradeUrlModal}
+        currentTradeUrl={userTradeUrl}
+        onSave={async (newTradeUrl) => {
+          try {
+            // Update trade URL using auth service
+            await authService.updateProfile(
+              { tradeUrl: newTradeUrl },
+              walletCtx.signMessage ? { signMessage: walletCtx.signMessage } : null
+            );
+            setUserTradeUrl(newTradeUrl);
+            toast.success("Steam Trade URL saved successfully!");
+          } catch (error) {
+            throw error;
+          }
+        }}
+      />
     </div>
   );
 }

@@ -8,6 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useUser } from "@/lib/contexts/UserContext";
@@ -26,6 +34,9 @@ import {
   Clock,
   TrendingDown,
   TrendingUp as TrendingUpIcon,
+  AlertCircle,
+  Copy,
+  CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -52,6 +63,12 @@ export default function ProfilePage() {
     tradeUrl: "",
   });
   const [memberSince, setMemberSince] = useState<string>('N/A');
+
+  // Error modal state
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [errorDetails, setErrorDetails] = useState("");
+  const [copiedError, setCopiedError] = useState(false);
 
   // Dashboard data state
   const [inventorySummary, setInventorySummary] = useState<InventorySummary | null>(null);
@@ -208,9 +225,46 @@ export default function ProfilePage() {
       toast.success("Profile updated successfully!");
       setIsEditing(false);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to update profile"
-      );
+      // Show error modal with detailed information
+      let errorMsg = "Failed to update profile";
+      let errorDetail = "";
+
+      if (err instanceof Error) {
+        errorMsg = err.message;
+
+        // Extract more detailed error info
+        if (err.message.includes("signature")) {
+          errorMsg = "Signature verification failed";
+          errorDetail = "Your wallet signature could not be verified. Please make sure your wallet is unlocked and try again.";
+        } else if (err.message.includes("CSRF")) {
+          errorMsg = "Security token expired";
+          errorDetail = "Your session token has expired. Please refresh the page and try again.";
+        } else if (err.message.includes("Network") || err.message.includes("timeout")) {
+          errorMsg = "Network error";
+          errorDetail = "Could not connect to the server. Please check your internet connection and try again.";
+        } else if (err.message.includes("Unauthorized") || err.message.includes("401")) {
+          errorMsg = "Authentication failed";
+          errorDetail = "Your session has expired. Please disconnect and reconnect your wallet.";
+        } else if (err.message.includes("tradeUrl") || err.message.includes("Trade URL")) {
+          errorMsg = "Invalid Steam Trade URL";
+          errorDetail = "The Steam Trade URL you provided is not valid. Please check the format and try again.";
+        } else if (err.message.includes("username")) {
+          errorMsg = "Invalid username";
+          errorDetail = "The username you provided is not valid or already taken. Please try a different one.";
+        } else if (err.message.includes("email")) {
+          errorMsg = "Invalid email";
+          errorDetail = "The email address you provided is not valid. Please check the format and try again.";
+        } else {
+          errorDetail = err.stack ? err.stack.split('\n').slice(0, 2).join('\n') : err.message;
+        }
+      }
+
+      setErrorMessage(errorMsg);
+      setErrorDetails(errorDetail);
+      setShowErrorModal(true);
+
+      // Also show toast for immediate feedback
+      toast.error("Failed to update profile - see error details");
     } finally {
       setIsSaving(false);
     }
@@ -223,6 +277,17 @@ export default function ProfilePage() {
       tradeUrl: (user as any)?.tradeUrl || "",
     });
     setIsEditing(false);
+  };
+
+  const copyErrorToClipboard = () => {
+    const errorText = `Error: ${errorMessage}\nDetails: ${errorDetails}\nTimestamp: ${new Date().toISOString()}`;
+    navigator.clipboard.writeText(errorText).then(() => {
+      setCopiedError(true);
+      toast.success("Error details copied to clipboard");
+      setTimeout(() => setCopiedError(false), 2000);
+    }).catch(() => {
+      toast.error("Failed to copy error details");
+    });
   };
 
   // Show lock only when there's no wallet connection (adapter + context) and no user
@@ -675,6 +740,104 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Error Modal */}
+        <Dialog open={showErrorModal} onOpenChange={setShowErrorModal}>
+          <DialogContent className="bg-gradient-to-b from-zinc-950 to-zinc-900 border-red-900/50">
+            <DialogHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-full bg-red-500/10">
+                  <AlertCircle className="w-6 h-6 text-red-500" />
+                </div>
+                <DialogTitle className="text-xl text-red-500">
+                  Profile Update Failed
+                </DialogTitle>
+              </div>
+              <DialogDescription className="text-zinc-400 text-left mt-2">
+                We encountered an error while trying to update your profile. Please review the details below:
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-4">
+              {/* Error Message */}
+              <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-red-400 mb-1">Error Message:</p>
+                    <p className="text-sm text-zinc-300">{errorMessage}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={copyErrorToClipboard}
+                    className="h-8 w-8 p-0 hover:bg-red-500/10"
+                    title="Copy error details"
+                  >
+                    {copiedError ? (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-zinc-400" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Error Details (if available) */}
+              {errorDetails && (
+                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                  <p className="text-sm font-semibold text-zinc-400 mb-1">Technical Details:</p>
+                  <p className="text-xs text-zinc-500 font-mono break-all whitespace-pre-wrap">{errorDetails}</p>
+                </div>
+              )}
+
+              {/* Common Solutions */}
+              <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                <p className="text-sm font-semibold text-blue-400 mb-2">💡 Common Solutions:</p>
+                <ul className="text-sm text-zinc-300 space-y-1.5 list-none">
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span>Make sure your wallet is unlocked and connected</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span>Check if your Steam Trade URL is valid (if updating)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span>Try refreshing the page and connecting your wallet again</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span>If the issue persists, contact support with the error details</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowErrorModal(false);
+                  // Reset form to original values
+                  handleCancel();
+                }}
+                className="border-zinc-800 hover:bg-zinc-900"
+              >
+                Cancel Changes
+              </Button>
+              <Button
+                onClick={() => {
+                  setShowErrorModal(false);
+                  // Keep editing mode so user can try again
+                }}
+                className="bg-zinc-100 text-black hover:bg-white"
+              >
+                Try Again
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
