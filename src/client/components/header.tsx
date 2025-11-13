@@ -22,6 +22,9 @@ function HeaderComponent() {
       </button>
 
       <div className="flex items-center gap-3">
+        <span className="text-[#4ade80] text-xs bg-[#4ade80]/10 px-2 py-1 rounded border border-[#4ade80]/30 font-semibold">
+          DEVNET LIVE
+        </span>
         <WalletConnect />
       </div>
     </header>
