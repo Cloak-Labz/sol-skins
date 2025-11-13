@@ -44,6 +44,9 @@ export default function LandingPage() {
                 className="h-8 w-auto"
               />
             </div>
+            <span className="text-[#4ade80] text-xs bg-[#4ade80]/10 px-2 py-1 rounded border border-[#4ade80]/30 font-semibold">
+              DEVNET LIVE
+            </span>
           </div>
           <nav className="hidden md:flex items-center gap-8">
             <Link href="/app-dashboard/packs">
@@ -76,8 +79,11 @@ export default function LandingPage() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.2 }}
-                  className="inline-block mb-4"
+                  className="inline-flex items-center gap-3 mb-4 flex-wrap"
                 >
+                  <span className="text-[#4ade80] font-bold text-sm tracking-wider uppercase bg-[#4ade80]/10 px-4 py-2 rounded-full border border-[#4ade80]/30">
+                    DEVNET LIVE
+                  </span>
                   <span className="text-[#E99500] font-bold text-sm tracking-wider uppercase bg-[#E99500]/10 px-4 py-2 rounded-full border border-[#E99500]/30">
                     85% Instant Buyback Guarantee
                   </span>
