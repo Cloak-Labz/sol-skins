@@ -121,10 +121,20 @@ export class UserService {
       const { sanitizeProfileUpdate } = require('../utils/sanitization');
       const sanitizedUpdates = sanitizeProfileUpdate(filteredUpdates as any);
 
-      await this.userRepository.update(id, {
+      // Log for debugging
+      logger.info('Updating user profile:', {
+        userId: id,
+        filteredUpdates,
+        sanitizedUpdates,
+      });
+
+      // Prepare update object - explicitly include null values for tradeUrl
+      const updateData: any = {
         ...sanitizedUpdates,
         updatedAt: new Date(),
-      });
+      };
+
+      await this.userRepository.update(id, updateData);
 
       const updatedUser = await this.findById(id);
       return updatedUser!;

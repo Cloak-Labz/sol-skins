@@ -33,4 +33,8 @@ authRoutes.get('/sessions', (req, res, next) => {
 authRoutes.get('/profile', walletAuth.requireWallet, authController.getProfile);
 
 // PUT /auth/profile - Update profile (requires wallet)
-authRoutes.put('/profile', walletAuth.requireWalletWithSignature, authController.updateProfile);
+authRoutes.put('/profile', 
+  walletAuth.requireWalletWithSignature, 
+  validateSchema(schemas.updateProfile),
+  authController.updateProfile
+);

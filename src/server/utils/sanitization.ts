@@ -133,9 +133,14 @@ export function sanitizeUrl(input: string | null | undefined, maxLength: number 
 /**
  * Sanitize Steam Trade URL (specific format validation)
  */
-export function sanitizeSteamTradeUrl(input: string | null | undefined): string {
-  if (!input || typeof input !== 'string') {
-    return '';
+export function sanitizeSteamTradeUrl(input: string | null | undefined): string | null {
+  // Allow null/undefined to clear the field
+  if (input === null || input === undefined) {
+    return null;
+  }
+  
+  if (typeof input !== 'string') {
+    return null;
   }
 
   // Remove HTML tags and escape
@@ -144,10 +149,24 @@ export function sanitizeSteamTradeUrl(input: string | null | undefined): string 
   // Trim whitespace
   sanitized = sanitized.trim();
   
+  // Allow empty string to clear the field
+  if (sanitized === '') {
+    return null;
+  }
+  
   // Must be a valid Steam trade URL
-  const steamTradeUrlRegex = /^https?:\/\/steamcommunity\.com\/tradeoffer\/new\/\?partner=\d+(&token=[a-zA-Z0-9_-]+)?$/i;
+  // More flexible regex to accept various Steam trade URL formats
+  // Examples:
+  // - https://steamcommunity.com/tradeoffer/new/?partner=123456789&token=abcdefgh
+  // - https://steamcommunity.com/tradeoffer/new/?partner=123456789
+  // - http://steamcommunity.com/tradeoffer/new/?partner=123456789&token=abc123
+  const steamTradeUrlRegex = /^https?:\/\/steamcommunity\.com\/tradeoffer\/new\/\?partner=\d+(&token=[a-zA-Z0-9_-]+)?(&.*)?$/i;
+  
   if (!steamTradeUrlRegex.test(sanitized)) {
-    return ''; // Invalid Steam trade URL format
+    // Log for debugging - this helps identify if URLs are being rejected incorrectly
+    const { logger } = require('../middlewares/logger');
+    logger.warn('Invalid Steam Trade URL format:', sanitized);
+    return null; // Invalid Steam trade URL format
   }
   
   return sanitized;
@@ -233,11 +252,11 @@ export function sanitizeObject<T extends Record<string, any>>(
 export function sanitizeProfileUpdate(updates: {
   username?: string;
   email?: string;
-  tradeUrl?: string;
+  tradeUrl?: string | null;
 }): {
   username?: string;
   email?: string;
-  tradeUrl?: string;
+  tradeUrl?: string | null;
 } {
   const sanitized: any = {};
   
@@ -255,11 +274,12 @@ export function sanitizeProfileUpdate(updates: {
     }
   }
   
+  // IMPORTANT: Always include tradeUrl if it's in the updates, even if null/empty
+  // This allows clearing the field and ensures updates are applied
   if (updates.tradeUrl !== undefined) {
     const sanitizedTradeUrl = sanitizeSteamTradeUrl(updates.tradeUrl);
-    if (sanitizedTradeUrl) {
-      sanitized.tradeUrl = sanitizedTradeUrl;
-    }
+    // Include the field even if null (to allow clearing) or if it's a valid URL
+    sanitized.tradeUrl = sanitizedTradeUrl;
   }
   
   return sanitized;

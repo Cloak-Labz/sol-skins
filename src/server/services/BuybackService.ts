@@ -73,23 +73,166 @@ export class BuybackService {
     const skinTemplateRepo = AppDataSource.getRepository(SkinTemplate);
 
     const userSkin = await userSkinRepo.findByNftMintAddress(nftMint);
+    
+    // If relations weren't loaded, reload with relations
+    let userSkinWithRelations = userSkin;
+    if (userSkin && (!userSkin.lootBoxType || !userSkin.skinTemplate)) {
+      userSkinWithRelations = await userSkinRepo.findById(userSkin.id);
+    }
+    const finalUserSkin = userSkinWithRelations || userSkin;
 
-    if (!userSkin) {
+    if (!finalUserSkin) {
       const { AppError } = require('../middlewares/errorHandler');
       throw new AppError('NFT not found in user inventory', 404, 'NFT_NOT_FOUND');
     }
 
     // Don't throw error if already burned - just log it
-    if (userSkin.isBurnedBack) {
+    if (finalUserSkin.isBurnedBack) {
       console.warn('NFT has already been bought back, but returning calculation for display purposes');
     }
 
-    const skinTemplate = userSkin.skinTemplate || await skinTemplateRepo.findOne({
-      where: { id: userSkin.skinTemplateId },
-    });
+    let skinTemplate = finalUserSkin.skinTemplate;
+    
+    // Try to load skin template if not already loaded
+    if (!skinTemplate && finalUserSkin.skinTemplateId) {
+      skinTemplate = await skinTemplateRepo.findOne({
+        where: { id: finalUserSkin.skinTemplateId },
+      });
+    }
+
+    // If still not found, try to find by name (fallback) - case insensitive
+    if (!skinTemplate && finalUserSkin.name) {
+      const nameParts = finalUserSkin.name.split(' | ');
+      if (nameParts.length === 2) {
+        const [weapon, skinName] = nameParts.map(s => s.trim());
+        
+        // Try case-insensitive search using query builder
+        skinTemplate = await skinTemplateRepo
+          .createQueryBuilder('st')
+          .where('LOWER(st.weapon) = LOWER(:weapon)', { weapon })
+          .andWhere('LOWER(st.skinName) = LOWER(:skinName)', { skinName })
+          .getOne();
+        
+        // If still not found, try exact match (case sensitive)
+        if (!skinTemplate) {
+          skinTemplate = await skinTemplateRepo.findOne({
+            where: {
+              weapon: weapon,
+              skinName: skinName,
+            },
+          });
+        }
+        
+        // If found, update the UserSkin with the skinTemplateId
+        if (skinTemplate && finalUserSkin.id) {
+          await userSkinRepo.update(finalUserSkin.id, { skinTemplateId: skinTemplate.id });
+        }
+      }
+    }
+    
+    // Last resort: try to create SkinTemplate from UserSkin data if we have enough info
+    if (!skinTemplate && finalUserSkin.name && finalUserSkin.currentPriceUsd) {
+      const nameParts = finalUserSkin.name.split(' | ');
+      if (nameParts.length === 2) {
+        const [weapon, skinName] = nameParts.map(s => s.trim());
+        const { SkinRarity, SkinCondition } = await import('../entities/SkinTemplate');
+        
+        // Try to get rarity from BoxSkin or default to Common
+        let rarity = SkinRarity.COMMON;
+        let boxSkin = null;
+        
+        // Try to find BoxSkin - lootBoxTypeId might be the boxId
+        if (finalUserSkin.lootBoxTypeId) {
+          const { BoxSkin } = await import('../entities/BoxSkin');
+          const boxSkinRepo = AppDataSource.getRepository(BoxSkin);
+          
+          // Try to find BoxSkin by matching weapon and name (case-insensitive)
+          boxSkin = await boxSkinRepo
+            .createQueryBuilder('bs')
+            .where('bs.boxId = :boxId', { boxId: finalUserSkin.lootBoxTypeId })
+            .andWhere('LOWER(bs.weapon) = LOWER(:weapon)', { weapon })
+            .andWhere('LOWER(bs.name) = LOWER(:name)', { name: finalUserSkin.name })
+            .getOne();
+          
+          // If not found, try exact match
+          if (!boxSkin) {
+            boxSkin = await boxSkinRepo.findOne({
+              where: {
+                boxId: finalUserSkin.lootBoxTypeId,
+                weapon: weapon,
+                name: finalUserSkin.name,
+              },
+            });
+          }
+          
+          if (boxSkin) {
+            // Map BoxSkin rarity to SkinTemplate rarity
+            const rarityMap: Record<string, any> = {
+              'common': SkinRarity.COMMON,
+              'uncommon': SkinRarity.UNCOMMON,
+              'rare': SkinRarity.RARE,
+              'epic': SkinRarity.EPIC,
+              'legendary': SkinRarity.LEGENDARY,
+            };
+            rarity = rarityMap[boxSkin.rarity?.toLowerCase() || 'common'] || SkinRarity.COMMON;
+          }
+        }
+        
+        // Create SkinTemplate if it doesn't exist
+        try {
+          skinTemplate = skinTemplateRepo.create({
+            weapon: weapon,
+            skinName: skinName,
+            rarity: rarity,
+            condition: boxSkin?.condition ? (boxSkin.condition as any) : SkinCondition.FACTORY_NEW,
+            basePriceUsd: Number(finalUserSkin.currentPriceUsd) || (boxSkin ? Number(boxSkin.basePriceUsd) : 0),
+            imageUrl: finalUserSkin.imageUrl || boxSkin?.imageUrl,
+            isActive: true,
+          });
+          skinTemplate = await skinTemplateRepo.save(skinTemplate);
+          
+          // Update UserSkin with the new skinTemplateId
+          if (finalUserSkin.id) {
+            await userSkinRepo.update(finalUserSkin.id, { skinTemplateId: skinTemplate.id });
+          }
+          
+          const { logger } = require('../middlewares/logger');
+          logger.info('Created missing SkinTemplate from UserSkin', {
+            skinTemplateId: skinTemplate.id,
+            weapon,
+            skinName,
+            userSkinId: finalUserSkin.id,
+            fromBoxSkin: !!boxSkin,
+          });
+        } catch (createError: any) {
+          // If creation fails (e.g., duplicate), try to find it again
+          const { logger } = require('../middlewares/logger');
+          logger.warn('Failed to create SkinTemplate, trying to find existing one', {
+            error: createError?.message,
+            weapon,
+            skinName,
+          });
+          
+          // Try one more time with case-insensitive search
+          skinTemplate = await skinTemplateRepo
+            .createQueryBuilder('st')
+            .where('LOWER(st.weapon) = LOWER(:weapon)', { weapon })
+            .andWhere('LOWER(st.skinName) = LOWER(:skinName)', { skinName })
+            .getOne();
+        }
+      }
+    }
 
     if (!skinTemplate) {
-      throw new Error('Skin template not found');
+      const { logger } = require('../middlewares/logger');
+      logger.error('Skin template not found for UserSkin', {
+        userSkinId: finalUserSkin.id,
+        nftMint: nftMint,
+        skinName: finalUserSkin.name,
+        skinTemplateId: finalUserSkin.skinTemplateId,
+        lootBoxTypeId: finalUserSkin.lootBoxTypeId,
+      });
+      throw new Error(`Skin template not found for skin: ${finalUserSkin.name || 'Unknown'} (NFT: ${nftMint})`);
     }
 
     // SECURITY: Use safe math to prevent integer overflow
@@ -98,7 +241,7 @@ export class BuybackService {
     
     // Determine the most accurate USD price we have for this skin
     const priceCandidates = [
-      userSkin.currentPriceUsd != null ? Number(userSkin.currentPriceUsd) : null,
+      finalUserSkin.currentPriceUsd != null ? Number(finalUserSkin.currentPriceUsd) : null,
       skinTemplate?.basePriceUsd != null ? Number(skinTemplate.basePriceUsd) : null,
     ].filter((value): value is number => value != null && Number.isFinite(value) && value > 0);
 
@@ -264,18 +407,63 @@ export class BuybackService {
     const skinTemplateRepo = AppDataSource.getRepository(SkinTemplate);
 
     const userSkin = await userSkinRepo.findByNftMintAddress(nftMint);
+    
+    // If relations weren't loaded, reload with relations
+    let userSkinWithRelations = userSkin;
+    if (userSkin && (!userSkin.lootBoxType || !userSkin.skinTemplate)) {
+      userSkinWithRelations = await userSkinRepo.findById(userSkin.id);
+    }
+    const finalUserSkin = userSkinWithRelations || userSkin;
 
-    if (!userSkin) {
+    if (!finalUserSkin) {
       throw new Error('NFT not found in database');
     }
 
     // Calculate buyback amount directly (avoid circular dependency)
-    const skinTemplate = userSkin.skinTemplate || await skinTemplateRepo.findOne({
-      where: { id: userSkin.skinTemplateId },
-    });
+    let skinTemplate = finalUserSkin.skinTemplate;
+    
+    // Try to load skin template if not already loaded
+    if (!skinTemplate && finalUserSkin.skinTemplateId) {
+      skinTemplate = await skinTemplateRepo.findOne({
+        where: { id: finalUserSkin.skinTemplateId },
+      });
+    }
+
+    // If still not found, try to find by name (fallback) - case insensitive
+    if (!skinTemplate && finalUserSkin.name) {
+      const nameParts = finalUserSkin.name.split(' | ');
+      if (nameParts.length === 2) {
+        const [weapon, skinName] = nameParts.map(s => s.trim());
+        
+        // Try case-insensitive search
+        skinTemplate = await skinTemplateRepo
+          .createQueryBuilder('st')
+          .where('LOWER(st.weapon) = LOWER(:weapon)', { weapon })
+          .andWhere('LOWER(st.skinName) = LOWER(:skinName)', { skinName })
+          .getOne();
+        
+        // If not found, try exact match
+        if (!skinTemplate) {
+          skinTemplate = await skinTemplateRepo.findOne({
+            where: {
+              weapon: weapon,
+              skinName: skinName,
+            },
+          });
+        }
+      }
+    }
 
     if (!skinTemplate) {
-      throw new Error('Skin template not found');
+      const { logger } = require('../middlewares/logger');
+      logger.error('Skin template not found for UserSkin (confirmBuyback)', {
+        userSkinId: finalUserSkin.id,
+        nftMint: finalUserSkin.nftMintAddress,
+        skinName: finalUserSkin.name,
+        skinTemplateId: finalUserSkin.skinTemplateId,
+        lootBoxTypeId: finalUserSkin.lootBoxTypeId,
+      });
+      throw new Error(`Skin template not found for skin: ${finalUserSkin.name || 'Unknown'}`);
     }
 
     // SECURITY: Use safe math to prevent integer overflow
@@ -283,7 +471,7 @@ export class BuybackService {
     const { priceService } = require('./PriceService');
     
     const priceCandidates = [
-      userSkin.currentPriceUsd != null ? Number(userSkin.currentPriceUsd) : null,
+      finalUserSkin.currentPriceUsd != null ? Number(finalUserSkin.currentPriceUsd) : null,
       skinTemplate?.basePriceUsd != null ? Number(skinTemplate.basePriceUsd) : null,
     ].filter((value): value is number => value != null && Number.isFinite(value) && value > 0);
 
@@ -302,7 +490,7 @@ export class BuybackService {
     const buybackAmountNum = toNumber(buybackAmount);
     
     // Mark as sold (removes from inventory) and set burn-specific fields
-    await userSkinRepo.update(userSkin.id, {
+    await userSkinRepo.update(finalUserSkin.id, {
       soldViaBuyback: true,
       isInInventory: false,
       buybackAmount: buybackAmountNum,

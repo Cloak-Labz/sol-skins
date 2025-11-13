@@ -254,21 +254,104 @@ export class PackOpeningService {
         const nameParts = skinData.name.split(' | ');
         if (nameParts.length === 2) {
           const [weapon, skinName] = nameParts.map(s => s.trim());
-          const { SkinTemplate } = await import('../entities/SkinTemplate');
+          const { SkinTemplate, SkinRarity, SkinCondition } = await import('../entities/SkinTemplate');
           const skinTemplateRepo = AppDataSource.getRepository(SkinTemplate);
-          const skinTemplate = await skinTemplateRepo.findOne({
-            where: {
-              weapon: weapon,
-              skinName: skinName,
-            },
-          });
+          
+          // Try case-insensitive search first
+          let skinTemplate = await skinTemplateRepo
+            .createQueryBuilder('st')
+            .where('LOWER(st.weapon) = LOWER(:weapon)', { weapon })
+            .andWhere('LOWER(st.skinName) = LOWER(:skinName)', { skinName })
+            .getOne();
+          
+          // If not found, try exact match
+          if (!skinTemplate) {
+            skinTemplate = await skinTemplateRepo.findOne({
+              where: {
+                weapon: weapon,
+                skinName: skinName,
+              },
+            });
+          }
+          
+          // If still not found, try to find from BoxSkin and create SkinTemplate
+          if (!skinTemplate) {
+            const { BoxSkin } = await import('../entities/BoxSkin');
+            const boxSkinRepo = AppDataSource.getRepository(BoxSkin);
+            
+            // Try case-insensitive search first
+            let boxSkin = await boxSkinRepo
+              .createQueryBuilder('bs')
+              .where('bs.boxId = :boxId', { boxId: box.id })
+              .andWhere('LOWER(bs.weapon) = LOWER(:weapon)', { weapon })
+              .andWhere('LOWER(bs.name) = LOWER(:name)', { name: skinData.name })
+              .getOne();
+            
+            // If not found, try exact match
+            if (!boxSkin) {
+              boxSkin = await boxSkinRepo.findOne({
+                where: {
+                  boxId: box.id,
+                  weapon: weapon,
+                  name: skinData.name,
+                },
+              });
+            }
+            
+            if (boxSkin) {
+              // Map BoxSkin rarity to SkinTemplate rarity
+              const rarityMap: Record<string, any> = {
+                'common': SkinRarity.COMMON,
+                'uncommon': SkinRarity.UNCOMMON,
+                'rare': SkinRarity.RARE,
+                'epic': SkinRarity.EPIC,
+                'legendary': SkinRarity.LEGENDARY,
+              };
+              
+              try {
+                skinTemplate = skinTemplateRepo.create({
+                  weapon: weapon,
+                  skinName: skinName,
+                  rarity: rarityMap[boxSkin.rarity?.toLowerCase() || 'common'] || SkinRarity.COMMON,
+                  condition: boxSkin.condition ? (boxSkin.condition as any) : SkinCondition.FACTORY_NEW,
+                  basePriceUsd: Number(boxSkin.basePriceUsd || skinData.basePriceUsd || 0),
+                  imageUrl: boxSkin.imageUrl,
+                  isActive: true,
+                });
+                skinTemplate = await skinTemplateRepo.save(skinTemplate);
+                
+                const { logger } = require('../middlewares/logger');
+                logger.info('Created missing SkinTemplate from BoxSkin', {
+                  skinTemplateId: skinTemplate.id,
+                  weapon,
+                  skinName,
+                  boxId: box.id,
+                });
+              } catch (createError: any) {
+                // If creation fails (e.g., duplicate), try to find it again
+                const { logger } = require('../middlewares/logger');
+                logger.warn('Failed to create SkinTemplate, trying to find existing one', {
+                  error: createError?.message,
+                  weapon,
+                  skinName,
+                });
+                
+                skinTemplate = await skinTemplateRepo
+                  .createQueryBuilder('st')
+                  .where('LOWER(st.weapon) = LOWER(:weapon)', { weapon })
+                  .andWhere('LOWER(st.skinName) = LOWER(:skinName)', { skinName })
+                  .getOne();
+              }
+            }
+          }
+          
           if (skinTemplate) {
             skinTemplateId = skinTemplate.id;
           }
         }
       }
 
-      // Create user skin (only if it doesn't already exist)
+      // Create or update user skin
       let savedUserSkin = existingUserSkin;
       if (!existingUserSkin) {
         savedUserSkin = await this.userSkinRepository.create({
@@ -284,6 +367,24 @@ export class PackOpeningService {
           symbol: 'SKIN',
           skinTemplateId: skinTemplateId,
         });
+      } else {
+        // Update existing user skin if skinTemplateId is missing or if we have new data
+        const needsUpdate = !existingUserSkin.skinTemplateId && skinTemplateId;
+        if (needsUpdate) {
+          existingUserSkin.skinTemplateId = skinTemplateId;
+          if (sanitizedSkinName && !existingUserSkin.name) {
+            existingUserSkin.name = sanitizedSkinName;
+          }
+          if (resolvedImageUrl && !existingUserSkin.imageUrl) {
+            existingUserSkin.imageUrl = resolvedImageUrl;
+          }
+          if (realValue && !existingUserSkin.currentPriceUsd) {
+            existingUserSkin.currentPriceUsd = realValue;
+            existingUserSkin.lastPriceUpdate = new Date();
+          }
+          await this.userSkinRepository.update(existingUserSkin.id, existingUserSkin);
+          savedUserSkin = existingUserSkin;
+        }
       }
 
       // Find or create corresponding LootBoxType for transaction foreign key

@@ -89,15 +89,18 @@ export const schemas = {
       .min(3)
       .max(50)
       .pattern(/^[a-zA-Z0-9_\- ]+$/)
-      .optional(),
+      .optional()
+      .allow(null, ''),
     email: Joi.string()
       .email()
       .max(255)
-      .optional(),
+      .optional()
+      .allow(null, ''),
     tradeUrl: Joi.string()
       .uri()
       .pattern(/^https?:\/\/steamcommunity\.com\/tradeoffer\/new\/\?partner=\d+/i)
-      .optional(),
+      .optional()
+      .allow(null, ''),
   }),
 
   // Pagination schema

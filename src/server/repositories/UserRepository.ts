@@ -47,7 +47,15 @@ export class UserRepository {
   }
 
   async update(id: string, userData: Partial<User>): Promise<void> {
-    await this.repository.update(id, userData);
+    // TypeORM's update method handles null values correctly, but we need to ensure
+    // that undefined values are not included (they would be ignored)
+    const cleanData: any = {};
+    for (const key in userData) {
+      if (userData.hasOwnProperty(key) && userData[key as keyof User] !== undefined) {
+        cleanData[key] = userData[key as keyof User];
+      }
+    }
+    await this.repository.update(id, cleanData);
   }
 
   async delete(id: string): Promise<void> {
