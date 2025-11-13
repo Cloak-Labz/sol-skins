@@ -52,6 +52,10 @@ class AuthService {
     updates: UpdateProfileRequest,
     wallet?: any // Wallet adapter instance for signing
   ): Promise<{ message: string }> {
+    // IMPORTANT: Refresh CSRF token before updating profile to prevent expiration errors
+    // This ensures the token is fresh even if the user has been on the page for a while
+    await apiClient.refreshCSRFToken();
+    
     // For profile updates, we need wallet signature
     if (wallet && wallet.signMessage) {
       const walletAddress = apiClient.getWalletAddress();

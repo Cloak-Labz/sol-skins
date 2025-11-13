@@ -50,6 +50,7 @@ class ApiClient {
 
   /**
    * Check if CSRF token is expiring soon and needs renewal
+   * More aggressive renewal to prevent expiration errors
    */
   private isCSRFTokenExpiringSoon(): boolean {
     if (!this.csrfToken || !this.csrfTokenTimestamp) {
@@ -59,13 +60,17 @@ class ApiClient {
     const elapsed = Date.now() - this.csrfTokenTimestamp;
     const remaining = this.CSRF_TOKEN_TTL_MS - elapsed;
     
-    // Renew if less than threshold time remaining
-    // Also renew if token is very old (possible server restart)
-    const MAX_TOKEN_AGE_MS = 5 * 60 * 1000; // 5 minutes - if token is older, server may have restarted
+    // More aggressive renewal strategy:
+    // 1. Renew if less than threshold time remaining (5 minutes)
+    // 2. Renew if token is older than 10 minutes (possible server restart or long session)
+    // 3. Always err on the side of renewal to prevent expiration errors
+    const MAX_TOKEN_AGE_MS = 10 * 60 * 1000; // 10 minutes - if token is older, renew proactively
+    
     if (elapsed > MAX_TOKEN_AGE_MS) {
-      return true; // Token is too old, might be from before server restart
+      return true; // Token is getting old, renew proactively
     }
     
+    // Renew if less than 5 minutes remaining (more aggressive than before)
     return remaining < this.CSRF_TOKEN_RENEWAL_THRESHOLD_MS;
   }
 
@@ -192,25 +197,39 @@ class ApiClient {
                           !url.includes('/csrf-token'); // Exclude CSRF endpoint itself
         
         if (needsCSRF) {
-          // Ensure we have a valid, non-expiring token before making the request
-          // Always fetch a fresh token if we don't have one or if it's expiring soon
-          // This prevents issues when the server restarts (tokens are stored in memory)
-          if (!this.csrfToken || typeof this.csrfToken !== 'string' || this.csrfToken.length < 32 || this.isCSRFTokenExpiringSoon()) {
+          // ALWAYS ensure we have a fresh, valid CSRF token before making the request
+          // This prevents expiration errors and improves UX significantly
+          // Strategy: Always refresh if token is missing, invalid, or expiring soon (within 5 minutes)
+          const shouldRefresh = 
+            !this.csrfToken || 
+            typeof this.csrfToken !== 'string' || 
+            this.csrfToken.length < 32 || 
+            this.isCSRFTokenExpiringSoon();
+          
+          if (shouldRefresh) {
             try {
-              // Clear existing token if it's invalid or expiring
-              if (this.isCSRFTokenExpiringSoon()) {
-                // Proactively refresh token before it expires or if server may have restarted
-                this.csrfToken = null;
-                this.csrfTokenTimestamp = null;
-              }
+              // Clear existing token to force a fresh fetch
+              this.csrfToken = null;
+              this.csrfTokenTimestamp = null;
+              this.csrfTokenPromise = null; // Clear any pending fetch
               
+              // Fetch a fresh token - this ensures we always have a valid token
               const fetchedToken = await this.fetchCSRFToken();
               if (!fetchedToken) {
-                throw new Error('CSRF token fetch failed');
+                throw new Error('CSRF token fetch failed - unable to obtain token');
               }
+              
+              // Verify token is valid before using it
+              if (typeof fetchedToken !== 'string' || fetchedToken.length < 32) {
+                throw new Error('CSRF token validation failed - invalid token format');
+              }
+              
               this.csrfToken = fetchedToken;
             } catch (error: any) {
-              throw error;
+              // If we can't get a token, the request will fail anyway
+              // But we should log this for debugging
+              console.error('Failed to fetch CSRF token before request:', error);
+              throw new Error(`CSRF token required but could not be obtained: ${error.message}`);
             }
           }
           
@@ -282,10 +301,17 @@ class ApiClient {
       async (error) => {
         // silent response errors (handled by caller)
         
-        // Handle CSRF token errors - refresh token and retry once
+        // Handle CSRF token errors - refresh token and retry automatically
+        // This provides a seamless experience even if token expires between check and request
         if (error.response?.status === 403 && 
             (error.response?.data?.error?.code === 'CSRF_TOKEN_MISSING' || 
-             error.response?.data?.error?.code === 'CSRF_TOKEN_INVALID')) {
+             error.response?.data?.error?.code === 'CSRF_TOKEN_INVALID' ||
+             error.response?.data?.error?.message?.toLowerCase().includes('csrf'))) {
+
+          console.warn('CSRF token error detected, refreshing and retrying...', {
+            code: error.response?.data?.error?.code,
+            message: error.response?.data?.error?.message,
+          });
 
           // Clear invalid token and fetch new one
           this.csrfToken = null;
@@ -296,6 +322,12 @@ class ApiClient {
           try {
             const token = await this.fetchCSRFToken();
             if (token && error.config) {
+              // Validate token before using
+              if (typeof token !== 'string' || token.length < 32) {
+                console.error('Invalid CSRF token format after refresh');
+                return Promise.reject(error);
+              }
+              
               // Create a new config object to ensure headers are properly set
               // Also need to recreate data if it was modified
               const retryConfig = {
@@ -309,14 +341,17 @@ class ApiClient {
                 data: error.config.data,
               };
               
+              console.log('Retrying request with fresh CSRF token');
               // Retry the request with new token
               return this.client.request(retryConfig);
             } else {
               // If we can't get a token, reject with the original error
+              console.error('Failed to fetch CSRF token for retry');
               return Promise.reject(error);
             }
           } catch (fetchError: any) {
             // If we can't fetch a new token, reject with the original error
+            console.error('Error fetching CSRF token for retry:', fetchError);
             return Promise.reject(error);
           }
         }
