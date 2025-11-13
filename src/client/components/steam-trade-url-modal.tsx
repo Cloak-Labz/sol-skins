@@ -38,6 +38,7 @@ export function SteamTradeUrlModal({
   const [tradeUrl, setTradeUrl] = useState(currentTradeUrl || "");
   const [isSaving, setIsSaving] = useState(false);
   const [copiedStep, setCopiedStep] = useState<number | null>(null);
+  const [validationError, setValidationError] = useState<string>("");
 
   const copyToClipboard = (text: string, step: number) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -47,15 +48,56 @@ export function SteamTradeUrlModal({
     });
   };
 
+  const validateTradeUrl = (url: string): string => {
+    if (!url.trim()) {
+      return "";
+    }
+
+    if (!url.includes("steamcommunity.com/tradeoffer/new")) {
+      return "Invalid format - URL must contain 'steamcommunity.com/tradeoffer/new'";
+    }
+
+    if (!url.includes("partner=") || !url.includes("token=")) {
+      return "Missing required parameters - URL must include 'partner=' and 'token='";
+    }
+
+    try {
+      const urlObj = new URL(url);
+      const partner = urlObj.searchParams.get("partner");
+      const token = urlObj.searchParams.get("token");
+
+      if (!partner || !token) {
+        return "Invalid parameters - 'partner' and 'token' are required";
+      }
+
+      if (!/^\d+$/.test(partner)) {
+        return "Invalid partner ID - must be numeric";
+      }
+
+      if (token.length < 8) {
+        return "Invalid token - must be at least 8 characters";
+      }
+    } catch {
+      return "Invalid URL format";
+    }
+
+    return "";
+  };
+
+  const handleTradeUrlChange = (newUrl: string) => {
+    setTradeUrl(newUrl);
+    setValidationError(validateTradeUrl(newUrl));
+  };
+
   const handleSave = async () => {
     if (!tradeUrl.trim()) {
-      toast.error("Please enter your Steam Trade URL");
+      setValidationError("Please enter your Steam Trade URL");
       return;
     }
 
-    // Basic validation
-    if (!tradeUrl.includes("steamcommunity.com/tradeoffer/new")) {
-      toast.error("Invalid Steam Trade URL format");
+    const error = validateTradeUrl(tradeUrl);
+    if (error) {
+      setValidationError(error);
       return;
     }
 
@@ -204,10 +246,20 @@ export function SteamTradeUrlModal({
                       <Input
                         id="tradeUrl"
                         value={tradeUrl}
-                        onChange={(e) => setTradeUrl(e.target.value)}
+                        onChange={(e) => handleTradeUrlChange(e.target.value)}
                         placeholder="https://steamcommunity.com/tradeoffer/new/?partner=..."
-                        className="bg-zinc-950 border-zinc-700 text-white font-mono text-sm"
+                        className={`bg-zinc-950 text-white font-mono text-sm ${
+                          validationError
+                            ? "border-red-500 focus-visible:ring-red-500"
+                            : "border-zinc-700"
+                        }`}
                       />
+                      {validationError && (
+                        <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                          <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                          <p className="text-sm text-red-400">{validationError}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -240,19 +292,11 @@ export function SteamTradeUrlModal({
         </div>
 
         <DialogFooter className="gap-2">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSaving}
-            className="border-zinc-700 hover:bg-zinc-800"
-          >
-            Cancel
-          </Button>
           {onSave && (
             <Button
               onClick={handleSave}
-              disabled={isSaving || !tradeUrl.trim()}
-              className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold"
+              disabled={isSaving || !tradeUrl.trim() || !!validationError}
+              className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold disabled:opacity-50 disabled:cursor-not-allowed w-full"
             >
               {isSaving ? (
                 <>
@@ -265,8 +309,8 @@ export function SteamTradeUrlModal({
             </Button>
           )}
           {!onSave && (
-            <Link href="/app-dashboard/profile">
-              <Button className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold">
+            <Link href="/app-dashboard/profile" className="w-full">
+              <Button className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold w-full">
                 Go to Profile to Set Trade URL
               </Button>
             </Link>

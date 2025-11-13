@@ -70,6 +70,9 @@ export default function ProfilePage() {
   const [errorDetails, setErrorDetails] = useState("");
   const [copiedError, setCopiedError] = useState(false);
 
+  // Trade URL validation state
+  const [tradeUrlValidationError, setTradeUrlValidationError] = useState<string>("");
+
   // Dashboard data state
   const [inventorySummary, setInventorySummary] = useState<InventorySummary | null>(null);
   const [recentTransactions, setRecentTransactions] = useState<ActivityItem[]>([]);
@@ -201,6 +204,47 @@ export default function ProfilePage() {
     connectWallet,
   ]);
 
+  const validateTradeUrl = (url: string): string => {
+    if (!url.trim()) {
+      return "";
+    }
+
+    if (!url.includes("steamcommunity.com/tradeoffer/new")) {
+      return "Invalid format - URL must contain 'steamcommunity.com/tradeoffer/new'";
+    }
+
+    if (!url.includes("partner=") || !url.includes("token=")) {
+      return "Missing required parameters - URL must include 'partner=' and 'token='";
+    }
+
+    try {
+      const urlObj = new URL(url);
+      const partner = urlObj.searchParams.get("partner");
+      const token = urlObj.searchParams.get("token");
+
+      if (!partner || !token) {
+        return "Invalid parameters - 'partner' and 'token' are required";
+      }
+
+      if (!/^\d+$/.test(partner)) {
+        return "Invalid partner ID - must be numeric";
+      }
+
+      if (token.length < 8) {
+        return "Invalid token - must be at least 8 characters";
+      }
+    } catch {
+      return "Invalid URL format";
+    }
+
+    return "";
+  };
+
+  const handleTradeUrlChange = (newUrl: string) => {
+    setFormData({ ...formData, tradeUrl: newUrl });
+    setTradeUrlValidationError(validateTradeUrl(newUrl));
+  };
+
   const handleSave = async () => {
     try {
       setIsSaving(true);
@@ -209,7 +253,16 @@ export default function ProfilePage() {
       if (formData.username !== user?.username)
         updates.username = formData.username;
       if (formData.email !== user?.email) updates.email = formData.email;
-      if ((formData as any).tradeUrl !== (user as any)?.tradeUrl) (updates as any).tradeUrl = (formData as any).tradeUrl;
+      if ((formData as any).tradeUrl !== (user as any)?.tradeUrl) {
+        // Validate trade URL before saving
+        const tradeUrlError = validateTradeUrl((formData as any).tradeUrl);
+        if (tradeUrlError) {
+          setTradeUrlValidationError(tradeUrlError);
+          setIsSaving(false);
+          return;
+        }
+        (updates as any).tradeUrl = (formData as any).tradeUrl;
+      }
 
       if (Object.keys(updates).length === 0) {
         toast.error("No changes to save");
@@ -276,6 +329,7 @@ export default function ProfilePage() {
       email: user?.email || "",
       tradeUrl: (user as any)?.tradeUrl || "",
     });
+    setTradeUrlValidationError("");
     setIsEditing(false);
   };
 
@@ -539,13 +593,21 @@ export default function ProfilePage() {
                     <Input
                       id="tradeUrl"
                       value={(formData as any).tradeUrl}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tradeUrl: e.target.value } as any)
-                      }
+                      onChange={(e) => handleTradeUrlChange(e.target.value)}
                       disabled={!isEditing}
                       placeholder="https://steamcommunity.com/tradeoffer/new/?partner=...&token=..."
-                      className="bg-zinc-950 border-zinc-800"
+                      className={`bg-zinc-950 ${
+                        tradeUrlValidationError && isEditing
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : "border-zinc-800"
+                      }`}
                     />
+                    {tradeUrlValidationError && isEditing && (
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                        <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-red-400">{tradeUrlValidationError}</p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -572,8 +634,8 @@ export default function ProfilePage() {
                       <>
                         <Button
                           onClick={handleSave}
-                          disabled={isSaving}
-                          className="bg-zinc-100 text-black hover:bg-white flex-1"
+                          disabled={isSaving || !!tradeUrlValidationError}
+                          className="bg-zinc-100 text-black hover:bg-white flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isSaving ? (
                             <>
@@ -743,13 +805,13 @@ export default function ProfilePage() {
 
         {/* Error Modal */}
         <Dialog open={showErrorModal} onOpenChange={setShowErrorModal}>
-          <DialogContent className="bg-gradient-to-b from-zinc-950 to-zinc-900 border-red-900/50">
+          <DialogContent className="bg-gradient-to-b from-zinc-950 to-zinc-900 border-[#E99500]/50">
             <DialogHeader>
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-full bg-red-500/10">
-                  <AlertCircle className="w-6 h-6 text-red-500" />
+                <div className="p-2 rounded-full bg-[#E99500]/10">
+                  <AlertCircle className="w-6 h-6 text-[#E99500]" />
                 </div>
-                <DialogTitle className="text-xl text-red-500">
+                <DialogTitle className="text-xl text-[#E99500]">
                   Profile Update Failed
                 </DialogTitle>
               </div>
@@ -760,17 +822,17 @@ export default function ProfilePage() {
 
             <div className="space-y-4 my-4">
               {/* Error Message */}
-              <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
+              <div className="p-4 rounded-lg bg-[#E99500]/5 border border-[#E99500]/20">
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-red-400 mb-1">Error Message:</p>
+                    <p className="text-sm font-semibold text-[#E99500] mb-1">Error Message:</p>
                     <p className="text-sm text-zinc-300">{errorMessage}</p>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={copyErrorToClipboard}
-                    className="h-8 w-8 p-0 hover:bg-red-500/10"
+                    className="h-8 w-8 p-0 hover:bg-[#E99500]/10"
                     title="Copy error details"
                   >
                     {copiedError ? (
@@ -791,23 +853,23 @@ export default function ProfilePage() {
               )}
 
               {/* Common Solutions */}
-              <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
-                <p className="text-sm font-semibold text-blue-400 mb-2">💡 Common Solutions:</p>
+              <div className="p-4 rounded-lg bg-[#E99500]/5 border border-[#E99500]/20">
+                <p className="text-sm font-semibold text-[#E99500] mb-2">Common Solutions:</p>
                 <ul className="text-sm text-zinc-300 space-y-1.5 list-none">
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span className="text-[#E99500] mt-0.5">•</span>
                     <span>Make sure your wallet is unlocked and connected</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span className="text-[#E99500] mt-0.5">•</span>
                     <span>Check if your Steam Trade URL is valid (if updating)</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span className="text-[#E99500] mt-0.5">•</span>
                     <span>Try refreshing the page and connecting your wallet again</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-blue-400 mt-0.5">•</span>
+                    <span className="text-[#E99500] mt-0.5">•</span>
                     <span>If the issue persists, contact support with the error details</span>
                   </li>
                 </ul>
@@ -816,22 +878,11 @@ export default function ProfilePage() {
 
             <DialogFooter className="gap-2">
               <Button
-                variant="outline"
-                onClick={() => {
-                  setShowErrorModal(false);
-                  // Reset form to original values
-                  handleCancel();
-                }}
-                className="border-zinc-800 hover:bg-zinc-900"
-              >
-                Cancel Changes
-              </Button>
-              <Button
                 onClick={() => {
                   setShowErrorModal(false);
                   // Keep editing mode so user can try again
                 }}
-                className="bg-zinc-100 text-black hover:bg-white"
+                className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold w-full"
               >
                 Try Again
               </Button>

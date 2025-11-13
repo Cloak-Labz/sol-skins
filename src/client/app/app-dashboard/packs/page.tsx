@@ -1769,8 +1769,9 @@ export default function PacksPage() {
               { tradeUrl: newTradeUrl },
               walletCtx.signMessage ? { signMessage: walletCtx.signMessage } : null
             );
+            // Refresh user data to get updated trade URL
+            await refreshUser();
             setUserTradeUrl(newTradeUrl);
-            toast.success("Steam Trade URL saved successfully!");
           } catch (error) {
             throw error;
           }
