@@ -307,14 +307,53 @@ export default function InventoryPage() {
     );
   }
 
-  // Show loading state
+  // Show loading state with skeleton
   if (loading) {
     return (
       <div className="min-h-screen bg-[#0a0a0a] py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-center">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin text-zinc-200 mx-auto mb-4" />
-            <p className="text-zinc-200">Loading inventory...</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header Skeleton */}
+          <div className="mb-8">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="space-y-2">
+                <div className="h-10 bg-zinc-800 rounded w-48 animate-pulse" />
+                <div className="h-6 bg-zinc-800 rounded w-64 animate-pulse" />
+              </div>
+              <div className="text-right space-y-2">
+                <div className="h-4 bg-zinc-800 rounded w-40 animate-pulse" />
+                <div className="h-8 bg-zinc-800 rounded w-32 animate-pulse" />
+                <div className="h-4 bg-zinc-800 rounded w-24 animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* Filters Skeleton */}
+          <div className="flex flex-col md:flex-row gap-4 mb-8">
+            <div className="flex-1 h-10 bg-zinc-800 rounded animate-pulse" />
+            <div className="w-full md:w-48 h-10 bg-zinc-800 rounded animate-pulse" />
+            <div className="w-full md:w-48 h-10 bg-zinc-800 rounded animate-pulse" />
+          </div>
+
+          {/* Inventory Grid Skeleton */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-8">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6 animate-pulse">
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <div className="h-6 bg-zinc-800 rounded w-32" />
+                    <div className="h-6 bg-zinc-800 rounded w-24" />
+                  </div>
+                  <div className="h-40 bg-zinc-800 rounded flex items-center justify-center">
+                    <div className="w-20 h-20 bg-zinc-700 rounded" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-zinc-800 rounded w-full" />
+                    <div className="h-4 bg-zinc-800 rounded w-3/4" />
+                  </div>
+                  <div className="h-12 bg-zinc-800 rounded w-full" />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

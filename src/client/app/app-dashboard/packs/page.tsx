@@ -1113,6 +1113,7 @@ export default function PacksPage() {
           </div>
 
           {/* Odds Section */}
+          {!loading && (
           <div className="grid lg:grid-cols-3 gap-6 items-stretch">
             {/* Left: Pack Preview + Compact Packs (LG+) */}
             <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 flex flex-col">
@@ -1348,14 +1349,71 @@ export default function PacksPage() {
               </div>
             </div>
           </div>
+          )}
 
-          {/* Pack Selection */}
-          {loading ? (
-            <div className="text-center py-12">
-              <Loader2 className="w-12 h-12 animate-spin text-[#E99500] mx-auto mb-4" />
-              <p className="text-gray-400">Loading packs...</p>
+          {/* Pack Selection Skeleton */}
+          {loading && (
+            <div className="grid lg:grid-cols-3 gap-6 items-stretch">
+              {/* Left: Pack Preview Skeleton */}
+              <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 flex flex-col">
+                <div className="relative w-full h-[260px] md:h-[320px] lg:h-[360px] bg-zinc-900 animate-pulse" />
+                <div className="hidden lg:block border-t border-zinc-800 p-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    {[1, 2, 3, 4].map((i) => (
+                      <div
+                        key={i}
+                        className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 animate-pulse"
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 rounded bg-zinc-800" />
+                          <div className="flex-1 space-y-2">
+                            <div className="h-3 bg-zinc-800 rounded w-3/4" />
+                            <div className="h-2 bg-zinc-800 rounded w-1/2" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Right: Details and Odds Skeleton */}
+              <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                  <div className="flex-1 space-y-2">
+                    <div className="h-8 bg-zinc-800 rounded w-1/3 animate-pulse" />
+                    <div className="h-4 bg-zinc-800 rounded w-2/3 animate-pulse" />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right space-y-2">
+                      <div className="h-8 bg-zinc-800 rounded w-24 animate-pulse" />
+                      <div className="h-3 bg-zinc-800 rounded w-16 animate-pulse" />
+                    </div>
+                    <div className="h-12 bg-zinc-800 rounded w-32 animate-pulse" />
+                  </div>
+                </div>
+
+                {/* Odds List Skeleton */}
+                <div className="space-y-2">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div
+                      key={i}
+                      className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 animate-pulse"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="size-2 rounded-full bg-zinc-800" />
+                        <div className="h-4 bg-zinc-800 rounded w-24" />
+                        <div className="flex-1" />
+                        <div className="h-4 bg-zinc-800 rounded w-16" />
+                        <div className="h-5 bg-zinc-800 rounded w-12" />
+                      </div>
+                      <div className="mt-2 h-2 w-full rounded-full bg-zinc-800" />
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          ) : null}
+          )}
         </div>
       </div>
 

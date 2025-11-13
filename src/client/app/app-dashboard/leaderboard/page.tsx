@@ -155,10 +155,72 @@ export default function LeaderboardPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] p-8 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-zinc-200 mx-auto mb-4" />
-          <p className="text-zinc-200">Loading leaderboard...</p>
+      <div className="min-h-screen bg-[#0a0a0a] py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header Skeleton */}
+          <div className="mb-6">
+            <div className="h-10 bg-zinc-800 rounded w-48 animate-pulse mb-2" />
+            <div className="h-5 bg-zinc-800 rounded w-64 animate-pulse" />
+          </div>
+
+          {/* Podium Skeleton */}
+          <div className="flex justify-center items-end gap-2 mb-6">
+            {[2, 1, 3].map((i, idx) => (
+              <div key={idx} className="flex flex-col items-center">
+                <div className="w-12 h-12 bg-zinc-800 rounded-full mb-2 animate-pulse" />
+                <div className="h-4 bg-zinc-800 rounded w-24 mb-1 animate-pulse" />
+                <div className="h-6 bg-zinc-800 rounded w-16 mb-1 animate-pulse" />
+                <div className="h-3 bg-zinc-800 rounded w-12 mb-2 animate-pulse" />
+                <div className={`${i === 1 ? 'h-20 w-24' : 'h-14 w-20'} bg-zinc-800 rounded-lg animate-pulse`} />
+              </div>
+            ))}
+          </div>
+
+          {/* Tabs & Filters Skeleton */}
+          <div className="flex gap-4 mb-6">
+            <div className="h-10 bg-zinc-800 rounded w-32 animate-pulse" />
+            <div className="h-10 bg-zinc-800 rounded w-48 animate-pulse" />
+          </div>
+
+          {/* User Rank Card Skeleton */}
+          <div className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6 mb-6 animate-pulse">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-zinc-800 rounded-lg" />
+                <div className="space-y-2">
+                  <div className="h-5 bg-zinc-800 rounded w-24" />
+                  <div className="h-4 bg-zinc-800 rounded w-32" />
+                </div>
+              </div>
+              <div className="text-right space-y-2">
+                <div className="h-6 bg-zinc-800 rounded w-20" />
+                <div className="h-4 bg-zinc-800 rounded w-24" />
+              </div>
+            </div>
+          </div>
+
+          {/* Leaderboard Table Skeleton */}
+          <div className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 overflow-hidden">
+            {/* Header */}
+            <div className="grid p-4 border-b border-zinc-800 bg-zinc-900" style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="h-4 bg-zinc-800 rounded animate-pulse" />
+              ))}
+            </div>
+            {/* Rows */}
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+              <div key={i} className="grid p-4 border-b border-zinc-800" style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
+                <div className="h-4 bg-zinc-800 rounded w-8 animate-pulse" />
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-zinc-800 rounded-full animate-pulse" />
+                  <div className="h-4 bg-zinc-800 rounded w-24 animate-pulse" />
+                </div>
+                {[1, 2, 3, 4, 5].map((j) => (
+                  <div key={j} className="h-4 bg-zinc-800 rounded w-20 animate-pulse" />
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     );

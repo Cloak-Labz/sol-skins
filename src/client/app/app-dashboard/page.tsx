@@ -8,17 +8,74 @@ import type { ActivityItem } from "@/lib/types/api";
 export default function DashboardPage() {
   const [pulls, setPulls] = useState<ActivityItem[]>([]);
   const [packs, setPacks] = useState<Box[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    activityService
-      .getRecent(12)
-      .then(setPulls)
-      .catch(() => setPulls([]));
-    boxesService
-      .getActiveBoxes()
-      .then(setPacks)
-      .catch(() => setPacks([]));
+    setLoading(true);
+    Promise.all([
+      activityService.getRecent(12).catch(() => []),
+      boxesService.getActiveBoxes().catch(() => [])
+    ]).then(([pullsData, packsData]) => {
+      setPulls(pullsData);
+      setPacks(packsData);
+    }).finally(() => {
+      setLoading(false);
+    });
   }, []);
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] p-6 md:p-8 font-sans">
+        <div className="max-w-7xl mx-auto space-y-8">
+          {/* Hero Skeleton */}
+          <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
+            <div className="w-full h-[220px] md:h-[360px] bg-zinc-900 animate-pulse" />
+            <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+              <div className="space-y-3">
+                <div className="h-8 bg-zinc-800 rounded w-48 animate-pulse" />
+                <div className="h-12 bg-zinc-800 rounded w-64 animate-pulse" />
+                <div className="h-4 bg-zinc-800 rounded w-96 animate-pulse" />
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Pulls Skeleton */}
+          <section className="space-y-3">
+            <div className="h-6 bg-zinc-800 rounded w-32 animate-pulse" />
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden">
+                  <div className="aspect-[3/4] bg-zinc-900 animate-pulse" />
+                  <div className="p-3 space-y-2">
+                    <div className="h-3 bg-zinc-800 rounded w-20 animate-pulse" />
+                    <div className="h-4 bg-zinc-800 rounded w-full animate-pulse" />
+                    <div className="h-3 bg-zinc-800 rounded w-24 animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Your Packs Skeleton */}
+          <section className="space-y-3">
+            <div className="h-6 bg-zinc-800 rounded w-32 animate-pulse" />
+            <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-4">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-4 flex flex-col h-full">
+                  <div className="aspect-[3/4] rounded-lg bg-zinc-800 animate-pulse mb-3" />
+                  <div className="flex-1 flex flex-col space-y-2">
+                    <div className="h-6 bg-zinc-800 rounded w-full animate-pulse" />
+                    <div className="h-4 bg-zinc-800 rounded w-20 animate-pulse" />
+                    <div className="mt-auto h-10 bg-zinc-800 rounded w-full animate-pulse" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-6 md:p-8 font-sans">
       <div className="max-w-7xl mx-auto space-y-8">
