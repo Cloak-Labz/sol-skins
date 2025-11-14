@@ -43,7 +43,12 @@ const getSolscanUrl = (signature: string): string => {
 };
 
 // Default odds when API doesn't provide per-rarity probabilities
-const DEFAULT_ODDS: { label: string; rarity: string; pct: number; priceRange?: string | null }[] = [
+const DEFAULT_ODDS: {
+  label: string;
+  rarity: string;
+  pct: number;
+  priceRange?: string | null;
+}[] = [
   { label: "Legendary", rarity: "legendary", pct: 0.5 },
   { label: "Epic", rarity: "epic", pct: 2.0 },
   { label: "Rare", rarity: "rare", pct: 8.5 },
@@ -78,6 +83,7 @@ export default function PacksPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoKey, setVideoKey] = useState(0);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const shouldHideSidebar =
     (openingPhase !== null && openingPhase !== "processing") ||
     showResult ||
@@ -115,8 +121,8 @@ export default function PacksPage() {
   useEffect(() => {
     if (openingPhase === "video") {
       // Force reload by changing key (this will remount the video element)
-      setVideoKey(prev => prev + 1);
-      
+      setVideoKey((prev) => prev + 1);
+
       // Also reset video element if it exists and ensure volume is set
       setTimeout(() => {
         if (videoRef.current) {
@@ -134,7 +140,8 @@ export default function PacksPage() {
       // Prevent page navigation (refresh, close tab, etc.)
       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
         e.preventDefault();
-        e.returnValue = "A pack opening is in progress. Are you sure you want to leave?";
+        e.returnValue =
+          "A pack opening is in progress. Are you sure you want to leave?";
         return e.returnValue;
       };
 
@@ -171,14 +178,14 @@ export default function PacksPage() {
         window.removeEventListener("beforeunload", handleBeforeUnload);
         window.removeEventListener("popstate", handlePopState);
         document.body.style.overflow = "";
-        
+
         // Re-enable topbar and sidebar
         const header = document.querySelector(".app-header");
         if (header) {
           (header as HTMLElement).style.pointerEvents = "";
           (header as HTMLElement).style.opacity = "";
         }
-        
+
         const sidebar = document.querySelector(".app-sidebar");
         if (sidebar) {
           (sidebar as HTMLElement).style.pointerEvents = "";
@@ -254,8 +261,10 @@ export default function PacksPage() {
 
       if (boxSkinsData.success && Array.isArray(boxSkinsData.data)) {
         boxSkinsData.data.forEach((skin: any) => {
-          const rarity = (skin.rarity || '').toLowerCase();
-          const price = parseFloat(skin.basePriceUsd || skin.skinTemplate?.basePriceUsd || '0');
+          const rarity = (skin.rarity || "").toLowerCase();
+          const price = parseFloat(
+            skin.basePriceUsd || skin.skinTemplate?.basePriceUsd || "0"
+          );
           if (rarity in pricesByRarity && price > 0) {
             pricesByRarity[rarity].push(price);
           }
@@ -343,14 +352,24 @@ export default function PacksPage() {
       | { kind: "claim"; skin: CSGOSkin; packName?: string | null }
   ) => {
     let text = "";
-    const packUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://dust3.fun'}/app-dashboard/packs`;
-    
+    const packUrl = `${
+      typeof window !== "undefined"
+        ? window.location.origin
+        : "https://dust3.fun"
+    }/app-dashboard/packs`;
+
     if (params.kind === "buyback") {
       if (params.skin) {
-        text = `Just cashed out ${params.skin.name} for ${params.amountSol.toFixed(3)} SOL on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
+        text = `Just cashed out ${
+          params.skin.name
+        } for ${params.amountSol.toFixed(
+          3
+        )} SOL on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
       } else {
         // Fallback if skin is not available
-        text = `Just cashed out for ${params.amountSol.toFixed(3)} SOL on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
+        text = `Just cashed out for ${params.amountSol.toFixed(
+          3
+        )} SOL on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
       }
     } else {
       text = `Claimed ${params.skin.name} to my Steam inventory through @DUST3fun! 🎮\n\nReal CS2 skins, on-chain fairness.\n\nOpen packs: ${packUrl}`;
@@ -596,45 +615,54 @@ export default function PacksPage() {
             // Create case opening record for activity tracking
             try {
               if (walletCtx.publicKey) {
-                console.log('📝 Creating case opening record:', {
+                console.log("📝 Creating case opening record:", {
                   skinName: result.skin.name,
                   rarity: result.skin.rarity,
                   skinValue: result.skin.basePriceUsd,
                   imageUrl: result.skin.imageUrl,
                   hasImage: !!result.skin.imageUrl,
                 });
-                
+
                 // Use winnerSkin.image as fallback since it has the resolved image
                 const skinImageUrl = result.skin.imageUrl || winnerSkin.image;
-                
-                console.log('🖼️  Using skin image URL:', skinImageUrl);
-                
-                const caseOpeningRecord = await packOpeningService.createCaseOpeningRecord({
-                  userId: walletCtx.publicKey.toString(),
-                  boxId: selectedPack.id,
-                  nftMint: result.nftMint,
-                  skinName: result.skin.name,
-                  skinRarity: result.skin.rarity,
-                  skinWeapon: result.skin.weapon,
-                  skinValue: result.skin.basePriceUsd,
-                  skinImage: skinImageUrl === 'icon-fallback' ? '' : skinImageUrl,
-                  transactionHash: result.signature,
-                });
-                
-                console.log('✅ Case opening record created:', {
+
+                console.log("🖼️  Using skin image URL:", skinImageUrl);
+
+                const caseOpeningRecord =
+                  await packOpeningService.createCaseOpeningRecord({
+                    userId: walletCtx.publicKey.toString(),
+                    boxId: selectedPack.id,
+                    nftMint: result.nftMint,
+                    skinName: result.skin.name,
+                    skinRarity: result.skin.rarity,
+                    skinWeapon: result.skin.weapon,
+                    skinValue: result.skin.basePriceUsd,
+                    skinImage:
+                      skinImageUrl === "icon-fallback" ? "" : skinImageUrl,
+                    transactionHash: result.signature,
+                  });
+
+                console.log("✅ Case opening record created:", {
                   caseOpeningId: caseOpeningRecord.caseOpeningId,
                 });
-                
+
                 // Store case opening ID for sharing
                 setCaseOpeningId(caseOpeningRecord.caseOpeningId);
               }
             } catch (error) {
-              console.error('❌ Failed to create case opening record:', error);
+              console.error("❌ Failed to create case opening record:", error);
               // non-critical telemetry failure; ignore
             }
 
             // PHASE 3: Flash + show result (when result is ready)
             setOpeningPhase("flash");
+            // Play explosion sound with flash
+            if (audioRef.current) {
+              audioRef.current.currentTime = 0;
+              audioRef.current.play().catch((err) => {
+                console.warn("Failed to play explosion sound:", err);
+              });
+            }
             setTimeout(() => {
               setShowResult(true);
               setOpeningPhase(null);
@@ -697,28 +725,45 @@ export default function PacksPage() {
     } catch (error: any) {
       dismissOpenPackToast();
       setShowProgressModal(false);
-      
+
       // Extract user-friendly error message
-      let errorMessage = error?.message || "An unexpected error occurred. Please try again.";
-      
+      let errorMessage =
+        error?.message || "An unexpected error occurred. Please try again.";
+
       // Make error messages more user-friendly
-      if (errorMessage.includes('CSRF') || errorMessage.includes('csrf')) {
-        errorMessage = "Session expired. Please refresh the page and try again.";
-      } else if (errorMessage.includes('walletId') || errorMessage.includes('wallet') || errorMessage.includes('user')) {
-        errorMessage = "Wallet connection issue. Please reconnect your wallet and try again.";
-      } else if (errorMessage.includes('nonce') || errorMessage.includes('timestamp')) {
+      if (errorMessage.includes("CSRF") || errorMessage.includes("csrf")) {
+        errorMessage =
+          "Session expired. Please refresh the page and try again.";
+      } else if (
+        errorMessage.includes("walletId") ||
+        errorMessage.includes("wallet") ||
+        errorMessage.includes("user")
+      ) {
+        errorMessage =
+          "Wallet connection issue. Please reconnect your wallet and try again.";
+      } else if (
+        errorMessage.includes("nonce") ||
+        errorMessage.includes("timestamp")
+      ) {
         errorMessage = "Request timed out. Please try again.";
-      } else if (errorMessage.includes('transaction') && errorMessage.includes('successful')) {
+      } else if (
+        errorMessage.includes("transaction") &&
+        errorMessage.includes("successful")
+      ) {
         // Transaction was signed but registration failed - show success with warning
-        openPackToastIdRef.current = toast.success("Pack opened successfully!", { 
-          duration: 10000,
-          description: "Your transaction was confirmed on-chain. The inventory sync may be delayed. Please refresh the page if you don't see your new skin."
-        });
+        openPackToastIdRef.current = toast.success(
+          "Pack opened successfully!",
+          {
+            duration: 10000,
+            description:
+              "Your transaction was confirmed on-chain. The inventory sync may be delayed. Please refresh the page if you don't see your new skin.",
+          }
+        );
         setOpeningPhase(null);
         setIsProcessing(false);
         return;
       }
-      
+
       openPackToastIdRef.current = toast.error(errorMessage);
       setOpeningPhase(null);
       setIsProcessing(false);
@@ -733,7 +778,6 @@ export default function PacksPage() {
     setLastPackResult(null);
     setCaseOpeningId(null);
   };
-
 
   const handleBuyback = async () => {
     if (!lastPackResult) {
@@ -753,15 +797,21 @@ export default function PacksPage() {
       );
 
       // Calculate buyback amount using buybackService
-      const calcData = await buybackService.calculateBuyback(lastPackResult.asset);
+      const calcData = await buybackService.calculateBuyback(
+        lastPackResult.asset
+      );
 
       dismissBuybackToast();
       buybackToastIdRef.current = toast.loading(
-        `Buyback: ${calcData.buybackAmount.toFixed(3)} SOL - Requesting transaction...`
+        `Buyback: ${calcData.buybackAmount.toFixed(
+          3
+        )} SOL - Requesting transaction...`
       );
 
       // Request buyback transaction using buybackService
-      const requestData = await buybackService.requestBuyback(lastPackResult.asset);
+      const requestData = await buybackService.requestBuyback(
+        lastPackResult.asset
+      );
       const transaction = requestData.transaction;
 
       if (!signTransaction) {
@@ -806,7 +856,9 @@ export default function PacksPage() {
           undefined;
         buybackToastIdRef.current = toast.success(
           <div className="flex flex-col gap-1">
-            <p className="font-semibold text-sm">Skin successfully bought back! 💰</p>
+            <p className="font-semibold text-sm">
+              Skin successfully bought back! 💰
+            </p>
             {txSig ? (
               <a
                 href={getSolscanUrl(txSig)}
@@ -815,8 +867,18 @@ export default function PacksPage() {
                 className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
               >
                 View transaction on Solscan
-                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                <svg
+                  className="w-3 h-3"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
                 </svg>
               </a>
             ) : null}
@@ -841,8 +903,12 @@ export default function PacksPage() {
         dismissBuybackToast();
         buybackToastIdRef.current = toast.success(
           <div className="flex flex-col gap-1">
-            <p className="font-semibold text-sm">Skin successfully bought back! ✅</p>
-            <p className="text-xs text-zinc-400">(Transaction likely sent. Backend didn't respond.)</p>
+            <p className="font-semibold text-sm">
+              Skin successfully bought back! ✅
+            </p>
+            <p className="text-xs text-zinc-400">
+              (Transaction likely sent. Backend didn't respond.)
+            </p>
           </div>,
           { duration: 8000 }
         );
@@ -886,9 +952,10 @@ export default function PacksPage() {
   useEffect(() => {
     if (showResult && lastPackResult?.asset) {
       setPendingBuybackAmount(null);
-      buybackService.calculateBuyback(lastPackResult.asset)
-        .then(calcData => {
-          if (typeof calcData.buybackAmount === 'number') {
+      buybackService
+        .calculateBuyback(lastPackResult.asset)
+        .then((calcData) => {
+          if (typeof calcData.buybackAmount === "number") {
             setPendingBuybackAmount(calcData.buybackAmount);
           }
         })
@@ -900,9 +967,10 @@ export default function PacksPage() {
   useEffect(() => {
     if (showResult && lastPackResult?.asset) {
       setPendingBuybackInfo(null);
-      buybackService.calculateBuyback(lastPackResult.asset)
-        .then(calcData => {
-          if (typeof calcData.buybackAmount === 'number') {
+      buybackService
+        .calculateBuyback(lastPackResult.asset)
+        .then((calcData) => {
+          if (typeof calcData.buybackAmount === "number") {
             setPendingBuybackInfo({
               skinUsd: wonSkin?.value ?? 0,
               skinSol: calcData.skinPrice ?? 0,
@@ -1042,7 +1110,7 @@ export default function PacksPage() {
             >
               {/* Background glow effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-[#E99500]/5 via-transparent to-transparent pointer-events-none" />
-              
+
               {/* Header */}
               <div className="relative mb-8 text-center">
                 <h3 className="text-2xl font-bold text-white mb-2">
@@ -1052,22 +1120,22 @@ export default function PacksPage() {
                   Please wait while we process your transaction
                 </p>
               </div>
-              
+
               {/* Progress Steps */}
               <div className="relative space-y-5 mb-8">
                 {progressSteps.map((step, index) => {
                   const isActive = index === progressStep;
                   const isCompleted = index < progressStep;
                   const isPending = index > progressStep;
-                  
+
                   return (
                     <motion.div
                       key={step.key}
                       initial={{ opacity: 0, x: -20 }}
-                      animate={{ 
-                        opacity: 1, 
+                      animate={{
+                        opacity: 1,
                         x: 0,
-                        scale: isActive ? 1.02 : 1
+                        scale: isActive ? 1.02 : 1,
                       }}
                       transition={{ delay: index * 0.1 }}
                       className={`relative flex items-center gap-4 transition-all duration-300 ${
@@ -1091,7 +1159,7 @@ export default function PacksPage() {
                             className="absolute inset-0 rounded-full bg-[#E99500] blur-xl"
                           />
                         )}
-                        
+
                         <div
                           className={`relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
                             isCompleted
@@ -1125,7 +1193,7 @@ export default function PacksPage() {
                           )}
                         </div>
                       </div>
-                      
+
                       {/* Step Label */}
                       <div className="flex-1 min-w-0">
                         <span
@@ -1159,7 +1227,9 @@ export default function PacksPage() {
                   <motion.div
                     initial={{ width: "0%" }}
                     animate={{
-                      width: `${((progressStep + 1) / progressSteps.length) * 100}%`,
+                      width: `${
+                        ((progressStep + 1) / progressSteps.length) * 100
+                      }%`,
                     }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
                     className="relative h-full bg-gradient-to-r from-[#E99500] via-[#FFB84D] to-[#E99500] rounded-full"
@@ -1228,6 +1298,9 @@ export default function PacksPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Hidden audio element for explosion sound */}
+      <audio ref={audioRef} src="/assets/explosion.mp3" preload="auto" />
 
       {/* Buyback Summary Modal */}
       <AnimatePresence>
@@ -1343,8 +1416,6 @@ export default function PacksPage() {
       >
         {/* Main Content */}
         <div className="max-w-7xl mx-auto space-y-8">
-
-
           {/* Hero */}
           <div className="relative rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
             <img
@@ -1363,9 +1434,12 @@ export default function PacksPage() {
                   delivery.
                 </p>
                 {/* Devnet Info */}
-                {(process.env.NEXT_PUBLIC_SOLANA_NETWORK || "").toLowerCase().includes("devnet") && (
+                {(process.env.NEXT_PUBLIC_SOLANA_NETWORK || "")
+                  .toLowerCase()
+                  .includes("devnet") && (
                   <p className="text-xs text-zinc-400 mt-2">
-                    Testing on Solana Devnet: This uses test SOL with no real value.{" "}
+                    Testing on Solana Devnet: This uses test SOL with no real
+                    value.{" "}
                     <a
                       href="https://faucet.solana.com/"
                       target="_blank"
@@ -1382,251 +1456,254 @@ export default function PacksPage() {
 
           {/* Odds Section */}
           {!loading && (
-          <div className="grid lg:grid-cols-3 gap-6 items-stretch">
-            {/* Left: Pack Preview + Compact Packs (LG+) */}
-            <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 flex flex-col">
-              <div className="relative w-full h-[260px] md:h-[320px] lg:h-[360px]">
-                <img
-                  src="/assets/machine.jpeg"
-                  alt="Dust3 Pack Preview"
-                  className="w-full h-full object-cover"
-                />
-                {/* Supply Status Overlay */}
-                {selectedPack?.supply?.maxSupply && (
-                  <div className="absolute top-4 right-4">
-                    <div
-                      className={`flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-sm border ${
-                        selectedPack.supply.isSoldOut
-                          ? "bg-red-500/20 border-red-500/30"
-                          : "bg-green-500/20 border-green-500/30"
-                      }`}
-                    >
+            <div className="grid lg:grid-cols-3 gap-6 items-stretch">
+              {/* Left: Pack Preview + Compact Packs (LG+) */}
+              <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 flex flex-col">
+                <div className="relative w-full h-[260px] md:h-[320px] lg:h-[360px]">
+                  <img
+                    src="/assets/machine.jpeg"
+                    alt="Dust3 Pack Preview"
+                    className="w-full h-full object-cover"
+                  />
+                  {/* Supply Status Overlay */}
+                  {selectedPack?.supply?.maxSupply && (
+                    <div className="absolute top-4 right-4">
                       <div
-                        className={`w-2 h-2 rounded-full ${
+                        className={`flex items-center gap-2 px-3 py-1.5 rounded-full backdrop-blur-sm border ${
                           selectedPack.supply.isSoldOut
-                            ? "bg-red-400"
-                            : "bg-green-400"
+                            ? "bg-red-500/20 border-red-500/30"
+                            : "bg-green-500/20 border-green-500/30"
                         }`}
-                      />
-                      <span className="text-xs font-medium text-white">
-                        {selectedPack.supply.isSoldOut
-                          ? "Out of Stock"
-                          : "In Stock"}
-                      </span>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="hidden lg:block border-t border-zinc-800 p-3">
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Compact list of published packs */}
-                  {boxes.slice(0, 4).map((pack) => (
-                    <button
-                      key={pack.id}
-                      onClick={() => !isOpeningSkin && setSelectedPack(pack)}
-                      disabled={isOpeningSkin}
-                      className={`group text-left rounded-lg border px-3 py-3 bg-gradient-to-b from-zinc-950 to-zinc-900 transition-colors ${
-                        isOpeningSkin ? "opacity-50 cursor-not-allowed" : ""
-                      } ${
-                        selectedPack?.id === pack.id
-                          ? "border-[#E99500]"
-                          : "border-zinc-800 hover:border-zinc-700"
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <div className="relative">
-                          <img
-                            src={(pack as any).imageUrl || "/dust3.jpeg"}
-                            alt={pack.name}
-                            className="w-10 h-10 rounded object-cover border border-zinc-800"
-                          />
-                          {/* Supply Status Dot */}
-                          {pack.supply?.maxSupply && (
-                            <div
-                              className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 ${
-                                pack.supply.isSoldOut
-                                  ? "bg-red-400"
-                                  : "bg-green-400"
-                              }`}
-                            />
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-xs text-foreground font-semibold truncate">
-                            {pack.name}
-                          </p>
-                          <p className="text-[10px] text-zinc-400">
-                            {parseFloat(pack.priceSol).toFixed(2)} SOL
-                          </p>
-                        </div>
+                      >
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            selectedPack.supply.isSoldOut
+                              ? "bg-red-400"
+                              : "bg-green-400"
+                          }`}
+                        />
+                        <span className="text-xs font-medium text-white">
+                          {selectedPack.supply.isSoldOut
+                            ? "Out of Stock"
+                            : "In Stock"}
+                        </span>
                       </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Right: Details and Odds (span 2) */}
-            <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6 md:sticky md:top-6 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-                <div>
-                  <h3 className="text-2xl font-bold text-foreground">
-                    {selectedPack?.name || "Promo Pack"}
-                  </h3>
-                  {(selectedPack as any)?.description && (
-                    <p className="text-zinc-400 text-sm mt-1 line-clamp-2">
-                      {(selectedPack as any).description}
-                    </p>
+                    </div>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-3xl font-bold text-foreground">
-                      {selectedPack
-                        ? parseFloat(selectedPack.priceSol).toFixed(2)
-                        : "—"}{" "}
-                      SOL
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {selectedPack
-                        ? (() => {
-                            const priceSol = Number(selectedPack.priceSol ?? 0);
-                            const priceUsd =
-                              selectedPack.priceUsd ??
-                              selectedPack.priceUsdc ??
-                              (selectedPack.solPriceUsd
-                                ? priceSol * Number(selectedPack.solPriceUsd)
-                                : undefined);
-                            return priceUsd !== undefined && !Number.isNaN(priceUsd)
-                              ? `$${Number(priceUsd).toFixed(2)}`
-                              : "";
-                          })()
-                        : ""}
-                    </p>
+                <div className="hidden lg:block border-t border-zinc-800 p-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Compact list of published packs */}
+                    {boxes.slice(0, 4).map((pack) => (
+                      <button
+                        key={pack.id}
+                        onClick={() => !isOpeningSkin && setSelectedPack(pack)}
+                        disabled={isOpeningSkin}
+                        className={`group text-left rounded-lg border px-3 py-3 bg-gradient-to-b from-zinc-950 to-zinc-900 transition-colors ${
+                          isOpeningSkin ? "opacity-50 cursor-not-allowed" : ""
+                        } ${
+                          selectedPack?.id === pack.id
+                            ? "border-[#E99500]"
+                            : "border-zinc-800 hover:border-zinc-700"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <div className="relative">
+                            <img
+                              src={(pack as any).imageUrl || "/dust3.jpeg"}
+                              alt={pack.name}
+                              className="w-10 h-10 rounded object-cover border border-zinc-800"
+                            />
+                            {/* Supply Status Dot */}
+                            {pack.supply?.maxSupply && (
+                              <div
+                                className={`absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-zinc-950 ${
+                                  pack.supply.isSoldOut
+                                    ? "bg-red-400"
+                                    : "bg-green-400"
+                                }`}
+                              />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs text-foreground font-semibold truncate">
+                              {pack.name}
+                            </p>
+                            <p className="text-[10px] text-zinc-400">
+                              {parseFloat(pack.priceSol).toFixed(2)} SOL
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
-                  <Button
-                    onClick={handleOpenPack}
-                    disabled={
-                      isOpeningSkin ||
-                      !connected ||
-                      selectedPack?.supply?.isSoldOut
-                    }
-                    className={`px-6 py-6 ml-4 font-semibold rounded-lg transition-all duration-300 ${
-                      selectedPack?.supply?.isSoldOut
-                        ? "bg-red-500/20 text-red-400 cursor-not-allowed"
-                        : isOpeningSkin
-                        ? "bg-zinc-600 text-zinc-300 cursor-not-allowed opacity-50"
-                        : "bg-[#E99500] text-black hover:bg-[#d88500] active:bg-[#E99500]"
-                    } ${
-                      openingPhase === "processing"
-                        ? "animate-pulse"
-                        : "hover:scale-[1.02] active:scale-[0.99]"
-                    }`}
-                  >
-                    {openingPhase === "processing" ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        <span>Processing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="mr-2 ml-2">
-                          {selectedPack?.supply?.isSoldOut
-                            ? "Sold Out"
-                            : "Open Pack"}
-                        </span>
-                        <svg
-                          className="w-4 h-4"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          xmlns="http://www.w3.org/2000/svg"
-                        >
-                          <path
-                            d="M5 12h14M13 5l7 7-7 7"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </>
-                    )}
-                  </Button>
                 </div>
               </div>
 
-              {/* Odds List */}
-              <div className="space-y-2">
-                {oddsToUse.map(
-                  (
-                    o: {
-                      label?: string;
-                      rarity?: string;
-                      pct?: number;
-                      odds?: number;
-                      priceRange?: string | null;
-                    },
-                    idx: number
-                  ) => {
-                    const label = (o.label || o.rarity || "").toString();
-                    const rarityKey = (o.rarity || label).toLowerCase();
-                    const pctNum =
-                      typeof o.pct === "number"
-                        ? o.pct
-                        : Number((o as any).odds ?? 0);
-                    const denom = pctNum > 0 ? Math.round(100 / pctNum) : 0;
-                    const priceRange = (o as any).priceRange;
-                    return (
-                      <div
-                        key={idx}
-                        className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span
-                            className={`inline-block size-2 rounded-full bg-gradient-to-r ${getRarityColor(
-                              rarityKey
-                            )}`}
-                          />
-                          <span className="text-sm text-foreground font-medium uppercase flex-1">
-                            {label}
+              {/* Right: Details and Odds (span 2) */}
+              <div className="lg:col-span-2 rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-6 md:sticky md:top-6 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700">
+                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+                  <div>
+                    <h3 className="text-2xl font-bold text-foreground">
+                      {selectedPack?.name || "Promo Pack"}
+                    </h3>
+                    {(selectedPack as any)?.description && (
+                      <p className="text-zinc-400 text-sm mt-1 line-clamp-2">
+                        {(selectedPack as any).description}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className="text-3xl font-bold text-foreground">
+                        {selectedPack
+                          ? parseFloat(selectedPack.priceSol).toFixed(2)
+                          : "—"}{" "}
+                        SOL
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {selectedPack
+                          ? (() => {
+                              const priceSol = Number(
+                                selectedPack.priceSol ?? 0
+                              );
+                              const priceUsd =
+                                selectedPack.priceUsd ??
+                                selectedPack.priceUsdc ??
+                                (selectedPack.solPriceUsd
+                                  ? priceSol * Number(selectedPack.solPriceUsd)
+                                  : undefined);
+                              return priceUsd !== undefined &&
+                                !Number.isNaN(priceUsd)
+                                ? `$${Number(priceUsd).toFixed(2)}`
+                                : "";
+                            })()
+                          : ""}
+                      </p>
+                    </div>
+                    <Button
+                      onClick={handleOpenPack}
+                      disabled={
+                        isOpeningSkin ||
+                        !connected ||
+                        selectedPack?.supply?.isSoldOut
+                      }
+                      className={`px-6 py-6 ml-4 font-semibold rounded-lg transition-all duration-300 ${
+                        selectedPack?.supply?.isSoldOut
+                          ? "bg-red-500/20 text-red-400 cursor-not-allowed"
+                          : isOpeningSkin
+                          ? "bg-zinc-600 text-zinc-300 cursor-not-allowed opacity-50"
+                          : "bg-[#E99500] text-black hover:bg-[#d88500] active:bg-[#E99500]"
+                      } ${
+                        openingPhase === "processing"
+                          ? "animate-pulse"
+                          : "hover:scale-[1.02] active:scale-[0.99]"
+                      }`}
+                    >
+                      {openingPhase === "processing" ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          <span>Processing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span className="mr-2 ml-2">
+                            {selectedPack?.supply?.isSoldOut
+                              ? "Sold Out"
+                              : "Open Pack"}
                           </span>
-                          <div className="flex items-center gap-2 w-[160px] justify-end">
-                            {priceRange ? (
-                              <span className="text-xs font-medium text-white text-right w-[120px]">
-                                {priceRange}
-                              </span>
-                            ) : (
-                              <span className="text-xs text-zinc-400 text-right w-[120px]">
-                                {denom > 0 ? `~1 in ${denom}` : "—"}
-                              </span>
-                            )}
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800 w-[45px] text-center flex-shrink-0">
-                              {pctNum.toFixed(1)}%
+                          <svg
+                            className="w-4 h-4"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              d="M5 12h14M13 5l7 7-7 7"
+                              stroke="currentColor"
+                              strokeWidth="2"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Odds List */}
+                <div className="space-y-2">
+                  {oddsToUse.map(
+                    (
+                      o: {
+                        label?: string;
+                        rarity?: string;
+                        pct?: number;
+                        odds?: number;
+                        priceRange?: string | null;
+                      },
+                      idx: number
+                    ) => {
+                      const label = (o.label || o.rarity || "").toString();
+                      const rarityKey = (o.rarity || label).toLowerCase();
+                      const pctNum =
+                        typeof o.pct === "number"
+                          ? o.pct
+                          : Number((o as any).odds ?? 0);
+                      const denom = pctNum > 0 ? Math.round(100 / pctNum) : 0;
+                      const priceRange = (o as any).priceRange;
+                      return (
+                        <div
+                          key={idx}
+                          className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span
+                              className={`inline-block size-2 rounded-full bg-gradient-to-r ${getRarityColor(
+                                rarityKey
+                              )}`}
+                            />
+                            <span className="text-sm text-foreground font-medium uppercase flex-1">
+                              {label}
                             </span>
+                            <div className="flex items-center gap-2 w-[160px] justify-end">
+                              {priceRange ? (
+                                <span className="text-xs font-medium text-white text-right w-[120px]">
+                                  {priceRange}
+                                </span>
+                              ) : (
+                                <span className="text-xs text-zinc-400 text-right w-[120px]">
+                                  {denom > 0 ? `~1 in ${denom}` : "—"}
+                                </span>
+                              )}
+                              <span className="px-2 py-0.5 text-xs rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800 w-[45px] text-center flex-shrink-0">
+                                {pctNum.toFixed(1)}%
+                              </span>
+                            </div>
+                          </div>
+                          <div className="mt-2 h-2 w-full rounded-full bg-zinc-800 overflow-hidden border border-zinc-700">
+                            <div
+                              className={`h-full bg-gradient-to-r ${getRarityColor(
+                                rarityKey
+                              )}`}
+                              style={{
+                                width: `${Math.min(100, Math.max(0, pctNum))}%`,
+                              }}
+                            />
                           </div>
                         </div>
-                        <div className="mt-2 h-2 w-full rounded-full bg-zinc-800 overflow-hidden border border-zinc-700">
-                          <div
-                            className={`h-full bg-gradient-to-r ${getRarityColor(
-                              rarityKey
-                            )}`}
-                            style={{
-                              width: `${Math.min(100, Math.max(0, pctNum))}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  }
-                )}
-                <div className="flex items-center justify-between pt-2">
-                  <p className="text-[11px] text-zinc-500">
-                    Probabilities are estimates and may vary per pack.
-                  </p>
+                      );
+                    }
+                  )}
+                  <div className="flex items-center justify-between pt-2">
+                    <p className="text-[11px] text-zinc-500">
+                      Probabilities are estimates and may vary per pack.
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
           )}
 
           {/* Pack Selection Skeleton */}
@@ -1887,8 +1964,10 @@ export default function PacksPage() {
                             );
                             try {
                               await discordService.createSkinClaimTicket({
-                                userId: walletCtx.publicKey?.toString() || 'unknown',
-                                walletAddress: walletCtx.publicKey?.toString() || 'unknown',
+                                userId:
+                                  walletCtx.publicKey?.toString() || "unknown",
+                                walletAddress:
+                                  walletCtx.publicKey?.toString() || "unknown",
                                 steamTradeUrl: userTradeUrl,
                                 skinName: wonSkin.name,
                                 skinRarity: wonSkin.rarity,
@@ -1901,13 +1980,18 @@ export default function PacksPage() {
 
                               // Create skin claimed activity using pendingSkinsService (CSRF token added automatically)
                               try {
-                                await pendingSkinsService.createSkinClaimedActivity({
-                                  walletAddress: walletCtx.publicKey?.toString() || 'unknown',
-                                  skinName: wonSkin.name,
-                                  skinRarity: wonSkin.rarity,
-                                  skinWeapon: wonSkin.name.split(" | ")[0] || 'Unknown',
-                                  nftMintAddress: lastPackResult.asset,
-                                });
+                                await pendingSkinsService.createSkinClaimedActivity(
+                                  {
+                                    walletAddress:
+                                      walletCtx.publicKey?.toString() ||
+                                      "unknown",
+                                    skinName: wonSkin.name,
+                                    skinRarity: wonSkin.rarity,
+                                    skinWeapon:
+                                      wonSkin.name.split(" | ")[0] || "Unknown",
+                                    nftMintAddress: lastPackResult.asset,
+                                  }
+                                );
                               } catch (activityError) {
                                 // Non-critical, just log
                               }
@@ -2051,7 +2135,9 @@ export default function PacksPage() {
             // Update trade URL using auth service
             await authService.updateProfile(
               { tradeUrl: newTradeUrl },
-              walletCtx.signMessage ? { signMessage: walletCtx.signMessage } : null
+              walletCtx.signMessage
+                ? { signMessage: walletCtx.signMessage }
+                : null
             );
             // Refresh user data to get updated trade URL
             await refreshUser();
