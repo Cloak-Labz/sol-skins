@@ -36,7 +36,7 @@ jobs:
           push: true
           tags: |
             ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
 
   deploy:
     needs: [build-server]
@@ -54,9 +54,9 @@ jobs:
           script: |
             cd ~/dust || exit 1
 
-            echo "🛑 Stopping services..." stop container with name pepehaggeb/dust3:latest and remove it
-            docker stop ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest
-            docker rm -f ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest
+            echo "🛑 Stopping services..."
+            docker stop $(docker ps -q --filter ancestor=${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest)
+            docker rm -f $(docker ps -a -q --filter ancestor=${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest)
 
             echo "📥 Pulling latest Docker images..."
             docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest
@@ -68,9 +68,9 @@ jobs:
             sleep 10
 
             echo "📊 Checking server status..."
-            docker ps -q | grep ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest
+            docker ps -a | grep ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest
             if [ $? -eq 0 ]; then
-              echo "✅ Server started successfully"
+              echo "✅ Server is running"
             else
               echo "❌ Server failed to start"
               exit 1
