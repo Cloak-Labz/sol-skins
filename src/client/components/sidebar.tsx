@@ -43,33 +43,33 @@ function SidebarComponent() {
   }, [publicKey]);
 
   const mainNavItems = [
-    { href: "/app-dashboard", label: "Home", icon: Home },
-    { href: "/app-dashboard/packs", label: "Packs", icon: Package },
+    { href: "/dashboard", label: "Home", icon: Home },
+    { href: "/packs", label: "Packs", icon: Package },
     {
-      href: "/app-dashboard/marketplace",
+      href: "/marketplace",
       label: "Marketplace",
       icon: ShoppingBag,
       soon: true,
     },
     {
-      href: "/app-dashboard/prediction",
+      href: "/prediction",
       label: "Prediction",
       icon: ChartBarIncreasing,
       soon: true,
     },
-    { href: "/app-dashboard/inventory", label: "Inventory", icon: Package },
-    { href: "/app-dashboard/leaderboard", label: "Leaderboard", icon: Trophy },
+    { href: "/inventory", label: "Inventory", icon: Package },
+    { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   ];
 
   const socialItems = [
     {
-      href: "/app-dashboard/activity",
+      href: "/activity",
       label: "Activity",
       icon: Activity,
       soon: false,
     },
     {
-      href: "/app-dashboard/profile",
+      href: "/profile",
       label: "Profile",
       icon: User,
       soon: false,
@@ -82,22 +82,22 @@ function SidebarComponent() {
 
   const adminItems = [
     {
-      href: "/app-dashboard/packs/admin",
+      href: "/packs/admin",
       label: "Pack Manager",
       icon: Shield,
     },
     {
-      href: "/app-dashboard/admin/analytics",
+      href: "/admin/analytics",
       label: "Analytics",
       icon: BarChart3,
     },
     {
-      href: "/app-dashboard/admin/users",
+      href: "/admin/users",
       label: "User Management",
       icon: Users,
     },
     {
-      href: "/app-dashboard/admin/transfers",
+      href: "/admin/transfers",
       label: "Transfers",
       icon: Truck,
     },
@@ -107,7 +107,7 @@ function SidebarComponent() {
     <aside className="app-sidebar fixed left-0 top-0 h-full w-64 bg-[#0a0a0a] border-r border-[#1a1a1a] flex flex-col">
       {/* Logo */}
       <div className="p-6 border-b border-[#1a1a1a]">
-        <Link href="/app-dashboard" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2">
           <div className="h-8 w-auto">
             <img
               src="/assets/DUST3-SVG.svg"

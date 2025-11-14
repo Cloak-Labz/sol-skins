@@ -49,7 +49,7 @@ export default function LandingPage() {
             </span>
           </div>
           <nav className="hidden md:flex items-center gap-8">
-            <Link href="/app-dashboard/packs">
+            <Link href="/packs">
               <Button className="bg-[#E99500] hover:bg-[#c77f00] text-black font-bold">
                 Launch App
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -107,7 +107,7 @@ export default function LandingPage() {
                 </p>
 
                 <div className="flex flex-wrap gap-4">
-                  <Link href="/app-dashboard/packs">
+                  <Link href="/packs">
                     <Button
                       size="lg"
                       className="bg-[#E99500] hover:bg-[#c77f00] text-black font-bold border-0 rounded-lg px-8 py-6 text-lg transition-all duration-300 hover:scale-105"
@@ -606,7 +606,7 @@ export default function LandingPage() {
             <p className="text-gray-400 text-xl mb-8">
               Connect your wallet and open your first pack in seconds.
             </p>
-            <Link href="/app-dashboard/packs">
+            <Link href="/packs">
               <Button
                 size="lg"
                 className="bg-[#E99500] hover:bg-[#c77f00] text-black font-bold border-0 rounded-lg px-12 py-8 text-xl transition-all duration-300 hover:scale-105"

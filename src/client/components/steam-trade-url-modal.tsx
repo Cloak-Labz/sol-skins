@@ -370,7 +370,7 @@ export function SteamTradeUrlModal({
             </>
           )}
           {!onSave && (
-            <Link href="/app-dashboard/profile" className="w-full">
+            <Link href="/profile" className="w-full">
               <Button className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold w-full rounded-none h-12">
                 Go to Profile to Set Trade URL
               </Button>

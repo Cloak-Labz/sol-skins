@@ -125,7 +125,7 @@ export default function UserDetailPage() {
       <div className="min-h-screen bg-[#0a0a0a] p-6">
         <Card className="p-8 text-center">
           <h2 className="text-xl font-semibold mb-2">User not found</h2>
-          <Link href="/app-dashboard/admin/users">
+          <Link href="/admin/users">
             <Button variant="outline">Back to Users</Button>
           </Link>
         </Card>
@@ -138,7 +138,7 @@ export default function UserDetailPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
-          <Link href="/app-dashboard/admin/users">
+          <Link href="/admin/users">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back

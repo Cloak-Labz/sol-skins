@@ -196,7 +196,7 @@ export default function PrivacyPolicyPage() {
           </p>
 
           <p className="mt-4">
-            <Link href="/app-dashboard" className="underline">
+            <Link href="/dashboard" className="underline">
               Back to home
             </Link>
           </p>

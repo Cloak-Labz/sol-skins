@@ -258,7 +258,7 @@ export default function InventoryPage() {
 
       const buybackSol = payoutAmount || 0;
       const skinName = selectedSkin?.name || 'skin';
-      const packUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://dust3.fun'}/app-dashboard/packs`;
+      const packUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://dust3.fun'}/packs`;
       const tweetText = `Just cashed out ${skinName} for ${buybackSol.toFixed(3)} SOL on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
 
       currentToast = toast.success(

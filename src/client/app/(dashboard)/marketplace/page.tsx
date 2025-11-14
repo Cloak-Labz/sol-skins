@@ -119,13 +119,13 @@ export default function MarketplacePage() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-8">
-            <Link href="/app-dashboard/packs">
+            <Link href="/packs">
               <Button className="bg-[#E99500] hover:bg-[#E99500]/90 text-white px-8">
                 <Rocket className="w-4 h-4 mr-2" />
                 Open Packs
               </Button>
             </Link>
-            <Link href="/app-dashboard/inventory">
+            <Link href="/inventory">
               <Button variant="outline" className="border-[#333] text-white hover:bg-[#1a1a1a] px-8">
                 View Inventory
               </Button>

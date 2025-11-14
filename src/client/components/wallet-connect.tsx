@@ -88,7 +88,7 @@ export function WalletConnect() {
   if (connected && publicKey) {
     return (
       <div className="flex items-center gap-2">
-        <Link href="/app-dashboard/profile">
+        <Link href="/profile">
           <Button
             variant="outline"
             className="bg-card border-border text-foreground hover:bg-muted hover:text-foreground"

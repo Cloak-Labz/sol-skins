@@ -240,7 +240,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="mt-auto">
                       <a
-                        href="/app-dashboard/packs"
+                        href="/packs"
                         className="w-full inline-flex items-center justify-center px-3 py-2 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] text-sm font-semibold transition-colors"
                       >
                         Open Pack

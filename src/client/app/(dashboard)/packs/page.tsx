@@ -343,7 +343,7 @@ export default function PacksPage() {
       | { kind: "claim"; skin: CSGOSkin; packName?: string | null }
   ) => {
     let text = "";
-    const packUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://dust3.fun'}/app-dashboard/packs`;
+    const packUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://dust3.fun'}/packs`;
     
     if (params.kind === "buyback") {
       if (params.skin) {
@@ -1810,7 +1810,7 @@ export default function PacksPage() {
                           </p>
                           <div className="mt-3 flex gap-2">
                             <Link
-                              href="/app-dashboard/profile"
+                              href="/profile"
                               className="flex-1 inline-flex items-center justify-center rounded-md text-black px-3 py-2 text-sm font-semibold bg-[#E99500] hover:bg-[#f0a116]"
                             >
                               Add Trade URL
@@ -2008,7 +2008,7 @@ export default function PacksPage() {
                       onClick={() => {
                         setShowClaimShare(false);
                         setClaimedSkin(null);
-                        router.push("/app-dashboard/packs");
+                        router.push("/packs");
                       }}
                       disabled={isOpeningSkin}
                       className="flex-1 h-12 px-4 py-0 flex items-center justify-center bg-[#E99500] text-black hover:bg-[#d88500] font-bold disabled:opacity-50 disabled:cursor-not-allowed"

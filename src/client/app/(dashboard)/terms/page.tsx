@@ -160,14 +160,14 @@ export default function TermsOfServicePage() {
 
           <p className="mt-8 text-sm text-[#888]">
             For information on how we process personal data, see our
-            <Link href="app-dashboard/privacy" className="ml-1 underline">
+            <Link href="/privacy" className="ml-1 underline">
               Privacy Policy
             </Link>
             .
           </p>
 
           <p className="mt-4">
-            <Link href="/app-dashboard" className="underline">
+            <Link href="/dashboard" className="underline">
               Back to home
             </Link>
           </p>

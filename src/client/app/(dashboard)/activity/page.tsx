@@ -245,23 +245,75 @@ export default function ActivityPage() {
 
     // Sort by date
     filtered.sort((a, b) => {
-      const dateA = new Date(a.timestamp).getTime();
-      const dateB = new Date(b.timestamp).getTime();
-      return sortBy === "newest" ? dateB - dateA : dateA - dateB;
+      let dateA = new Date(a.timestamp).getTime();
+      let dateB = new Date(b.timestamp).getTime();
+      return sortBy === "newest" ?
+        dateB - dateA :
+        dateA - dateB;
     });
 
     return filtered;
   }, [activities, searchTerm, selectedTypes, sortBy]);
 
-  const getTimeAgo = (timestamp: string) => {
-    const now = new Date();
-    const then = new Date(timestamp);
-    const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+  // Detect server timezone offset from the most recent activity
+  const serverTimeOffset = useMemo(() => {
+    if (activities.length === 0) return 0;
+    
+    // Get the most recent activity (should be first after sorting)
+    const mostRecent = activities[0];
+    if (!mostRecent?.timestamp) return 0;
+    
+    const now = Date.now();
+    const then = new Date(mostRecent.timestamp).getTime();
+    const diff = then - now; // How far in the future the timestamp is
+    
+    // If the timestamp is in the future, we have a timezone offset
+    // Return positive value = how much to subtract from timestamps
+    if (diff > 0) {
+      return diff;
+    }
+    
+    return 0;
+  }, [activities]);
 
-    if (seconds < 60) return `${seconds}s ago`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    return `${Math.floor(seconds / 86400)}d ago`;
+  const getTimeAgo = (timestamp: string) => {
+    try {
+      const now = Date.now();
+      let then = new Date(timestamp).getTime();
+      
+      // If timestamp is invalid, return error indicator
+      if (isNaN(then)) {
+        console.error('Invalid timestamp:', timestamp);
+        return "Invalid date";
+      }
+      
+      // Correct for server timezone offset
+      // If serverTimeOffset is 9000000 (server is 2.5h ahead),
+      // subtract it to move the timestamp back to real time
+      then = then - serverTimeOffset;
+      
+      const diffMs = now - then;
+
+      // If still in the future (shouldn't happen), treat as "Just now"
+      if (diffMs < 0) {
+        return "Just now";
+      }
+
+      const seconds = Math.floor(diffMs / 1000);
+      const minutes = Math.floor(diffMs / (1000 * 60));
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      // Check from largest to smallest unit
+      if (days > 0) return `${days}d ago`;
+      if (hours > 0) return `${hours}h ago`;
+      if (minutes > 0) return `${minutes}m ago`;
+      if (seconds >= 10) return `${seconds}s ago`;
+      return "Just now";
+    } catch (error) {
+      console.error('Error calculating time ago:', error, timestamp);
+      return "Unknown";
+    }
   };
 
   const handleTypeToggle = (type: string) => {

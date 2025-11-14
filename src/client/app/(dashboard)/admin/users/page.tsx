@@ -221,7 +221,7 @@ export default function AdminUsersPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Link href={`/app-dashboard/admin/users/${user.id}`}>
+                        <Link href={`/admin/users/${user.id}`}>
                           <Button variant="outline" size="sm">
                             <Eye className="h-4 w-4 mr-2" />
                             View

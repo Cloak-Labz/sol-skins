@@ -23,19 +23,19 @@ export default function Footer() {
             <h4 className="text-white font-medium mb-4">Platform</h4>
             <div className="space-y-2">
               <Link
-                href="/app-dashboard/packs"
+                href="/packs"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Packs
               </Link>
               <Link
-                href="/app-dashboard/leaderboard"
+                href="/leaderboard"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Leaderboard
               </Link>
               <Link
-                href="/app-dashboard/activity"
+                href="/activity"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Activity
@@ -53,13 +53,13 @@ export default function Footer() {
                 Help Center
               </Link>
               <Link
-                href="/app-dashboard/terms"
+                href="/terms"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Terms of Service
               </Link>
               <Link
-                href="app-dashboard/privacy"
+                href="/privacy"
                 className="block text-[#666] hover:text-white text-sm transition-colors"
               >
                 Privacy Policy
