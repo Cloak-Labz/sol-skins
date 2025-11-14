@@ -497,39 +497,39 @@ export default function ActivityPage() {
 
         {/* Activity List */}
         <Card className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-          <CardContent className="p-4">
+          <CardContent className="p-3 sm:p-6 space-y-3 sm:space-y-4 max-h-[800px] overflow-y-auto">
             {filteredActivities.length > 0 ? (
               filteredActivities.map((activity) => {
                 const styles = getActivityStyles(activity.type);
                 return (
                   <div
                     key={activity.id}
-                    className={`flex items-center justify-between p-4 mb-2 last:mb-0 rounded-lg border ${styles.borderColor} ${styles.leftBorder} bg-gradient-to-b from-zinc-950 to-zinc-900 transition-all duration-150 hover:scale-[1.01] ${styles.hoverBorderColor}`}
+                    className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-5 rounded-lg border ${styles.borderColor} ${styles.leftBorder} bg-gradient-to-b from-zinc-950 to-zinc-900 transition-all duration-150 hover:scale-[1.005] ${styles.hoverBorderColor} gap-3 sm:gap-4`}
                   >
-                    <div className="flex items-center space-x-4">
+                    <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
                       <div
-                        className={`w-10 h-10 rounded-md flex items-center justify-center text-sm ${styles.iconBg} ${styles.iconColor}`}
+                        className={`w-10 h-10 sm:w-12 sm:h-12 rounded-md flex items-center justify-center flex-shrink-0 ${styles.iconBg} ${styles.iconColor}`}
                       >
                         {activity.type === "case_opened" ? (
-                          <Box className="w-4 h-4" />
+                          <Box className="w-4 h-4 sm:w-5 sm:h-5" />
                         ) : activity.type === "skin_claimed" ? (
-                          <CheckCircle className="w-4 h-4" />
+                          <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                         ) : activity.type === "payout" ? (
-                          <DollarSign className="w-4 h-4" />
+                          <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
                         ) : (
-                          <Coins className="w-4 h-4" />
+                          <Coins className="w-4 h-4 sm:w-5 sm:h-5" />
                         )}
                       </div>
-                      <div>
-                        <p className="text-foreground">
-                          <span className="font-medium">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-foreground text-sm sm:text-base mb-1">
+                          <span className="font-semibold">
                             {activity.user.username ||
                               `${activity.user.walletAddress.slice(
                                 0,
                                 4
                               )}...${activity.user.walletAddress.slice(-4)}`}
                           </span>
-                          <span className="text-muted-foreground mx-2">
+                          <span className="text-muted-foreground mx-1.5 sm:mx-2">
                             {activity.type === "case_opened"
                               ? "opened"
                               : activity.type === "skin_claimed"
@@ -538,7 +538,7 @@ export default function ActivityPage() {
                               ? "received payout for"
                               : "sold"}
                           </span>
-                          <span className="font-medium">
+                          <span className="font-semibold break-words">
                             {activity.skin
                               ? activity.skin.skinName
                               : activity.lootBox?.name ||
@@ -547,13 +547,25 @@ export default function ActivityPage() {
                                   : "skin")}
                           </span>
                         </p>
-                        <p className="text-muted-foreground text-sm">
+                        <p className="text-muted-foreground text-xs sm:text-sm">
                           {getTimeAgo(activity.timestamp)}
                         </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="text-foreground font-bold">
+                    <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2 sm:gap-1.5 sm:text-right flex-shrink-0">
+                      <Badge
+                        variant="secondary"
+                        className={`text-xs sm:order-2 ${styles.badgeBg} ${styles.badgeText} border ${styles.badgeBorder}`}
+                      >
+                        {activity.type === "case_opened"
+                          ? "open"
+                          : activity.type === "skin_claimed"
+                          ? "claim"
+                          : activity.type === "payout"
+                          ? "payout"
+                          : "buyback"}
+                      </Badge>
+                      <p className="text-foreground font-bold text-sm sm:text-base sm:order-1">
                         {activity.type === "case_opened"
                           ? `-${
                               activity.amount?.sol
@@ -572,18 +584,6 @@ export default function ActivityPage() {
                               parseFloat(activity.skin?.valueUsd || "0")
                             )}
                       </p>
-                      <Badge
-                        variant="secondary"
-                        className={`text-xs ${styles.badgeBg} ${styles.badgeText} border ${styles.badgeBorder}`}
-                      >
-                        {activity.type === "case_opened"
-                          ? "open"
-                          : activity.type === "skin_claimed"
-                          ? "claim"
-                          : activity.type === "payout"
-                          ? "payout"
-                          : "buyback"}
-                      </Badge>
                     </div>
                   </div>
                 );

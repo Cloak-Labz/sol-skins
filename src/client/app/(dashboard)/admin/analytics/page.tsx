@@ -142,8 +142,8 @@ export default function AnalyticsPage() {
   }));
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="min-h-screen bg-[#0a0a0a] p-4 sm:p-6 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -224,7 +224,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* First Row: Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.015] hover:border-zinc-700">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -311,7 +311,7 @@ export default function AnalyticsPage() {
         </div>
 
         {/* Second Row: Activity Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.015] hover:border-zinc-700">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -409,17 +409,18 @@ export default function AnalyticsPage() {
 
 
         {/* Time Series Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-6">
           {/* Case Openings Chart */}
-          <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700">
+          <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700 overflow-hidden">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Package className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <Package className="h-4 w-4 sm:h-5 sm:w-5" />
                 Case Openings Over Time
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+            <CardContent className="overflow-hidden">
+              <div className="w-full overflow-x-auto">
+                <ResponsiveContainer width="100%" height={300} minWidth={300}>
                 <AreaChart data={caseOpeningsData}>
                   <defs>
                     <linearGradient id="colorCaseOpenings" x1="0" y1="0" x2="0" y2="1">
@@ -453,20 +454,22 @@ export default function AnalyticsPage() {
                     fill="url(#colorCaseOpenings)" 
                   />
                 </AreaChart>
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 
           {/* Buybacks Chart */}
-          <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700">
+          <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700 overflow-hidden">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <TrendingDown className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5" />
                 Buybacks Over Time
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
+            <CardContent className="overflow-hidden">
+              <div className="w-full overflow-x-auto">
+                <ResponsiveContainer width="100%" height={300} minWidth={300}>
                 <BarChart data={buybacksData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                   <XAxis 
@@ -497,21 +500,23 @@ export default function AnalyticsPage() {
                   <Bar yAxisId="left" dataKey="count" fill="#ef4444" name="Count" />
                   <Bar yAxisId="right" dataKey="totalAmount" fill="#f59e0b" name="Total SOL" />
                 </BarChart>
-              </ResponsiveContainer>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
         </div>
 
         {/* Transfers Chart */}
-        <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700">
+        <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700 overflow-hidden">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ArrowUpRight className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <ArrowUpRight className="h-4 w-4 sm:h-5 sm:w-5" />
               Transfers Over Time
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
+          <CardContent className="overflow-hidden">
+            <div className="w-full overflow-x-auto">
+              <ResponsiveContainer width="100%" height={300} minWidth={300}>
               <LineChart data={transfersData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis 
@@ -539,20 +544,22 @@ export default function AnalyticsPage() {
                   dot={{ fill: '#10b981', r: 4 }}
                 />
               </LineChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
         {/* Combined Chart */}
-        <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700">
+        <Card className="group bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 transition-transform duration-200 hover:scale-[1.01] hover:border-zinc-700 overflow-hidden">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+              <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5" />
               Combined Activity Overview
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={400}>
+          <CardContent className="overflow-hidden">
+            <div className="w-full overflow-x-auto">
+              <ResponsiveContainer width="100%" height={400} minWidth={300}>
               <LineChart data={combinedData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                 <XAxis 
@@ -598,7 +605,8 @@ export default function AnalyticsPage() {
                   dot={{ fill: '#10b981', r: 3 }}
                 />
               </LineChart>
-            </ResponsiveContainer>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>

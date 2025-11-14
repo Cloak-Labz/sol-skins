@@ -130,6 +130,66 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        <section className="space-y-3">
+          <h3 className="text-white font-semibold">Available Packs</h3>
+          <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-4">
+            {packs.length === 0 && (
+              <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-10 text-zinc-400 gap-3">
+                <div className="font-mono text-3xl">{":("}</div>
+                <div>Nothing here yet</div>
+              </div>
+            )}
+            {packs.map((p) => {
+              const packImageSrc = normalizeImageUrl(p.imageUrl);
+
+              return (
+                <div
+                  key={p.id}
+                  className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-4 flex flex-col h-full"
+                >
+                  <div className="aspect-[3/4] rounded-lg bg-zinc-800/40 mb-3 overflow-hidden">
+                    {packImageSrc ? (
+                      <img
+                        src={packImageSrc}
+                        alt={p.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(event) => {
+                          const target = event.currentTarget;
+                          target.onerror = null;
+                          target.src = "/assets/banner2.jpg";
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src="/assets/banner2.jpg"
+                        alt={p.name}
+                        className="w-full h-full object-cover opacity-90"
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1 flex flex-col">
+                    <div className="text-white font-semibold leading-tight mb-2 min-h-[2.5rem] flex items-start">
+                      {p.name}
+                    </div>
+                    <div className="text-zinc-400 text-sm mb-3">
+                      {Number(p.priceSol).toFixed(2)} SOL
+                    </div>
+                    <div className="mt-auto">
+                      <a
+                        href="/packs"
+                        className="w-full inline-flex items-center justify-center px-3 py-2 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] text-sm font-semibold transition-colors"
+                      >
+                        Open Pack
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
         {/* Recent Pulls */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">
@@ -184,67 +244,6 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-[11px] text-zinc-500">
                       Claw Machine • {p.lootBox?.name || "Pack"}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* Your Skins */}
-        <section className="space-y-3">
-          <h3 className="text-white font-semibold">Available Packs</h3>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-4">
-            {packs.length === 0 && (
-              <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-10 text-zinc-400 gap-3">
-                <div className="font-mono text-3xl">{":("}</div>
-                <div>Nothing here yet</div>
-              </div>
-            )}
-            {packs.map((p) => {
-              const packImageSrc = normalizeImageUrl(p.imageUrl);
-
-              return (
-                <div
-                  key={p.id}
-                  className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-4 flex flex-col h-full"
-                >
-                  <div className="aspect-[3/4] rounded-lg bg-zinc-800/40 mb-3 overflow-hidden">
-                    {packImageSrc ? (
-                      <img
-                        src={packImageSrc}
-                        alt={p.name}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                        onError={(event) => {
-                          const target = event.currentTarget;
-                          target.onerror = null;
-                          target.src = "/assets/banner2.jpg";
-                        }}
-                      />
-                    ) : (
-                      <img
-                        src="/assets/banner2.jpg"
-                        alt={p.name}
-                        className="w-full h-full object-cover opacity-90"
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1 flex flex-col">
-                    <div className="text-white font-semibold leading-tight mb-2 min-h-[2.5rem] flex items-start">
-                      {p.name}
-                    </div>
-                    <div className="text-zinc-400 text-sm mb-3">
-                      {Number(p.priceSol).toFixed(2)} SOL
-                    </div>
-                    <div className="mt-auto">
-                      <a
-                        href="/packs"
-                        className="w-full inline-flex items-center justify-center px-3 py-2 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] text-sm font-semibold transition-colors"
-                      >
-                        Open Pack
-                      </a>
                     </div>
                   </div>
                 </div>

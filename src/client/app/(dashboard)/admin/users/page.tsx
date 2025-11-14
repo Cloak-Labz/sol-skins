@@ -167,7 +167,7 @@ export default function AdminUsersPage() {
               <CardTitle>Users ({filteredUsers.length})</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2">
+              <div className="space-y-3 sm:space-y-4 max-h-[600px] overflow-y-auto">
                 {filteredUsers.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
                     No users found
@@ -176,13 +176,13 @@ export default function AdminUsersPage() {
                   filteredUsers.map((user) => (
                     <div
                       key={user.id}
-                      className="flex items-center justify-between p-4 bg-gradient-to-b from-zinc-950 to-zinc-900 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors"
+                      className="flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-5 bg-gradient-to-b from-zinc-950 to-zinc-900 rounded-lg border border-zinc-800 hover:border-zinc-700 transition-colors gap-4"
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3">
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <h3 className="font-medium text-white">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <h3 className="font-semibold text-white text-base">
                                 {user.username || "Anonymous"}
                               </h3>
                               {user.isActive ? (
@@ -195,34 +195,38 @@ export default function AdminUsersPage() {
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-sm text-muted-foreground font-mono">
+                            <p className="text-xs sm:text-sm text-muted-foreground font-mono truncate">
                               {user.walletAddress}
                             </p>
                             {user.email && (
-                              <p className="text-xs text-muted-foreground">
+                              <p className="text-xs text-muted-foreground mt-1">
                                 {user.email}
                               </p>
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-4 mt-2 text-sm">
-                          <span className="text-muted-foreground">
-                            Spent: ${Number(user.totalSpent || 0).toFixed(2)}
-                          </span>
-                          <span className="text-muted-foreground">
-                            Earned: ${Number(user.totalEarned || 0).toFixed(2)}
-                          </span>
-                          <span className="text-muted-foreground">
-                            Cases: {user.casesOpened || 0}
-                          </span>
-                          <span className="text-muted-foreground">
-                            Inventory: ${Number(user.inventoryValue || 0).toFixed(2)}
-                          </span>
+                        <div className="grid grid-cols-2 sm:flex sm:items-center gap-3 sm:gap-4 text-xs sm:text-sm">
+                          <div>
+                            <span className="text-muted-foreground block sm:inline">Spent: </span>
+                            <span className="font-medium">${Number(user.totalSpent || 0).toFixed(2)}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground block sm:inline">Earned: </span>
+                            <span className="font-medium">${Number(user.totalEarned || 0).toFixed(2)}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground block sm:inline">Cases: </span>
+                            <span className="font-medium">{user.casesOpened || 0}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground block sm:inline">Inventory: </span>
+                            <span className="font-medium">${Number(user.inventoryValue || 0).toFixed(2)}</span>
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Link href={`/admin/users/${user.id}`}>
-                          <Button variant="outline" size="sm">
+                      <div className="flex items-center gap-2 sm:flex-shrink-0">
+                        <Link href={`/admin/users/${user.id}`} className="flex-1 sm:flex-initial">
+                          <Button variant="outline" size="sm" className="w-full sm:w-auto">
                             <Eye className="h-4 w-4 mr-2" />
                             View
                           </Button>

@@ -1038,23 +1038,23 @@ export default function PacksPage() {
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 border border-zinc-800/50 rounded-2xl p-8 md:p-10 max-w-lg w-full mx-4 shadow-2xl overflow-hidden"
+              className="relative bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 border border-zinc-800/50 rounded-2xl p-4 sm:p-6 md:p-8 lg:p-10 max-w-lg w-[95vw] sm:w-full mx-4 shadow-2xl overflow-hidden"
             >
               {/* Background glow effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-[#E99500]/5 via-transparent to-transparent pointer-events-none" />
               
               {/* Header */}
-              <div className="relative mb-8 text-center">
-                <h3 className="text-2xl font-bold text-white mb-2">
+              <div className="relative mb-6 sm:mb-8 text-center">
+                <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">
                   Opening Pack
                 </h3>
-                <p className="text-sm text-zinc-400">
+                <p className="text-xs sm:text-sm text-zinc-400">
                   Please wait while we process your transaction
                 </p>
               </div>
               
               {/* Progress Steps */}
-              <div className="relative space-y-5 mb-8">
+              <div className="relative space-y-4 sm:space-y-5 mb-6 sm:mb-8">
                 {progressSteps.map((step, index) => {
                   const isActive = index === progressStep;
                   const isCompleted = index < progressStep;
@@ -1070,7 +1070,7 @@ export default function PacksPage() {
                         scale: isActive ? 1.02 : 1
                       }}
                       transition={{ delay: index * 0.1 }}
-                      className={`relative flex items-center gap-4 transition-all duration-300 ${
+                      className={`relative flex items-center gap-3 sm:gap-4 transition-all duration-300 ${
                         isActive ? "z-10" : ""
                       }`}
                     >
@@ -1093,7 +1093,7 @@ export default function PacksPage() {
                         )}
                         
                         <div
-                          className={`relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                          className={`relative flex-shrink-0 w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
                             isCompleted
                               ? "bg-[#E99500] border-[#E99500] shadow-lg shadow-[#E99500]/50"
                               : isActive
@@ -1106,7 +1106,7 @@ export default function PacksPage() {
                               initial={{ scale: 0 }}
                               animate={{ scale: 1 }}
                               transition={{ type: "spring", stiffness: 200 }}
-                              className="w-5 h-5 text-white"
+                              className="w-4 h-4 sm:w-5 sm:h-5 text-white"
                               fill="none"
                               stroke="currentColor"
                               viewBox="0 0 24 24"
@@ -1119,9 +1119,9 @@ export default function PacksPage() {
                               />
                             </motion.svg>
                           ) : isActive ? (
-                            <Loader2 className="w-5 h-5 text-[#E99500] animate-spin" />
+                            <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 text-[#E99500] animate-spin" />
                           ) : (
-                            <div className="w-2 h-2 rounded-full bg-zinc-500" />
+                            <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-zinc-500" />
                           )}
                         </div>
                       </div>
@@ -1129,7 +1129,7 @@ export default function PacksPage() {
                       {/* Step Label */}
                       <div className="flex-1 min-w-0">
                         <span
-                          className={`block text-sm transition-all duration-300 ${
+                          className={`block text-xs sm:text-sm transition-all duration-300 ${
                             isCompleted
                               ? "text-white font-medium"
                               : isActive
@@ -1236,7 +1236,7 @@ export default function PacksPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <motion.div
@@ -1244,17 +1244,17 @@ export default function PacksPage() {
               animate={{ scale: 1, opacity: 1, rotateY: 0 }}
               exit={{ scale: 0.5, opacity: 0 }}
               transition={{ type: "spring", duration: 0.8, bounce: 0.4 }}
-              className="relative max-w-2xl w-full"
+              className="relative max-w-2xl w-[95vw] sm:w-full mx-2 sm:mx-4"
               onClick={(e) => e.stopPropagation()}
             >
               <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden">
                 {/* Top area */}
-                <div className="relative p-6 pb-0">
+                <div className="relative p-4 sm:p-6 pb-0">
                   <div className="pointer-events-none absolute -inset-40 bg-[radial-gradient(circle,rgba(255,170,0,0.3)_0%,rgba(0,0,0,0)_60%)]" />
 
-                  <div className="relative w-full h-[220px] rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
-                    <div className="text-center space-y-2">
-                      <div className="text-zinc-300 text-sm uppercase tracking-wider">
+                  <div className="relative w-full h-[160px] sm:h-[200px] md:h-[220px] rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
+                    <div className="text-center space-y-2 px-4">
+                      <div className="text-zinc-300 text-xs sm:text-sm uppercase tracking-wider">
                         Payout received
                       </div>
                       {(() => {
@@ -1262,7 +1262,7 @@ export default function PacksPage() {
                           buybackAmountSol ?? pendingBuybackInfo?.payoutSol ?? 0
                         );
                         return (
-                          <div className="text-5xl font-extrabold text-white">
+                          <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white">
                             {payoutVal > 0
                               ? `+${payoutVal.toFixed(3)} SOL`
                               : `+0.00 SOL`}
@@ -1274,12 +1274,12 @@ export default function PacksPage() {
                 </div>
 
                 {/* Bottom area */}
-                <div className="mt-6 p-6 bg-[#0d0d0d] border-t border-white/10">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-[#0d0d0d] border-t border-white/10">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {/* Pack Price */}
-                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
-                      <div className="text-white/70 text-sm">Pack Price</div>
-                      <div className="text-white font-semibold text-2xl mt-1">
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-3 sm:p-4">
+                      <div className="text-white/70 text-xs sm:text-sm">Pack Price</div>
+                      <div className="text-white font-semibold text-xl sm:text-2xl mt-1">
                         {selectedPack
                           ? `${parseFloat(
                               String((selectedPack as any).priceSol)
@@ -1289,9 +1289,9 @@ export default function PacksPage() {
                     </div>
 
                     {/* Payout */}
-                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
-                      <div className="text-white/70 text-sm">Payout</div>
-                      <div className="text-white font-semibold text-2xl mt-1">
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-3 sm:p-4">
+                      <div className="text-white/70 text-xs sm:text-sm">Payout</div>
+                      <div className="text-white font-semibold text-xl sm:text-2xl mt-1">
                         {buybackAmountSol !== null
                           ? `${Number(buybackAmountSol).toFixed(2)} SOL`
                           : "—"}
@@ -1299,10 +1299,10 @@ export default function PacksPage() {
                     </div>
                   </div>
 
-                  <div className="mt-6 flex gap-3">
+                  <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row gap-3">
                     <Button
                       onClick={() => setShowBuybackModal(false)}
-                      className="flex-1 bg-[#E99500] text-black hover:bg-[#d88500] font-bold py-6"
+                      className="flex-1 bg-[#E99500] text-black hover:bg-[#d88500] font-bold py-4 sm:py-6 text-sm sm:text-base"
                     >
                       Buy Another Pack
                     </Button>
@@ -1316,13 +1316,13 @@ export default function PacksPage() {
                       })}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-md bg-black border border-white/20 px-4 py-3 text-sm font-semibold text-white hover:bg-zinc-900 transition-colors whitespace-nowrap"
+                      className="flex-1 inline-flex items-center justify-center gap-2 rounded-md bg-black border border-white/20 px-4 py-3 sm:py-4 text-xs sm:text-sm font-semibold text-white hover:bg-zinc-900 transition-colors"
                     >
                       Share on{" "}
                       <img
                         src="/assets/x_icon.png"
                         alt="X"
-                        className="w-5 h-5"
+                        className="w-4 h-4 sm:w-5 sm:h-5"
                       />
                     </a>
                   </div>
@@ -1702,7 +1702,7 @@ export default function PacksPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <motion.div
@@ -1710,17 +1710,17 @@ export default function PacksPage() {
               animate={{ scale: 1, opacity: 1, rotateY: 0 }}
               exit={{ scale: 0.5, opacity: 0 }}
               transition={{ type: "spring", duration: 0.8, bounce: 0.4 }}
-              className="relative max-w-2xl w-full mx-auto"
+              className="relative max-w-2xl w-[95vw] sm:w-full mx-auto"
               onClick={(e) => e.stopPropagation()}
             >
-              <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden">
+              <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden !gap-0 !rounded-b-none">
                 {/* Top area with bright glow */}
-                <div className="relative p-6 pb-0">
+                <div className="relative">
                   {/* Skin Display Area - Inspired by the reference image */}
-                  <div className="relative w-full h-[180px] md:h-[200px] rounded-lg overflow-hidden bg-black">
+                  <div className="relative w-full h-[40vh] sm:h-[25vh] md:h-[30vh] lg:h-[35vh] rounded-lg overflow-hidden bg-black">
                     {/* Background with central light effect */}
                     <div className="absolute inset-0 bg-gradient-to-b from-black via-orange-950/50 to-black" />
-                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center_bottom,rgba(233,149,0,0.35)_0%,rgba(0,0,0,0)_70%)]" />
+                    <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center_bottom,rgba(233,149,0,0.35)_0%,rgba(0,0,0,0)_70%)] !rounded-b-none" />
 
                     {/* Subtle floating particles (inside only this rectangle) */}
                     <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -1760,29 +1760,29 @@ export default function PacksPage() {
                     {/* Skin Image - Centered and elevated */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pt-10">
                       {wonSkin.image === "icon-fallback" ? (
-                        <Package className="h-24 w-24 md:h-28 md:w-28 text-white/30 drop-shadow-[0_0_30px_rgba(255,140,0,0.5)]" />
+                        <Package className="h-14 w-14 sm:h-20 sm:w-20 md:h-24 md:w-24 lg:h-28 lg:w-28 text-white/30 drop-shadow-[0_0_30px_rgba(255,140,0,0.5)]" />
                       ) : (
                         <img
                           src={wonSkin.image}
                           alt={wonSkin.name}
-                          className="h-24 w-24 md:h-28 md:w-28 object-contain drop-shadow-[0_0_30px_rgba(255,140,0,0.5)]"
+                          className="h-144 w-144 sm:h-50 sm:w-50 md:h-70 md:w-70 lg:h-100 lg:w-100 object-contain drop-shadow-[0_0_30px_rgba(255,140,0,0.5)]"
                         />
                       )}
                     </div>
 
                     {/* Skin Name - Large and prominent like in reference */}
-                    <div className="absolute top-1 left-0 right-0 text-center px-4 pt-2">
+                    <div className="absolute top-1 left-0 right-0 text-center px-2 sm:px-4 pt-1 sm:pt-2">
                       <h1
-                        className="text-base md:text-lg lg:text-xl font-black text-white uppercase tracking-wider mb-0.5"
+                        className="text-xl sm:text-md md:text-base lg:text-lg xl:text-xl font-black text-white uppercase tracking-wider mb-0.5 break-words"
                         style={{ fontFamily: "monospace" }}
                       >
                         {wonSkin.name.split(" | ")[0]}
-                        <span className="text-white/60 mx-1">|</span>
+                        <span className="text-white/60 mx-0.5 sm:mx-1">|</span>
                         {wonSkin.name.split(" | ")[1] ||
                           wonSkin.rarity.toUpperCase()}
                       </h1>
                       <p
-                        className="text-[11px] md:text-xs lg:text-sm font-bold text-[#E99500] uppercase tracking-wide"
+                        className="text-lg sm:text-md md:text-xs lg:text-sm font-bold text-[#E99500] uppercase tracking-wide"
                         style={{ fontFamily: "monospace" }}
                       >
                         {wonSkin.rarity.toUpperCase()} •
@@ -1795,23 +1795,23 @@ export default function PacksPage() {
                 </div>
 
                 {/* Bottom action area (fixed bg) */}
-                <div className="mt-6 p-6 bg-[#0d0d0d] border-t border-white/10">
+                <div className="p-4 sm:p-6 bg-[#0d0d0d] border-t border-white/10">
                   {userTradeUrl === null && !hideTradePrompt && (
-                    <div className="mb-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-4">
-                      <div className="flex items-start gap-3">
-                        <Lock className="w-5 h-5 mt-0.5 text-[#E99500]" />
-                        <div className="flex-1">
-                          <div className="font-semibold text-yellow-200">
+                    <div className="mb-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3 sm:p-4">
+                      <div className="flex items-start gap-2 sm:gap-3">
+                        <Lock className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 text-[#E99500] flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-yellow-200 text-sm sm:text-base">
                             Steam Trade URL required to claim this skin
                           </div>
-                          <p className="text-yellow-100/90 text-sm mt-1">
+                          <p className="text-yellow-100/90 text-xs sm:text-sm mt-1">
                             Add your Trade URL in Profile to enable Steam
                             claims. You can still take a payout now.
                           </p>
                           <div className="mt-3 flex gap-2">
                             <Link
                               href="/profile"
-                              className="flex-1 inline-flex items-center justify-center rounded-md text-black px-3 py-2 text-sm font-semibold bg-[#E99500] hover:bg-[#f0a116]"
+                              className="flex-1 inline-flex items-center justify-center rounded-md text-black px-3 py-2 text-xs sm:text-sm font-semibold bg-[#E99500] hover:bg-[#f0a116]"
                             >
                               Add Trade URL
                             </Link>
@@ -1821,15 +1821,15 @@ export default function PacksPage() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {/* Payout box */}
-                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-3 sm:p-4">
                       <div className="flex items-center justify-between">
-                        <div>
-                          <div className="text-white font-semibold">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-white font-semibold text-sm sm:text-base">
                             Receive a payout
                           </div>
-                          <div className="text-white/60 text-sm">
+                          <div className="text-white/60 text-xs sm:text-sm">
                             {typeof pendingBuybackInfo?.payoutSol === "number"
                               ? `≈ +${pendingBuybackInfo.payoutSol.toFixed(
                                   3
@@ -1841,19 +1841,19 @@ export default function PacksPage() {
                       <Button
                         onClick={handleBuyback}
                         disabled={isOpeningSkin}
-                        className="mt-4 w-full bg-[#E99500] hover:bg-[#f0a116] text-black font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="mt-3 sm:mt-4 w-full bg-[#E99500] hover:bg-[#f0a116] text-black font-bold disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base py-3 sm:py-4"
                       >
-                        <Zap className="w-8 h-8 text-black fill-black" />
+                        <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-black fill-black mr-2" />
                         Take payout
                       </Button>
                     </div>
 
                     {/* Claim box */}
-                    <div className="rounded-lg border border-white/10 bg-white/2 p-4">
-                      <div className="text-white font-semibold">
+                    <div className="rounded-lg border border-white/10 bg-white/2 p-3 sm:p-4">
+                      <div className="text-white font-semibold text-sm sm:text-base">
                         Claim to Steam inventory
                       </div>
-                      <div className="text-white/60 text-sm">
+                      <div className="text-white/60 text-xs sm:text-sm">
                         Send this skin to your Steam account
                       </div>
                       <Button
@@ -1944,7 +1944,7 @@ export default function PacksPage() {
                             );
                           }
                         }}
-                        className="mt-4 w-full bg-white text-black hover:bg-gray-200 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="mt-3 sm:mt-4 w-full bg-white text-black hover:bg-gray-200 font-bold disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base py-3 sm:py-4"
                       >
                         {!userTradeUrl || userTradeUrl.trim() === ""
                           ? "Set Up Steam Trade URL"
@@ -1968,7 +1968,7 @@ export default function PacksPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4"
             onClick={(e) => e.stopPropagation()}
           >
             <motion.div
@@ -1976,20 +1976,20 @@ export default function PacksPage() {
               animate={{ scale: 1, opacity: 1, rotateY: 0 }}
               exit={{ scale: 0.5, opacity: 0 }}
               transition={{ type: "spring", duration: 0.8, bounce: 0.4 }}
-              className="relative max-w-md w-full"
+              className="relative max-w-md w-[95vw] sm:w-full"
               onClick={(e) => e.stopPropagation()}
             >
               <Card className="relative p-0 bg-[#0b0b0b] border border-white/10 overflow-hidden">
                 {/* Top area (match buyback) */}
-                <div className="relative p-6 pb-0">
+                <div className="relative p-4 sm:p-6 pb-0">
                   <div className="pointer-events-none absolute -inset-40 bg-[radial-gradient(circle,rgba(255,170,0,0.3)_0%,rgba(0,0,0,0)_60%)]" />
 
-                  <div className="relative w-full h-[220px] rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
-                    <div className="text-center space-y-2">
-                      <div className="text-zinc-300 text-sm uppercase tracking-wider">
+                  <div className="relative w-full h-[160px] sm:h-[200px] md:h-[220px] rounded-lg overflow-hidden border border-white/10 bg-black/40 flex items-center justify-center">
+                    <div className="text-center space-y-2 px-4">
+                      <div className="text-zinc-300 text-xs sm:text-sm uppercase tracking-wider">
                         Share your win
                       </div>
-                      <div className="text-2xl md:text-3xl font-extrabold text-white break-words px-4">
+                      <div className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white break-words">
                         {claimedSkin.name}
                       </div>
                     </div>
@@ -1997,13 +1997,13 @@ export default function PacksPage() {
                 </div>
 
                 {/* Bottom area (match buyback) */}
-                <div className="mt-6 p-6 bg-[#0d0d0d] border-t border-white/10">
-                  <div className="text-xs text-zinc-400 leading-relaxed mb-4">
+                <div className="mt-4 sm:mt-6 p-4 sm:p-6 bg-[#0d0d0d] border-t border-white/10">
+                  <div className="text-xs sm:text-sm text-zinc-400 leading-relaxed mb-4">
                     You will receive this skin via the Steam Trade URL you
                     provided in approximately 24 hours.
                   </div>
 
-                  <div className="mt-2 flex items-stretch gap-3">
+                  <div className="mt-2 flex flex-col sm:flex-row items-stretch gap-3">
                     <Button
                       onClick={() => {
                         setShowClaimShare(false);
@@ -2011,7 +2011,7 @@ export default function PacksPage() {
                         router.push("/packs");
                       }}
                       disabled={isOpeningSkin}
-                      className="flex-1 h-12 px-4 py-0 flex items-center justify-center bg-[#E99500] text-black hover:bg-[#d88500] font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex-1 h-11 sm:h-12 px-4 py-0 flex items-center justify-center bg-[#E99500] text-black hover:bg-[#d88500] font-bold disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
                     >
                       Open a new pack
                     </Button>
@@ -2024,13 +2024,13 @@ export default function PacksPage() {
                       })}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 inline-flex h-12 px-4 py-0 items-center justify-center gap-2 rounded-md bg-black border border-white/20 text-sm font-semibold text-white hover:bg-zinc-900 transition-colors whitespace-nowrap"
+                      className="flex-1 inline-flex h-11 sm:h-12 px-4 py-0 items-center justify-center gap-2 rounded-md bg-black border border-white/20 text-xs sm:text-sm font-semibold text-white hover:bg-zinc-900 transition-colors"
                     >
                       Share on{" "}
                       <img
                         src="/assets/x_icon.png"
                         alt="X"
-                        className="w-5 h-5"
+                        className="w-4 h-4 sm:w-5 sm:h-5"
                       />
                     </a>
                   </div>

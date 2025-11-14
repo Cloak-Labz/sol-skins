@@ -236,7 +236,7 @@ export default function LeaderboardPage() {
 
       {/* Podium */}
       {podium.length > 0 && (
-        <div className="flex justify-center items-end gap-2 mb-6">
+        <div className="flex justify-center items-end gap-2 sm:gap-4 mb-6 px-2">
           {podium
             .slice()
             .sort((a, b) => a.rank - b.rank)
@@ -247,14 +247,13 @@ export default function LeaderboardPage() {
                 : p.rank === 2
                 ? "order-1"
                 : "order-3";
-              const height = isFirst ? "h-20" : "h-14";
-              const width = isFirst ? "w-24" : "w-20";
-              const avatarSize = isFirst ? "size-14" : "size-12";
+              const height = isFirst ? "h-16 sm:h-20" : "h-12 sm:h-14";
+              const avatarSize = isFirst ? "size-10 sm:size-14" : "size-8 sm:size-12";
               const delayMs = p.rank === 2 ? 0 : p.rank === 1 ? 90 : 180;
               return (
                 <div
                   key={p.user.id}
-                  className={`flex flex-col items-center ${orderClass} transition-all duration-500 ease-out ${
+                  className={`flex flex-col items-center ${orderClass} transition-all duration-500 ease-out flex-1 max-w-[33%] ${
                     mounted
                       ? "opacity-100 translate-y-0 scale-100"
                       : "opacity-0 translate-y-2 scale-95"
@@ -262,7 +261,7 @@ export default function LeaderboardPage() {
                   style={{ transitionDelay: `${delayMs}ms` }}
                 >
                   <Avatar
-                    className={`${avatarSize} mb-2 ${getAvatarBorderColor(p.rank)}`}
+                    className={`${avatarSize} mb-1 sm:mb-2 ${getAvatarBorderColor(p.rank)}`}
                   >
                     <AvatarImage
                       alt={getDisplayName(p)}
@@ -274,19 +273,19 @@ export default function LeaderboardPage() {
                       {`#${p.rank}`}
                     </AvatarFallback>
                   </Avatar>
-                  <p className="text-white font-semibold text-xs truncate max-w-[140px] text-center">
+                  <p className="text-white font-semibold text-[10px] sm:text-xs truncate max-w-full text-center px-1">
                     {getDisplayName(p)}
                   </p>
-                  <p className="text-white font-bold text-base">
+                  <p className="text-white font-bold text-sm sm:text-base">
                     {getPoints(p).toLocaleString()}
                   </p>
-                  <p className="text-[#666] text-[11px] mb-1">points</p>
+                  <p className="text-[#666] text-[10px] sm:text-[11px] mb-1">points</p>
                   <div
                     className={`${getPodiumColor(
                       p.rank
                     )} border-2 ${getPodiumBorderColor(
                       p.rank
-                    )} ${height} ${width} rounded-lg origin-bottom transition-transform duration-500 ease-out ${
+                    )} ${height} w-full rounded-lg origin-bottom transition-transform duration-500 ease-out ${
                       mounted ? "scale-y-100" : "scale-y-0"
                     } shadow-2xl ${
                       p.rank === 1
@@ -362,71 +361,124 @@ export default function LeaderboardPage() {
       {/* Leaderboard Table */}
       <Card className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
         <CardContent className="p-0">
-          <div className="grid p-4 border-b border-zinc-800 bg-zinc-900" style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
-            <div className="text-muted-foreground text-sm font-medium">#</div>
-            <div className="text-muted-foreground text-sm font-medium">Name</div>
-            <div className="text-muted-foreground text-sm font-medium">Inventory Value</div>
-            <div className="text-muted-foreground text-sm font-medium">Volume</div>
-            <div className="text-muted-foreground text-sm font-medium">Claw Pulls</div>
-            <div className="text-muted-foreground text-sm font-medium">Points</div>
-          </div>
-          {leaderboard.length === 0 ? (
-            <div className="p-8 text-center">
-              <p className="text-muted-foreground">No leaderboard data available</p>
+          {/* Desktop Table - Hidden on mobile */}
+          <div className="hidden md:block overflow-x-auto">
+            <div className="min-w-[800px]">
+              <div className="grid p-4 border-b border-zinc-800 bg-zinc-900" style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
+                <div className="text-muted-foreground text-sm font-medium">#</div>
+                <div className="text-muted-foreground text-sm font-medium">Name</div>
+                <div className="text-muted-foreground text-sm font-medium">Inventory Value</div>
+                <div className="text-muted-foreground text-sm font-medium">Volume</div>
+                <div className="text-muted-foreground text-sm font-medium">Claw Pulls</div>
+                <div className="text-muted-foreground text-sm font-medium">Points</div>
+              </div>
+              <div className="max-h-[600px] overflow-y-auto">
+                {leaderboard.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <p className="text-muted-foreground">No leaderboard data available</p>
+                  </div>
+                ) : (
+                  leaderboard.map((entry) => (
+                      <div
+                        key={entry.user.id}
+                        className={`grid p-4 border-b border-zinc-800 last:border-b-0 transition-all duration-150 hover:bg-zinc-900 ${
+                          entry.rank <= 3 ? 'bg-zinc-900/50' : ''
+                        }`}
+                        style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}
+                      >
+                        <div className="flex items-center">
+                          {getRankIcon(entry.rank)}
+                        </div>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <Avatar className="flex-shrink-0">
+                            <AvatarImage
+                              alt={getDisplayName(entry)}
+                              src={`https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(
+                                getDisplayName(entry)
+                              )}`}
+                            />
+                            <AvatarFallback className="bg-zinc-800 text-zinc-300">
+                              {getDisplayName(entry).slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <p className="text-foreground font-medium truncate">
+                            {getDisplayName(entry)}
+                          </p>
+                        </div>
+                        <div className="flex items-center">
+                          <p className="text-foreground font-bold">
+                            {formatCurrency(entry.inventoryValue)}
+                          </p>
+                        </div>
+                        <div className="flex items-center">
+                          <p className="text-foreground font-bold">
+                            {formatCurrency(
+                              typeof entry.totalEarned === "string"
+                                ? parseFloat(entry.totalEarned)
+                                : entry.totalEarned
+                            )}
+                          </p>
+                        </div>
+                        <div className="flex items-center">
+                          <p className="text-muted-foreground">{entry.casesOpened}</p>
+                        </div>
+                        <div className="flex items-center">
+                          <p className="text-foreground font-bold">
+                            {getPoints(entry).toLocaleString()}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
             </div>
-          ) : (
-            leaderboard.map((entry) => (
+          </div>
+
+          {/* Mobile List - Shown on mobile only */}
+          <div className="md:hidden max-h-[600px] overflow-y-auto">
+            {leaderboard.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-muted-foreground">No leaderboard data available</p>
+              </div>
+            ) : (
+              leaderboard.map((entry) => (
                 <div
                   key={entry.user.id}
-                  className={`grid p-4 border-b border-zinc-800 last:border-b-0 transition-all duration-150 hover:bg-zinc-900 hover:scale-[1.005] ${
+                  className={`p-4 border-b border-zinc-800 last:border-b-0 ${
                     entry.rank <= 3 ? 'bg-zinc-900/50' : ''
                   }`}
-                  style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}
                 >
-                  <div className="flex items-center">
-                    {getRankIcon(entry.rank)}
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Avatar>
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-sm font-bold text-gray-400">#{entry.rank}</span>
+                    <Avatar className="w-8 h-8">
                       <AvatarImage
                         alt={getDisplayName(entry)}
                         src={`https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(
                           getDisplayName(entry)
                         )}`}
                       />
-                      <AvatarFallback className="bg-zinc-800 text-zinc-300">
+                      <AvatarFallback className="bg-zinc-800 text-zinc-300 text-xs">
                         {getDisplayName(entry).slice(0, 2).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
-                    <p className="text-foreground font-medium">
+                    <p className="text-foreground font-medium truncate flex-1">
                       {getDisplayName(entry)}
                     </p>
                   </div>
-                  <div className="flex items-center">
-                    <p className="text-foreground font-bold">
-                      {formatCurrency(entry.inventoryValue)}
-                    </p>
-                  </div>
-                  <div className="flex items-center">
-                    <p className="text-foreground font-bold">
-                      {formatCurrency(
-                        typeof entry.totalEarned === "string"
-                          ? parseFloat(entry.totalEarned)
-                          : entry.totalEarned
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex items-center">
-                    <p className="text-muted-foreground">{entry.casesOpened}</p>
-                  </div>
-                  <div className="flex items-center">
-                    <p className="text-foreground font-bold">
-                      {getPoints(entry).toLocaleString()}
-                    </p>
+                  <div className="grid grid-cols-2 gap-2 text-sm ml-11">
+                    <div>
+                      <span className="text-muted-foreground text-xs">Points:</span>
+                      <p className="text-foreground font-bold">{getPoints(entry).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Value:</span>
+                      <p className="text-foreground font-bold">{formatCurrency(entry.inventoryValue)}</p>
+                    </div>
                   </div>
                 </div>
               ))
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -382,15 +382,65 @@ export default function ProfilePage() {
     });
   };
 
-  const getTimeAgo = (timestamp: string) => {
-    const now = new Date();
-    const then = new Date(timestamp);
-    const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+  // Detect server timezone offset from the most recent activity
+  const serverTimeOffset = useMemo(() => {
+    if (recentTransactions.length === 0) return 0;
+    
+    // Get the most recent activity (should be first after sorting)
+    const mostRecent = recentTransactions[0];
+    if (!mostRecent?.timestamp) return 0;
+    
+    const now = Date.now();
+    const then = new Date(mostRecent.timestamp).getTime();
+    const diff = then - now; // How far in the future the timestamp is
+    
+    // If the timestamp is in the future, we have a timezone offset
+    // Return positive value = how much to subtract from timestamps
+    if (diff > 0) {
+      return diff;
+    }
+    
+    return 0;
+  }, [recentTransactions]);
 
-    if (seconds < 60) return `${seconds}s ago`;
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    return `${Math.floor(seconds / 86400)}d ago`;
+  const getTimeAgo = (timestamp: string) => {
+    try {
+      const now = Date.now();
+      let then = new Date(timestamp).getTime();
+      
+      // If timestamp is invalid, return error indicator
+      if (isNaN(then)) {
+        console.error('Invalid timestamp:', timestamp);
+        return "Invalid date";
+      }
+      
+      // Correct for server timezone offset
+      // If serverTimeOffset is 9000000 (server is 2.5h ahead),
+      // subtract it to move the timestamp back to real time
+      then = then - serverTimeOffset;
+      
+      const diffMs = now - then;
+
+      // If still in the future (shouldn't happen), treat as "Just now"
+      if (diffMs < 0) {
+        return "Just now";
+      }
+
+      const seconds = Math.floor(diffMs / 1000);
+      const minutes = Math.floor(diffMs / (1000 * 60));
+      const hours = Math.floor(diffMs / (1000 * 60 * 60));
+      const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      // Check from largest to smallest unit
+      if (days > 0) return `${days}d ago`;
+      if (hours > 0) return `${hours}h ago`;
+      if (minutes > 0) return `${minutes}m ago`;
+      if (seconds >= 10) return `${seconds}s ago`;
+      return "Just now";
+    } catch (error) {
+      console.error('Error calculating time ago:', error, timestamp);
+      return "Unknown";
+    }
   };
 
   const getActivityStyles = (type: ActivityItem["type"]) => {
@@ -850,7 +900,7 @@ export default function ProfilePage() {
                       <Loader2 className="w-6 h-6 animate-spin" />
                     </div>
                   ) : recentTransactions.length > 0 ? (
-                    <div className="space-y-2">
+                    <div className="space-y-3 sm:space-y-4">
                       {recentTransactions
                         .slice(0, 5)
                         .map((item) => {
@@ -858,30 +908,30 @@ export default function ProfilePage() {
                           return (
                             <div
                               key={item.id}
-                              className={`flex items-center justify-between p-4 rounded-lg border ${styles.borderColor} ${styles.leftBorder} bg-gradient-to-b from-zinc-950 to-zinc-900 transition-all duration-150 hover:scale-[1.01] ${styles.hoverBorderColor}`}
+                              className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-5 rounded-lg border ${styles.borderColor} ${styles.leftBorder} bg-gradient-to-b from-zinc-950 to-zinc-900 transition-all duration-150 hover:scale-[1.005] ${styles.hoverBorderColor} gap-3 sm:gap-4`}
                             >
-                              <div className="flex items-center space-x-4">
+                              <div className="flex items-start sm:items-center gap-3 sm:gap-4 flex-1 min-w-0">
                                 <div
-                                  className={`w-10 h-10 rounded-md flex items-center justify-center text-sm ${styles.iconBg} ${styles.iconColor}`}
+                                  className={`w-10 h-10 sm:w-12 sm:h-12 rounded-md flex items-center justify-center flex-shrink-0 ${styles.iconBg} ${styles.iconColor}`}
                                 >
                                   {item.type === "case_opened" ? (
-                                    <Box className="w-4 h-4" />
+                                    <Box className="w-4 h-4 sm:w-5 sm:h-5" />
                                   ) : item.type === "skin_claimed" ? (
-                                    <CheckCircle className="w-4 h-4" />
+                                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5" />
                                   ) : item.type === "payout" ? (
-                                    <DollarSign className="w-4 h-4" />
+                                    <DollarSign className="w-4 h-4 sm:w-5 sm:h-5" />
                                   ) : (
-                                    <Activity className="w-4 h-4" />
+                                    <Activity className="w-4 h-4 sm:w-5 sm:h-5" />
                                   )}
                                 </div>
-                                <div>
-                                  <p className="text-foreground">
-                                    <span className="font-medium">
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-foreground text-sm sm:text-base mb-1">
+                                    <span className="font-semibold">
                                       {item.user?.username ||
                                         `${item.user?.walletAddress?.slice(0, 4) || ''}...${item.user?.walletAddress?.slice(-4) || ''}` ||
                                         'You'}
                                     </span>
-                                    <span className="text-muted-foreground mx-2">
+                                    <span className="text-muted-foreground mx-1.5 sm:mx-2">
                                       {item.type === "case_opened"
                                         ? "opened"
                                         : item.type === "skin_claimed"
@@ -890,7 +940,7 @@ export default function ProfilePage() {
                                         ? "received payout for"
                                         : "sold"}
                                     </span>
-                                    <span className="font-medium">
+                                    <span className="font-semibold break-words">
                                       {item.skin
                                         ? (item.skin.skinName.includes(item.skin.weapon)
                                             ? item.skin.skinName
@@ -898,13 +948,25 @@ export default function ProfilePage() {
                                         : item.lootBox?.name || 'Unknown'}
                                     </span>
                                   </p>
-                                  <p className="text-muted-foreground text-sm">
+                                  <p className="text-muted-foreground text-xs sm:text-sm">
                                     {getTimeAgo(item.timestamp)}
                                   </p>
                                 </div>
                               </div>
-                              <div className="text-right">
-                                <p className="text-foreground font-bold">
+                              <div className="flex items-center justify-between sm:flex-col sm:items-end gap-2 sm:gap-1.5 sm:text-right flex-shrink-0">
+                                <Badge
+                                  variant="secondary"
+                                  className={`text-xs sm:order-2 ${styles.badgeBg} ${styles.badgeText} border ${styles.badgeBorder}`}
+                                >
+                                  {item.type === "case_opened"
+                                    ? "open"
+                                    : item.type === "skin_claimed"
+                                    ? "claim"
+                                    : item.type === "payout"
+                                    ? "payout"
+                                    : "buyback"}
+                                </Badge>
+                                <p className="text-foreground font-bold text-sm sm:text-base sm:order-1">
                                   {item.type === "case_opened"
                                     ? `-${item.amount?.sol
                                         ? parseFloat(item.amount.sol.toString()).toFixed(2)
@@ -917,18 +979,6 @@ export default function ProfilePage() {
                                     ? `${parseFloat(item.amount.sol.toString()).toFixed(2)} SOL`
                                     : formatCurrency(parseFloat(item.skin?.valueUsd || "0"))}
                                 </p>
-                                <Badge
-                                  variant="secondary"
-                                  className={`text-xs mt-1 ${styles.badgeBg} ${styles.badgeText} border ${styles.badgeBorder}`}
-                                >
-                                  {item.type === "case_opened"
-                                    ? "open"
-                                    : item.type === "skin_claimed"
-                                    ? "claim"
-                                    : item.type === "payout"
-                                    ? "payout"
-                                    : "buyback"}
-                                </Badge>
                               </div>
                             </div>
                           );
@@ -947,40 +997,40 @@ export default function ProfilePage() {
 
         {/* Error Modal */}
         <Dialog open={showErrorModal} onOpenChange={setShowErrorModal}>
-          <DialogContent showCloseButton={false} className="bg-gradient-to-b from-zinc-950 to-zinc-900 border-[#E99500]/50 pt-10">
+          <DialogContent showCloseButton={false} className="bg-gradient-to-b from-zinc-950 to-zinc-900 border-[#E99500]/50 pt-6 sm:pt-10 w-[95vw] sm:w-full max-w-lg">
             <DialogHeader>
-              <div className="flex items-center gap-3 mb-2">
-                <div className="p-2 rounded-full bg-[#E99500]/10">
-                  <AlertCircle className="w-6 h-6 text-[#E99500]" />
+              <div className="flex items-center gap-2 sm:gap-3 mb-2">
+                <div className="p-1.5 sm:p-2 rounded-full bg-[#E99500]/10 flex-shrink-0">
+                  <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-[#E99500]" />
                 </div>
-                <DialogTitle className="text-xl text-[#E99500]">
+                <DialogTitle className="text-lg sm:text-xl text-[#E99500]">
                   Profile Update Failed
                 </DialogTitle>
               </div>
-              <DialogDescription className="text-zinc-400 text-left mt-2">
+              <DialogDescription className="text-xs sm:text-sm text-zinc-400 text-left mt-2">
                 We encountered an error while trying to update your profile. Please review the details below:
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4 my-4">
+            <div className="space-y-3 sm:space-y-4 my-3 sm:my-4 max-h-[60vh] overflow-y-auto">
               {/* Error Message */}
-              <div className="p-4 rounded-lg bg-[#E99500]/5 border border-[#E99500]/20">
+              <div className="p-3 sm:p-4 rounded-lg bg-[#E99500]/5 border border-[#E99500]/20">
                 <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-[#E99500] mb-1">Error Message:</p>
-                    <p className="text-sm text-zinc-300">{errorMessage}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs sm:text-sm font-semibold text-[#E99500] mb-1">Error Message:</p>
+                    <p className="text-xs sm:text-sm text-zinc-300 break-words">{errorMessage}</p>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={copyErrorToClipboard}
-                    className="h-8 w-8 p-0 hover:bg-[#E99500]/10"
+                    className="h-7 w-7 sm:h-8 sm:w-8 p-0 hover:bg-[#E99500]/10 flex-shrink-0"
                     title="Copy error details"
                   >
                     {copiedError ? (
-                      <CheckCircle className="w-4 h-4 text-green-500" />
+                      <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
                     ) : (
-                      <Copy className="w-4 h-4 text-zinc-400" />
+                      <Copy className="w-3 h-3 sm:w-4 sm:h-4 text-zinc-400" />
                     )}
                   </Button>
                 </div>
@@ -988,30 +1038,30 @@ export default function ProfilePage() {
 
               {/* Error Details (if available) */}
               {errorDetails && (
-                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
-                  <p className="text-sm font-semibold text-zinc-400 mb-1">Technical Details:</p>
-                  <p className="text-xs text-zinc-500 font-mono break-all whitespace-pre-wrap">{errorDetails}</p>
+                <div className="p-3 sm:p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                  <p className="text-xs sm:text-sm font-semibold text-zinc-400 mb-1">Technical Details:</p>
+                  <p className="text-[10px] sm:text-xs text-zinc-500 font-mono break-all whitespace-pre-wrap overflow-x-auto">{errorDetails}</p>
                 </div>
               )}
 
               {/* Common Solutions */}
-              <div className="p-4 rounded-lg bg-[#E99500]/5 border border-[#E99500]/20">
-                <p className="text-sm font-semibold text-[#E99500] mb-2">Common Solutions:</p>
-                <ul className="text-sm text-zinc-300 space-y-1.5 list-none">
+              <div className="p-3 sm:p-4 rounded-lg bg-[#E99500]/5 border border-[#E99500]/20">
+                <p className="text-xs sm:text-sm font-semibold text-[#E99500] mb-1.5 sm:mb-2">Common Solutions:</p>
+                <ul className="text-xs sm:text-sm text-zinc-300 space-y-1 sm:space-y-1.5 list-none">
                   <li className="flex items-start gap-2">
-                    <span className="text-[#E99500] mt-0.5">•</span>
+                    <span className="text-[#E99500] mt-0.5 flex-shrink-0">•</span>
                     <span>Make sure your wallet is unlocked and connected</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[#E99500] mt-0.5">•</span>
+                    <span className="text-[#E99500] mt-0.5 flex-shrink-0">•</span>
                     <span>Check if your Steam Trade URL is valid (if updating)</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[#E99500] mt-0.5">•</span>
+                    <span className="text-[#E99500] mt-0.5 flex-shrink-0">•</span>
                     <span>Try refreshing the page and connecting your wallet again</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-[#E99500] mt-0.5">•</span>
+                    <span className="text-[#E99500] mt-0.5 flex-shrink-0">•</span>
                     <span>If the issue persists, contact support with the error details</span>
                   </li>
                 </ul>
@@ -1024,7 +1074,7 @@ export default function ProfilePage() {
                   setShowErrorModal(false);
                   // Keep editing mode so user can try again
                 }}
-                className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold w-full"
+                className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold w-full h-11 sm:h-12 text-sm sm:text-base"
               >
                 Try Again
               </Button>

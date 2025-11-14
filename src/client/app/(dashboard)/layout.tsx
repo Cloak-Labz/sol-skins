@@ -11,11 +11,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { connected } = useWallet();
   const [mounted, setMounted] = useState(false);
   const [hideTopbar, setHideTopbar] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const handler = (e) => {
-      setHideTopbar(!!(e && e.detail && e.detail.hide));
+    const handler = (e: Event) => {
+      const customEvent = e as CustomEvent<{ hide?: boolean }>;
+      setHideTopbar(!!(customEvent && customEvent.detail && customEvent.detail.hide));
     };
     window.addEventListener("topbar-visibility", handler);
     return () => window.removeEventListener("topbar-visibility", handler);
@@ -69,7 +71,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Show the actual dashboard content as background */}
         <div className="pointer-events-none select-none opacity-30 blur-sm">
           <div className="relative">
-            <Sidebar />
+            <Sidebar isOpen={false} setIsOpen={() => {}} />
             <Header />
             <main className="ml-64 pt-16 min-h-screen flex flex-col relative z-10">
               <div className="flex-1 relative z-10">{children}</div>
@@ -112,9 +114,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="relative">
-      <Sidebar />
-      {!hideTopbar && <Header />}
-      <main className="app-main ml-64 pt-16 min-h-screen flex flex-col relative z-10">
+      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      {!hideTopbar && <Header onMenuClick={() => setIsSidebarOpen(true)} />}
+      <main className="app-main lg:ml-64 pt-16 lg:pt-16 min-h-screen flex flex-col relative z-10">
         <div className="flex-1 relative z-10">{children}</div>
         <Footer />
       </main>

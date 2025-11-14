@@ -120,21 +120,21 @@ export function SteamTradeUrlModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="bg-gradient-to-b from-zinc-950 to-zinc-900 border-zinc-800 max-w-3xl max-h-[90vh] overflow-hidden flex flex-col p-0"
+        className="bg-gradient-to-b from-zinc-950 to-zinc-900 border-zinc-800 max-w-3xl max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col p-0 w-[95vw] sm:w-full"
         showCloseButton={false}
       >
         {/* Header */}
-        <div className="p-6 pb-4 border-b border-zinc-800 flex-shrink-0">
+        <div className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-zinc-800 flex-shrink-0">
           <DialogHeader>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-full bg-[#E99500]/10">
-                <Info className="w-6 h-6 text-[#E99500]" />
+            <div className="flex items-center gap-2 sm:gap-3 mb-2">
+              <div className="p-1.5 sm:p-2 rounded-full bg-[#E99500]/10 flex-shrink-0">
+                <Info className="w-5 h-5 sm:w-6 sm:h-6 text-[#E99500]" />
               </div>
-              <DialogTitle className="text-2xl text-white">
+              <DialogTitle className="text-lg sm:text-2xl text-white">
                 Steam Trade URL Required
               </DialogTitle>
             </div>
-            <DialogDescription className="text-zinc-400 text-left">
+            <DialogDescription className="text-xs sm:text-sm text-zinc-400 text-left">
               To claim skins to your Steam inventory, you need to provide your
               Steam Trade URL.
             </DialogDescription>
@@ -142,17 +142,17 @@ export function SteamTradeUrlModal({
         </div>
 
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
-          <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-3 sm:py-4">
+          <div className="space-y-4 sm:space-y-6">
             {/* Warning Box */}
-            <div className="p-4 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
-              <div className="flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
+            <div className="p-3 sm:p-4 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500 mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-semibold text-yellow-400 mb-1">
+                  <p className="text-xs sm:text-sm font-semibold text-yellow-400 mb-1">
                     Important
                   </p>
-                  <p className="text-sm text-zinc-300">
+                  <p className="text-xs sm:text-sm text-zinc-300">
                     Without a Steam Trade URL, you won't be able to claim skins
                     to your Steam account. You can still sell them for SOL
                     payout.
@@ -162,25 +162,25 @@ export function SteamTradeUrlModal({
             </div>
 
             {/* Step-by-step instructions */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-base sm:text-lg font-semibold text-white">
                 How to Get Your Steam Trade URL
               </h3>
 
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {/* Step 1 */}
-                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
-                  <div className="flex items-start gap-3">
+                <div className="p-3 sm:p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                  <div className="flex items-start gap-2 sm:gap-3">
                     <div className="flex-shrink-0">
-                      <span className="inline-flex w-6 h-6 rounded-full bg-[#E99500] text-black text-xs items-center justify-center font-bold">
+                      <span className="inline-flex w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#E99500] text-black text-[10px] sm:text-xs items-center justify-center font-bold">
                         1
                       </span>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-white mb-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm sm:text-base font-semibold text-white mb-1.5 sm:mb-2">
                         Open Steam Trade URL Page
                       </p>
-                      <p className="text-sm text-zinc-400 mb-3">
+                      <p className="text-xs sm:text-sm text-zinc-400 mb-2 sm:mb-3">
                         Click the button below to open your Steam Trade URL page
                         in a new tab.
                       </p>
@@ -188,33 +188,33 @@ export function SteamTradeUrlModal({
                         href="https://steamcommunity.com/id/me/tradeoffers/privacy#trade_offer_access_url"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 text-sm text-[#E99500] hover:text-[#ff9500]"
+                        className="inline-flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-[#E99500] hover:text-[#ff9500] break-words"
                       >
-                        <ExternalLink className="w-4 h-4" />
-                        Open Steam Trade URL Page
+                        <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 flex-shrink-0" />
+                        <span className="break-words">Open Steam Trade URL Page</span>
                       </a>
                     </div>
                   </div>
                 </div>
 
                 {/* Step 2 */}
-                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
-                  <div className="flex items-start gap-3">
+                <div className="p-3 sm:p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                  <div className="flex items-start gap-2 sm:gap-3">
                     <div className="flex-shrink-0">
-                      <span className="inline-flex w-6 h-6 rounded-full bg-[#E99500] text-black text-xs items-center justify-center font-bold">
+                      <span className="inline-flex w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#E99500] text-black text-[10px] sm:text-xs items-center justify-center font-bold">
                         2
                       </span>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-white mb-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm sm:text-base font-semibold text-white mb-1.5 sm:mb-2">
                         Find Your Trade URL
                       </p>
-                      <p className="text-sm text-zinc-400 mb-3">
+                      <p className="text-xs sm:text-sm text-zinc-400 mb-2 sm:mb-3">
                         Scroll down to the "Third-Party Sites" section. You'll
                         see a long URL that looks like:
                       </p>
-                      <div className="p-3 rounded bg-zinc-900 border border-zinc-700 relative">
-                        <code className="text-xs text-green-400 break-all">
+                      <div className="p-2 sm:p-3 rounded bg-zinc-900 border border-zinc-700 relative">
+                        <code className="text-[10px] sm:text-xs text-green-400 break-all pr-8">
                           https://steamcommunity.com/tradeoffer/new/?partner=XXXXXX&token=XXXXXXXX
                         </code>
                         <button
@@ -224,13 +224,13 @@ export function SteamTradeUrlModal({
                               2
                             )
                           }
-                          className="absolute top-2 right-2 p-1 hover:bg-zinc-800 rounded"
+                          className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 p-1 hover:bg-zinc-800 rounded flex-shrink-0"
                           title="Copy example"
                         >
                           {copiedStep === 2 ? (
-                            <CheckCircle className="w-4 h-4 text-green-500" />
+                            <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
                           ) : (
-                            <Copy className="w-4 h-4 text-zinc-400" />
+                            <Copy className="w-3 h-3 sm:w-4 sm:h-4 text-zinc-400" />
                           )}
                         </button>
                       </div>
@@ -239,18 +239,18 @@ export function SteamTradeUrlModal({
                 </div>
 
                 {/* Step 3 */}
-                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
-                  <div className="flex items-start gap-3">
+                <div className="p-3 sm:p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                  <div className="flex items-start gap-2 sm:gap-3">
                     <div className="flex-shrink-0">
-                      <span className="inline-flex w-6 h-6 rounded-full bg-[#E99500] text-black text-xs items-center justify-center font-bold">
+                      <span className="inline-flex w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#E99500] text-black text-[10px] sm:text-xs items-center justify-center font-bold">
                         3
                       </span>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-white mb-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm sm:text-base font-semibold text-white mb-1.5 sm:mb-2">
                         Copy Your URL
                       </p>
-                      <p className="text-sm text-zinc-400">
+                      <p className="text-xs sm:text-sm text-zinc-400">
                         Click on the URL to select it, then copy it (Ctrl+C or
                         Cmd+C). If you don't see a URL, click "Create Trade URL"
                         first.
@@ -260,23 +260,23 @@ export function SteamTradeUrlModal({
                 </div>
 
                 {/* Step 4 */}
-                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
-                  <div className="flex items-start gap-3">
+                <div className="p-3 sm:p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                  <div className="flex items-start gap-2 sm:gap-3">
                     <div className="flex-shrink-0">
-                      <span className="inline-flex w-6 h-6 rounded-full bg-[#E99500] text-black text-xs items-center justify-center font-bold">
+                      <span className="inline-flex w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-[#E99500] text-black text-[10px] sm:text-xs items-center justify-center font-bold">
                         4
                       </span>
                     </div>
-                    <div className="flex-1">
-                      <p className="font-semibold text-white mb-2">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm sm:text-base font-semibold text-white mb-1.5 sm:mb-2">
                         Paste It Below
                       </p>
-                      <p className="text-sm text-zinc-400 mb-3">
+                      <p className="text-xs sm:text-sm text-zinc-400 mb-2 sm:mb-3">
                         Paste your Steam Trade URL in the field below and click
                         "Save".
                       </p>
                       <div className="space-y-2">
-                        <Label htmlFor="tradeUrl" className="text-white">
+                        <Label htmlFor="tradeUrl" className="text-white text-xs sm:text-sm">
                           Steam Trade URL
                         </Label>
                         <Input
@@ -284,16 +284,16 @@ export function SteamTradeUrlModal({
                           value={tradeUrl}
                           onChange={(e) => handleTradeUrlChange(e.target.value)}
                           placeholder="https://steamcommunity.com/tradeoffer/new/?partner=..."
-                          className={`bg-zinc-950 text-white font-mono text-sm ${
+                          className={`bg-zinc-950 text-white font-mono text-xs sm:text-sm ${
                             validationError
                               ? "border-red-500 focus-visible:ring-red-500"
                               : "border-zinc-700"
                           }`}
                         />
                         {validationError && (
-                          <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
-                            <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
-                            <p className="text-sm text-red-400">
+                          <div className="flex items-start gap-2 p-2 sm:p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                            <AlertCircle className="w-3 h-3 sm:w-4 sm:h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                            <p className="text-xs sm:text-sm text-red-400">
                               {validationError}
                             </p>
                           </div>
@@ -306,32 +306,32 @@ export function SteamTradeUrlModal({
             </div>
 
             {/* Additional Info */}
-            <div className="p-4 rounded-lg bg-[#E99500]/5 border border-[#E99500]/20">
-              <p className="text-sm font-semibold text-[#E99500] mb-2">
+            <div className="p-3 sm:p-4 rounded-lg bg-[#E99500]/5 border border-[#E99500]/20">
+              <p className="text-xs sm:text-sm font-semibold text-[#E99500] mb-1.5 sm:mb-2">
                 Pro Tips:
               </p>
-              <ul className="text-sm text-zinc-300 space-y-1.5 list-none">
+              <ul className="text-xs sm:text-sm text-zinc-300 space-y-1 sm:space-y-1.5 list-none">
                 <li className="flex items-start gap-2">
-                  <span className="text-[#E99500] mt-0.5">•</span>
+                  <span className="text-[#E99500] mt-0.5 flex-shrink-0">•</span>
                   <span>
                     Keep your Trade URL private - don't share it publicly
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-[#E99500] mt-0.5">•</span>
+                  <span className="text-[#E99500] mt-0.5 flex-shrink-0">•</span>
                   <span>
                     You can regenerate your Trade URL anytime on Steam if it
                     gets compromised
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-[#E99500] mt-0.5">•</span>
+                  <span className="text-[#E99500] mt-0.5 flex-shrink-0">•</span>
                   <span>
                     Make sure your Steam inventory is public to receive trades
                   </span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-[#E99500] mt-0.5">•</span>
+                  <span className="text-[#E99500] mt-0.5 flex-shrink-0">•</span>
                   <span>
                     You can update your Trade URL anytime in your profile
                     settings
@@ -343,24 +343,24 @@ export function SteamTradeUrlModal({
         </div>
 
         {/* Footer */}
-        <DialogFooter className="gap-0 p-0 border-t border-zinc-800 flex-shrink-0">
+        <DialogFooter className="gap-0 p-0 border-t border-zinc-800 flex-shrink-0 flex-col sm:flex-row">
           {onSave && (
             <>
               <Button
                 onClick={() => onOpenChange(false)}
                 variant="outline"
-                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white rounded-none flex-1 h-12"
+                className="border-zinc-700 text-zinc-300 hover:bg-zinc-800 hover:text-white rounded-none flex-1 w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSave}
                 disabled={isSaving || !tradeUrl.trim() || !!validationError}
-                className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold disabled:opacity-50 disabled:cursor-not-allowed rounded-none flex-1 h-12"
+                className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold disabled:opacity-50 disabled:cursor-not-allowed rounded-none flex-1 w-full sm:w-auto h-11 sm:h-12 text-sm sm:text-base"
               >
                 {isSaving ? (
                   <>
-                    <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin mr-2" />
+                    <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-black/30 border-t-black rounded-full animate-spin mr-2" />
                     Saving...
                   </>
                 ) : (
@@ -371,7 +371,7 @@ export function SteamTradeUrlModal({
           )}
           {!onSave && (
             <Link href="/profile" className="w-full">
-              <Button className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold w-full rounded-none h-12">
+              <Button className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold w-full rounded-none h-11 sm:h-12 text-sm sm:text-base">
                 Go to Profile to Set Trade URL
               </Button>
             </Link>

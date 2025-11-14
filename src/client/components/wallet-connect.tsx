@@ -6,10 +6,18 @@ import {
   WalletDisconnectButton,
 } from "@solana/wallet-adapter-react-ui";
 import { Button } from "@/components/ui/button";
-import { Wallet, Loader2, Settings } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Wallet, Loader2, Settings, User as UserIcon, LogOut, Copy, CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@/lib/contexts/UserContext";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 
 export function WalletConnect() {
@@ -17,6 +25,7 @@ export function WalletConnect() {
   const { user, isLoading, connectWallet, disconnectWallet } = useUser();
   const connectingRef = useRef(false);
   const lastAttemptRef = useRef(0);
+  const [copied, setCopied] = useState(false);
 
   // Auto-connect to backend when wallet connects
   useEffect(() => {
@@ -85,36 +94,78 @@ export function WalletConnect() {
     }
   };
 
+  // Handle copy address
+  const handleCopyAddress = () => {
+    if (publicKey) {
+      navigator.clipboard.writeText(publicKey.toString());
+      setCopied(true);
+      toast.success("Address copied!");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   if (connected && publicKey) {
+    const displayName = user?.username ||
+      `${publicKey.toString().slice(0, 4)}...${publicKey.toString().slice(-4)}`;
+    const shortDisplayName = user?.username 
+      ? (user.username.slice(0, 8) + (user.username.length > 8 ? '...' : ''))
+      : `${publicKey.toString().slice(0, 3)}..${publicKey.toString().slice(-3)}`;
+
     return (
-      <div className="flex items-center gap-2">
-        <Link href="/profile">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
           <Button
             variant="outline"
-            className="bg-card border-border text-foreground hover:bg-muted hover:text-foreground"
+            size="sm"
+            className="bg-card border-border text-foreground hover:bg-muted hover:text-foreground text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
             disabled={isLoading}
           >
             {isLoading ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2 animate-spin" />
             ) : (
-              <Wallet className="w-4 h-4 mr-2" />
+              <Wallet className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
             )}
-            {user?.username ||
-              `${publicKey.toString().slice(0, 4)}...${publicKey
-                .toString()
-                .slice(-4)}`}
+            <span className="hidden sm:inline">{displayName}</span>
+            <span className="sm:hidden">{shortDisplayName}</span>
           </Button>
-        </Link>
-        {/* Settings button removed */}
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={handleDisconnect}
-          disabled={isLoading}
-        >
-          Disconnect
-        </Button>
-      </div>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>
+            <div className="flex flex-col space-y-1">
+              <p className="text-sm font-medium leading-none">
+                {user?.username || 'My Wallet'}
+              </p>
+              <p className="text-xs leading-none text-muted-foreground">
+                {publicKey.toString().slice(0, 8)}...{publicKey.toString().slice(-8)}
+              </p>
+            </div>
+          </DropdownMenuLabel>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={handleCopyAddress}>
+            {copied ? (
+              <CheckCircle2 className="mr-2 h-4 w-4 text-green-500" />
+            ) : (
+              <Copy className="mr-2 h-4 w-4" />
+            )}
+            <span>{copied ? 'Copied!' : 'Copy Address'}</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/profile" className="cursor-pointer">
+              <UserIcon className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem 
+            onClick={handleDisconnect}
+            disabled={isLoading}
+            variant="destructive"
+          >
+            <LogOut className="mr-2 h-4 w-4" />
+            <span>Disconnect</span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
     );
   }
 
