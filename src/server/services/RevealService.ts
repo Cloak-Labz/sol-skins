@@ -18,6 +18,7 @@ export interface RevealResult {
   skinName: string;
   weapon: string;
   skinRarity: string;
+  basePriceUsd: number;
   imageUrl?: string;
   metadataUri: string;
   txSignature: string;
@@ -334,11 +335,23 @@ export class RevealService {
         }
       }
 
+      const basePriceUsd = Number(boxSkin.basePriceUsd ?? skin?.basePriceUsd ?? 0);
+      
+      logger.info('🎯 Reveal complete', {
+        nftMint: nftMint.substring(0, 8) + '...',
+        skinName: sanitizedSkinName,
+        weapon,
+        rarity: boxSkin.rarity,
+        basePriceUsd,
+        hasImage: !!resolvedImageUrl,
+      });
+
       return {
         nftMint,
         skinName: sanitizedSkinName,
         weapon,
         skinRarity: boxSkin.rarity,
+        basePriceUsd,
         imageUrl: resolvedImageUrl,
         metadataUri: metadataUri,
         txSignature,

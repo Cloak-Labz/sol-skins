@@ -66,7 +66,7 @@ export class CaseOpeningService {
     // Create transaction record
     const solAmount = lootBox.priceSol;
     const usdcAmount = lootBox.priceUsdc || 0;
-    
+
     const transaction = await this.transactionRepository.create({
       userId,
       transactionType: TransactionType.OPEN_CASE,
@@ -252,10 +252,10 @@ export class CaseOpeningService {
       const randomSeed = `0x${Math.random().toString(16).substr(2, 64)}`;
       const totalWeight = lootBox.skinPools.reduce((sum, pool) => sum + pool.weight, 0);
       const randomValue = Math.random() * totalWeight;
-      
+
       let currentWeight = 0;
       let selectedSkin = lootBox.skinPools[0].skinTemplate;
-      
+
       for (const pool of lootBox.skinPools) {
         currentWeight += pool.weight;
         if (randomValue <= currentWeight) {
@@ -303,7 +303,7 @@ export class CaseOpeningService {
               user: user.walletAddress,
               caseOpeningId: caseOpeningId
             });
-            
+
             await discordService.createSkinClaimTicket({
               userId: user.id,
               walletAddress: user.walletAddress,
@@ -315,7 +315,7 @@ export class CaseOpeningService {
               openedAt: userSkin.openedAt,
               caseOpeningId: caseOpeningId,
             });
-            
+
             console.log('✅ Discord ticket created successfully for real skin claim');
           } catch (error) {
             console.error('❌ Failed to create Discord ticket for real skin claim:', error);
@@ -332,6 +332,7 @@ export class CaseOpeningService {
       console.error('Error in VRF simulation:', error);
     }
   }
+
 
   // Create a case opening record for pack openings (for activity tracking)
   async createPackOpeningRecord(data: {
@@ -350,7 +351,7 @@ export class CaseOpeningService {
       // SECURITY: Validate userId format before using in queries
       // Look up the user by wallet address to get the actual user ID
       const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      
+
       if (!uuidV4Regex.test(data.userId)) {
         // Treat as wallet address - validate format first
         const { isValidWalletAddress } = require('../utils/solanaValidation');
@@ -359,7 +360,7 @@ export class CaseOpeningService {
           throw new AppError('Invalid wallet address format', 400);
         }
       }
-      
+
       const user = await this.userRepository.findByWalletAddress(data.userId);
       if (!user) {
         throw new AppError('User not found for wallet address', 404, 'USER_NOT_FOUND');
@@ -397,7 +398,7 @@ export class CaseOpeningService {
 
       // Pack openings don't need a lootBoxTypeId (it's nullable now)
       // We'll leave it null for pack openings
-      
+
       const savedCaseOpening = await this.caseOpeningRepository.create({
         userId: user.id,
         lootBoxTypeId: null, // Null for pack openings since they use boxes, not lootBoxTypes

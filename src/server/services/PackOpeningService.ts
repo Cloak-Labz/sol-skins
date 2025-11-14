@@ -154,8 +154,9 @@ export class PackOpeningService {
         // Don't return early - we still need to update box supply even if UserSkin exists
       }
 
-      // --- PATCH: Attempt to look up box skin value via BoxSkinService ---
+      // --- PATCH: Attempt to look up box skin value and image via BoxSkinService ---
       let realValue = skinData.basePriceUsd;
+      let boxSkinImageUrl: string | undefined;
       try {
         const boxSkinRepo = AppDataSource.getRepository(require('../entities/BoxSkin').BoxSkin);
         // Try matching all: boxId, name, weapon, rarity (case-insensitive)
@@ -167,8 +168,18 @@ export class PackOpeningService {
             rarity: skinData.rarity,
           }
         });
-        if (match && match.basePriceUsd != null) {
-          realValue = Number(match.basePriceUsd);
+        if (match) {
+          if (match.basePriceUsd != null) {
+            realValue = Number(match.basePriceUsd);
+          }
+          if (match.imageUrl) {
+            boxSkinImageUrl = match.imageUrl;
+            logger.info('Found BoxSkin image URL', { 
+              boxId, 
+              skinName: skinData.name, 
+              imageUrl: boxSkinImageUrl 
+            });
+          }
         }
       } catch (err) {
         // fallback: log but do not block
@@ -351,6 +362,16 @@ export class PackOpeningService {
         }
       }
 
+      // Use boxSkinImageUrl as fallback if resolvedImageUrl is not available
+      const finalImageUrl = resolvedImageUrl || boxSkinImageUrl;
+      
+      logger.info('Final image URL determined', {
+        resolvedImageUrl,
+        boxSkinImageUrl,
+        finalImageUrl,
+        hasImage: !!finalImageUrl,
+      });
+
       // Create or update user skin
       let savedUserSkin = existingUserSkin;
       if (!existingUserSkin) {
@@ -359,7 +380,7 @@ export class PackOpeningService {
           nftMintAddress: nftMint,
           name: sanitizedSkinName,
           metadataUri: skinData.metadataUri,
-          imageUrl: resolvedImageUrl,
+          imageUrl: finalImageUrl,
           openedAt: new Date(),
           currentPriceUsd: realValue,
           lastPriceUpdate: new Date(),
@@ -375,8 +396,8 @@ export class PackOpeningService {
           if (sanitizedSkinName && !existingUserSkin.name) {
             existingUserSkin.name = sanitizedSkinName;
           }
-          if (resolvedImageUrl && !existingUserSkin.imageUrl) {
-            existingUserSkin.imageUrl = resolvedImageUrl;
+          if (finalImageUrl && !existingUserSkin.imageUrl) {
+            existingUserSkin.imageUrl = finalImageUrl;
           }
           if (realValue && !existingUserSkin.currentPriceUsd) {
             existingUserSkin.currentPriceUsd = realValue;
@@ -426,6 +447,14 @@ export class PackOpeningService {
       const skinName = nameParts.length > 1 ? nameParts[1].trim() : sanitizedSkinName;
       const weapon = nameParts.length > 1 ? nameParts[0].trim() : skinData.weapon;
       
+      logger.info('Creating CaseOpening record', {
+        nftMint: nftMint.substring(0, 8) + '...',
+        skinName: sanitizedSkinName,
+        skinValue: realValue,
+        skinImage: finalImageUrl,
+        hasImage: !!finalImageUrl,
+      });
+      
       const caseOpening = caseOpeningRepo.create({
         userId,
         lootBoxTypeId: lootBoxType.id, // Use the LootBoxType ID for pack openings
@@ -435,7 +464,7 @@ export class PackOpeningService {
         skinRarity: skinData.rarity,
         skinWeapon: weapon,
         skinValue: realValue,
-        skinImage: resolvedImageUrl || '',
+        skinImage: finalImageUrl || '',
         isPackOpening: true,
         boxPriceSol: priceSol,
         openedAt: new Date(),

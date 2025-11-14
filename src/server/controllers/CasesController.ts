@@ -68,6 +68,15 @@ export class CasesController {
       isPackOpening 
     } = req.body;
 
+    console.log('📝 Received pack opening record request:', {
+      skinName,
+      skinValue,
+      skinImage,
+      skinImageLength: skinImage?.length || 0,
+      skinImageType: typeof skinImage,
+      hasSkinImage: !!skinImage,
+    });
+
     if (!userId || !nftMintAddress || !transactionId) {
       return ResponseUtil.error(res, 'Missing required fields (userId, nftMintAddress, transactionId)', 400);
     }
@@ -83,6 +92,11 @@ export class CasesController {
       skinValue,
       skinImage,
       isPackOpening: isPackOpening || false,
+    });
+
+    console.log('✅ Pack opening record created:', {
+      caseOpeningId: result.caseOpeningId,
+      skinImage: result.skinImage,
     });
 
     ResponseUtil.success(res, result);
