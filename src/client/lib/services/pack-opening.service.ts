@@ -37,12 +37,14 @@ export class PackOpeningService {
   async openPack(
     boxId: string,
     wallet: any,
-    connection: any
+    connection: any,
+    onProgress?: (message: string) => void
   ): Promise<PackOpeningResult> {
     if (!wallet.connected || !wallet.publicKey) {
       throw new Error("Wallet not connected");
     }
 
+    onProgress?.("Preparing transaction...");
     // Step 1: Get box information from backend
     const boxResponse = await fetch(`${this.baseUrl}/api/v1/boxes/${boxId}`);
     const boxData = await boxResponse.json();
@@ -77,6 +79,7 @@ export class PackOpeningService {
       throw new Error("Candy Machine is sold out");
     }
 
+    onProgress?.("Waiting for wallet signature...");
     // Generate NFT mint signer
     const nftMint = generateSigner(umi);
     
@@ -119,9 +122,11 @@ export class PackOpeningService {
       signature = bs58.encode(new Uint8Array(mintResult.signature as any));
     }
 
+    onProgress?.("Waiting for metadata propagation...");
     // Step 3: Wait for metadata propagation
     await new Promise(resolve => setTimeout(resolve, 12000));
 
+    onProgress?.("Revealing skin...");
     // Step 4: Reveal the skin
     // apiClient.post returns the data directly (not wrapped in { success, data })
     const revealResponseData = await apiClient.post<{

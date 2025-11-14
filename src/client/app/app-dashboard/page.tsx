@@ -10,6 +10,33 @@ export default function DashboardPage() {
   const [packs, setPacks] = useState<Box[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const normalizeImageUrl = (url?: string | null) => {
+    if (!url) return undefined;
+
+    const trimmed = url.trim();
+    if (!trimmed) return undefined;
+
+    if (trimmed.startsWith("ipfs://")) {
+      const hash = trimmed.replace("ipfs://", "").replace(/^\/+/, "");
+      return hash ? `https://ipfs.io/ipfs/${hash}` : undefined;
+    }
+
+    if (trimmed.startsWith("ar://")) {
+      const txId = trimmed.replace("ar://", "").replace(/^\/+/, "");
+      return txId ? `https://arweave.net/${txId}` : undefined;
+    }
+
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+
+    if (/^ipfs\.io\//i.test(trimmed)) {
+      return `https://${trimmed}`;
+    }
+
+    return undefined;
+  };
+
   useEffect(() => {
     setLoading(true);
     Promise.all([
@@ -115,43 +142,59 @@ export default function DashboardPage() {
                 <div>Nothing here yet</div>
               </div>
             )}
-            {pulls.slice(0, 6).map((p) => (
-              <div
-                key={p.id}
-                className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden"
-              >
-                <div className="aspect-[3/4] bg-zinc-900/50 flex items-center justify-center">
-                  {p.skin?.imageUrl ? (
-                    <img
-                      src={p.skin.imageUrl}
-                      alt={p.skin.skinName}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <img
-                      src="/assets/banner2.jpg"
-                      alt="pull"
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-                <div className="p-3 space-y-1">
-                  <div className="text-[11px] text-zinc-400">Just revealed</div>
-                  <div className="text-xs text-white truncate">
-                    {p.skin?.skinName || "Unknown"}
+            {pulls.slice(0, 6).map((p) => {
+              const imageSrc = normalizeImageUrl(
+                p.skin?.imageUrl ?? (p as any)?.skin?.metadata?.image
+              );
+
+              return (
+                <div
+                  key={p.id}
+                className="group rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden relative"
+                >
+                  <div className="absolute inset-0 opacity-50 group-hover:opacity-90 transition-opacity duration-500 pointer-events-none">
+                    <div className="absolute -inset-6 bg-gradient-to-br from-[#E99500]/60 via-transparent to-transparent blur-3xl" />
+                    <div className="absolute inset-0 bg-gradient-to-b from-[#E99500]/15 via-transparent to-transparent" />
                   </div>
-                  <div className="text-[11px] text-zinc-500">
-                    Claw Machine • {p.lootBox?.name || "Pack"}
+                  <div className="relative aspect-[3/4] bg-zinc-900/60 flex items-center justify-center p-3 transition-transform duration-500 group-hover:scale-[1.02]">
+                    {imageSrc ? (
+                      <img
+                        src={imageSrc}
+                        alt={p.skin?.skinName || "Skin"}
+                        className="w-full h-full object-contain rounded-md"
+                        loading="lazy"
+                        onError={(event) => {
+                          const target = event.currentTarget;
+                          target.onerror = null;
+                          target.src = "/assets/banner2.jpg";
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src="/assets/banner2.jpg"
+                        alt="pull"
+                        className="w-full h-full object-contain rounded-md opacity-90"
+                      />
+                    )}
+                  </div>
+                  <div className="p-3 space-y-1">
+                    <div className="text-[11px] text-zinc-400">Just revealed</div>
+                    <div className="text-xs text-white truncate">
+                      {p.skin?.skinName || "Unknown"}
+                    </div>
+                    <div className="text-[11px] text-zinc-500">
+                      Claw Machine • {p.lootBox?.name || "Pack"}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
         {/* Your Skins */}
         <section className="space-y-3">
-          <h3 className="text-white font-semibold">Your Packs</h3>
+          <h3 className="text-white font-semibold">Available Packs</h3>
           <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-4">
             {packs.length === 0 && (
               <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-10 text-zinc-400 gap-3">
@@ -159,38 +202,54 @@ export default function DashboardPage() {
                 <div>Nothing here yet</div>
               </div>
             )}
-            {packs.map((p) => (
-              <div
-                key={p.id}
-                className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-4 flex flex-col h-full"
-              >
-                <div className="aspect-[3/4] rounded-lg bg-zinc-800/40 mb-3 overflow-hidden">
-                  {p.imageUrl && (
-                    <img
-                      src={p.imageUrl}
-                      alt={p.name}
-                      className="w-full h-full object-cover"
-                    />
-                  )}
+            {packs.map((p) => {
+              const packImageSrc = normalizeImageUrl(p.imageUrl);
+
+              return (
+                <div
+                  key={p.id}
+                  className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-4 flex flex-col h-full"
+                >
+                  <div className="aspect-[3/4] rounded-lg bg-zinc-800/40 mb-3 overflow-hidden">
+                    {packImageSrc ? (
+                      <img
+                        src={packImageSrc}
+                        alt={p.name}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                        onError={(event) => {
+                          const target = event.currentTarget;
+                          target.onerror = null;
+                          target.src = "/assets/banner2.jpg";
+                        }}
+                      />
+                    ) : (
+                      <img
+                        src="/assets/banner2.jpg"
+                        alt={p.name}
+                        className="w-full h-full object-cover opacity-90"
+                      />
+                    )}
+                  </div>
+                  <div className="flex-1 flex flex-col">
+                    <div className="text-white font-semibold leading-tight mb-2 min-h-[2.5rem] flex items-start">
+                      {p.name}
+                    </div>
+                    <div className="text-zinc-400 text-sm mb-3">
+                      {Number(p.priceSol).toFixed(2)} SOL
+                    </div>
+                    <div className="mt-auto">
+                      <a
+                        href="/app-dashboard/packs"
+                        className="w-full inline-flex items-center justify-center px-3 py-2 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] text-sm font-semibold transition-colors"
+                      >
+                        Open Pack
+                      </a>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex-1 flex flex-col">
-                  <div className="text-white font-semibold leading-tight mb-2 min-h-[2.5rem] flex items-start">
-                    {p.name}
-                  </div>
-                  <div className="text-zinc-400 text-sm mb-3">
-                    {Number(p.priceSol).toFixed(1)} SOL
-                  </div>
-                  <div className="mt-auto">
-                    <a
-                      href="/app-dashboard/packs"
-                      className="w-full inline-flex items-center justify-center px-3 py-2 rounded-md bg-[#E99500] text-black hover:bg-[#d88500] text-sm font-semibold transition-colors"
-                    >
-                      Open Pack
-                    </a>
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
       </div>

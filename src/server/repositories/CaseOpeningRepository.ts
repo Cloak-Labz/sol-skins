@@ -12,7 +12,7 @@ export class CaseOpeningRepository {
   async findById(id: string): Promise<CaseOpening | null> {
     return this.repository.findOne({
       where: { id },
-      relations: ['user', 'lootBoxType', 'skinTemplate', 'userSkin'],
+      relations: ['user', 'lootBoxType', 'skinTemplate', 'userSkin', 'userSkin.skinTemplate'],
     });
   }
 
@@ -110,12 +110,30 @@ export class CaseOpeningRepository {
     };
   }
 
-  async getRecentActivity(limit: number = 50): Promise<CaseOpening[]> {
+  async getRecentActivity(limit: number = 50, walletAddress?: string): Promise<CaseOpening[]> {
+    if (walletAddress) {
+      // Normalize wallet address to lowercase for comparison
+      const normalizedWalletAddress = walletAddress.toLowerCase();
+      
+      // Use query builder for filtering by wallet address
+      return this.repository
+        .createQueryBuilder('caseOpening')
+        .innerJoinAndSelect('caseOpening.user', 'user')
+        .leftJoinAndSelect('caseOpening.lootBoxType', 'lootBoxType')
+        .leftJoinAndSelect('caseOpening.skinTemplate', 'skinTemplate')
+        .where('caseOpening.completedAt IS NOT NULL')
+        .andWhere('LOWER(user.walletAddress) = LOWER(:walletAddress)', { walletAddress: normalizedWalletAddress })
+        .orderBy('caseOpening.completedAt', 'DESC')
+        .take(limit)
+        .getMany();
+    }
+    
+    // Default query without wallet address filter
     return this.repository.find({
       where: {
         completedAt: Not(IsNull()),
       },
-      relations: ['user', 'lootBoxType', 'skinTemplate'],
+      relations: ['user', 'lootBoxType', 'skinTemplate', 'userSkin'],
       order: { completedAt: 'DESC' },
       take: limit,
     });

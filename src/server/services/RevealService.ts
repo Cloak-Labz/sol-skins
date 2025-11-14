@@ -326,14 +326,8 @@ export class RevealService {
         await userSkinRepo.save(userSkin);
       }
 
-      // Update user stats if we have a user
-      if (userId) {
-        const user = await userRepo.findOne({ where: { id: userId } });
-        if (user) {
-          user.casesOpened = (user.casesOpened || 0) + 1;
-          await userRepo.save(user);
-        }
-      }
+      // Note: casesOpened is already incremented in PackOpeningService.createPackOpeningTransaction
+      // No need to increment here to avoid double counting
 
       const basePriceUsd = Number(boxSkin.basePriceUsd ?? skin?.basePriceUsd ?? 0);
       
