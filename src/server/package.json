@@ -1,5 +1,5 @@
 {
-  "name": "@sol-skins/server",
+  "name": "@dust3/server",
   "version": "1.0.0",
   "description": "SolSkins Backend API Server",
   "main": "dist/index.js",

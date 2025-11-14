@@ -12,8 +12,8 @@ DB_PORT=${TEST_DB_PORT:-5433}
 echo "Cleaning test database schema: $DB_NAME"
 
 # Use docker exec if container is running, otherwise use psql directly
-if docker ps | grep -q d3-postgres; then
-  docker exec -i d3-postgres psql -U "$DB_USER" -d "$DB_NAME" <<EOF
+if docker ps | grep -q dust3-postgres; then
+  docker exec -i dust3-postgres psql -U "$DB_USER" -d "$DB_NAME" <<EOF
 -- Drop all connections to the database first
 SELECT pg_terminate_backend(pg_stat_activity.pid)
 FROM pg_stat_activity

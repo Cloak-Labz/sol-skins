@@ -27,7 +27,7 @@ export const logger = winston.createLogger({
       });
     })
   ),
-  defaultMeta: { service: 'sol-skins-api' },
+  defaultMeta: { service: 'dust3-api' },
   transports: isTest ? [] : [ // No file transports in test
     new winston.transports.File({ 
       filename: 'logs/error.log', 
