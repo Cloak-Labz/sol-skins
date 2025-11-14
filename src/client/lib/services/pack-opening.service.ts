@@ -128,6 +128,7 @@ export class PackOpeningService {
       skinName: string;
       weapon?: string;
       skinRarity: string;
+      basePriceUsd: number;
       metadataUri?: string;
       imageUrl?: string;
       nftMint: string;
@@ -135,6 +136,16 @@ export class PackOpeningService {
     }>(`/reveal/${nftMintAddress}`, {
       boxId: boxId,
       walletAddress: wallet.publicKey.toString(),
+    });
+
+    console.log('🎯 Reveal response received:', {
+      skinName: revealResponseData.skinName,
+      weapon: revealResponseData.weapon,
+      rarity: revealResponseData.skinRarity,
+      basePriceUsd: revealResponseData.basePriceUsd,
+      imageUrl: revealResponseData.imageUrl,
+      hasImage: !!revealResponseData.imageUrl,
+      imageUrlType: typeof revealResponseData.imageUrl,
     });
 
     // Step 5: Create pack opening transaction in backend
@@ -163,7 +174,7 @@ export class PackOpeningService {
           name: revealResponseData.skinName,
           weapon: revealResponseData.weapon || (revealResponseData.skinName?.split(' | ')[0] || 'Unknown'),
           rarity: revealResponseData.skinRarity,
-          basePriceUsd: 0, // Will be calculated from rarity
+          basePriceUsd: revealResponseData.basePriceUsd,
           metadataUri: revealResponseData.metadataUri,
         },
         nonce: nonce,
@@ -195,6 +206,17 @@ export class PackOpeningService {
 
     // Step 6: Use the skin data from the reveal service
     const resolvedImageUrl: string | undefined = savedUserSkin?.imageUrl || revealResponseData?.imageUrl;
+    
+    console.log('📦 Pack opening complete:', {
+      nftMint: nftMintAddress.substring(0, 8) + '...',
+      skinName: revealResponseData.skinName,
+      basePriceUsd: revealResponseData.basePriceUsd,
+      resolvedImageUrl,
+      savedUserSkinImageUrl: savedUserSkin?.imageUrl,
+      revealResponseImageUrl: revealResponseData?.imageUrl,
+      hasImage: !!resolvedImageUrl,
+    });
+    
     // Use the mint transaction signature (complete transaction with transfers, mint, etc.)
     // instead of the metadata update transaction for the Solscan link
     return {
@@ -207,7 +229,7 @@ export class PackOpeningService {
         rarity: revealResponseData.skinRarity,
         condition: 'Field-Tested', // Default condition
         imageUrl: resolvedImageUrl,
-        basePriceUsd: 0, // Will be calculated from rarity
+        basePriceUsd: revealResponseData.basePriceUsd,
         metadataUri: revealResponseData.metadataUri,
       },
     };
@@ -284,7 +306,7 @@ export class PackOpeningService {
     skinValue: number;
     skinImage: string;
     transactionHash: string;
-  }): Promise<void> {
+  }): Promise<{ caseOpeningId: string }> {
     // NOTE: Pack opening transaction is already created in openPack()
     // This method only creates the case opening record for activity tracking
     // We don't need to call /pack-opening/transaction again here to avoid duplicates
@@ -292,7 +314,7 @@ export class PackOpeningService {
     // Then create the case opening record for activity tracking
     // apiClient.post returns the data directly (not wrapped in { success, data })
     // If it throws, the error is already handled by apiClient
-    await apiClient.post("/cases/pack-opening", {
+    return await apiClient.post<{ caseOpeningId: string }>("/cases/pack-opening", {
       userId: data.userId,
       lootBoxTypeId: data.boxId, // Use boxId as lootBoxTypeId for pack openings
       nftMintAddress: data.nftMint,

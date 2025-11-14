@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Zap, Loader2, Lock, X, ImageIcon } from "lucide-react";
+import { Zap, Loader2, Lock, X, Package } from "lucide-react";
 import Link from "next/link";
 import React from "react";
 import { useState, useEffect, useRef } from "react";
@@ -53,7 +53,7 @@ const DEFAULT_ODDS: { label: string; rarity: string; pct: number }[] = [
 
 export default function PacksPage() {
   const walletCtx = useWallet();
-  const { user } = useUser();
+  const { user, refreshUser } = useUser();
   const { connected, publicKey, signTransaction } = walletCtx;
   const [lootBoxes, setLootBoxes] = useState<LootBoxType[]>([]);
   const [selectedPack, setSelectedPack] = useState<LootBoxType | null>(null);
@@ -71,6 +71,7 @@ export default function PacksPage() {
     signature: string;
     asset: string;
   } | null>(null);
+  const [caseOpeningId, setCaseOpeningId] = useState<string | null>(null);
   const [userTradeUrl, setUserTradeUrl] = useState<string | null>(null);
   const [showBuybackModal, setShowBuybackModal] = useState(false);
   const [buybackAmountSol, setBuybackAmountSol] = useState<number | null>(null);
@@ -290,15 +291,17 @@ export default function PacksPage() {
       | { kind: "claim"; skin: CSGOSkin; packName?: string | null }
   ) => {
     let text = "";
+    const packUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://dust3.fun'}/app-dashboard/packs`;
+    
     if (params.kind === "buyback") {
-      const name = params.packName ? ` ${params.packName}` : "";
-      const skinText = params.skin ? ` (won: ${params.skin.name})` : "";
-      text = `I just sold my pack${name} drop for +${params.amountSol.toFixed(
-        2
-      )} SOL on @DUST3fun with instant payout!${skinText}`;
+      if (params.skin) {
+        text = `Just cashed out ${params.skin.name} for ${params.amountSol.toFixed(3)} SOL on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
+      } else {
+        // Fallback if skin is not available
+        text = `Just cashed out for ${params.amountSol.toFixed(3)} SOL on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
+      }
     } else {
-      const packText = params.packName ? ` from ${params.packName}` : "";
-      text = `Claimed ${params.skin.name}${packText} to my Steam inventory via @DUST3fun!`;
+      text = `Claimed ${params.skin.name} to my Steam inventory through @DUST3fun! 🎮\n\nReal CS2 skins, on-chain fairness.\n\nOpen packs: ${packUrl}`;
     }
 
     const url = new URL("https://twitter.com/intent/tweet");
@@ -521,7 +524,20 @@ export default function PacksPage() {
             // Create case opening record for activity tracking
             try {
               if (walletCtx.publicKey) {
-                await packOpeningService.createCaseOpeningRecord({
+                console.log('📝 Creating case opening record:', {
+                  skinName: result.skin.name,
+                  rarity: result.skin.rarity,
+                  skinValue: result.skin.basePriceUsd,
+                  imageUrl: result.skin.imageUrl,
+                  hasImage: !!result.skin.imageUrl,
+                });
+                
+                // Use winnerSkin.image as fallback since it has the resolved image
+                const skinImageUrl = result.skin.imageUrl || winnerSkin.image;
+                
+                console.log('🖼️  Using skin image URL:', skinImageUrl);
+                
+                const caseOpeningRecord = await packOpeningService.createCaseOpeningRecord({
                   userId: walletCtx.publicKey.toString(),
                   boxId: selectedPack.id,
                   nftMint: result.nftMint,
@@ -529,12 +545,19 @@ export default function PacksPage() {
                   skinRarity: result.skin.rarity,
                   skinWeapon: result.skin.weapon,
                   skinValue: result.skin.basePriceUsd,
-                  skinImage: result.skin.imageUrl || "",
+                  skinImage: skinImageUrl === 'icon-fallback' ? '' : skinImageUrl,
                   transactionHash: result.signature,
                 });
-                // activity record created
+                
+                console.log('✅ Case opening record created:', {
+                  caseOpeningId: caseOpeningRecord.caseOpeningId,
+                });
+                
+                // Store case opening ID for sharing
+                setCaseOpeningId(caseOpeningRecord.caseOpeningId);
               }
             } catch (error) {
+              console.error('❌ Failed to create case opening record:', error);
               // non-critical telemetry failure; ignore
             }
 
@@ -551,7 +574,7 @@ export default function PacksPage() {
                   <div className="flex-shrink-0">
                     {winnerSkin.image === "icon-fallback" ? (
                       <div className="w-12 h-12 bg-zinc-800 rounded flex items-center justify-center">
-                        <ImageIcon className="w-6 h-6 text-zinc-400" />
+                        <Package className="w-6 h-6 text-zinc-400" />
                       </div>
                     ) : (
                       <img
@@ -635,7 +658,9 @@ export default function PacksPage() {
     setShowResult(false);
     setWonSkin(null);
     setLastPackResult(null);
+    setCaseOpeningId(null);
   };
+
 
   const handleBuyback = async () => {
     if (!lastPackResult) {
@@ -659,7 +684,7 @@ export default function PacksPage() {
 
       dismissBuybackToast();
       buybackToastIdRef.current = toast.loading(
-        `Buyback: ${calcData.buybackAmount} SOL - Requesting transaction...`
+        `Buyback: ${calcData.buybackAmount.toFixed(3)} SOL - Requesting transaction...`
       );
 
       // Request buyback transaction using buybackService
@@ -1476,7 +1501,7 @@ export default function PacksPage() {
                     {/* Skin Image - Centered and elevated */}
                     <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center pt-10">
                       {wonSkin.image === "icon-fallback" ? (
-                        <ImageIcon className="h-24 w-24 md:h-28 md:w-28 text-white/30 drop-shadow-[0_0_30px_rgba(255,140,0,0.5)]" />
+                        <Package className="h-24 w-24 md:h-28 md:w-28 text-white/30 drop-shadow-[0_0_30px_rgba(255,140,0,0.5)]" />
                       ) : (
                         <img
                           src={wonSkin.image}
