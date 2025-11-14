@@ -143,16 +143,6 @@ export class PackOpeningService {
       walletAddress: wallet.publicKey.toString(),
     });
 
-    console.log('🎯 Reveal response received:', {
-      skinName: revealResponseData.skinName,
-      weapon: revealResponseData.weapon,
-      rarity: revealResponseData.skinRarity,
-      basePriceUsd: revealResponseData.basePriceUsd,
-      imageUrl: revealResponseData.imageUrl,
-      hasImage: !!revealResponseData.imageUrl,
-      imageUrlType: typeof revealResponseData.imageUrl,
-    });
-
     // Step 5: Create pack opening transaction in backend
     // IMPORTANT: Refresh CSRF token after the 12-second wait to prevent expiration
     // The transaction was already signed, so we MUST register it even if there are errors
@@ -190,7 +180,6 @@ export class PackOpeningService {
       // Transaction creation failed, but the transaction was already signed on-chain
       // This is a critical error - the user spent SOL but we couldn't register it
       // Log the error details for debugging but still return the reveal data
-      console.error('Failed to register pack opening transaction after signing:', error);
       
       // Re-throw with a more user-friendly message
       const errorMessage = error?.message || 'Unknown error';
@@ -211,16 +200,6 @@ export class PackOpeningService {
 
     // Step 6: Use the skin data from the reveal service
     const resolvedImageUrl: string | undefined = savedUserSkin?.imageUrl || revealResponseData?.imageUrl;
-    
-    console.log('📦 Pack opening complete:', {
-      nftMint: nftMintAddress.substring(0, 8) + '...',
-      skinName: revealResponseData.skinName,
-      basePriceUsd: revealResponseData.basePriceUsd,
-      resolvedImageUrl,
-      savedUserSkinImageUrl: savedUserSkin?.imageUrl,
-      revealResponseImageUrl: revealResponseData?.imageUrl,
-      hasImage: !!resolvedImageUrl,
-    });
     
     // Use the mint transaction signature (complete transaction with transfers, mint, etc.)
     // instead of the metadata update transaction for the Solscan link

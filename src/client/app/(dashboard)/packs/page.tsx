@@ -596,18 +596,8 @@ export default function PacksPage() {
             // Create case opening record for activity tracking
             try {
               if (walletCtx.publicKey) {
-                console.log('📝 Creating case opening record:', {
-                  skinName: result.skin.name,
-                  rarity: result.skin.rarity,
-                  skinValue: result.skin.basePriceUsd,
-                  imageUrl: result.skin.imageUrl,
-                  hasImage: !!result.skin.imageUrl,
-                });
-                
                 // Use winnerSkin.image as fallback since it has the resolved image
-                const skinImageUrl = result.skin.imageUrl || winnerSkin.image;
-                
-                console.log('🖼️  Using skin image URL:', skinImageUrl);
+                const skinImageUrl = result.skin.imageUrl || winnerSkin.image;          
                 
                 const caseOpeningRecord = await packOpeningService.createCaseOpeningRecord({
                   userId: walletCtx.publicKey.toString(),
@@ -621,15 +611,10 @@ export default function PacksPage() {
                   transactionHash: result.signature,
                 });
                 
-                console.log('✅ Case opening record created:', {
-                  caseOpeningId: caseOpeningRecord.caseOpeningId,
-                });
-                
                 // Store case opening ID for sharing
                 setCaseOpeningId(caseOpeningRecord.caseOpeningId);
               }
             } catch (error) {
-              console.error('❌ Failed to create case opening record:', error);
               // non-critical telemetry failure; ignore
             }
 
