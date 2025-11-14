@@ -805,7 +805,7 @@ export default function ProfilePage() {
 
         {/* Error Modal */}
         <Dialog open={showErrorModal} onOpenChange={setShowErrorModal}>
-          <DialogContent className="bg-gradient-to-b from-zinc-950 to-zinc-900 border-[#E99500]/50">
+          <DialogContent className="bg-gradient-to-b from-zinc-950 to-zinc-900 border-[#E99500]/50 pt-10">
             <DialogHeader>
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 rounded-full bg-[#E99500]/10">
