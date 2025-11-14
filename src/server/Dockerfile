@@ -1,5 +1,5 @@
 # Multi-stage build for SolSkins Server
-# Build from src/server directory with: docker build -t sol-skins-server .
+# Build from src/server directory with: docker build -t dust3-server .
 FROM node:20-alpine AS builder
 
 # Set working directory
