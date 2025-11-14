@@ -167,12 +167,12 @@ export default function InventoryPage() {
         case "name":
           return a.name.localeCompare(b.name);
         case "price-high":
-          const valueA = parseFloat(a.currentPriceUsd || a.skinTemplate?.basePriceUsd || '0');
-          const valueB = parseFloat(b.currentPriceUsd || b.skinTemplate?.basePriceUsd || '0');
+          const valueA = parseFloat(String(a.currentPriceUsd || a.skinTemplate?.basePriceUsd || 0));
+          const valueB = parseFloat(String(b.currentPriceUsd || b.skinTemplate?.basePriceUsd || 0));
           return valueB - valueA; // Descending order (highest first)
         case "price-low":
-          const valueA2 = parseFloat(a.currentPriceUsd || a.skinTemplate?.basePriceUsd || '0');
-          const valueB2 = parseFloat(b.currentPriceUsd || b.skinTemplate?.basePriceUsd || '0');
+          const valueA2 = parseFloat(String(a.currentPriceUsd || a.skinTemplate?.basePriceUsd || 0));
+          const valueB2 = parseFloat(String(b.currentPriceUsd || b.skinTemplate?.basePriceUsd || 0));
           return valueA2 - valueB2; // Ascending order (lowest first)
         case "rarity":
           const rarityOrder = { legendary: 5, epic: 4, rare: 3, uncommon: 2, common: 1 };
@@ -181,7 +181,9 @@ export default function InventoryPage() {
           return rarityB - rarityA; // Descending order (highest rarity first)
         case "date":
         default:
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(); // Newest first
+          const dateA = b.createdAt || b.openedAt || new Date().toISOString();
+          const dateB = a.createdAt || a.openedAt || new Date().toISOString();
+          return new Date(dateA).getTime() - new Date(dateB).getTime(); // Newest first
       }
     });
   }, [inventorySkins, searchTerm, filterBy, sortBy]);
@@ -221,7 +223,7 @@ export default function InventoryPage() {
 
       // Step 1: Calculating buyback amount (already fetched in dialog, but mirror UX)
       if (typeof payoutAmount === 'number') {
-        currentToast = toast.loading(`Buyback: ${Number(payoutAmount).toFixed(6)} SOL - Requesting transaction...`);
+        currentToast = toast.loading(`Buyback: ${payoutAmount.toFixed(3)} SOL - Requesting transaction...`);
       } else {
         currentToast = toast.loading('Calculating buyback amount...');
       }
@@ -254,24 +256,42 @@ export default function InventoryPage() {
         (confirmData as any)?.tx ||
         undefined;
 
+      const buybackSol = payoutAmount || 0;
+      const skinName = selectedSkin?.name || 'skin';
+      const packUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://dust3.fun'}/app-dashboard/packs`;
+      const tweetText = `Just cashed out ${skinName} for ${buybackSol.toFixed(3)} SOL on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
+
       currentToast = toast.success(
-        <div className="flex flex-col gap-1">
+        <div className="flex flex-col gap-2">
           <span className="font-semibold text-sm">Skin successfully bought back! 💰</span>
-          {txSig ? (
+          <div className="flex gap-2">
+            {txSig ? (
+              <a
+                href={getSolscanUrl(txSig)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+              >
+                View on Solscan
+                <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+              </a>
+            ) : null}
             <a
-              href={getSolscanUrl(txSig)}
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+              className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1 ml-auto"
             >
-              View transaction on Solscan
-              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              Share on X
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
               </svg>
             </a>
-          ) : null}
+          </div>
         </div>,
-        { duration: 6000 }
+        { duration: 8000 }
       );
 
       setIsSellingDialogOpen(false);
@@ -376,7 +396,7 @@ export default function InventoryPage() {
             </div>
             <div className="text-right">
               <div className="text-sm text-muted-foreground">
-                Total Intentory Value
+                Total Inventory Value
               </div>
               <div className="text-3xl font-bold text-foreground">
                 ${totalValue.toFixed(2)}
@@ -637,7 +657,7 @@ export default function InventoryPage() {
                       <div className="mt-4 text-right">
                         {payoutAmount !== null ? (
                           <div className="text-3xl font-bold text-white">
-                            {payoutAmount.toFixed(4)} SOL
+                            {payoutAmount.toFixed(3)} SOL
                           </div>
                         ) : (
                           <Loader2 className="w-8 h-8 animate-spin text-white/50 mx-auto" />

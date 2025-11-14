@@ -18,9 +18,33 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dust3 - Where CS skins meet Web3 fairness",
+  title: "DUST3 - CS2 Skins Meet Web3",
   description:
-    "Unbox CS:GO skins on-chain. Provably fair, backed by real inventory, instant liquidity.",
+    "Open CS2 skin packs on Solana. Provably fair drops, instant SOL payouts, or claim to Steam. Real skins, real value.",
+  openGraph: {
+    title: "DUST3 - CS2 Skins Meet Web3",
+    description:
+      "Open CS2 skin packs on Solana. Provably fair drops, instant SOL payouts, or claim to Steam. Real skins, real value.",
+    type: "website",
+    siteName: "DUST3",
+    images: [
+      {
+        url: "/assets/banner2.png",
+        width: 1200,
+        height: 630,
+        alt: "DUST3 - CS2 Skins on Solana",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@DUST3fun",
+    creator: "@DUST3fun",
+    title: "DUST3 - CS2 Skins Meet Web3",
+    description:
+      "Open CS2 skin packs on Solana. Provably fair drops, instant SOL payouts, or claim to Steam.",
+    images: ["/assets/banner2.png"],
+  },
 };
 
 export default function RootLayout({
@@ -32,6 +56,7 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${inter.variable} ${jetbrainsMono.variable} dark`}
+      suppressHydrationWarning
     >
       <body
         suppressHydrationWarning

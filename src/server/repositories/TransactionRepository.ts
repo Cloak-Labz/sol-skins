@@ -24,6 +24,7 @@ export class TransactionRepository {
       search?: string;
       type?: string;
       sortBy?: string;
+      walletAddress?: string;
     } = {}
   ): Promise<[Transaction[], number]> {
     const page = options.page || 1;
@@ -47,6 +48,14 @@ export class TransactionRepository {
     if (options.type && options.type !== "all") {
       queryBuilder.andWhere("transaction.transactionType = :type", {
         type: options.type as TransactionType,
+      });
+    }
+
+    if (options.walletAddress) {
+      // Normalize wallet address to lowercase for comparison
+      const normalizedWalletAddress = options.walletAddress.toLowerCase();
+      queryBuilder.andWhere("LOWER(user.walletAddress) = LOWER(:walletAddress)", {
+        walletAddress: normalizedWalletAddress,
       });
     }
 

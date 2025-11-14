@@ -18,6 +18,7 @@ import metadataRoutes from "./metadata";
 import discordRoutes from "./discord";
 import pendingSkinsRoutes from "./pending-skins";
 import { packOpeningRoutes } from "./pack-opening";
+import { imageProxyRoutes } from "./image-proxy";
 import { initializeAuth } from "../middlewares/auth";
 import { UserService } from "../services/UserService";
 import { generateCSRFToken } from "../middlewares/security";
@@ -52,6 +53,7 @@ export async function createRoutes(): Promise<Router> {
   router.use("/discord", discordRoutes);
   router.use("/pending-skins", pendingSkinsRoutes);
   router.use("/pack-opening", packOpeningRoutes);
+  router.use("/image-proxy", imageProxyRoutes);
 
   return router;
 }

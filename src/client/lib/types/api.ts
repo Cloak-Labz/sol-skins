@@ -83,22 +83,26 @@ export interface LootBoxFilters {
 // Skin types
 export interface UserSkin {
   id: string
-  skinTemplate: {
+  name: string
+  imageUrl?: string
+  skinTemplate?: {
     weapon: string
     skinName: string
     rarity: string
     condition: string
     imageUrl?: string
+    basePriceUsd?: number
   }
-  currentPriceUsd: number
-  currentPrice: number // Alias
+  currentPriceUsd?: number
+  currentPrice?: number // Alias
   nftMintAddress: string
-  mintAddress: string // Alias
-  openedAt: string
-  acquiredAt: string // Alias
-  canSell: boolean
-  condition: string
-  status: 'owned' | 'sold' | 'listed'
+  mintAddress?: string // Alias
+  openedAt?: string
+  acquiredAt?: string // Alias
+  createdAt?: string
+  canSell?: boolean
+  condition?: string
+  status?: 'owned' | 'sold' | 'listed'
   isWaitingTransfer?: boolean
 }
 

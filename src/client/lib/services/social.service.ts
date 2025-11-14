@@ -37,15 +37,26 @@ class SocialService {
     return response;
   }
 
-  // Get recent activity
+  // Get all recent activity (for activity page)
   async getRecentActivity(limit?: number): Promise<ActivityItem[]> {
-    // Always call API (mocks removed)
-
     const params = new URLSearchParams();
     if (limit) params.append('limit', limit.toString());
 
     const queryString = params.toString();
     const url = queryString ? `/activity/recent?${queryString}` : '/activity/recent';
+
+    // apiClient.get unwraps the response and returns just the data
+    const activities = await apiClient.get<ActivityItem[]>(url);
+    return activities;
+  }
+
+  // Get user's own activity (for profile page) - requires authentication
+  async getUserActivity(limit?: number): Promise<ActivityItem[]> {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+
+    const queryString = params.toString();
+    const url = queryString ? `/activity/user?${queryString}` : '/activity/user';
 
     // apiClient.get unwraps the response and returns just the data
     const activities = await apiClient.get<ActivityItem[]>(url);

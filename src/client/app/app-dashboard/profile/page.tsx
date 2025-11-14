@@ -8,12 +8,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/lib/contexts/UserContext";
 import { authService, inventoryService, historyService, casesService, socialService } from "@/lib/services";
 import { ActivityItem } from "@/lib/types/api";
-import { toast } from "react-hot-toast";
+import { toast } from "sonner";
 import {
   Loader2,
   User,
@@ -26,6 +35,10 @@ import {
   Clock,
   TrendingDown,
   TrendingUp as TrendingUpIcon,
+  AlertCircle,
+  Copy,
+  CheckCircle,
+  Box,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -52,6 +65,15 @@ export default function ProfilePage() {
     tradeUrl: "",
   });
   const [memberSince, setMemberSince] = useState<string>('N/A');
+
+  // Error modal state
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [errorDetails, setErrorDetails] = useState("");
+  const [copiedError, setCopiedError] = useState(false);
+
+  // Trade URL validation state
+  const [tradeUrlValidationError, setTradeUrlValidationError] = useState<string>("");
 
   // Dashboard data state
   const [inventorySummary, setInventorySummary] = useState<InventorySummary | null>(null);
@@ -107,7 +129,7 @@ export default function ProfilePage() {
         transactionSummaryData
       ] = await Promise.allSettled([
         inventoryService.getInventoryValue(),
-        socialService.getRecentActivity(5),
+        socialService.getUserActivity(5),
         casesService.getUserCaseOpenings(),
         historyService.getTransactionSummary()
       ]);
@@ -184,6 +206,70 @@ export default function ProfilePage() {
     connectWallet,
   ]);
 
+  const validateTradeUrl = (url: string): string => {
+    if (!url.trim()) {
+      return "";
+    }
+
+    if (!url.includes("steamcommunity.com/tradeoffer/new")) {
+      return "Invalid format - URL must contain 'steamcommunity.com/tradeoffer/new'";
+    }
+
+    if (!url.includes("partner=") || !url.includes("token=")) {
+      return "Missing required parameters - URL must include 'partner=' and 'token='";
+    }
+
+    try {
+      const urlObj = new URL(url);
+      const partner = urlObj.searchParams.get("partner");
+      const token = urlObj.searchParams.get("token");
+
+      if (!partner || !token) {
+        return "Invalid parameters - 'partner' and 'token' are required";
+      }
+
+      if (!/^\d+$/.test(partner)) {
+        return "Invalid partner ID - must be numeric";
+      }
+
+      if (token.length < 8) {
+        return "Invalid token - must be at least 8 characters";
+      }
+    } catch {
+      return "Invalid URL format";
+    }
+
+    return "";
+  };
+
+  const handleTradeUrlChange = (newUrl: string) => {
+    setFormData({ ...formData, tradeUrl: newUrl });
+    setTradeUrlValidationError(validateTradeUrl(newUrl));
+  };
+
+  // Check if there are any changes to save
+  const hasChanges = () => {
+    if (!user) return false;
+    
+    // Normalize values for comparison (treat null, undefined, and empty string as equivalent)
+    const normalize = (val: any) => (val ?? "").trim();
+    
+    const currentUsername = normalize(formData.username);
+    const originalUsername = normalize(user.username);
+    
+    const currentEmail = normalize(formData.email);
+    const originalEmail = normalize(user.email);
+    
+    const currentTradeUrl = normalize((formData as any).tradeUrl);
+    const originalTradeUrl = normalize((user as any)?.tradeUrl);
+    
+    return (
+      currentUsername !== originalUsername ||
+      currentEmail !== originalEmail ||
+      currentTradeUrl !== originalTradeUrl
+    );
+  };
+
   const handleSave = async () => {
     try {
       setIsSaving(true);
@@ -194,7 +280,16 @@ export default function ProfilePage() {
         updates.username = sanitizedUsername;
       }
       if (formData.email !== user?.email) updates.email = formData.email;
-      if ((formData as any).tradeUrl !== (user as any)?.tradeUrl) (updates as any).tradeUrl = (formData as any).tradeUrl;
+      if ((formData as any).tradeUrl !== (user as any)?.tradeUrl) {
+        // Validate trade URL before saving
+        const tradeUrlError = validateTradeUrl((formData as any).tradeUrl);
+        if (tradeUrlError) {
+          setTradeUrlValidationError(tradeUrlError);
+          setIsSaving(false);
+          return;
+        }
+        (updates as any).tradeUrl = (formData as any).tradeUrl;
+      }
 
       if (Object.keys(updates).length === 0) {
         toast.error("No changes to save");
@@ -205,14 +300,62 @@ export default function ProfilePage() {
       // Get wallet adapter for signing
       const walletAdapter = signMessage ? { signMessage } : null;
       await authService.updateProfile(updates, walletAdapter as any);
-      await refreshUser();
-
-      toast.success("Profile updated successfully!");
+      
+      // Show success toast immediately
+      toast.success("Profile updated successfully!", {
+        duration: 4000,
+      });
+      
+      // Refresh user data (don't let errors here prevent showing success)
+      try {
+        await refreshUser();
+      } catch (refreshError) {
+        console.warn("Failed to refresh user after update:", refreshError);
+        // Don't throw - the update was successful, just refresh failed
+      }
+      
       setIsEditing(false);
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to update profile"
-      );
+      // Show error modal with detailed information
+      let errorMsg = "Failed to update profile";
+      let errorDetail = "";
+
+      if (err instanceof Error) {
+        errorMsg = err.message;
+
+        // Extract more detailed error info
+        if (err.message.includes("signature")) {
+          errorMsg = "Signature verification failed";
+          errorDetail = "Your wallet signature could not be verified. Please make sure your wallet is unlocked and try again.";
+        } else if (err.message.includes("CSRF")) {
+          errorMsg = "Security token expired";
+          errorDetail = "Your session token has expired. Please refresh the page and try again.";
+        } else if (err.message.includes("Network") || err.message.includes("timeout")) {
+          errorMsg = "Network error";
+          errorDetail = "Could not connect to the server. Please check your internet connection and try again.";
+        } else if (err.message.includes("Unauthorized") || err.message.includes("401")) {
+          errorMsg = "Authentication failed";
+          errorDetail = "Your session has expired. Please disconnect and reconnect your wallet.";
+        } else if (err.message.includes("tradeUrl") || err.message.includes("Trade URL")) {
+          errorMsg = "Invalid Steam Trade URL";
+          errorDetail = "The Steam Trade URL you provided is not valid. Please check the format and try again.";
+        } else if (err.message.includes("username")) {
+          errorMsg = "Invalid username";
+          errorDetail = "The username you provided is not valid or already taken. Please try a different one.";
+        } else if (err.message.includes("email")) {
+          errorMsg = "Invalid email";
+          errorDetail = "The email address you provided is not valid. Please check the format and try again.";
+        } else {
+          errorDetail = err.stack ? err.stack.split('\n').slice(0, 2).join('\n') : err.message;
+        }
+      }
+
+      setErrorMessage(errorMsg);
+      setErrorDetails(errorDetail);
+      setShowErrorModal(true);
+
+      // Also show toast for immediate feedback
+      toast.error("Failed to update profile - see error details");
     } finally {
       setIsSaving(false);
     }
@@ -224,7 +367,79 @@ export default function ProfilePage() {
       email: user?.email || "",
       tradeUrl: (user as any)?.tradeUrl || "",
     });
+    setTradeUrlValidationError("");
     setIsEditing(false);
+  };
+
+  const copyErrorToClipboard = () => {
+    const errorText = `Error: ${errorMessage}\nDetails: ${errorDetails}\nTimestamp: ${new Date().toISOString()}`;
+    navigator.clipboard.writeText(errorText).then(() => {
+      setCopiedError(true);
+      toast.success("Error details copied to clipboard");
+      setTimeout(() => setCopiedError(false), 2000);
+    }).catch(() => {
+      toast.error("Failed to copy error details");
+    });
+  };
+
+  const getTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const then = new Date(timestamp);
+    const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    return `${Math.floor(seconds / 86400)}d ago`;
+  };
+
+  const getActivityStyles = (type: ActivityItem["type"]) => {
+    switch (type) {
+      case "case_opened":
+        return {
+          borderColor: "border-yellow-500/20",
+          hoverBorderColor: "hover:border-yellow-500/40",
+          iconBg: "bg-yellow-500/10",
+          iconColor: "text-yellow-400",
+          badgeBg: "bg-yellow-500/10",
+          badgeText: "text-yellow-300",
+          badgeBorder: "border-yellow-500/30",
+          leftBorder: "border-l-2 border-l-yellow-500/30",
+        };
+      case "skin_claimed":
+        return {
+          borderColor: "border-orange-500/20",
+          hoverBorderColor: "hover:border-orange-500/40",
+          iconBg: "bg-orange-500/10",
+          iconColor: "text-orange-400",
+          badgeBg: "bg-orange-500/10",
+          badgeText: "text-orange-300",
+          badgeBorder: "border-orange-500/30",
+          leftBorder: "border-l-2 border-l-orange-500/30",
+        };
+      case "payout":
+        return {
+          borderColor: "border-green-500/20",
+          hoverBorderColor: "hover:border-green-500/40",
+          iconBg: "bg-green-500/10",
+          iconColor: "text-green-400",
+          badgeBg: "bg-green-500/10",
+          badgeText: "text-green-300",
+          badgeBorder: "border-green-500/30",
+          leftBorder: "border-l-2 border-l-green-500/30",
+        };
+      default:
+        return {
+          borderColor: "border-zinc-800",
+          hoverBorderColor: "hover:border-zinc-700",
+          iconBg: "bg-zinc-800",
+          iconColor: "text-zinc-400",
+          badgeBg: "bg-zinc-900",
+          badgeText: "text-zinc-300",
+          badgeBorder: "border-zinc-800",
+          leftBorder: "",
+        };
+    }
   };
 
   // Show lock only when there's no wallet connection (adapter + context) and no user
@@ -444,8 +659,8 @@ export default function ProfilePage() {
                           username: e.target.value.slice(0, 15),
                         })
                       }
-                      disabled={!isEditing}
                       maxLength={15}
+                      disabled={!isEditing}
                       placeholder="Enter your username"
                       className="bg-zinc-950 border-zinc-800"
                     />
@@ -480,13 +695,21 @@ export default function ProfilePage() {
                     <Input
                       id="tradeUrl"
                       value={(formData as any).tradeUrl}
-                      onChange={(e) =>
-                        setFormData({ ...formData, tradeUrl: e.target.value } as any)
-                      }
+                      onChange={(e) => handleTradeUrlChange(e.target.value)}
                       disabled={!isEditing}
                       placeholder="https://steamcommunity.com/tradeoffer/new/?partner=...&token=..."
-                      className="bg-zinc-950 border-zinc-800"
+                      className={`bg-zinc-950 ${
+                        tradeUrlValidationError && isEditing
+                          ? "border-red-500 focus-visible:ring-red-500"
+                          : "border-zinc-800"
+                      }`}
                     />
+                    {tradeUrlValidationError && isEditing && (
+                      <div className="flex items-start gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                        <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-red-400">{tradeUrlValidationError}</p>
+                      </div>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -504,7 +727,18 @@ export default function ProfilePage() {
                   <div className="flex gap-3 pt-2">
                     {!isEditing ? (
                       <Button
-                        onClick={() => setIsEditing(true)}
+                        onClick={() => {
+                          // Reset formData to current user values when entering edit mode
+                          if (user) {
+                            setFormData({
+                              username: user.username || "",
+                              email: user.email || "",
+                              tradeUrl: (user as any).tradeUrl || "",
+                            });
+                            setTradeUrlValidationError("");
+                          }
+                          setIsEditing(true);
+                        }}
                         className="bg-zinc-100 text-black hover:bg-white w-full"
                       >
                         Edit Profile
@@ -513,8 +747,8 @@ export default function ProfilePage() {
                       <>
                         <Button
                           onClick={handleSave}
-                          disabled={isSaving}
-                          className="bg-zinc-100 text-black hover:bg-white flex-1"
+                          disabled={!hasChanges() || isSaving || !!tradeUrlValidationError}
+                          className="bg-zinc-100 text-black hover:bg-white flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isSaving ? (
                             <>
@@ -616,60 +850,89 @@ export default function ProfilePage() {
                       <Loader2 className="w-6 h-6 animate-spin" />
                     </div>
                   ) : recentTransactions.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {recentTransactions
                         .slice(0, 5)
-                        .map((item) => (
-                        <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-md bg-zinc-800`}>
-                              {item.type === 'case_opened' ? (
-                                <Package className="w-4 h-4 text-zinc-400" />
-                              ) : item.type === 'payout' ? (
-                                <DollarSign className="w-4 h-4 text-zinc-400" />
-                              ) : item.type === 'skin_claimed' ? (
-                                <Package className="w-4 h-4 text-zinc-400" />
-                              ) : (
-                                <Activity className="w-4 h-4 text-zinc-400" />
-                              )}
+                        .map((item) => {
+                          const styles = getActivityStyles(item.type);
+                          return (
+                            <div
+                              key={item.id}
+                              className={`flex items-center justify-between p-4 rounded-lg border ${styles.borderColor} ${styles.leftBorder} bg-gradient-to-b from-zinc-950 to-zinc-900 transition-all duration-150 hover:scale-[1.01] ${styles.hoverBorderColor}`}
+                            >
+                              <div className="flex items-center space-x-4">
+                                <div
+                                  className={`w-10 h-10 rounded-md flex items-center justify-center text-sm ${styles.iconBg} ${styles.iconColor}`}
+                                >
+                                  {item.type === "case_opened" ? (
+                                    <Box className="w-4 h-4" />
+                                  ) : item.type === "skin_claimed" ? (
+                                    <CheckCircle className="w-4 h-4" />
+                                  ) : item.type === "payout" ? (
+                                    <DollarSign className="w-4 h-4" />
+                                  ) : (
+                                    <Activity className="w-4 h-4" />
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-foreground">
+                                    <span className="font-medium">
+                                      {item.user?.username ||
+                                        `${item.user?.walletAddress?.slice(0, 4) || ''}...${item.user?.walletAddress?.slice(-4) || ''}` ||
+                                        'You'}
+                                    </span>
+                                    <span className="text-muted-foreground mx-2">
+                                      {item.type === "case_opened"
+                                        ? "opened"
+                                        : item.type === "skin_claimed"
+                                        ? "claimed"
+                                        : item.type === "payout"
+                                        ? "received payout for"
+                                        : "sold"}
+                                    </span>
+                                    <span className="font-medium">
+                                      {item.skin
+                                        ? (item.skin.skinName.includes(item.skin.weapon)
+                                            ? item.skin.skinName
+                                            : `${item.skin.weapon} | ${item.skin.skinName}`)
+                                        : item.lootBox?.name || 'Unknown'}
+                                    </span>
+                                  </p>
+                                  <p className="text-muted-foreground text-sm">
+                                    {getTimeAgo(item.timestamp)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-foreground font-bold">
+                                  {item.type === "case_opened"
+                                    ? `-${item.amount?.sol
+                                        ? parseFloat(item.amount.sol.toString()).toFixed(2)
+                                        : "0"} SOL`
+                                    : item.type === "payout"
+                                    ? `+${formatCurrency(item.amount?.usd || 0)}`
+                                    : item.type === "skin_claimed"
+                                    ? "0 SOL"
+                                    : item.amount
+                                    ? `${parseFloat(item.amount.sol.toString()).toFixed(2)} SOL`
+                                    : formatCurrency(parseFloat(item.skin?.valueUsd || "0"))}
+                                </p>
+                                <Badge
+                                  variant="secondary"
+                                  className={`text-xs mt-1 ${styles.badgeBg} ${styles.badgeText} border ${styles.badgeBorder}`}
+                                >
+                                  {item.type === "case_opened"
+                                    ? "open"
+                                    : item.type === "skin_claimed"
+                                    ? "claim"
+                                    : item.type === "payout"
+                                    ? "payout"
+                                    : "buyback"}
+                                </Badge>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-foreground">
-                                {item.type === 'case_opened' ? 'Case Opened' :
-                                 item.type === 'payout' ? 'Skin Sold' :
-                                 item.type === 'skin_claimed' ? 'Skin Claimed' :
-                                 'Activity'}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {item.skin ? 
-                                  (item.skin.skinName.includes(item.skin.weapon) ? 
-                                    item.skin.skinName : 
-                                    `${item.skin.weapon} | ${item.skin.skinName}`) :
-                                  item.lootBox?.name || 'Unknown'
-                                }
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className={`font-bold text-foreground`}>
-                              {(() => {
-                                if (item.type === 'payout') {
-                                  return '+' + formatCurrency(item.amount?.usd || 0);
-                                } else if (item.type === 'case_opened') {
-                                  return '-' + (item.amount?.sol ? `${parseFloat(item.amount.sol.toString()).toFixed(2)} SOL` : '0 SOL');
-                                } else if (item.type === 'skin_claimed') {
-                                  return '0 SOL'; // Show 0 SOL for skin claims
-                                } else {
-                                  return '';
-                                }
-                              })()}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(item.timestamp).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                          );
+                        })}
                     </div>
                   ) : (
                     <p className="text-muted-foreground text-center py-4">
@@ -681,6 +944,93 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Error Modal */}
+        <Dialog open={showErrorModal} onOpenChange={setShowErrorModal}>
+          <DialogContent showCloseButton={false} className="bg-gradient-to-b from-zinc-950 to-zinc-900 border-[#E99500]/50 pt-10">
+            <DialogHeader>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-full bg-[#E99500]/10">
+                  <AlertCircle className="w-6 h-6 text-[#E99500]" />
+                </div>
+                <DialogTitle className="text-xl text-[#E99500]">
+                  Profile Update Failed
+                </DialogTitle>
+              </div>
+              <DialogDescription className="text-zinc-400 text-left mt-2">
+                We encountered an error while trying to update your profile. Please review the details below:
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 my-4">
+              {/* Error Message */}
+              <div className="p-4 rounded-lg bg-[#E99500]/5 border border-[#E99500]/20">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-[#E99500] mb-1">Error Message:</p>
+                    <p className="text-sm text-zinc-300">{errorMessage}</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={copyErrorToClipboard}
+                    className="h-8 w-8 p-0 hover:bg-[#E99500]/10"
+                    title="Copy error details"
+                  >
+                    {copiedError ? (
+                      <CheckCircle className="w-4 h-4 text-green-500" />
+                    ) : (
+                      <Copy className="w-4 h-4 text-zinc-400" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Error Details (if available) */}
+              {errorDetails && (
+                <div className="p-4 rounded-lg bg-zinc-800/50 border border-zinc-700">
+                  <p className="text-sm font-semibold text-zinc-400 mb-1">Technical Details:</p>
+                  <p className="text-xs text-zinc-500 font-mono break-all whitespace-pre-wrap">{errorDetails}</p>
+                </div>
+              )}
+
+              {/* Common Solutions */}
+              <div className="p-4 rounded-lg bg-[#E99500]/5 border border-[#E99500]/20">
+                <p className="text-sm font-semibold text-[#E99500] mb-2">Common Solutions:</p>
+                <ul className="text-sm text-zinc-300 space-y-1.5 list-none">
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#E99500] mt-0.5">•</span>
+                    <span>Make sure your wallet is unlocked and connected</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#E99500] mt-0.5">•</span>
+                    <span>Check if your Steam Trade URL is valid (if updating)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#E99500] mt-0.5">•</span>
+                    <span>Try refreshing the page and connecting your wallet again</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-[#E99500] mt-0.5">•</span>
+                    <span>If the issue persists, contact support with the error details</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2">
+              <Button
+                onClick={() => {
+                  setShowErrorModal(false);
+                  // Keep editing mode so user can try again
+                }}
+                className="bg-[#E99500] hover:bg-[#ff9500] text-black font-bold w-full"
+              >
+                Try Again
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );

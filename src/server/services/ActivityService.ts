@@ -19,23 +19,32 @@ export class ActivityService {
   async getRecentActivity(options: {
     limit?: number;
     type?: 'all' | 'case_opened' | 'buyback' | 'skin_claimed' | 'payout';
+    walletAddress?: string;
   }) {
     const limit = Math.min(options.limit || 50, 100);
 
     // Get recent completed case openings
-    const recentOpenings = await this.caseOpeningRepository.getRecentActivity(limit);
+    const recentOpenings = await this.caseOpeningRepository.getRecentActivity(limit, options.walletAddress);
 
     // Get recent transactions for payouts and skin claims
+    const transactionFilters: any = {
+      limit: limit,
+      sortBy: 'createdAt'
+    };
+    
+    // Add wallet address filter if provided
+    if (options.walletAddress) {
+      transactionFilters.walletAddress = options.walletAddress;
+    }
+    
     const [payoutTransactions, skinClaimTransactions] = await Promise.all([
       this.transactionRepository.findAll({
+        ...transactionFilters,
         type: 'payout',
-        limit: limit,
-        sortBy: 'createdAt'
       }),
       this.transactionRepository.findAll({
+        ...transactionFilters,
         type: 'skin_claimed', 
-        limit: limit,
-        sortBy: 'createdAt'
       })
     ]);
     
