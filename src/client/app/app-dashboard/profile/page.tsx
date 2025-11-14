@@ -275,8 +275,10 @@ export default function ProfilePage() {
       setIsSaving(true);
 
       const updates: any = {};
-      if (formData.username !== user?.username)
-        updates.username = formData.username.slice(0, 15);
+      const sanitizedUsername = formData.username.slice(0, 15);
+      if (sanitizedUsername !== (user?.username || "")) {
+        updates.username = sanitizedUsername;
+      }
       if (formData.email !== user?.email) updates.email = formData.email;
       if ((formData as any).tradeUrl !== (user as any)?.tradeUrl) {
         // Validate trade URL before saving
@@ -652,7 +654,10 @@ export default function ProfilePage() {
                       id="username"
                       value={formData.username}
                       onChange={(e) =>
-                        setFormData({ ...formData, username: e.target.value.slice(0, 15) })
+                        setFormData({
+                          ...formData,
+                          username: e.target.value.slice(0, 15),
+                        })
                       }
                       maxLength={15}
                       disabled={!isEditing}

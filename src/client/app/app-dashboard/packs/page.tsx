@@ -43,7 +43,7 @@ const getSolscanUrl = (signature: string): string => {
 };
 
 // Default odds when API doesn't provide per-rarity probabilities
-const DEFAULT_ODDS: { label: string; rarity: string; pct: number }[] = [
+const DEFAULT_ODDS: { label: string; rarity: string; pct: number; priceRange?: string | null }[] = [
   { label: "Legendary", rarity: "legendary", pct: 0.5 },
   { label: "Epic", rarity: "epic", pct: 2.0 },
   { label: "Rare", rarity: "rare", pct: 8.5 },
@@ -97,6 +97,15 @@ export default function PacksPage() {
     skinSol: number;
     payoutSol: number;
   } | null>(null);
+  const [progressStep, setProgressStep] = useState<number>(0);
+  const [showProgressModal, setShowProgressModal] = useState(false);
+
+  const progressSteps = [
+    { label: "Preparing transaction...", key: "preparing" },
+    { label: "Waiting for wallet signature...", key: "signature" },
+    { label: "Waiting for metadata propagation...", key: "metadata" },
+    { label: "Revealing skin...", key: "revealing" },
+  ];
 
   // Steam Trade URL modal state
   const [showTradeUrlModal, setShowTradeUrlModal] = useState(false);
@@ -107,10 +116,12 @@ export default function PacksPage() {
       // Force reload by changing key (this will remount the video element)
       setVideoKey(prev => prev + 1);
       
-      // Also reset video element if it exists
+      // Also reset video element if it exists and ensure volume is set
       setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.load();
+          videoRef.current.volume = 1.0;
+          videoRef.current.muted = false;
         }
       }, 100);
     }
@@ -204,16 +215,16 @@ export default function PacksPage() {
   const calculateRealOdds = async (boxId: string) => {
     try {
       // Fetch box skins distribution from backend
-      const response = await fetch(
+      const distributionResponse = await fetch(
         `/api/v1/box-skins/box/${boxId}/distribution`
       );
-      const data = await response.json();
+      const distributionData = await distributionResponse.json();
 
-      if (!data.success) {
+      if (!distributionData.success) {
         return DEFAULT_ODDS;
       }
 
-      const distribution = data.data;
+      const distribution = distributionData.data;
 
       // Convert distribution to odds format
       const totalSkins = Object.values(distribution).reduce(
@@ -225,31 +236,72 @@ export default function PacksPage() {
         return DEFAULT_ODDS;
       }
 
+      // Fetch box skins with templates to get price values
+      const boxSkinsResponse = await fetch(
+        `/api/v1/box-skins/box/${boxId}/with-templates`
+      );
+      const boxSkinsData = await boxSkinsResponse.json();
+
+      // Calculate price ranges by rarity
+      const pricesByRarity: Record<string, number[]> = {
+        legendary: [],
+        epic: [],
+        rare: [],
+        uncommon: [],
+        common: [],
+      };
+
+      if (boxSkinsData.success && Array.isArray(boxSkinsData.data)) {
+        boxSkinsData.data.forEach((skin: any) => {
+          const rarity = (skin.rarity || '').toLowerCase();
+          const price = parseFloat(skin.basePriceUsd || skin.skinTemplate?.basePriceUsd || '0');
+          if (rarity in pricesByRarity && price > 0) {
+            pricesByRarity[rarity].push(price);
+          }
+        });
+      }
+
+      // Helper to get price range string
+      const getPriceRange = (prices: number[]): string | null => {
+        if (prices.length === 0) return null;
+        const min = Math.min(...prices);
+        const max = Math.max(...prices);
+        if (min === max) {
+          return `~$${min.toFixed(2)}`;
+        }
+        return `~$${min.toFixed(2)} - $${max.toFixed(2)}`;
+      };
+
       const odds = [
         {
           label: "Legendary",
           rarity: "legendary",
           pct: ((distribution.legendary || 0) / totalSkins) * 100,
+          priceRange: getPriceRange(pricesByRarity.legendary),
         },
         {
           label: "Epic",
           rarity: "epic",
           pct: ((distribution.epic || 0) / totalSkins) * 100,
+          priceRange: getPriceRange(pricesByRarity.epic),
         },
         {
           label: "Rare",
           rarity: "rare",
           pct: ((distribution.rare || 0) / totalSkins) * 100,
+          priceRange: getPriceRange(pricesByRarity.rare),
         },
         {
           label: "Uncommon",
           rarity: "uncommon",
           pct: ((distribution.uncommon || 0) / totalSkins) * 100,
+          priceRange: getPriceRange(pricesByRarity.uncommon),
         },
         {
           label: "Common",
           rarity: "common",
           pct: ((distribution.common || 0) / totalSkins) * 100,
+          priceRange: getPriceRange(pricesByRarity.common),
         },
       ];
 
@@ -455,6 +507,8 @@ export default function PacksPage() {
     setIsProcessing(true);
     setShowResult(false);
     setWonSkin(null);
+    setProgressStep(0);
+    setShowProgressModal(true);
 
     try {
       if (isOpeningRef.current) return;
@@ -466,12 +520,30 @@ export default function PacksPage() {
           "@/lib/services/pack-opening.service"
         );
 
-        // Open pack using Candy Machine
+        // Map progress messages to step indices
+        const messageToStep: Record<string, number> = {
+          "Preparing transaction...": 0,
+          "Waiting for wallet signature...": 1,
+          "Waiting for metadata propagation...": 2,
+          "Revealing skin...": 3,
+        };
+
+        // Open pack using Candy Machine with progress callback
         const result = await packOpeningService.openPack(
           selectedPack.id,
           walletCtx,
-          null // connection will be handled by the service
+          null, // connection will be handled by the service
+          (message: string) => {
+            // Update progress step based on message
+            const step = messageToStep[message];
+            if (step !== undefined) {
+              setProgressStep(step);
+            }
+          }
         );
+
+        // Hide progress modal when done
+        setShowProgressModal(false);
 
         setLastPackResult({
           signature: result.signature,
@@ -601,6 +673,7 @@ export default function PacksPage() {
       }
     } catch (error: any) {
       dismissOpenPackToast();
+      setShowProgressModal(false);
       
       // Extract user-friendly error message
       let errorMessage = error?.message || "An unexpected error occurred. Please try again.";
@@ -926,6 +999,169 @@ export default function PacksPage() {
         />
       )}
 
+      {/* Progress Modal */}
+      <AnimatePresence>
+        {showProgressModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100000] flex items-center justify-center bg-black/90 backdrop-blur-md"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative bg-gradient-to-br from-zinc-900 via-zinc-900 to-zinc-950 border border-zinc-800/50 rounded-2xl p-8 md:p-10 max-w-lg w-full mx-4 shadow-2xl overflow-hidden"
+            >
+              {/* Background glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-[#E99500]/5 via-transparent to-transparent pointer-events-none" />
+              
+              {/* Header */}
+              <div className="relative mb-8 text-center">
+                <h3 className="text-2xl font-bold text-white mb-2">
+                  Opening Pack
+                </h3>
+                <p className="text-sm text-zinc-400">
+                  Please wait while we process your transaction
+                </p>
+              </div>
+              
+              {/* Progress Steps */}
+              <div className="relative space-y-5 mb-8">
+                {progressSteps.map((step, index) => {
+                  const isActive = index === progressStep;
+                  const isCompleted = index < progressStep;
+                  const isPending = index > progressStep;
+                  
+                  return (
+                    <motion.div
+                      key={step.key}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ 
+                        opacity: 1, 
+                        x: 0,
+                        scale: isActive ? 1.02 : 1
+                      }}
+                      transition={{ delay: index * 0.1 }}
+                      className={`relative flex items-center gap-4 transition-all duration-300 ${
+                        isActive ? "z-10" : ""
+                      }`}
+                    >
+                      {/* Step Indicator */}
+                      <div className="relative flex-shrink-0">
+                        {/* Glow effect for active step */}
+                        {isActive && (
+                          <motion.div
+                            animate={{
+                              scale: [1, 1.3, 1],
+                              opacity: [0.5, 0.8, 0.5],
+                            }}
+                            transition={{
+                              duration: 2,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                            }}
+                            className="absolute inset-0 rounded-full bg-[#E99500] blur-xl"
+                          />
+                        )}
+                        
+                        <div
+                          className={`relative flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300 ${
+                            isCompleted
+                              ? "bg-[#E99500] border-[#E99500] shadow-lg shadow-[#E99500]/50"
+                              : isActive
+                              ? "bg-[#E99500]/20 border-[#E99500] shadow-lg shadow-[#E99500]/30"
+                              : "bg-zinc-800/50 border-zinc-700/50"
+                          }`}
+                        >
+                          {isCompleted ? (
+                            <motion.svg
+                              initial={{ scale: 0 }}
+                              animate={{ scale: 1 }}
+                              transition={{ type: "spring", stiffness: 200 }}
+                              className="w-5 h-5 text-white"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={3}
+                                d="M5 13l4 4L19 7"
+                              />
+                            </motion.svg>
+                          ) : isActive ? (
+                            <Loader2 className="w-5 h-5 text-[#E99500] animate-spin" />
+                          ) : (
+                            <div className="w-2 h-2 rounded-full bg-zinc-500" />
+                          )}
+                        </div>
+                      </div>
+                      
+                      {/* Step Label */}
+                      <div className="flex-1 min-w-0">
+                        <span
+                          className={`block text-sm transition-all duration-300 ${
+                            isCompleted
+                              ? "text-white font-medium"
+                              : isActive
+                              ? "text-white font-semibold"
+                              : "text-zinc-500"
+                          }`}
+                        >
+                          {step.label}
+                        </span>
+                        {isActive && (
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: "100%" }}
+                            transition={{ duration: 0.3 }}
+                            className="mt-1 h-0.5 bg-gradient-to-r from-[#E99500] to-transparent rounded-full"
+                          />
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Progress Bar */}
+              <div className="relative">
+                <div className="w-full h-2.5 bg-zinc-800/50 rounded-full overflow-hidden backdrop-blur-sm">
+                  <motion.div
+                    initial={{ width: "0%" }}
+                    animate={{
+                      width: `${((progressStep + 1) / progressSteps.length) * 100}%`,
+                    }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                    className="relative h-full bg-gradient-to-r from-[#E99500] via-[#FFB84D] to-[#E99500] rounded-full"
+                  >
+                    {/* Shimmer effect */}
+                    <motion.div
+                      animate={{
+                        x: ["-100%", "100%"],
+                      }}
+                      transition={{
+                        duration: 2,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
+                    />
+                  </motion.div>
+                </div>
+                <div className="mt-2 text-xs text-zinc-500 text-center">
+                  Step {progressStep + 1} of {progressSteps.length}
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Fullscreen Opening Animation - Only show after processing */}
       <AnimatePresence>
         {openingPhase && openingPhase !== "processing" && (
@@ -952,7 +1188,6 @@ export default function PacksPage() {
                   key={videoKey}
                   ref={videoRef}
                   autoPlay
-                  muted
                   loop
                   playsInline
                   onError={(e) => {
@@ -1102,6 +1337,20 @@ export default function PacksPage() {
                   Open packs inspired by CS classics. Provably fair, instant
                   delivery.
                 </p>
+                {/* Devnet Info */}
+                {(process.env.NEXT_PUBLIC_SOLANA_NETWORK || "").toLowerCase().includes("devnet") && (
+                  <p className="text-xs text-zinc-400 mt-2">
+                    Testing on Solana Devnet: This uses test SOL with no real value.{" "}
+                    <a
+                      href="https://faucet.solana.com/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#E99500] hover:text-[#FFB84D] underline transition-colors"
+                    >
+                      Get free test SOL from the faucet
+                    </a>
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -1290,6 +1539,7 @@ export default function PacksPage() {
                       rarity?: string;
                       pct?: number;
                       odds?: number;
+                      priceRange?: string | null;
                     },
                     idx: number
                   ) => {
@@ -1300,6 +1550,7 @@ export default function PacksPage() {
                         ? o.pct
                         : Number((o as any).odds ?? 0);
                     const denom = pctNum > 0 ? Math.round(100 / pctNum) : 0;
+                    const priceRange = (o as any).priceRange;
                     return (
                       <div
                         key={idx}
@@ -1314,12 +1565,20 @@ export default function PacksPage() {
                           <span className="text-sm text-foreground font-medium uppercase flex-1">
                             {label}
                           </span>
-                          <span className="text-xs text-zinc-400 mr-2">
-                            {denom > 0 ? `~1 in ${denom}` : "—"}
-                          </span>
-                          <span className="px-2 py-0.5 text-xs rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800">
-                            {pctNum.toFixed(1)}%
-                          </span>
+                          <div className="flex items-center gap-2 w-[160px] justify-end">
+                            {priceRange ? (
+                              <span className="text-xs font-medium text-white text-right w-[120px]">
+                                {priceRange}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-zinc-400 text-right w-[120px]">
+                                {denom > 0 ? `~1 in ${denom}` : "—"}
+                              </span>
+                            )}
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-zinc-900 text-zinc-200 border border-zinc-800 w-[45px] text-center flex-shrink-0">
+                              {pctNum.toFixed(1)}%
+                            </span>
+                          </div>
                         </div>
                         <div className="mt-2 h-2 w-full rounded-full bg-zinc-800 overflow-hidden border border-zinc-700">
                           <div

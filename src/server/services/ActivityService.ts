@@ -1,6 +1,11 @@
 import { CaseOpeningRepository } from '../repositories/CaseOpeningRepository';
 import { TransactionRepository } from '../repositories/TransactionRepository';
 import { TransactionType, TransactionStatus } from '../entities/Transaction';
+import { logger } from '../middlewares/logger';
+import { AppDataSource } from '../config/database';
+import { BoxSkin } from '../entities/BoxSkin';
+import { CaseOpening } from '../entities/CaseOpening';
+import { UserSkin } from '../entities/UserSkin';
 
 export class ActivityService {
   private caseOpeningRepository: CaseOpeningRepository;
@@ -49,9 +54,11 @@ export class ActivityService {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, limit);
 
-    const caseOpeningActivities = recentOpenings
-      .filter(opening => opening.completedAt && opening.user)
-      .map(opening => {
+    const caseOpeningActivities = (
+      await Promise.all(
+        recentOpenings
+          .filter(opening => opening.completedAt && opening.user)
+          .map(async opening => {
         // Handle both case openings and pack openings
         const isPackOpening = opening.isPackOpening;
         
@@ -64,6 +71,27 @@ export class ActivityService {
           let displaySkinName = skinName;
           if (!skinName.includes(weapon)) {
             displaySkinName = `${weapon} | ${skinName}`;
+          }
+
+          let normalizedImage =
+            (opening.skinImage && opening.skinImage.trim()) ||
+            opening.userSkin?.imageUrl ||
+            opening.userSkin?.skinTemplate?.imageUrl ||
+            opening.skinTemplate?.imageUrl ||
+            '';
+
+          if (!normalizedImage) {
+            const hydrated = await this.hydrateOpeningImage(opening);
+            normalizedImage = hydrated || '';
+
+            if (!hydrated) {
+              logger.warn('Recent activity entry missing imageUrl after hydration attempt', {
+                caseOpeningId: opening.id,
+                skinName: skinName,
+                weapon: weapon,
+                lootBoxTypeId: opening.lootBoxTypeId,
+              });
+            }
           }
           
           return {
@@ -80,7 +108,7 @@ export class ActivityService {
               skinName: displaySkinName,
               rarity: opening.skinRarity || 'Common',
               condition: 'Field-Tested', // Default for pack openings
-              imageUrl: opening.skinImage || '',
+              imageUrl: normalizedImage,
               valueUsd: opening.boxPriceSol || 0, // Use box price for pack openings
             },
             lootBox: {
@@ -125,7 +153,9 @@ export class ActivityService {
             timestamp: opening.completedAt!,
           };
         }
-      });
+      })
+      )
+    ).filter(Boolean);
 
     // Map transaction activities
     const transactionActivities = recentTransactions
@@ -213,6 +243,55 @@ export class ActivityService {
     allActivities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
     return allActivities.slice(0, limit);
+  }
+
+  private async hydrateOpeningImage(opening: CaseOpening): Promise<string | undefined> {
+    try {
+      const weapon = (opening.skinWeapon || opening.userSkin?.skinTemplate?.weapon || '').trim();
+      const skinNameFull = (opening.skinName || opening.userSkin?.skinTemplate?.skinName || '').trim();
+
+      const skinName =
+        skinNameFull.includes('|') ?
+          skinNameFull.split('|')[1].trim() :
+          skinNameFull;
+
+      if (!weapon || !skinName) {
+        return undefined;
+      }
+
+      const boxSkinRepo = AppDataSource.getRepository(BoxSkin);
+      const boxSkin = await boxSkinRepo
+        .createQueryBuilder('bs')
+        .where('LOWER(bs.weapon) = LOWER(:weapon)', { weapon })
+        .andWhere('LOWER(bs.name) = LOWER(:name)', { name: skinName })
+        .orderBy('bs.createdAt', 'DESC')
+        .getOne();
+
+      const imageUrl = boxSkin?.imageUrl?.trim();
+      if (!imageUrl) {
+        return undefined;
+      }
+
+      const caseOpeningRepo = AppDataSource.getRepository(CaseOpening);
+      if (!opening.skinImage) {
+        await caseOpeningRepo.update(opening.id, { skinImage: imageUrl });
+        opening.skinImage = imageUrl;
+      }
+
+      if (opening.userSkin && !opening.userSkin.imageUrl) {
+        const userSkinRepo = AppDataSource.getRepository(UserSkin);
+        await userSkinRepo.update(opening.userSkin.id, { imageUrl });
+        opening.userSkin.imageUrl = imageUrl;
+      }
+
+      return imageUrl;
+    } catch (error) {
+      logger.warn('Failed to hydrate case opening image', {
+        caseOpeningId: opening.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return undefined;
+    }
   }
 
   async getActivityStats() {

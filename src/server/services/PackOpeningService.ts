@@ -156,19 +156,78 @@ export class PackOpeningService {
 
       // --- PATCH: Attempt to look up box skin value via BoxSkinService ---
       let realValue = skinData.basePriceUsd;
+      let matchedBoxSkin: any = null;
       try {
-        const boxSkinRepo = AppDataSource.getRepository(require('../entities/BoxSkin').BoxSkin);
-        // Try matching all: boxId, name, weapon, rarity (case-insensitive)
-        const match = await boxSkinRepo.findOne({
-          where: {
-            boxId,
-            name: skinData.name,
-            weapon: skinData.weapon,
-            rarity: skinData.rarity,
+        const { BoxSkin } = await import('../entities/BoxSkin');
+        const boxSkinRepo = AppDataSource.getRepository(BoxSkin);
+
+        const nameParts = skinData.name.split('|').map((part) => part.trim());
+        const weaponFromName = nameParts.length > 1 ? nameParts[0] : undefined;
+        const skinNameOnly = nameParts.length > 1 ? nameParts[1] : undefined;
+
+        const weaponCandidates = Array.from(
+          new Set(
+            [skinData.weapon, weaponFromName]
+              .filter((value) => typeof value === 'string' && value.trim().length > 0)
+              .map((value) => value!.trim())
+          )
+        );
+
+        const nameCandidates = Array.from(
+          new Set(
+            [skinData.name, skinNameOnly]
+              .filter((value) => typeof value === 'string' && value.trim().length > 0)
+              .map((value) => value!.trim())
+          )
+        );
+
+        if (weaponCandidates.length || nameCandidates.length) {
+          const qb = boxSkinRepo
+            .createQueryBuilder('bs')
+            .where('bs.boxId = :boxId', { boxId });
+
+          if (weaponCandidates.length) {
+            qb.andWhere('LOWER(bs.weapon) IN (:...weaponCandidates)', {
+              weaponCandidates: weaponCandidates.map((value) => value.toLowerCase()),
+            });
           }
-        });
-        if (match && match.basePriceUsd != null) {
-          realValue = Number(match.basePriceUsd);
+
+          if (nameCandidates.length) {
+            qb.andWhere('LOWER(bs.name) IN (:...nameCandidates)', {
+              nameCandidates: nameCandidates.map((value) => value.toLowerCase()),
+            });
+          }
+
+          matchedBoxSkin = await qb.getOne();
+        }
+
+        if (!matchedBoxSkin && nameCandidates.length) {
+          const whereClauses = nameCandidates.flatMap((name) => {
+            if (weaponCandidates.length) {
+              return weaponCandidates.map((weapon) => ({
+                boxId,
+                name,
+                weapon,
+              }));
+            }
+
+            return [
+              {
+                boxId,
+                name,
+              },
+            ];
+          });
+
+          if (whereClauses.length) {
+            matchedBoxSkin = await boxSkinRepo.findOne({
+              where: whereClauses as any,
+            });
+          }
+        }
+
+        if (matchedBoxSkin && matchedBoxSkin.basePriceUsd != null) {
+          realValue = Number(matchedBoxSkin.basePriceUsd);
         }
       } catch (err) {
         // fallback: log but do not block
@@ -236,6 +295,26 @@ export class PackOpeningService {
           logger.warn('Failed to fetch metadata or validate image URL:', error);
           // ignore; optional best-effort
         }
+      }
+      const finalImageUrl = resolvedImageUrl || matchedBoxSkin?.imageUrl || undefined;
+
+      if (!finalImageUrl) {
+        logger.warn('Pack opening missing imageUrl after metadata and BoxSkin lookup', {
+          boxId,
+          skinName: skinData.name,
+          weapon: skinData.weapon,
+          rarity: skinData.rarity,
+          matchedBoxSkinId: matchedBoxSkin?.id,
+          hasResolvedImage: Boolean(resolvedImageUrl),
+        });
+      } else {
+        logger.debug('Pack opening resolved image', {
+          boxId,
+          skinName: skinData.name,
+          weapon: skinData.weapon,
+          resolvedFrom: resolvedImageUrl ? 'metadata' : 'boxSkin',
+          matchedBoxSkinId: matchedBoxSkin?.id,
+        });
       }
 
       // Sanitize skin name to prevent XSS
@@ -359,7 +438,7 @@ export class PackOpeningService {
           nftMintAddress: nftMint,
           name: sanitizedSkinName,
           metadataUri: skinData.metadataUri,
-          imageUrl: resolvedImageUrl,
+          imageUrl: finalImageUrl,
           openedAt: new Date(),
           currentPriceUsd: realValue,
           lastPriceUpdate: new Date(),
@@ -375,13 +454,19 @@ export class PackOpeningService {
           if (sanitizedSkinName && !existingUserSkin.name) {
             existingUserSkin.name = sanitizedSkinName;
           }
-          if (resolvedImageUrl && !existingUserSkin.imageUrl) {
-            existingUserSkin.imageUrl = resolvedImageUrl;
+          if (finalImageUrl && !existingUserSkin.imageUrl) {
+            existingUserSkin.imageUrl = finalImageUrl;
           }
           if (realValue && !existingUserSkin.currentPriceUsd) {
             existingUserSkin.currentPriceUsd = realValue;
             existingUserSkin.lastPriceUpdate = new Date();
           }
+          await this.userSkinRepository.update(existingUserSkin.id, existingUserSkin);
+          savedUserSkin = existingUserSkin;
+        }
+
+        if (finalImageUrl && !existingUserSkin.imageUrl) {
+          existingUserSkin.imageUrl = finalImageUrl;
           await this.userSkinRepository.update(existingUserSkin.id, existingUserSkin);
           savedUserSkin = existingUserSkin;
         }
@@ -431,11 +516,12 @@ export class PackOpeningService {
         lootBoxTypeId: lootBoxType.id, // Use the LootBoxType ID for pack openings
         nftMintAddress: nftMint,
         transactionId: savedTransaction.id,
+        userSkinId: savedUserSkin.id,
         skinName: sanitizedSkinName,
         skinRarity: skinData.rarity,
         skinWeapon: weapon,
         skinValue: realValue,
-        skinImage: resolvedImageUrl || '',
+        skinImage: finalImageUrl || '',
         isPackOpening: true,
         boxPriceSol: priceSol,
         openedAt: new Date(),
