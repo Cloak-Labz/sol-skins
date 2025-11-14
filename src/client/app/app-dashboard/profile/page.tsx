@@ -18,10 +18,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { useUser } from "@/lib/contexts/UserContext";
 import { authService, inventoryService, historyService, casesService, socialService } from "@/lib/services";
 import { ActivityItem } from "@/lib/types/api";
-import { toast } from "react-hot-toast";
+import { toast } from "sonner";
 import {
   Loader2,
   User,
@@ -37,6 +38,7 @@ import {
   AlertCircle,
   Copy,
   CheckCircle,
+  Box,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -127,7 +129,7 @@ export default function ProfilePage() {
         transactionSummaryData
       ] = await Promise.allSettled([
         inventoryService.getInventoryValue(),
-        socialService.getRecentActivity(5),
+        socialService.getUserActivity(5),
         casesService.getUserCaseOpenings(),
         historyService.getTransactionSummary()
       ]);
@@ -245,13 +247,36 @@ export default function ProfilePage() {
     setTradeUrlValidationError(validateTradeUrl(newUrl));
   };
 
+  // Check if there are any changes to save
+  const hasChanges = () => {
+    if (!user) return false;
+    
+    // Normalize values for comparison (treat null, undefined, and empty string as equivalent)
+    const normalize = (val: any) => (val ?? "").trim();
+    
+    const currentUsername = normalize(formData.username);
+    const originalUsername = normalize(user.username);
+    
+    const currentEmail = normalize(formData.email);
+    const originalEmail = normalize(user.email);
+    
+    const currentTradeUrl = normalize((formData as any).tradeUrl);
+    const originalTradeUrl = normalize((user as any)?.tradeUrl);
+    
+    return (
+      currentUsername !== originalUsername ||
+      currentEmail !== originalEmail ||
+      currentTradeUrl !== originalTradeUrl
+    );
+  };
+
   const handleSave = async () => {
     try {
       setIsSaving(true);
 
       const updates: any = {};
       if (formData.username !== user?.username)
-        updates.username = formData.username;
+        updates.username = formData.username.slice(0, 15);
       if (formData.email !== user?.email) updates.email = formData.email;
       if ((formData as any).tradeUrl !== (user as any)?.tradeUrl) {
         // Validate trade URL before saving
@@ -273,9 +298,20 @@ export default function ProfilePage() {
       // Get wallet adapter for signing
       const walletAdapter = signMessage ? { signMessage } : null;
       await authService.updateProfile(updates, walletAdapter as any);
-      await refreshUser();
-
-      toast.success("Profile updated successfully!");
+      
+      // Show success toast immediately
+      toast.success("Profile updated successfully!", {
+        duration: 4000,
+      });
+      
+      // Refresh user data (don't let errors here prevent showing success)
+      try {
+        await refreshUser();
+      } catch (refreshError) {
+        console.warn("Failed to refresh user after update:", refreshError);
+        // Don't throw - the update was successful, just refresh failed
+      }
+      
       setIsEditing(false);
     } catch (err) {
       // Show error modal with detailed information
@@ -342,6 +378,66 @@ export default function ProfilePage() {
     }).catch(() => {
       toast.error("Failed to copy error details");
     });
+  };
+
+  const getTimeAgo = (timestamp: string) => {
+    const now = new Date();
+    const then = new Date(timestamp);
+    const seconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    return `${Math.floor(seconds / 86400)}d ago`;
+  };
+
+  const getActivityStyles = (type: ActivityItem["type"]) => {
+    switch (type) {
+      case "case_opened":
+        return {
+          borderColor: "border-yellow-500/20",
+          hoverBorderColor: "hover:border-yellow-500/40",
+          iconBg: "bg-yellow-500/10",
+          iconColor: "text-yellow-400",
+          badgeBg: "bg-yellow-500/10",
+          badgeText: "text-yellow-300",
+          badgeBorder: "border-yellow-500/30",
+          leftBorder: "border-l-2 border-l-yellow-500/30",
+        };
+      case "skin_claimed":
+        return {
+          borderColor: "border-orange-500/20",
+          hoverBorderColor: "hover:border-orange-500/40",
+          iconBg: "bg-orange-500/10",
+          iconColor: "text-orange-400",
+          badgeBg: "bg-orange-500/10",
+          badgeText: "text-orange-300",
+          badgeBorder: "border-orange-500/30",
+          leftBorder: "border-l-2 border-l-orange-500/30",
+        };
+      case "payout":
+        return {
+          borderColor: "border-green-500/20",
+          hoverBorderColor: "hover:border-green-500/40",
+          iconBg: "bg-green-500/10",
+          iconColor: "text-green-400",
+          badgeBg: "bg-green-500/10",
+          badgeText: "text-green-300",
+          badgeBorder: "border-green-500/30",
+          leftBorder: "border-l-2 border-l-green-500/30",
+        };
+      default:
+        return {
+          borderColor: "border-zinc-800",
+          hoverBorderColor: "hover:border-zinc-700",
+          iconBg: "bg-zinc-800",
+          iconColor: "text-zinc-400",
+          badgeBg: "bg-zinc-900",
+          badgeText: "text-zinc-300",
+          badgeBorder: "border-zinc-800",
+          leftBorder: "",
+        };
+    }
   };
 
   // Show lock only when there's no wallet connection (adapter + context) and no user
@@ -556,8 +652,9 @@ export default function ProfilePage() {
                       id="username"
                       value={formData.username}
                       onChange={(e) =>
-                        setFormData({ ...formData, username: e.target.value })
+                        setFormData({ ...formData, username: e.target.value.slice(0, 15) })
                       }
+                      maxLength={15}
                       disabled={!isEditing}
                       placeholder="Enter your username"
                       className="bg-zinc-950 border-zinc-800"
@@ -625,7 +722,18 @@ export default function ProfilePage() {
                   <div className="flex gap-3 pt-2">
                     {!isEditing ? (
                       <Button
-                        onClick={() => setIsEditing(true)}
+                        onClick={() => {
+                          // Reset formData to current user values when entering edit mode
+                          if (user) {
+                            setFormData({
+                              username: user.username || "",
+                              email: user.email || "",
+                              tradeUrl: (user as any).tradeUrl || "",
+                            });
+                            setTradeUrlValidationError("");
+                          }
+                          setIsEditing(true);
+                        }}
                         className="bg-zinc-100 text-black hover:bg-white w-full"
                       >
                         Edit Profile
@@ -634,7 +742,7 @@ export default function ProfilePage() {
                       <>
                         <Button
                           onClick={handleSave}
-                          disabled={isSaving || !!tradeUrlValidationError}
+                          disabled={!hasChanges() || isSaving || !!tradeUrlValidationError}
                           className="bg-zinc-100 text-black hover:bg-white flex-1 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {isSaving ? (
@@ -737,60 +845,89 @@ export default function ProfilePage() {
                       <Loader2 className="w-6 h-6 animate-spin" />
                     </div>
                   ) : recentTransactions.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {recentTransactions
                         .slice(0, 5)
-                        .map((item) => (
-                        <div key={item.id} className="flex items-center justify-between p-3 rounded-lg border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-md bg-zinc-800`}>
-                              {item.type === 'case_opened' ? (
-                                <Package className="w-4 h-4 text-zinc-400" />
-                              ) : item.type === 'payout' ? (
-                                <DollarSign className="w-4 h-4 text-zinc-400" />
-                              ) : item.type === 'skin_claimed' ? (
-                                <Package className="w-4 h-4 text-zinc-400" />
-                              ) : (
-                                <Activity className="w-4 h-4 text-zinc-400" />
-                              )}
+                        .map((item) => {
+                          const styles = getActivityStyles(item.type);
+                          return (
+                            <div
+                              key={item.id}
+                              className={`flex items-center justify-between p-4 rounded-lg border ${styles.borderColor} ${styles.leftBorder} bg-gradient-to-b from-zinc-950 to-zinc-900 transition-all duration-150 hover:scale-[1.01] ${styles.hoverBorderColor}`}
+                            >
+                              <div className="flex items-center space-x-4">
+                                <div
+                                  className={`w-10 h-10 rounded-md flex items-center justify-center text-sm ${styles.iconBg} ${styles.iconColor}`}
+                                >
+                                  {item.type === "case_opened" ? (
+                                    <Box className="w-4 h-4" />
+                                  ) : item.type === "skin_claimed" ? (
+                                    <CheckCircle className="w-4 h-4" />
+                                  ) : item.type === "payout" ? (
+                                    <DollarSign className="w-4 h-4" />
+                                  ) : (
+                                    <Activity className="w-4 h-4" />
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-foreground">
+                                    <span className="font-medium">
+                                      {item.user?.username ||
+                                        `${item.user?.walletAddress?.slice(0, 4) || ''}...${item.user?.walletAddress?.slice(-4) || ''}` ||
+                                        'You'}
+                                    </span>
+                                    <span className="text-muted-foreground mx-2">
+                                      {item.type === "case_opened"
+                                        ? "opened"
+                                        : item.type === "skin_claimed"
+                                        ? "claimed"
+                                        : item.type === "payout"
+                                        ? "received payout for"
+                                        : "sold"}
+                                    </span>
+                                    <span className="font-medium">
+                                      {item.skin
+                                        ? (item.skin.skinName.includes(item.skin.weapon)
+                                            ? item.skin.skinName
+                                            : `${item.skin.weapon} | ${item.skin.skinName}`)
+                                        : item.lootBox?.name || 'Unknown'}
+                                    </span>
+                                  </p>
+                                  <p className="text-muted-foreground text-sm">
+                                    {getTimeAgo(item.timestamp)}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-foreground font-bold">
+                                  {item.type === "case_opened"
+                                    ? `-${item.amount?.sol
+                                        ? parseFloat(item.amount.sol.toString()).toFixed(2)
+                                        : "0"} SOL`
+                                    : item.type === "payout"
+                                    ? `+${formatCurrency(item.amount?.usd || 0)}`
+                                    : item.type === "skin_claimed"
+                                    ? "0 SOL"
+                                    : item.amount
+                                    ? `${parseFloat(item.amount.sol.toString()).toFixed(2)} SOL`
+                                    : formatCurrency(parseFloat(item.skin?.valueUsd || "0"))}
+                                </p>
+                                <Badge
+                                  variant="secondary"
+                                  className={`text-xs mt-1 ${styles.badgeBg} ${styles.badgeText} border ${styles.badgeBorder}`}
+                                >
+                                  {item.type === "case_opened"
+                                    ? "open"
+                                    : item.type === "skin_claimed"
+                                    ? "claim"
+                                    : item.type === "payout"
+                                    ? "payout"
+                                    : "buyback"}
+                                </Badge>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-foreground">
-                                {item.type === 'case_opened' ? 'Case Opened' :
-                                 item.type === 'payout' ? 'Skin Sold' :
-                                 item.type === 'skin_claimed' ? 'Skin Claimed' :
-                                 'Activity'}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {item.skin ? 
-                                  (item.skin.skinName.includes(item.skin.weapon) ? 
-                                    item.skin.skinName : 
-                                    `${item.skin.weapon} | ${item.skin.skinName}`) :
-                                  item.lootBox?.name || 'Unknown'
-                                }
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right">
-                            <p className={`font-bold text-foreground`}>
-                              {(() => {
-                                if (item.type === 'payout') {
-                                  return '+' + formatCurrency(item.amount?.usd || 0);
-                                } else if (item.type === 'case_opened') {
-                                  return '-' + (item.amount?.sol ? `${parseFloat(item.amount.sol.toString()).toFixed(2)} SOL` : '0 SOL');
-                                } else if (item.type === 'skin_claimed') {
-                                  return '0 SOL'; // Show 0 SOL for skin claims
-                                } else {
-                                  return '';
-                                }
-                              })()}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(item.timestamp).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                          );
+                        })}
                     </div>
                   ) : (
                     <p className="text-muted-foreground text-center py-4">
@@ -805,7 +942,7 @@ export default function ProfilePage() {
 
         {/* Error Modal */}
         <Dialog open={showErrorModal} onOpenChange={setShowErrorModal}>
-          <DialogContent className="bg-gradient-to-b from-zinc-950 to-zinc-900 border-[#E99500]/50 pt-10">
+          <DialogContent showCloseButton={false} className="bg-gradient-to-b from-zinc-950 to-zinc-900 border-[#E99500]/50 pt-10">
             <DialogHeader>
               <div className="flex items-center gap-3 mb-2">
                 <div className="p-2 rounded-full bg-[#E99500]/10">
