@@ -28,11 +28,6 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_USERNAME }}
           password: ${{ secrets.DOCKER_HUB_TOKEN }}
 
-      - name: Copy buyback.json to server lib
-        run: |
-          mkdir -p src/server/lib/solana
-          cp src/client/lib/idl/buyback.json src/server/lib/solana/buyback.json || echo "⚠️  buyback.json not found, continuing..."
-
       - name: Build and push server
         uses: docker/build-push-action@v5
         with:
@@ -40,46 +35,8 @@ jobs:
           file: ./src/server/Dockerfile
           push: true
           tags: |
-            ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:server-latest
-            ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:server-${{ github.sha }}
-          # Use registry cache for better performance and reliability
-          cache-from: |
-            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/dust3:server-cache
-            type=gha
-          cache-to: |
-            type=registry,ref=${{ secrets.DOCKER_HUB_USERNAME }}/dust3:server-cache,mode=max
-            type=gha,mode=max
+            ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest
           platforms: linux/amd64,linux/arm64
-
-  # Uncomment and configure if you want to build Solana programs
-  # build-programs:
-  #   runs-on: ubuntu-latest
-  #   
-  #   steps:
-  #     - name: Checkout repository
-  #       uses: actions/checkout@v4
-  #
-  #     - name: Install Rust
-  #       uses: actions-rs/toolchain@v1
-  #       with:
-  #         toolchain: stable
-  #         profile: minimal
-  #         override: true
-  #
-  #     - name: Install Solana CLI
-  #       run: |
-  #         sh -c "$(curl -sSfL https://release.solana.com/stable/install)"
-  #         echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
-  #
-  #     - name: Install Anchor
-  #       run: |
-  #         cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
-  #         avm install latest
-  #         avm use latest
-  #
-  #     - name: Build Solana Programs
-  #       working-directory: ./programs
-  #       run: anchor build
 
   deploy:
     needs: [build-server]
@@ -95,26 +52,26 @@ jobs:
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           script: |
-            cd ~/dust3 || exit 1
+            cd ~/dust || exit 1
 
-            echo "📦 Pulling latest code from repository..."
-            git pull origin main || git pull origin master || echo "⚠️  Git pull failed, continuing with existing code"
-
-            echo "🛑 Stopping services..."
-            docker compose -f deployment/docker-compose.yml down server || true
+            echo "🛑 Stopping services..." stop container with name pepehaggeb/dust3:latest and remove it
+            docker stop ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest
+            docker rm -f ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest
 
             echo "📥 Pulling latest Docker images..."
-            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:server-latest
+            docker pull ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest
 
             echo "🚀 Starting services (migrations run automatically on server startup)..."
-            docker compose -f deployment/docker-compose.yml up -d server
+            docker run -d --name dust3-server -p 4000:4000 --env-file .env ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest
 
             echo "⏳ Waiting for services to start..."
             sleep 10
 
-            echo "✅ Checking container status..."
-            docker compose -f deployment/docker-compose.yml ps
-
-            echo "📊 Checking server logs..."
-            docker compose -f deployment/docker-compose.yml logs --tail=50 server
-
+            echo "📊 Checking server status..."
+            docker ps -q | grep ${{ secrets.DOCKER_HUB_USERNAME }}/dust3:latest
+            if [ $? -eq 0 ]; then
+              echo "✅ Server started successfully"
+            else
+              echo "❌ Server failed to start"
+              exit 1
+            fi
