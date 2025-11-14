@@ -10,6 +10,9 @@ import { WalletModalProvider } from "@solana/wallet-adapter-react-ui";
 import { clusterApiUrl } from "@solana/web3.js";
 import "@solana/wallet-adapter-react-ui/styles.css";
 import { toast } from "react-hot-toast";
+import { MobileWalletAdapter } from "./mobile-wallet-adapter";
+import { PhantomWalletAdapter } from "@solana/wallet-adapter-wallets";
+import { SolflareWalletAdapter } from "@solana/wallet-adapter-wallets";
 
 interface SolanaProviderProps {
   children: ReactNode;
@@ -27,7 +30,10 @@ export const SolanaProvider: FC<SolanaProviderProps> = ({ children }) => {
 
   // Don't manually add Phantom/Solflare - they're auto-detected as Standard Wallets
   // This prevents the duplicate wallet warning
-  const wallets = useMemo(() => [], []);
+  const wallets = useMemo(() => [
+    new PhantomWalletAdapter(),
+    new SolflareWalletAdapter(),
+  ], [network]);
 
   // Error handler for wallet errors
   const onError = useCallback((error: WalletError) => {
@@ -63,7 +69,11 @@ export const SolanaProvider: FC<SolanaProviderProps> = ({ children }) => {
   return (
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect={true} onError={onError}>
-        <WalletModalProvider>{children}</WalletModalProvider>
+        <WalletModalProvider>
+          {/* Register Mobile Wallet Adapter for mobile wallet support */}
+          <MobileWalletAdapter />
+          {children}
+        </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
   );
