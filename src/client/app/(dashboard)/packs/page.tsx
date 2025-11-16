@@ -1208,6 +1208,48 @@ export default function PacksPage() {
                 >
                   <source src="/assets/video.mp4" type="video/mp4" />
                 </video>
+                
+                {/* Skip Animation Button - Netflix style */}
+                {wonSkin && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 2, duration: 0.3 }}
+                    className="absolute bottom-8 right-8 z-10"
+                  >
+                    <button
+                      onClick={() => {
+                        // Stop video
+                        if (videoRef.current) {
+                          videoRef.current.pause();
+                        }
+                        // Skip to result - trigger flash then show result
+                        setOpeningPhase("flash");
+                        setTimeout(() => {
+                          setShowResult(true);
+                          setOpeningPhase(null);
+                          setIsProcessing(false);
+                        }, 500); // Same timing as normal flow
+                      }}
+                      className="flex items-center gap-2 px-4 py-2 bg-black/70 hover:bg-black/90 text-white rounded-lg border border-white/20 transition-all duration-200 hover:border-white/40 backdrop-blur-sm"
+                    >
+                      <span className="text-sm font-medium">Pular animação</span>
+                      <svg
+                        className="w-5 h-5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M9 5l7 7-7 7"
+                        />
+                      </svg>
+                    </button>
+                  </motion.div>
+                )}
               </div>
             )}
           </motion.div>
