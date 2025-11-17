@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Zap, Loader2, Package } from "lucide-react";
+import { Zap, Loader2, Package, SkipForward } from "lucide-react";
 import React from "react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -102,6 +102,9 @@ export default function PacksPage() {
   const [claimedAsset, setClaimedAsset] = useState<string | null>(null);
   const [isProcessingBuyback, setIsProcessingBuyback] = useState(false);
   const [buybackCompletedAsset, setBuybackCompletedAsset] = useState<string | null>(null);
+  const [resultReady, setResultReady] = useState(false);
+  const resultDataRef = useRef<{ skin: CSGOSkin; signature: string; nftMint: string } | null>(null);
+  const animationSkippedRef = useRef(false);
 
   const progressSteps = [
     { label: "Preparing transaction...", key: "preparing" },
@@ -549,11 +552,29 @@ export default function PacksPage() {
         setIsClaimingSkin(false);
         setBuybackCompletedAsset(null);
         setIsProcessingBuyback(false);
+        setResultReady(false);
+        resultDataRef.current = null;
+        animationSkippedRef.current = false;
 
         setLastPackResult({
           signature: result.signature,
           asset: result.nftMint,
         });
+
+        // Store initial result data for skip functionality (will be updated with full image later)
+        const initialSkin: CSGOSkin = {
+          id: result.skin.id,
+          name: result.skin.name,
+          rarity: result.skin.rarity,
+          value: result.skin.basePriceUsd,
+          image: result.skin.imageUrl || "icon-fallback",
+        };
+        resultDataRef.current = {
+          skin: initialSkin,
+          signature: result.signature,
+          nftMint: result.nftMint,
+        };
+        setResultReady(true); // Enable skip button immediately
 
         // PHASE 2: Flash on screen when transaction confirmed
         setOpeningPhase("flash");
@@ -594,6 +615,13 @@ export default function PacksPage() {
             };
 
             setWonSkin(winnerSkin);
+            
+            // Update result data with full image resolution (skip button already enabled)
+            resultDataRef.current = {
+              skin: winnerSkin,
+              signature: result.signature,
+              nftMint: result.nftMint,
+            };
 
             // Create case opening record for activity tracking
             try {
@@ -621,8 +649,18 @@ export default function PacksPage() {
             }
 
             // PHASE 3: Flash + show result (when result is ready)
+            // Only proceed if animation wasn't skipped
+            if (animationSkippedRef.current) {
+              return; // Animation was skipped, don't reveal again
+            }
+            
             setOpeningPhase("flash");
             setTimeout(() => {
+              // Double check if animation was skipped during the timeout
+              if (animationSkippedRef.current) {
+                return;
+              }
+              
               setShowResult(true);
               setOpeningPhase(null);
               setIsProcessing(false);
@@ -723,6 +761,81 @@ export default function PacksPage() {
     setIsClaimingSkin(false);
     setBuybackCompletedAsset(null);
     setIsProcessingBuyback(false);
+    setResultReady(false);
+    resultDataRef.current = null;
+    animationSkippedRef.current = false;
+  };
+
+  const handleSkipAnimation = () => {
+    if (!resultReady || !resultDataRef.current) {
+      // Result not ready yet, just wait
+      return;
+    }
+
+    // Mark animation as skipped to prevent double reveal
+    animationSkippedRef.current = true;
+
+    const { skin, signature, nftMint } = resultDataRef.current;
+
+    // Immediately show result
+    setOpeningPhase(null);
+    setIsProcessing(false);
+    setShowResult(true);
+    setWonSkin(skin);
+    setLastPackResult({
+      signature,
+      asset: nftMint,
+    });
+    
+    // Note: caseOpeningId will be set by the timeout handler if it hasn't been set yet
+
+    // Show toast
+    toast.success(
+      <div className="flex items-center gap-3">
+        <div className="flex-shrink-0">
+          {skin.image === "icon-fallback" ? (
+            <div className="w-12 h-12 bg-zinc-800 rounded flex items-center justify-center">
+              <Package className="w-6 h-6 text-zinc-400" />
+            </div>
+          ) : (
+            <img
+              src={skin.image}
+              alt={skin.name}
+              className="w-12 h-12 object-contain rounded"
+            />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-semibold text-sm">
+            You won {skin.name}! 🎉
+          </p>
+          <a
+            href={getSolscanUrl(signature)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-[#E99500] hover:underline inline-flex items-center gap-1"
+          >
+            View on Solscan
+            <svg
+              className="w-3 h-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+              />
+            </svg>
+          </a>
+        </div>
+      </div>,
+      {
+        duration: 6000,
+      }
+    );
   };
 
   const handleBuyback = async () => {
@@ -1011,19 +1124,33 @@ export default function PacksPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-4 md:p-6 overflow-hidden relative">
-      {/* Lock overlay - blocks all interactions during pack opening */}
-      {isOpeningSkin && (
+      {/* Lock overlay - blocks all interactions during pack opening, but allows skip button */}
+      {/* Don't show overlay during video phase (skip button needs to be accessible) */}
+      {isOpeningSkin && openingPhase !== "video" && (
         <div
           className="fixed inset-0 bg-transparent cursor-not-allowed"
           onClick={(e) => {
+            // Allow clicks on skip button
+            const target = e.target as HTMLElement;
+            if (target.closest('[data-skip-button="true"]')) {
+              return; // Allow the click to pass through
+            }
             e.preventDefault();
             e.stopPropagation();
           }}
           onMouseDown={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('[data-skip-button="true"]')) {
+              return;
+            }
             e.preventDefault();
             e.stopPropagation();
           }}
           onTouchStart={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.closest('[data-skip-button="true"]')) {
+              return;
+            }
             e.preventDefault();
             e.stopPropagation();
           }}
@@ -1206,7 +1333,8 @@ export default function PacksPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 bg-black"
+            className="fixed inset-0 bg-black"
+            style={{ zIndex: 100000 }}
           >
             {/* Phase 1: Flash */}
             {openingPhase === "flash" && (
@@ -1235,6 +1363,33 @@ export default function PacksPage() {
                 >
                   <source src="/assets/video.mp4" type="video/mp4" />
                 </video>
+              </div>
+            )}
+
+            {/* Skip Button - Only show when result is ready */}
+            {resultReady && openingPhase === "video" && (
+              <div className="absolute inset-0 flex items-end justify-center pb-6 sm:pb-8 pointer-events-none" style={{ zIndex: 100001 }}>
+                <motion.button
+                  data-skip-button="true"
+                  initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  exit={{ opacity: 0, scale: 0.8, y: 20 }}
+                  transition={{ delay: 0.3 }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSkipAnimation();
+                  }}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handleSkipAnimation();
+                  }}
+                  className="flex items-center gap-2 px-4 sm:px-6 py-2 sm:py-3 bg-black/80 hover:bg-black/95 backdrop-blur-md border border-white/30 rounded-full text-white text-sm sm:text-base font-medium transition-all duration-200 hover:scale-105 active:scale-95 touch-manipulation shadow-lg pointer-events-auto"
+                >
+                  <SkipForward className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <span>Skip</span>
+                </motion.button>
               </div>
             )}
           </motion.div>
