@@ -104,11 +104,6 @@ export class PackOpeningService {
         throw new AppError('User not found', 404, 'USER_NOT_FOUND');
       }
 
-      // Check if user has trade URL (required for pack opening)
-      if (!user.tradeUrl) {
-        throw new AppError('Trade URL is required to open packs', 400, 'TRADE_URL_REQUIRED');
-      }
-
       logger.info('Looking up box for pack opening', { boxId, userId });
       
       const box = await this.boxRepository.findById(boxId);

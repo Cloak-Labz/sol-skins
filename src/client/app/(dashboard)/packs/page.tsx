@@ -2,8 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Zap, Loader2, Lock, X, Package } from "lucide-react";
-import Link from "next/link";
+import { Zap, Loader2, Package } from "lucide-react";
 import React from "react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -16,7 +15,6 @@ import { pendingSkinsService } from "@/lib/services/pending-skins.service";
 import { apiClient } from "@/lib/services/api.service";
 import { buybackService } from "@/lib/services/buyback.service";
 import { LootBoxType } from "@/lib/types/api";
-import XIconPng from "@/public/assets/x_icon.png";
 import { useRouter } from "next/navigation";
 import { SteamTradeUrlModal } from "@/components/steam-trade-url-modal";
 
@@ -100,6 +98,10 @@ export default function PacksPage() {
   } | null>(null);
   const [progressStep, setProgressStep] = useState<number>(0);
   const [showProgressModal, setShowProgressModal] = useState(false);
+  const [isClaimingSkin, setIsClaimingSkin] = useState(false);
+  const [claimedAsset, setClaimedAsset] = useState<string | null>(null);
+  const [isProcessingBuyback, setIsProcessingBuyback] = useState(false);
+  const [buybackCompletedAsset, setBuybackCompletedAsset] = useState<string | null>(null);
 
   const progressSteps = [
     { label: "Preparing transaction...", key: "preparing" },
@@ -497,12 +499,6 @@ export default function PacksPage() {
       return;
     }
 
-    // Require Steam Trade URL before allowing opening
-    if (!userTradeUrl || userTradeUrl.trim() === "") {
-      setShowTradeUrlModal(true);
-      return;
-    }
-
     if (openingPhase || !selectedPack) return;
 
     // PHASE 1: Processing - Loading button on the same screen (no blur)
@@ -547,6 +543,12 @@ export default function PacksPage() {
 
         // Hide progress modal when done
         setShowProgressModal(false);
+
+        // Reset claim and buyback states for new skin
+        setClaimedAsset(null);
+        setIsClaimingSkin(false);
+        setBuybackCompletedAsset(null);
+        setIsProcessingBuyback(false);
 
         setLastPackResult({
           signature: result.signature,
@@ -717,8 +719,11 @@ export default function PacksPage() {
     setWonSkin(null);
     setLastPackResult(null);
     setCaseOpeningId(null);
+    setClaimedAsset(null);
+    setIsClaimingSkin(false);
+    setBuybackCompletedAsset(null);
+    setIsProcessingBuyback(false);
   };
-
 
   const handleBuyback = async () => {
     if (!lastPackResult) {
@@ -730,6 +735,19 @@ export default function PacksPage() {
       toast.error("Please connect your wallet!");
       return;
     }
+
+    // Check if already processed
+    if (lastPackResult.asset && buybackCompletedAsset === lastPackResult.asset) {
+      return;
+    }
+
+    // Check if already processing
+    if (isProcessingBuyback) {
+      return;
+    }
+
+    // Set processing state
+    setIsProcessingBuyback(true);
 
     try {
       dismissBuybackToast();
@@ -811,6 +829,10 @@ export default function PacksPage() {
           }
         );
 
+        // Mark as completed (keeps button disabled)
+        setBuybackCompletedAsset(lastPackResult.asset);
+        setIsProcessingBuyback(false);
+
         // Show summary modal
         const packPrice = selectedPack
           ? parseFloat(String((selectedPack as any).priceSol))
@@ -823,6 +845,9 @@ export default function PacksPage() {
         setShowBuybackModal(true);
       } catch (fetchError: any) {
         // txn might be on chain even if backend timed out
+        // Mark as completed even if backend didn't respond (transaction likely succeeded)
+        setBuybackCompletedAsset(lastPackResult.asset);
+        setIsProcessingBuyback(false);
         dismissBuybackToast();
         buybackToastIdRef.current = toast.success(
           <div className="flex flex-col gap-1">
@@ -833,6 +858,8 @@ export default function PacksPage() {
         );
       }
     } catch (error: any) {
+      // On error, allow retry
+      setIsProcessingBuyback(false);
       dismissBuybackToast();
       buybackToastIdRef.current = toast.error("Failed to buyback NFT");
     }
@@ -1781,31 +1808,6 @@ export default function PacksPage() {
 
                 {/* Bottom action area (fixed bg) */}
                 <div className="p-4 sm:p-6 bg-[#0d0d0d] border-t border-white/10">
-                  {userTradeUrl === null && !hideTradePrompt && (
-                    <div className="mb-4 rounded-lg border border-yellow-500/40 bg-yellow-500/10 p-3 sm:p-4">
-                      <div className="flex items-start gap-2 sm:gap-3">
-                        <Lock className="w-4 h-4 sm:w-5 sm:h-5 mt-0.5 text-[#E99500] flex-shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <div className="font-semibold text-yellow-200 text-sm sm:text-base">
-                            Steam Trade URL required to claim this skin
-                          </div>
-                          <p className="text-yellow-100/90 text-xs sm:text-sm mt-1">
-                            Add your Trade URL in Profile to enable Steam
-                            claims. You can still take a payout now.
-                          </p>
-                          <div className="mt-3 flex gap-2">
-                            <Link
-                              href="/profile"
-                              className="flex-1 inline-flex items-center justify-center rounded-md text-black px-3 py-2 text-xs sm:text-sm font-semibold bg-[#E99500] hover:bg-[#f0a116]"
-                            >
-                              Add Trade URL
-                            </Link>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                     {/* Payout box */}
                     <div className="rounded-lg border border-white/10 bg-white/2 p-3 sm:p-4">
@@ -1825,11 +1827,29 @@ export default function PacksPage() {
                       </div>
                       <Button
                         onClick={handleBuyback}
-                        disabled={isOpeningSkin}
+                        disabled={
+                          isOpeningSkin ||
+                          isProcessingBuyback ||
+                          !!(lastPackResult?.asset && buybackCompletedAsset === lastPackResult.asset)
+                        }
                         className="mt-3 sm:mt-4 w-full bg-[#E99500] hover:bg-[#f0a116] text-black font-bold disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base py-3 sm:py-4"
                       >
-                        <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-black fill-black mr-2" />
-                        Take payout
+                        {isProcessingBuyback ? (
+                          <>
+                            <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 text-black fill-black mr-2 animate-spin" />
+                            Processing...
+                          </>
+                        ) : buybackCompletedAsset === lastPackResult?.asset ? (
+                          <>
+                            <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-black fill-black mr-2" />
+                            Payout Completed
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-black fill-black mr-2" />
+                            Take payout
+                          </>
+                        )}
                       </Button>
                     </div>
 
@@ -1842,7 +1862,11 @@ export default function PacksPage() {
                         Send this skin to your Steam account
                       </div>
                       <Button
-                        disabled={isOpeningSkin}
+                        disabled={
+                          isOpeningSkin ||
+                          isClaimingSkin ||
+                          !!(lastPackResult?.asset && claimedAsset === lastPackResult.asset)
+                        }
                         onClick={async (e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -1851,6 +1875,16 @@ export default function PacksPage() {
                           // Check if user has Trade URL, if not show modal
                           if (!userTradeUrl || userTradeUrl.trim() === "") {
                             setShowTradeUrlModal(true);
+                            return;
+                          }
+
+                          // Check if already claimed
+                          if (lastPackResult?.asset && claimedAsset === lastPackResult.asset) {
+                            return;
+                          }
+
+                          // Check if already processing
+                          if (isClaimingSkin) {
                             return;
                           }
 
@@ -1865,6 +1899,9 @@ export default function PacksPage() {
                                 toast.error("No skin to claim");
                               return;
                             }
+
+                            // Set processing state
+                            setIsClaimingSkin(true);
 
                             // Only send Discord ticket - no on-chain transactions
                             claimToastIdRef.current = toast.loading(
@@ -1897,6 +1934,10 @@ export default function PacksPage() {
                                 // Non-critical, just log
                               }
 
+                              // Mark as claimed (keeps button disabled)
+                              setClaimedAsset(lastPackResult.asset);
+                              setIsClaimingSkin(false);
+
                               toast.dismiss(claimToastIdRef.current!);
                               claimToastIdRef.current = toast.success(
                                 <div className="flex flex-col gap-1">
@@ -1916,6 +1957,8 @@ export default function PacksPage() {
                               setShowClaimShare(true);
                               setShowResult(false);
                             } catch (discordError: any) {
+                              // On error, allow retry
+                              setIsClaimingSkin(false);
                               toast.dismiss(claimToastIdRef.current!);
                               claimToastIdRef.current = toast.error(
                                 discordError?.message ||
@@ -1923,6 +1966,8 @@ export default function PacksPage() {
                               );
                             }
                           } catch (error: any) {
+                            // On error, allow retry
+                            setIsClaimingSkin(false);
                             toast.dismiss(claimToastIdRef.current!);
                             claimToastIdRef.current = toast.error(
                               error?.message || "Failed to claim skin"
@@ -1931,8 +1976,12 @@ export default function PacksPage() {
                         }}
                         className="mt-3 sm:mt-4 w-full bg-white text-black hover:bg-gray-200 font-bold disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base py-3 sm:py-4"
                       >
-                        {!userTradeUrl || userTradeUrl.trim() === ""
+                        {isClaimingSkin
+                          ? "Processing..."
+                          : !userTradeUrl || userTradeUrl.trim() === ""
                           ? "Set Up Steam Trade URL"
+                          : claimedAsset === lastPackResult?.asset
+                          ? "Claimed"
                           : "Take Skin"}
                       </Button>
                     </div>
