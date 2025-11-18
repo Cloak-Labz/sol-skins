@@ -266,6 +266,7 @@ export interface ConnectWalletRequest {
   walletAddress: string
   signature?: string
   message?: string
+  referredByUsername?: string
 }
 
 export interface ConnectWalletResponse {

@@ -11,7 +11,7 @@ interface UserContextType {
   isConnected: boolean;
   isLoading: boolean;
   error: string | null;
-  connectWallet: (address: string, signature?: string, message?: string) => Promise<void>;
+  connectWallet: (address: string, signature?: string, message?: string, referredByUsername?: string) => Promise<void>;
   disconnectWallet: () => Promise<void>;
   refreshUser: () => Promise<void>;
   clearError: () => void;
@@ -63,7 +63,7 @@ export function UserProvider({ children }: UserProviderProps) {
     checkExistingSession();
   }, [hasCheckedSession]);
 
-  const connectWallet = async (address: string, signature?: string, message?: string) => {
+  const connectWallet = async (address: string, signature?: string, message?: string, referredByUsername?: string) => {
     // Prevent multiple simultaneous connection attempts
     if (isLoading) {
       return;
@@ -73,13 +73,18 @@ export function UserProvider({ children }: UserProviderProps) {
       setIsLoading(true);
       setError(null);
       
-      const response = await authService.connectWallet(address, signature, message);
+      const response = await authService.connectWallet(address, signature, message, referredByUsername);
       
       setUser(response.user);
       setWalletAddress(address);
       
       // Update API client with wallet address
       apiClient.setWalletAddress(address);
+      
+      // Clear referral from storage after successful connection (only use once)
+      if (referredByUsername && typeof window !== 'undefined') {
+        sessionStorage.removeItem('referral_username');
+      }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to connect wallet';
       setError(errorMessage);

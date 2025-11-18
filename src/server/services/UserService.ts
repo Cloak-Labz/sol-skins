@@ -65,7 +65,22 @@ export class UserService {
     }
   }
 
-  async createUser(walletAddress: string, username?: string): Promise<User> {
+  async findByUsername(username: string): Promise<User | null> {
+    try {
+      if (!username || typeof username !== 'string') {
+        return null;
+      }
+
+      return await this.userRepository.findOne({
+        where: { username },
+      });
+    } catch (error) {
+      logger.error('Error finding user by username:', error);
+      return null; // Return null on error instead of throwing
+    }
+  }
+
+  async createUser(walletAddress: string, username?: string, referredByUsername?: string): Promise<User> {
     try {
       // Check if user already exists
       const existingUser = await this.findByWalletAddress(walletAddress);
@@ -73,9 +88,28 @@ export class UserService {
         throw new AppError('User already exists', 409, 'USER_EXISTS');
       }
 
+      // Sanitize referral username if provided and validate it exists
+      let sanitizedReferralUsername: string | undefined;
+      if (referredByUsername) {
+        const { sanitizeUsername } = require('../utils/sanitization');
+        sanitizedReferralUsername = sanitizeUsername(referredByUsername);
+        
+        // Only set if sanitized value is not empty
+        if (!sanitizedReferralUsername) {
+          sanitizedReferralUsername = undefined;
+        } else {
+          // Validate that the referral username exists in the database
+          const referralUser = await this.findByUsername(sanitizedReferralUsername);
+          if (!referralUser) {
+            sanitizedReferralUsername = undefined; // Don't save invalid referral
+          }
+        }
+      }
+
       const user = this.userRepository.create({
         walletAddress,
         username,
+        referredByUsername: sanitizedReferralUsername,
         lastLogin: new Date(),
       });
 
@@ -84,6 +118,7 @@ export class UserService {
       logger.info('User created:', {
         userId: savedUser.id,
         walletAddress: savedUser.walletAddress,
+        referredByUsername: savedUser.referredByUsername,
       });
 
       return savedUser;

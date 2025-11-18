@@ -24,7 +24,7 @@ export class AuthController {
   }
 
   connect = catchAsync(async (req: Request, res: Response) => {
-    const { walletAddress, signature, message } = req.body;
+    const { walletAddress, signature, message, referredByUsername } = req.body;
 
       // Verify signature if provided
       if (signature && message) {
@@ -43,7 +43,7 @@ export class AuthController {
     let user = await this.userService.findByWalletAddress(walletAddress);
 
     if (!user) {
-      user = await this.userService.createUser(walletAddress);
+      user = await this.userService.createUser(walletAddress, undefined, referredByUsername);
     }
 
     // Update last login
