@@ -109,7 +109,7 @@ export class ActivityService {
               rarity: opening.skinRarity || 'Common',
               condition: 'Field-Tested', // Default for pack openings
               imageUrl: normalizedImage,
-              valueUsd: opening.boxPriceSol || 0, // Use box price for pack openings
+              valueUsd: opening.boxPriceUsdc || opening.boxPriceSol || 0, // Use box price in USDC for pack openings
             },
             lootBox: {
               id: opening.lootBoxTypeId,
@@ -117,8 +117,8 @@ export class ActivityService {
               rarity: 'Common', // Default rarity
             },
             amount: {
-              sol: opening.boxPriceSol || 0, // SOL amount for pack openings
-              usd: 0, // Will be calculated on frontend
+              sol: 0, // Not used for pack openings (USDC only)
+              usd: opening.boxPriceUsdc || 0, // USDC amount for pack openings
             },
             timestamp: opening.completedAt!,
           };

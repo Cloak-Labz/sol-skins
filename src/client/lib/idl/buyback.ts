@@ -5,7 +5,7 @@
  * IDL can be found at `target/idl/programs.json`.
  */
 export type Buyback = {
-  address: "Bwx4dpTtC72nyzTwdCH3rRJVvFg1SatKqgrFNcqNFSAJ";
+  address: "Gxe24iPJUAVuPCYye7qioNtk7UaJf9jVtQnfU2VzmjFJ";
   metadata: {
     name: "programs";
     version: "0.1.0";
@@ -16,7 +16,7 @@ export type Buyback = {
     {
       name: "executeBuyback";
       docs: [
-        "Execute a buyback: burn NFT and transfer SOL",
+        "Execute a buyback: burn NFT and transfer USDC",
         "Backend calculates buyback_amount based on skin price"
       ];
       discriminator: [47, 32, 19, 100, 184, 96, 144, 49];
@@ -28,7 +28,7 @@ export type Buyback = {
             seeds: [
               {
                 kind: "const";
-                value: [98, 117, 121, 98, 97, 99, 107, 95, 99, 111, 110, 102, 105, 103];
+                value: [98, 117, 121, 98, 97, 99, 107, 95, 99, 111, 110, 102, 105, 103, 95, 118, 51];
               }
             ];
           };
@@ -44,6 +44,17 @@ export type Buyback = {
           signer: true;
         },
         {
+          name: "treasuryUsdcAccount";
+          writable: true;
+        },
+        {
+          name: "userUsdcAccount";
+          writable: true;
+        },
+        {
+          name: "usdcMint";
+        },
+        {
           name: "nftMint";
           writable: true;
         },
@@ -54,10 +65,6 @@ export type Buyback = {
         {
           name: "tokenProgram";
           address: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
-        },
-        {
-          name: "systemProgram";
-          address: "11111111111111111111111111111111";
         }
       ];
       args: [
@@ -79,7 +86,7 @@ export type Buyback = {
             seeds: [
               {
                 kind: "const";
-                value: [98, 117, 121, 98, 97, 99, 107, 95, 99, 111, 110, 102, 105, 103];
+                value: [98, 117, 121, 98, 97, 99, 107, 95, 99, 111, 110, 102, 105, 103, 95, 118, 51];
               }
             ];
           };
@@ -91,6 +98,13 @@ export type Buyback = {
         },
         {
           name: "treasury";
+        },
+        {
+          name: "usdcMint";
+        },
+        {
+          name: "treasuryUsdcAccount";
+          writable: true;
         },
         {
           name: "collectionMint";
@@ -123,7 +137,7 @@ export type Buyback = {
             seeds: [
               {
                 kind: "const";
-                value: [98, 117, 121, 98, 97, 99, 107, 95, 99, 111, 110, 102, 105, 103];
+                value: [98, 117, 121, 98, 97, 99, 107, 95, 99, 111, 110, 102, 105, 103, 95, 118, 51];
               }
             ];
           };
@@ -170,36 +184,51 @@ export type Buyback = {
     },
     {
       code: 6004;
+      name: "InvalidTreasuryTokenAccount";
+      msg: "Invalid treasury USDC token account";
+    },
+    {
+      code: 6005;
+      name: "InvalidUserTokenAccount";
+      msg: "Invalid user USDC token account";
+    },
+    {
+      code: 6006;
+      name: "InvalidUsdcMint";
+      msg: "Invalid USDC mint provided";
+    },
+    {
+      code: 6007;
       name: "InvalidCollectionMint";
       msg: "Invalid collection mint";
     },
     {
-      code: 6005;
+      code: 6008;
       name: "InvalidNFTOwner";
       msg: "User does not own the NFT";
     },
     {
-      code: 6006;
+      code: 6009;
       name: "InvalidNFTMint";
       msg: "Token account mint does not match NFT mint";
     },
     {
-      code: 6007;
+      code: 6010;
       name: "InvalidNFTAmount";
       msg: "Invalid NFT amount (must be 1)";
     },
     {
-      code: 6008;
+      code: 6011;
       name: "MathOverflow";
       msg: "Math operation overflow";
     },
     {
-      code: 6009;
+      code: 6012;
       name: "InvalidMinBalance";
       msg: "Minimum treasury balance too high";
     },
     {
-      code: 6010;
+      code: 6013;
       name: "Unauthorized";
       msg: "Unauthorized: Only authority can perform this action";
     }
@@ -216,6 +245,14 @@ export type Buyback = {
           },
           {
             name: "treasury";
+            type: "pubkey";
+          },
+          {
+            name: "treasuryTokenAccount";
+            type: "pubkey";
+          },
+          {
+            name: "usdcMint";
             type: "pubkey";
           },
           {
@@ -241,7 +278,7 @@ export type Buyback = {
 };
 
 export const IDL: Buyback = {
-  address: "Bwx4dpTtC72nyzTwdCH3rRJVvFg1SatKqgrFNcqNFSAJ",
+  address: "Gxe24iPJUAVuPCYye7qioNtk7UaJf9jVtQnfU2VzmjFJ",
   metadata: {
     name: "programs",
     version: "0.1.0",
@@ -252,7 +289,7 @@ export const IDL: Buyback = {
     {
       name: "executeBuyback",
       docs: [
-        "Execute a buyback: burn NFT and transfer SOL",
+        "Execute a buyback: burn NFT and transfer USDC",
         "Backend calculates buyback_amount based on skin price",
       ],
       discriminator: [47, 32, 19, 100, 184, 96, 144, 49],
@@ -264,7 +301,7 @@ export const IDL: Buyback = {
             seeds: [
               {
                 kind: "const",
-                value: [98, 117, 121, 98, 97, 99, 107, 95, 99, 111, 110, 102, 105, 103],
+                value: [98, 117, 121, 98, 97, 99, 107, 95, 99, 111, 110, 102, 105, 103, 95, 118, 51],
               },
             ],
           },
@@ -280,6 +317,17 @@ export const IDL: Buyback = {
           signer: true,
         },
         {
+          name: "treasuryUsdcAccount",
+          writable: true,
+        },
+        {
+          name: "userUsdcAccount",
+          writable: true,
+        },
+        {
+          name: "usdcMint",
+        },
+        {
           name: "nftMint",
           writable: true,
         },
@@ -290,10 +338,6 @@ export const IDL: Buyback = {
         {
           name: "tokenProgram",
           address: "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
-        },
-        {
-          name: "systemProgram",
-          address: "11111111111111111111111111111111",
         },
       ],
       args: [
@@ -315,7 +359,7 @@ export const IDL: Buyback = {
             seeds: [
               {
                 kind: "const",
-                value: [98, 117, 121, 98, 97, 99, 107, 95, 99, 111, 110, 102, 105, 103],
+                value: [98, 117, 121, 98, 97, 99, 107, 95, 99, 111, 110, 102, 105, 103, 95, 118, 51],
               },
             ],
           },
@@ -327,6 +371,13 @@ export const IDL: Buyback = {
         },
         {
           name: "treasury",
+        },
+        {
+          name: "usdcMint",
+        },
+        {
+          name: "treasuryUsdcAccount",
+          writable: true,
         },
         {
           name: "collectionMint",
@@ -359,7 +410,7 @@ export const IDL: Buyback = {
             seeds: [
               {
                 kind: "const",
-                value: [98, 117, 121, 98, 97, 99, 107, 95, 99, 111, 110, 102, 105, 103],
+                value: [98, 117, 121, 98, 97, 99, 107, 95, 99, 111, 110, 102, 105, 103, 95, 118, 51],
               },
             ],
           },
@@ -406,36 +457,51 @@ export const IDL: Buyback = {
     },
     {
       code: 6004,
+      name: "InvalidTreasuryTokenAccount",
+      msg: "Invalid treasury USDC token account",
+    },
+    {
+      code: 6005,
+      name: "InvalidUserTokenAccount",
+      msg: "Invalid user USDC token account",
+    },
+    {
+      code: 6006,
+      name: "InvalidUsdcMint",
+      msg: "Invalid USDC mint provided",
+    },
+    {
+      code: 6007,
       name: "InvalidCollectionMint",
       msg: "Invalid collection mint",
     },
     {
-      code: 6005,
+      code: 6008,
       name: "InvalidNFTOwner",
       msg: "User does not own the NFT",
     },
     {
-      code: 6006,
+      code: 6009,
       name: "InvalidNFTMint",
       msg: "Token account mint does not match NFT mint",
     },
     {
-      code: 6007,
+      code: 6010,
       name: "InvalidNFTAmount",
       msg: "Invalid NFT amount (must be 1)",
     },
     {
-      code: 6008,
+      code: 6011,
       name: "MathOverflow",
       msg: "Math operation overflow",
     },
     {
-      code: 6009,
+      code: 6012,
       name: "InvalidMinBalance",
       msg: "Minimum treasury balance too high",
     },
     {
-      code: 6010,
+      code: 6013,
       name: "Unauthorized",
       msg: "Unauthorized: Only authority can perform this action",
     },
@@ -452,6 +518,14 @@ export const IDL: Buyback = {
           },
           {
             name: "treasury",
+            type: "pubkey",
+          },
+          {
+            name: "treasuryTokenAccount",
+            type: "pubkey",
+          },
+          {
+            name: "usdcMint",
             type: "pubkey",
           },
           {

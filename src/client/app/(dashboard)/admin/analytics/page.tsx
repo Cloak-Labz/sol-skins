@@ -498,7 +498,7 @@ export default function AnalyticsPage() {
                   />
                   <Legend />
                   <Bar yAxisId="left" dataKey="count" fill="#ef4444" name="Count" />
-                  <Bar yAxisId="right" dataKey="totalAmount" fill="#f59e0b" name="Total SOL" />
+                  <Bar yAxisId="right" dataKey="totalAmount" fill="#f59e0b" name="Total USDC" />
                 </BarChart>
                 </ResponsiveContainer>
               </div>

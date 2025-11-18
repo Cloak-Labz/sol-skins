@@ -969,14 +969,14 @@ export default function ProfilePage() {
                                 <p className="text-foreground font-bold text-sm sm:text-base sm:order-1">
                                   {item.type === "case_opened"
                                     ? `-${item.amount?.sol
-                                        ? parseFloat(item.amount.sol.toString()).toFixed(2)
-                                        : "0"} SOL`
+                                        ? Math.floor(parseFloat(item.amount.sol.toString()))
+                                        : "0"} USDC`
                                     : item.type === "payout"
                                     ? `+${formatCurrency(item.amount?.usd || 0)}`
                                     : item.type === "skin_claimed"
-                                    ? "0 SOL"
+                                    ? "0 USDC"
                                     : item.amount
-                                    ? `${parseFloat(item.amount.sol.toString()).toFixed(2)} SOL`
+                                    ? `${Math.floor(parseFloat(item.amount.sol.toString()))} USDC`
                                     : formatCurrency(parseFloat(item.skin?.valueUsd || "0"))}
                                 </p>
                               </div>

@@ -194,7 +194,7 @@ export default function LandingPage() {
                 icon: Coins,
                 title: "85% Instant Buyback",
                 description:
-                  "Sell any skin back instantly for 85% of market value in SOL. No waiting periods.",
+                  "Sell any skin back instantly for 85% of market value in USDC. No waiting periods.",
                 color: "from-yellow-500 to-orange-500",
               },
               {
@@ -280,7 +280,7 @@ export default function LandingPage() {
                 icon: Package,
                 title: "Buy & Open Pack",
                 description:
-                  "Purchase with SOL. Watch the cinematic opening animation as your NFT mints on-chain.",
+                  "Purchase with USDC. Watch the cinematic opening animation as your NFT mints on-chain.",
               },
               {
                 step: "3",
@@ -294,7 +294,7 @@ export default function LandingPage() {
                 icon: TrendingUp,
                 title: "Claim or Sell",
                 description:
-                  "Claim to Steam inventory OR take instant 85% SOL payout. Your choice.",
+                  "Claim to Steam inventory OR take instant 85% USDC payout. Your choice.",
               },
             ].map((item, index) => (
               <motion.div
@@ -407,7 +407,7 @@ export default function LandingPage() {
                   <ul className="space-y-3">
                     {[
                       "Sell any skin back for 85% of market value",
-                      "Automated SOL/USD pricing calculation",
+                      "Automated USDC pricing calculation",
                       "Treasury-backed instant payouts",
                       "Transaction confirmed in <5 seconds",
                       "Full transaction history on-chain",
@@ -549,7 +549,7 @@ export default function LandingPage() {
               },
               {
                 q: "How does the 85% buyback work?",
-                a: "You can sell any skin back to the protocol instantly for 85% of its current market value in SOL. The payout is automatic, treasury-backed, and completes in under 5 seconds. No waiting periods or approval needed.",
+                a: "You can sell any skin back to the protocol instantly for 85% of its current market value in USDC. The payout is automatic, treasury-backed, and completes in under 5 seconds. No waiting periods or approval needed.",
               },
               {
                 q: "How do I claim my skin to Steam?",

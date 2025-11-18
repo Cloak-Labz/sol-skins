@@ -1,4 +1,4 @@
-import { Connection, PublicKey, Keypair, Transaction, SystemProgram } from '@solana/web3.js';
+import { Connection, PublicKey, Keypair, Transaction } from '@solana/web3.js';
 import { Program, AnchorProvider, Wallet, BN } from '@coral-xyz/anchor';
 import { getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { config } from '../config/env';
@@ -51,9 +51,9 @@ export class BuybackService {
     // Initialize program
     this.program = new Program(buybackIdl as any, provider);
     
-    // Derive buyback config PDA
+    // Derive buyback config PDA (v4 with USDC support)
     const [buybackConfigPda] = PublicKey.findProgramAddressSync(
-      [Buffer.from('buyback_config')],
+      [Buffer.from('buyback_config_v4')],
       new PublicKey(config.buyback.programId)
     );
     this.buybackConfigPda = buybackConfigPda;
@@ -236,8 +236,7 @@ export class BuybackService {
     }
 
     // SECURITY: Use safe math to prevent integer overflow
-    const { validateAmount, usdToSol, applyPercentage, solToLamports, toNumber } = require('../utils/safeMath');
-    const { priceService } = require('./PriceService');
+    const { validateAmount, applyPercentage, toNumber } = require('../utils/safeMath');
     
     // Determine the most accurate USD price we have for this skin
     const priceCandidates = [
@@ -251,19 +250,19 @@ export class BuybackService {
 
     const effectivePriceUsd = priceCandidates[0]; // prefer currentPriceUsd if available
     const skinPriceUsd = validateAmount(effectivePriceUsd, 'skin price USD');
-    // Fetch live SOL price in USD (cached, with safe fallbacks)
-    const solPriceUsd = validateAmount(await priceService.getSolPriceUsd(), 'SOL price USD');
-    const skinPriceSol = usdToSol(skinPriceUsd, solPriceUsd);
-    const buybackAmount = applyPercentage(skinPriceSol, config.buyback.buybackRate * 100, 'buyback amount'); // Convert rate to percentage
-    const buybackAmountLamports = solToLamports(buybackAmount);
+    
+    // Calculate buyback amount in USDC (85% of USD price, with 6 decimals)
+    const buybackAmountUsd = applyPercentage(skinPriceUsd, config.buyback.buybackRate * 100, 'buyback amount');
+    // USDC has 6 decimals, so multiply by 1,000,000
+    const buybackAmountMicroUsdc = buybackAmountUsd.mul(1_000_000);
+    const buybackAmountLamports = buybackAmountMicroUsdc.toFixed(0);
     
     // Convert to numbers for return (validated)
-    const skinPriceSolNum = toNumber(skinPriceSol);
-    const buybackAmountNum = toNumber(buybackAmount);
+    const buybackAmountNum = toNumber(buybackAmountUsd);
 
     return {
       nftMint,
-      skinPrice: skinPriceSolNum,
+      skinPrice: toNumber(skinPriceUsd),
       buybackAmount: buybackAmountNum,
       buybackAmountLamports: buybackAmountLamports,
     };
@@ -326,16 +325,26 @@ export class BuybackService {
     const userNftAccount = await getAssociatedTokenAddress(nftMintPubkey, userPubkey);
     const buybackAmountBN = new BN(buybackAmountLamports);
     
+    // Fetch buyback config from on-chain to get USDC mint and treasury token account
+    const buybackConfig = await this.getBuybackConfig();
+    const usdcMint = new PublicKey(buybackConfig.usdcMint);
+    const treasuryUsdcAccount = new PublicKey(buybackConfig.treasuryTokenAccount);
+    
+    // Get or create user's USDC token account
+    const userUsdcAccount = await getAssociatedTokenAddress(usdcMint, userPubkey);
+    
     const tx = await this.program.methods
       .executeBuyback(buybackAmountBN)
       .accounts({
         buybackConfig: this.buybackConfigPda,
         user: userPubkey,
         treasury: this.adminWallet.publicKey,
+        treasuryUsdcAccount: treasuryUsdcAccount,
+        userUsdcAccount: userUsdcAccount,
+        usdcMint: usdcMint,
         nftMint: nftMintPubkey,
         userNftAccount: userNftAccount,
         tokenProgram: TOKEN_PROGRAM_ID,
-        systemProgram: SystemProgram.programId,
       })
       .transaction();
 
@@ -467,8 +476,7 @@ export class BuybackService {
     }
 
     // SECURITY: Use safe math to prevent integer overflow
-    const { validateAmount, usdToSol, applyPercentage, toNumber } = require('../utils/safeMath');
-    const { priceService } = require('./PriceService');
+    const { validateAmount, applyPercentage, toNumber } = require('../utils/safeMath');
     
     const priceCandidates = [
       finalUserSkin.currentPriceUsd != null ? Number(finalUserSkin.currentPriceUsd) : null,
@@ -481,10 +489,8 @@ export class BuybackService {
 
     const effectivePriceUsd = priceCandidates[0];
     const skinPriceUsd = validateAmount(effectivePriceUsd, 'skin price USD');
-    // Fetch live SOL price in USD (cached, with safe fallbacks)
-    const solPriceUsd = validateAmount(await priceService.getSolPriceUsd(), 'SOL price USD');
-    const skinPriceSol = usdToSol(skinPriceUsd, solPriceUsd);
-    const buybackAmount = applyPercentage(skinPriceSol, config.buyback.buybackRate * 100, 'buyback amount');
+    // Calculate buyback amount in USDC (85% of USD price)
+    const buybackAmount = applyPercentage(skinPriceUsd, config.buyback.buybackRate * 100, 'buyback amount');
     
     // Convert Decimal to number for database storage
     const buybackAmountNum = toNumber(buybackAmount);

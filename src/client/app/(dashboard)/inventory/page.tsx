@@ -223,7 +223,7 @@ export default function InventoryPage() {
 
       // Step 1: Calculating buyback amount (already fetched in dialog, but mirror UX)
       if (typeof payoutAmount === 'number') {
-        currentToast = toast.loading(`Buyback: ${payoutAmount.toFixed(3)} SOL - Requesting transaction...`);
+        currentToast = toast.loading(`Buyback: ${Math.floor(payoutAmount)} USDC - Requesting transaction...`);
       } else {
         currentToast = toast.loading('Calculating buyback amount...');
       }
@@ -259,7 +259,7 @@ export default function InventoryPage() {
       const buybackSol = payoutAmount || 0;
       const skinName = selectedSkin?.name || 'skin';
       const packUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://dust3.fun'}/packs`;
-      const tweetText = `Just cashed out ${skinName} for ${buybackSol.toFixed(3)} SOL on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
+      const tweetText = `Just cashed out ${skinName} for ${Math.floor(buybackSol)} USDC on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
 
       currentToast = toast.success(
         <div className="flex flex-col gap-2">
@@ -657,7 +657,7 @@ export default function InventoryPage() {
                       <div className="mt-4 text-right">
                         {payoutAmount !== null ? (
                           <div className="text-3xl font-bold text-white">
-                            {payoutAmount.toFixed(3)} SOL
+                            {Math.floor(payoutAmount)} USDC
                           </div>
                         ) : (
                           <Loader2 className="w-8 h-8 animate-spin text-white/50 mx-auto" />
@@ -668,7 +668,7 @@ export default function InventoryPage() {
                     {/* Action box */}
                     <div className="rounded-lg border border-white/10 bg-white/2 p-4">
                       <div className="text-white font-semibold">Confirm Payout</div>
-                      <div className="text-white/60 text-sm">Sell this skin for SOL</div>
+                      <div className="text-white/60 text-sm">Sell this skin for USDC</div>
                       <Button
                         onClick={confirmSell}
                         disabled={selling || payoutAmount === null}

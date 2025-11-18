@@ -475,21 +475,20 @@ export class PackOpeningService {
         lootBoxType = lootBoxTypeRepo.create({
           name: box.name,
           description: box.description || '',
-          priceSol: Number(box.priceSol) || 0,
-          priceUsdc: box.priceUsdc ? Number(box.priceUsdc) : undefined,
+          priceSol: 0, // Legacy field, not used for pack openings
+          priceUsdc: box.priceUsdc ? Number(box.priceUsdc) : 0,
           rarity: LootBoxRarity.STANDARD,
         });
         await lootBoxTypeRepo.save(lootBoxType);
       }
 
-      // Create transaction record
+      // Create transaction record - use USDC for pack openings
       const priceUsdc = box.priceUsdc ? Number(box.priceUsdc) : 0;
-      const priceSol = Number(box.priceSol) || 0;
       
       const savedTransaction = await this.transactionRepository.create({
         userId,
         transactionType: TransactionType.OPEN_CASE,
-        amountSol: -priceSol,
+        amountSol: 0, // Not used for pack openings (USDC only)
         amountUsdc: -priceUsdc,
         amountUsd: -priceUsdc, // Use USDC price for USD amount
         lootBoxTypeId: lootBoxType.id, // Use actual LootBoxType ID
@@ -518,7 +517,7 @@ export class PackOpeningService {
         skinValue: realValue,
         skinImage: finalImageUrl || '',
         isPackOpening: true,
-        boxPriceSol: priceSol,
+        boxPriceUsdc: priceUsdc, // Use USDC for pack openings
         openedAt: new Date(),
         completedAt: new Date(),
         userDecision: UserDecision.KEEP,

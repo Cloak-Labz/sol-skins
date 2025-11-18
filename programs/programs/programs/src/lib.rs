@@ -6,7 +6,7 @@ pub mod errors;
 
 use instructions::*;
 
-declare_id!("2ytrjrhp3XS72snNCzczVAZN11j5SXMu1qJiHAmNPg7F");
+declare_id!("Gxe24iPJUAVuPCYye7qioNtk7UaJf9jVtQnfU2VzmjFJ");
 
 #[program]
 pub mod programs {
@@ -21,7 +21,7 @@ pub mod programs {
         ctx.accounts.init(collection_mint, min_treasury_balance, &ctx.bumps)
     }
 
-    /// Execute a buyback: burn NFT and transfer SOL
+    /// Execute a buyback: burn NFT and transfer USDC
     /// Backend calculates buyback_amount based on skin price
     pub fn execute_buyback(
         ctx: Context<ExecuteBuyback>,

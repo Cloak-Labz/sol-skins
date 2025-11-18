@@ -4,6 +4,8 @@ import { mplCandyMachine } from "@metaplex-foundation/mpl-candy-machine";
 import { generateSigner, publicKey, transactionBuilder, some } from "@metaplex-foundation/umi";
 import { setComputeUnitLimit } from "@metaplex-foundation/mpl-toolbox";
 import { fetchCandyMachine, mintV2 } from "@metaplex-foundation/mpl-candy-machine";
+import { getAssociatedTokenAddress } from "@solana/spl-token";
+import { Connection as SolanaConnection, PublicKey as SolanaPublicKey } from "@solana/web3.js";
 import bs58 from "bs58";
 import { apiClient } from "./api.service";
 
@@ -83,7 +85,29 @@ export class PackOpeningService {
     // Generate NFT mint signer
     const nftMint = generateSigner(umi);
     
-    // Mint NFT using resolved config
+    // Get USDC mint and token accounts for tokenPayment guard
+    const USDC_MINT_ADDRESS = "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"; // Devnet USDC
+    const USDC_MINT = publicKey(USDC_MINT_ADDRESS);
+    const treasuryAddressStr = TREASURY || process.env.NEXT_PUBLIC_TREASURY_ADDRESS || "";
+    const treasuryAddress = publicKey(treasuryAddressStr);
+    const userPublicKey = wallet.publicKey;
+    
+    // Get box price in USDC (convert to micro-USDC with 6 decimals)
+    const boxPriceUsdc = box.priceUsdc ? Number(box.priceUsdc) : 0;
+    const amountMicroUsdc = Math.floor(boxPriceUsdc * 1_000_000); // Convert USDC to micro-USDC (6 decimals)
+    
+    // Get or create Associated Token Accounts (ATAs)
+    const solanaConnection = connection || new SolanaConnection(rpcUrl, 'confirmed');
+    const userUsdcAta = await getAssociatedTokenAddress(
+      new SolanaPublicKey(USDC_MINT_ADDRESS),
+      userPublicKey
+    );
+    const treasuryUsdcAta = await getAssociatedTokenAddress(
+      new SolanaPublicKey(USDC_MINT_ADDRESS),
+      new SolanaPublicKey(treasuryAddressStr)
+    );
+    
+    // Mint NFT using resolved config with tokenPayment guard
     const mintResult = await transactionBuilder()
       .add(setComputeUnitLimit(umi, { units: 800_000 }))
       .add(
@@ -94,7 +118,11 @@ export class PackOpeningService {
           collectionMint: COLLECTION_MINT ? publicKey(COLLECTION_MINT) : candyMachine.collectionMint,
           collectionUpdateAuthority: COLLECTION_UPDATE_AUTHORITY ? publicKey(COLLECTION_UPDATE_AUTHORITY) : candyMachine.authority,
           mintArgs: {
-            solPayment: some({ destination: publicKey(TREASURY || process.env.NEXT_PUBLIC_TREASURY_ADDRESS || "") }),
+            tokenPayment: some({
+              mint: USDC_MINT,
+              destinationAta: publicKey(treasuryUsdcAta.toBase58()),
+              amount: amountMicroUsdc, // Box price in micro-USDC (6 decimals)
+            }),
           },
         })
       )
@@ -123,13 +151,49 @@ export class PackOpeningService {
     }
 
     onProgress?.("Waiting for metadata propagation...");
-    // Step 3: Wait for metadata propagation
-    await new Promise(resolve => setTimeout(resolve, 12000));
+    // Step 3: Wait for metadata propagation and verify mint account exists
+    // Verify the mint account was actually created before proceeding
+    const solanaConnectionForCheck = connection || new SolanaConnection(rpcUrl, 'confirmed');
+    const mintPubkey = new SolanaPublicKey(nftMintAddress);
+    
+    // Retry checking for mint account (up to 5 times with delays)
+    let mintAccount = null;
+    const maxMintChecks = 5;
+    const mintCheckDelay = 3000;
+    
+          for (let i = 0; i < maxMintChecks; i++) {
+            try {
+              mintAccount = await solanaConnectionForCheck.getAccountInfo(mintPubkey, 'confirmed');
+        if (mintAccount) {
+          console.log(`Mint account verified on attempt ${i + 1}`);
+          break;
+        }
+      } catch (error) {
+        console.warn(`Mint account check ${i + 1} failed:`, error);
+      }
+      
+      if (i < maxMintChecks - 1) {
+        await new Promise(resolve => setTimeout(resolve, mintCheckDelay));
+      }
+    }
+    
+    if (!mintAccount) {
+      throw new Error(
+        `Failed to verify mint account: ${nftMintAddress}. ` +
+        `The NFT may not have been minted successfully. ` +
+        `Please check the transaction signature: ${signature} ` +
+        `or try again.`
+      );
+    }
+    
+    // Additional wait for metadata propagation
+    await new Promise(resolve => setTimeout(resolve, 5000));
 
     onProgress?.("Revealing skin...");
     // Step 4: Reveal the skin
     // apiClient.post returns the data directly (not wrapped in { success, data })
-    const revealResponseData = await apiClient.post<{
+    // Wrap in try-catch to allow animation to proceed even if reveal fails
+    let revealResponseData: {
       skinName: string;
       weapon?: string;
       skinRarity: string;
@@ -138,10 +202,35 @@ export class PackOpeningService {
       imageUrl?: string;
       nftMint: string;
       txSignature: string;
-    }>(`/reveal/${nftMintAddress}`, {
-      boxId: boxId,
-      walletAddress: wallet.publicKey.toString(),
-    });
+    };
+    
+    try {
+      revealResponseData = await apiClient.post<{
+        skinName: string;
+        weapon?: string;
+        skinRarity: string;
+        basePriceUsd: number;
+        metadataUri?: string;
+        imageUrl?: string;
+        nftMint: string;
+        txSignature: string;
+      }>(`/reveal/${nftMintAddress}`, {
+        boxId: boxId,
+        walletAddress: wallet.publicKey.toString(),
+      });
+    } catch (revealError: any) {
+      // If reveal fails, create a fallback response so animation can proceed
+      // The mint was successful, so we should still show the animation
+      console.warn('Reveal failed, using fallback data:', revealError);
+      revealResponseData = {
+        skinName: 'Unknown Skin',
+        weapon: 'Unknown',
+        skinRarity: 'common',
+        basePriceUsd: 0,
+        nftMint: nftMintAddress,
+        txSignature: signature,
+      };
+    }
 
     // Step 5: Create pack opening transaction in backend
     // IMPORTANT: Refresh CSRF token after the 12-second wait to prevent expiration

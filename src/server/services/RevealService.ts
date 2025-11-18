@@ -1,7 +1,7 @@
 import { Connection, PublicKey, Keypair } from '@solana/web3.js';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
-import { mplTokenMetadata, updateV1, fetchMetadataFromSeeds } from '@metaplex-foundation/mpl-token-metadata';
-import { publicKey, createSignerFromKeypair } from '@metaplex-foundation/umi';
+import { mplTokenMetadata, updateV1, fetchMetadataFromSeeds, createV1, findMetadataPda } from '@metaplex-foundation/mpl-token-metadata';
+import { publicKey as umiPublicKey, createSignerFromKeypair, percentAmount } from '@metaplex-foundation/umi';
 import { config } from '../config/env';
 import { HttpService } from '../utils/httpService';
 import { AppDataSource } from '../config/database';
@@ -75,7 +75,7 @@ export class RevealService {
 
     const boxSkins = await boxSkinRepo.find({ where: { boxId, rarity } });
     if (!boxSkins.length) {
-      console.warn(`No box_skins found for box ${boxId} and rarity ${rarity}`);
+      logger.warn(`No box_skins found for box ${boxId} and rarity ${rarity}, will use fallback to all box_skins`);
       return null;
     }
 
@@ -149,11 +149,10 @@ export class RevealService {
 
       await new Promise(resolve => setTimeout(resolve, 10000));
 
-      const nftMintPubkey = publicKey(nftMint);
-      const metadata = await fetchMetadataFromSeeds(this.umi, {
-        mint: nftMintPubkey,
-      });
-
+      // Convert to both Umi and Solana Web3.js PublicKey types
+      const nftMintPubkeyUmi = umiPublicKey(nftMint);
+      const nftMintPubkeySolana = new PublicKey(nftMint);
+      
       const namePart = (boxSkin.name || '').includes('|')
         ? (boxSkin.name || '').split('|')[1].trim()
         : (boxSkin.name || skin?.skinName || 'Unknown');
@@ -161,16 +160,156 @@ export class RevealService {
       const skinFullName = `${weapon} | ${namePart}`;
       const metadataUri = `https://arweave.net/${nftMint.slice(0, 32)}`;
       
-      // Update metadata with revealed skin data
-      const tx = await updateV1(this.umi, {
-        mint: nftMintPubkey,
-        authority: this.umi.payer,
-        data: {
-          ...metadata,
-          name: skinFullName,
-          uri: metadataUri,
-        },
-      }).sendAndConfirm(this.umi);
+      // Try to fetch existing metadata, or create if it doesn't exist
+      // NOTE: With hidden settings, Candy Machine should create metadata placeholder on mint
+      // If metadata doesn't exist, we create it directly with revealed data (this is OK since reveal happens AFTER mint)
+      let metadata;
+      let tx;
+      
+      try {
+        metadata = await fetchMetadataFromSeeds(this.umi, {
+          mint: nftMintPubkeyUmi,
+        });
+        
+        // Metadata exists (created by Candy Machine with hidden settings placeholder)
+        // Update it with revealed data
+        logger.info('Metadata exists (placeholder from Candy Machine), updating with revealed data', { 
+          nftMint,
+          currentName: metadata.name,
+          currentUri: metadata.uri 
+        });
+        tx = await updateV1(this.umi, {
+          mint: nftMintPubkeyUmi,
+          authority: this.umi.payer,
+          data: {
+            ...metadata,
+            name: skinFullName,
+            uri: metadataUri,
+          },
+        }).sendAndConfirm(this.umi);
+      } catch (error: any) {
+        // Metadata doesn't exist - this shouldn't happen with hidden settings, but we handle it
+        // Create metadata directly with revealed data (since reveal happens AFTER mint, this is fine)
+        const errorMessage = error?.message || error?.toString() || '';
+        if (errorMessage.includes('not found') || errorMessage.includes('AccountNotFound') || errorMessage.includes('could not find account')) {
+          logger.warn('Metadata not found (Candy Machine should have created it with hidden settings), creating with revealed data', { 
+            nftMint, 
+            error: errorMessage,
+            note: 'This is OK - reveal happens AFTER mint, so creating metadata with revealed data is correct'
+          });
+          
+          // Get collection mint from box
+          const boxRepo = AppDataSource.getRepository(Box);
+          const box = await boxRepo.findOne({ where: { id: boxId } });
+          const collectionMint = box?.collectionMint ? umiPublicKey(box.collectionMint) : undefined;
+          
+          // Verify mint account exists before creating metadata
+          // Use Solana Web3.js PublicKey for getAccountInfo
+          // Retry multiple times with increasing delays in case the transaction is still being confirmed
+          let mintAccount = null;
+          const maxRetries = 5;
+          const initialRetryDelay = 3000; // Start with 3 seconds
+          
+          logger.info('Verifying mint account exists', { nftMint, maxRetries });
+          
+          for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+              // Try with 'confirmed' commitment first, then 'finalized' if needed
+              const commitment = attempt <= 2 ? 'confirmed' : 'finalized';
+              mintAccount = await this.connection.getAccountInfo(nftMintPubkeySolana, commitment);
+              
+              if (mintAccount) {
+                logger.info('Mint account found', { 
+                  nftMint, 
+                  attempt, 
+                  commitment,
+                  owner: mintAccount.owner.toBase58(),
+                  lamports: mintAccount.lamports
+                });
+                break; // Found it, exit retry loop
+              } else {
+                logger.warn(`Mint account not found (attempt ${attempt}/${maxRetries})`, { 
+                  nftMint, 
+                  attempt,
+                  commitment
+                });
+              }
+            } catch (error: any) {
+              logger.warn(`Error checking mint account (attempt ${attempt}/${maxRetries})`, { 
+                nftMint, 
+                error: error.message,
+                attempt,
+                stack: error.stack
+              });
+            }
+            
+            if (attempt < maxRetries) {
+              // Exponential backoff: 3s, 5s, 7s, 9s
+              const delay = initialRetryDelay + (attempt - 1) * 2000;
+              logger.info(`Waiting ${delay}ms before retry ${attempt + 1}`, { nftMint });
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+          }
+          
+          if (!mintAccount) {
+            // Final check: try to get the account with 'finalized' commitment one more time
+            try {
+              mintAccount = await this.connection.getAccountInfo(nftMintPubkeySolana, 'finalized');
+              if (mintAccount) {
+                logger.info('Mint account found on final check with finalized commitment', { nftMint });
+              }
+            } catch (finalError: any) {
+              logger.error('Final check for mint account also failed', { 
+                nftMint, 
+                error: finalError.message 
+              });
+            }
+          }
+          
+          if (!mintAccount) {
+            // Mint account doesn't exist - this means the NFT hasn't been minted yet or mint failed
+            const explorerUrl = `https://explorer.solana.com/address/${nftMint}?cluster=devnet`;
+            throw new Error(
+              `Mint account not found: ${nftMint}. ` +
+              `The NFT may not have been minted yet, the mint transaction may have failed, or it may not be confirmed. ` +
+              `Please verify the mint transaction was successful. ` +
+              `Check: ${explorerUrl}`
+            );
+          }
+          
+          logger.info('Mint account verified successfully', { nftMint });
+          
+          // Create metadata account with all required fields
+          // Convert basis points to percentage (500 basis points = 5.0%)
+          const sellerFeeBasisPoints = box?.sellerFeeBasisPoints || 500;
+          const sellerFeePercent = sellerFeeBasisPoints / 100; // Convert to percentage (500 -> 5.0)
+          
+          tx = await createV1(this.umi, {
+            mint: nftMintPubkeyUmi,
+            authority: this.umi.payer,
+            name: skinFullName,
+            uri: metadataUri,
+            sellerFeeBasisPoints: percentAmount(sellerFeePercent, 2), // Use box royalty or default 5%
+            symbol: box?.symbol || 'SKIN',
+            creators: [{
+              address: this.umi.payer.publicKey,
+              share: 100,
+              verified: true,
+            }],
+            collection: collectionMint ? {
+              key: collectionMint,
+              verified: false,
+            } : undefined,
+            isMutable: true, // Allow future updates
+          }).sendAndConfirm(this.umi);
+          
+          logger.info('Metadata account created successfully', { nftMint, txSignature: tx.signature });
+        } else {
+          // Re-throw if it's a different error
+          logger.error('Unexpected error fetching metadata', { nftMint, error: errorMessage, fullError: error });
+          throw error;
+        }
+      }
 
       // Convert tx.signature to base58 string (Solana format)
       // It might be base64 string, base58 string, or Uint8Array/Buffer

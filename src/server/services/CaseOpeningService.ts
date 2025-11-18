@@ -388,12 +388,12 @@ export class CaseOpeningService {
 
       // Create a case opening record for activity tracking
       // For pack openings, we'll use a default loot box type ID since pack openings
-      // Get box price for pack openings
-      let boxPriceSol = 0;
+      // Get box price for pack openings (use USDC)
+      let boxPriceUsdc = 0;
       if (data.isPackOpening) {
         const boxRepository = AppDataSource.getRepository(Box);
         const box = await boxRepository.findOne({ where: { id: data.lootBoxTypeId } });
-        boxPriceSol = box?.priceSol || 0;
+        boxPriceUsdc = box?.priceUsdc ? Number(box.priceUsdc) : 0;
       }
 
       // Pack openings don't need a lootBoxTypeId (it's nullable now)
@@ -410,7 +410,7 @@ export class CaseOpeningService {
         skinValue: data.skinValue,
         skinImage: data.skinImage,
         isPackOpening: data.isPackOpening,
-        boxPriceSol: boxPriceSol, // Store box price for pack openings
+        boxPriceUsdc: boxPriceUsdc, // Store box price in USDC for pack openings
         openedAt: new Date(),
         completedAt: new Date(), // Pack openings are immediately completed
         userDecision: UserDecision.KEEP, // Default to keep for pack openings

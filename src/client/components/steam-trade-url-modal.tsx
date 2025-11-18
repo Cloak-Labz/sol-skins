@@ -154,7 +154,7 @@ export function SteamTradeUrlModal({
                   </p>
                   <p className="text-xs sm:text-sm text-zinc-300">
                     Without a Steam Trade URL, you won't be able to claim skins
-                    to your Steam account. You can still sell them for SOL
+                    to your Steam account. You can still sell them for USDC
                     payout.
                   </p>
                 </div>

@@ -6,10 +6,10 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Format currency values
-export const formatCurrency = (value: number, currency: 'USD' | 'SOL' = 'USD'): string => {
+export const formatCurrency = (value: number, currency: 'USD' | 'USDC' = 'USD'): string => {
   const formatter = new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: currency === 'USD' ? 'USD' : 'USD', // SOL will be displayed as USD for now
+    currency: currency === 'USD' ? 'USD' : 'USD', // USDC will be displayed as USD for now
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
@@ -17,9 +17,9 @@ export const formatCurrency = (value: number, currency: 'USD' | 'SOL' = 'USD'): 
   return formatter.format(value);
 };
 
-// Format SOL values
-export const formatSOL = (value: number): string => {
-  return `${value.toFixed(4)} SOL`;
+// Format USDC values
+export const formatUSDC = (value: number): string => {
+  return `${value.toFixed(4)} USDC`;
 };
 
 // Format percentages
