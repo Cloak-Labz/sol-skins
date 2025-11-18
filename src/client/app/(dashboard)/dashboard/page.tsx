@@ -1,9 +1,69 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Package } from "lucide-react";
 import { boxesService, type Box } from "@/lib/services/boxes.service";
 import { activityService } from "@/lib/services/activity.service";
 import type { ActivityItem } from "@/lib/types/api";
+
+function PullCard({ pull }: { pull: ActivityItem }) {
+  const [imageError, setImageError] = useState(false);
+  const normalizeImageUrl = (url?: string | null) => {
+    if (!url) return undefined;
+    const trimmed = url.trim();
+    if (!trimmed) return undefined;
+    if (trimmed.startsWith("ipfs://")) {
+      const hash = trimmed.replace("ipfs://", "").replace(/^\/+/, "");
+      return hash ? `https://ipfs.io/ipfs/${hash}` : undefined;
+    }
+    if (trimmed.startsWith("ar://")) {
+      const txId = trimmed.replace("ar://", "").replace(/^\/+/, "");
+      return txId ? `https://arweave.net/${txId}` : undefined;
+    }
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    if (/^ipfs\.io\//i.test(trimmed)) {
+      return `https://${trimmed}`;
+    }
+    return undefined;
+  };
+  
+  const imageSrc = normalizeImageUrl(
+    pull.skin?.imageUrl ?? (pull as any)?.skin?.metadata?.image
+  );
+
+  return (
+    <div className="group rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden relative">
+      <div className="absolute inset-0 opacity-50 group-hover:opacity-90 transition-opacity duration-500 pointer-events-none">
+        <div className="absolute -inset-6 bg-gradient-to-br from-[#E99500]/60 via-transparent to-transparent blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#E99500]/15 via-transparent to-transparent" />
+      </div>
+      <div className="relative aspect-[3/4] bg-zinc-900/60 flex items-center justify-center p-3 transition-transform duration-500 group-hover:scale-[1.02]">
+        {imageSrc && !imageError ? (
+          <img
+            src={imageSrc}
+            alt={pull.skin?.skinName || "Skin"}
+            className="w-full h-full object-contain rounded-md"
+            loading="lazy"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <Package className="w-12 h-12 sm:w-16 sm:h-16 text-zinc-600" />
+        )}
+      </div>
+      <div className="p-3 space-y-1">
+        <div className="text-[11px] text-zinc-400">Just revealed</div>
+        <div className="text-xs text-white truncate">
+          {pull.skin?.skinName || "Unknown"}
+        </div>
+        <div className="text-[11px] text-zinc-500">
+          Claw Machine • {pull.lootBox?.name || "Pack"}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const [pulls, setPulls] = useState<ActivityItem[]>([]);
@@ -202,53 +262,9 @@ export default function DashboardPage() {
                 <div>Nothing here yet</div>
               </div>
             )}
-            {pulls.slice(0, 6).map((p) => {
-              const imageSrc = normalizeImageUrl(
-                p.skin?.imageUrl ?? (p as any)?.skin?.metadata?.image
-              );
-
-              return (
-                <div
-                  key={p.id}
-                className="group rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden relative"
-                >
-                  <div className="absolute inset-0 opacity-50 group-hover:opacity-90 transition-opacity duration-500 pointer-events-none">
-                    <div className="absolute -inset-6 bg-gradient-to-br from-[#E99500]/60 via-transparent to-transparent blur-3xl" />
-                    <div className="absolute inset-0 bg-gradient-to-b from-[#E99500]/15 via-transparent to-transparent" />
-                  </div>
-                  <div className="relative aspect-[3/4] bg-zinc-900/60 flex items-center justify-center p-3 transition-transform duration-500 group-hover:scale-[1.02]">
-                    {imageSrc ? (
-                      <img
-                        src={imageSrc}
-                        alt={p.skin?.skinName || "Skin"}
-                        className="w-full h-full object-contain rounded-md"
-                        loading="lazy"
-                        onError={(event) => {
-                          const target = event.currentTarget;
-                          target.onerror = null;
-                          target.src = "/assets/banner2.jpg";
-                        }}
-                      />
-                    ) : (
-                      <img
-                        src="/assets/banner2.jpg"
-                        alt="pull"
-                        className="w-full h-full object-contain rounded-md opacity-90"
-                      />
-                    )}
-                  </div>
-                  <div className="p-3 space-y-1">
-                    <div className="text-[11px] text-zinc-400">Just revealed</div>
-                    <div className="text-xs text-white truncate">
-                      {p.skin?.skinName || "Unknown"}
-                    </div>
-                    <div className="text-[11px] text-zinc-500">
-                      Claw Machine • {p.lootBox?.name || "Pack"}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+            {pulls.slice(0, 6).map((p) => (
+              <PullCard key={p.id} pull={p} />
+            ))}
           </div>
         </section>
       </div>
