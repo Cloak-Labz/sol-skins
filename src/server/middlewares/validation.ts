@@ -82,6 +82,15 @@ export const schemas = {
     message: Joi.string().optional(),
     nonce: Joi.string().min(8).max(255).optional(),
     timestamp: Joi.number().integer().optional(),
+    referredByUsername: Joi.string()
+      .min(1)
+      .max(50)
+      .pattern(/^[a-zA-Z0-9_\- ]+$/)
+      .optional()
+      .allow(null, '')
+      .messages({
+        'string.pattern.base': 'Referral username can only contain alphanumeric characters, underscores, hyphens, and spaces',
+      }),
   }),
 
   updateProfile: Joi.object({

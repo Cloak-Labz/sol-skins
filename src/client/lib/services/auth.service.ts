@@ -9,12 +9,14 @@ class AuthService {
   async connectWallet(
     walletAddress: string,
     signature?: string,
-    message?: string
+    message?: string,
+    referredByUsername?: string
   ): Promise<{ user: User; token: string; message: string }> {
     const request: ConnectWalletRequest = {
       walletAddress,
       signature,
       message,
+      referredByUsername,
     };
 
     const response = await apiClient.post<{ user: User; token: string; message: string }>("/auth/connect", request);

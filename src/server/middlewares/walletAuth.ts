@@ -188,7 +188,7 @@ export class WalletAuthMiddleware {
         (req.headers['x-wallet-address'] as string) ||
         req.body.walletAddress || 
         req.query.walletAddress as string;
-      const { signature, message } = req.body;
+      const { signature, message, referredByUsername } = req.body;
 
       if (!walletAddress) {
         return next(new AppError('Wallet address required', 400, 'MISSING_WALLET'));
@@ -208,7 +208,7 @@ export class WalletAuthMiddleware {
       if (!user) {
         try {
           // Create new user for this wallet
-          user = await this.userService.createUser(walletAddress);
+          user = await this.userService.createUser(walletAddress, undefined, referredByUsername);
         } catch (error: any) {
           // If user was created between our check and create (race condition), fetch again
           if (error.code === 'USER_EXISTS') {
@@ -369,12 +369,13 @@ export class WalletAuthMiddleware {
       accountLockoutService.resetFailedAttempts(walletAddress);
 
       // Find or create user by wallet address
+      const referredByUsername = req.body.referredByUsername;
       let user = await this.userService.findByWalletAddress(walletAddress);
       
       if (!user) {
         try {
           // Create new user for this wallet
-          user = await this.userService.createUser(walletAddress);
+          user = await this.userService.createUser(walletAddress, undefined, referredByUsername);
         } catch (error: any) {
           // If user was created between our check and create (race condition), fetch again
           if (error.code === 'USER_EXISTS') {

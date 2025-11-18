@@ -47,12 +47,17 @@ export function WalletConnect() {
       lastAttemptRef.current = now;
       connectingRef.current = true;
 
+      // Get referral username from sessionStorage if available
+      const referralUsername = typeof window !== 'undefined' 
+        ? sessionStorage.getItem('referral_username') 
+        : null;
+
       // Connect to backend with timeout
       const timeout = setTimeout(() => {
         connectingRef.current = false;
       }, 10000); // 10s timeout
 
-      connectWallet(walletAddress)
+      connectWallet(walletAddress, undefined, undefined, referralUsername || undefined)
         .then(() => {
           clearTimeout(timeout);
           // Only show success toast if this is a fresh connection (not auto-reconnect)

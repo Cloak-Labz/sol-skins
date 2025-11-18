@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
@@ -19,6 +19,7 @@ import {
 import { motion } from "framer-motion";
 import dynamic from "next/dynamic";
 import Footer from "@/components/footer";
+import { useSearchParams } from "next/navigation";
 
 // Dynamic import for 3D components to avoid SSR issues
 const FloatingBox = dynamic(() => import("@/components/floating-box"), {
@@ -30,7 +31,36 @@ const FloatingBox = dynamic(() => import("@/components/floating-box"), {
   ),
 });
 
-export default function LandingPage() {
+function LandingPageContent() {
+  const searchParams = useSearchParams();
+
+
+  // Read invite query parameter and store in sessionStorage immediately (synchronously)
+  // This ensures it's saved before any navigation happens
+  const inviteParam = searchParams.get('invite');
+  
+  if (inviteParam && typeof window !== 'undefined') {
+    // Store referral username in sessionStorage immediately
+    // It will be used when the user connects their wallet
+    const currentReferral = sessionStorage.getItem('referral_username');
+    
+    if (!currentReferral || currentReferral !== inviteParam) {
+      sessionStorage.setItem('referral_username', inviteParam);
+    }
+  }
+
+  // Also use useEffect as backup to handle URL changes
+  useEffect(() => {
+    const inviteParam = searchParams.get('invite');
+    
+    if (inviteParam && typeof window !== 'undefined') {
+      const currentReferral = sessionStorage.getItem('referral_username');
+      if (!currentReferral || currentReferral !== inviteParam) {
+        sessionStorage.setItem('referral_username', inviteParam);
+      }
+    }
+  }, [searchParams]);
+
   return (
     <div className="min-h-screen bg-black">
       {/* Landing Page Header */}
@@ -621,5 +651,17 @@ export default function LandingPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function LandingPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-[#E99500]" />
+      </div>
+    }>
+      <LandingPageContent />
+    </Suspense>
   );
 }
