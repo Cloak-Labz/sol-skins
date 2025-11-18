@@ -30,6 +30,7 @@ export const corsOptions: cors.CorsOptions = {
         'http://localhost:4000',
         'https://dust3.vercel.app',
         'https://dust3.fun',
+        'https://www.dust3.fun',
       ];
     }
 
