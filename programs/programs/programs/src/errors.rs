@@ -13,6 +13,15 @@ pub enum ErrorCode {
     
     #[msg("Invalid treasury account")]
     InvalidTreasury,
+
+    #[msg("Invalid treasury USDC token account")]
+    InvalidTreasuryTokenAccount,
+
+    #[msg("Invalid user USDC token account")]
+    InvalidUserTokenAccount,
+    
+    #[msg("Invalid USDC mint provided")]
+    InvalidUsdcMint,
     
     #[msg("Invalid collection mint")]
     InvalidCollectionMint,

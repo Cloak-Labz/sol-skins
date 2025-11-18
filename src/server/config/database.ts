@@ -57,9 +57,9 @@ export const AppDataSource = new DataSource({
     // Connection timeout (how long to wait for initial connection)
     connectionTimeoutMillis: 10000, // 10 seconds
     // Statement timeout (how long a query can run before being cancelled)
-    statement_timeout: 5000, // 5 seconds (PostgreSQL specific)
+    statement_timeout: 30000, // 30 seconds (PostgreSQL specific) - increased for complex queries with relations
     // Query timeout (TypeORM specific, applies to all queries)
-    query_timeout: 5000, // 5 seconds
+    query_timeout: 30000, // 30 seconds - increased for complex queries with relations
     // Connection pool settings
     max: 20, // Maximum number of connections in pool
     idleTimeoutMillis: 30000, // Close idle connections after 30 seconds

@@ -16,10 +16,20 @@ export class UserService {
 
   async findById(id: string): Promise<User | null> {
     try {
-      return await this.userRepository.findOne({
-        where: { id },
-        relations: ['skins', 'transactions'],
-      });
+      // Use query builder with extended timeout for complex queries with relations
+      const { queryBuilderWithTimeout, getTimeoutForOperation } = require('../utils/queryTimeout');
+      const timeout = getTimeoutForOperation('complex'); // 30 seconds for queries with relations
+      
+      return await queryBuilderWithTimeout(
+        this.userRepository
+          .createQueryBuilder('user')
+          .leftJoinAndSelect('user.skins', 'skins')
+          .leftJoinAndSelect('user.transactions', 'transactions')
+          .where('user.id = :id', { id })
+          .getOne(),
+        timeout,
+        'findById'
+      );
     } catch (error) {
       logger.error('Error finding user by ID:', error);
       throw new AppError('Failed to find user', 500);
@@ -28,10 +38,20 @@ export class UserService {
 
   async findByWalletAddress(walletAddress: string): Promise<User | null> {
     try {
-      const user = await this.userRepository.findOne({
-        where: { walletAddress },
-        relations: ['skins', 'transactions'],
-      });
+      // Use query builder with extended timeout for complex queries with relations
+      const { queryBuilderWithTimeout, getTimeoutForOperation } = require('../utils/queryTimeout');
+      const timeout = getTimeoutForOperation('complex'); // 30 seconds for queries with relations
+      
+      const user = await queryBuilderWithTimeout(
+        this.userRepository
+          .createQueryBuilder('user')
+          .leftJoinAndSelect('user.skins', 'skins')
+          .leftJoinAndSelect('user.transactions', 'transactions')
+          .where('user.walletAddress = :walletAddress', { walletAddress })
+          .getOne(),
+        timeout,
+        'findByWalletAddress'
+      );
 
       // Always execute a dummy query to mask timing differences
       // This prevents attackers from knowing if a wallet exists or not

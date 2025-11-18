@@ -173,7 +173,7 @@ export default function DashboardPage() {
                       {p.name}
                     </div>
                     <div className="text-zinc-400 text-sm mb-3">
-                      {Number(p.priceSol).toFixed(2)} SOL
+                      {Math.floor(Number(p.priceUsdc || 0))} USDC
                     </div>
                     <div className="mt-auto">
                       <a

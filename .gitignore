@@ -131,3 +131,4 @@ keypair.json
 .DS_Store
 true-machine
 src/client/.yarn
+keypairs/

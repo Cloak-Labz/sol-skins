@@ -1,13 +1,5 @@
-import { AnchorProvider, Program, Wallet } from "@coral-xyz/anchor";
-import { Connection, Keypair, PublicKey } from "@solana/web3.js";
-import IDL from "./skinvault.json";
+import { Connection, Keypair } from "@solana/web3.js";
 import fs from "fs";
-import path from "path";
-
-// Program ID
-export const PROGRAM_ID = new PublicKey(
-  "44UwMzMZUcobRp4YyucjvAbBeTFJ3uBPxg7YqwHS2ncp"
-);
 
 // Get cluster from environment
 export const CLUSTER = (process.env.SOLANA_CLUSTER || "devnet") as
@@ -65,29 +57,6 @@ export function loadAdminWallet(): Keypair {
 }
 
 /**
- * Get Anchor provider with admin wallet
- */
-export function getProvider(): AnchorProvider {
-  const adminWallet = loadAdminWallet();
-  const connection = new Connection(RPC_ENDPOINT, "confirmed");
-
-  const wallet = new Wallet(adminWallet);
-
-  return new AnchorProvider(connection, wallet, {
-    commitment: "confirmed",
-    preflightCommitment: "confirmed",
-  });
-}
-
-/**
- * Get SkinVault program instance
- */
-export function getProgram(): Program {
-  const provider = getProvider();
-  return new Program(IDL as any, provider);
-}
-
-/**
  * Get connection (readonly)
  * Note: Use sendRawTransactionWithTimeout and confirmTransactionWithTimeout
  * from utils/solanaHelpers for operations with timeout protection
@@ -99,4 +68,3 @@ export function getConnection(): Connection {
 console.log(`✅ Solana client initialized`);
 console.log(`   Cluster: ${CLUSTER}`);
 console.log(`   RPC: ${RPC_ENDPOINT}`);
-console.log(`   Program ID: ${PROGRAM_ID.toBase58()}`);

@@ -352,10 +352,10 @@ export default function PacksPage() {
     
     if (params.kind === "buyback") {
       if (params.skin) {
-        text = `Just cashed out ${params.skin.name} for ${params.amountSol.toFixed(3)} SOL on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
+        text = `Just cashed out ${params.skin.name} for ${Math.floor(params.amountSol)} USDC on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
       } else {
         // Fallback if skin is not available
-        text = `Just cashed out for ${params.amountSol.toFixed(3)} SOL on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
+        text = `Just cashed out for ${Math.floor(params.amountSol)} USDC on @DUST3fun 💰\n\nInstant payout, no waiting.\n\nTry your luck: ${packUrl}`;
       }
     } else {
       text = `Claimed ${params.skin.name} to my Steam inventory through @DUST3fun! 🎮\n\nReal CS2 skins, on-chain fairness.\n\nOpen packs: ${packUrl}`;
@@ -873,7 +873,7 @@ export default function PacksPage() {
 
       dismissBuybackToast();
       buybackToastIdRef.current = toast.loading(
-        `Buyback: ${calcData.buybackAmount.toFixed(3)} SOL - Requesting transaction...`
+        `Buyback: ${Math.floor(calcData.buybackAmount)} USDC - Requesting transaction...`
       );
 
       // Request buyback transaction using buybackService
@@ -901,7 +901,7 @@ export default function PacksPage() {
       const rawTransaction = signedTx.serialize();
 
       dismissBuybackToast();
-      buybackToastIdRef.current = toast.loading("Confirming buyback...");
+      buybackToastIdRef.current = toast.loading("Confirming USDC buyback...");
 
       try {
         // Confirm buyback using buybackService
@@ -948,7 +948,7 @@ export default function PacksPage() {
 
         // Show summary modal
         const packPrice = selectedPack
-          ? parseFloat(String((selectedPack as any).priceSol))
+          ? parseFloat(String((selectedPack as any).priceUsdc || 0))
           : 0;
         const payout = Number(confirmData.amountPaid ?? 0);
         setBuybackAmountSol(payout);
@@ -1021,7 +1021,7 @@ export default function PacksPage() {
     }
   }, [showResult, lastPackResult?.asset]);
 
-  // Fetch and cache buyback calculation (SOL/USD) whenever showResult && lastPackResult is set
+  // Fetch and cache buyback calculation (USDC) whenever showResult && lastPackResult is set
   useEffect(() => {
     if (showResult && lastPackResult?.asset) {
       setPendingBuybackInfo(null);
@@ -1431,8 +1431,8 @@ export default function PacksPage() {
                         return (
                           <div className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white">
                             {payoutVal > 0
-                              ? `+${payoutVal.toFixed(3)} SOL`
-                              : `+0.00 SOL`}
+                          ? `+${Math.floor(payoutVal)} USDC`
+                          : `+0 USDC`}
                           </div>
                         );
                       })()}
@@ -1448,9 +1448,9 @@ export default function PacksPage() {
                       <div className="text-white/70 text-xs sm:text-sm">Pack Price</div>
                       <div className="text-white font-semibold text-xl sm:text-2xl mt-1">
                         {selectedPack
-                          ? `${parseFloat(
-                              String((selectedPack as any).priceSol)
-                            ).toFixed(2)} SOL`
+                          ? `${Math.floor(parseFloat(
+                              String((selectedPack as any).priceUsdc || 0)
+                            ))} USDC`
                           : "—"}
                       </div>
                     </div>
@@ -1460,7 +1460,7 @@ export default function PacksPage() {
                       <div className="text-white/70 text-xs sm:text-sm">Payout</div>
                       <div className="text-white font-semibold text-xl sm:text-2xl mt-1">
                         {buybackAmountSol !== null
-                          ? `${Number(buybackAmountSol).toFixed(2)} SOL`
+                          ? `${Math.floor(Number(buybackAmountSol))} USDC`
                           : "—"}
                       </div>
                     </div>
@@ -1532,14 +1532,14 @@ export default function PacksPage() {
                 {/* Devnet Info */}
                 {(process.env.NEXT_PUBLIC_SOLANA_NETWORK || "").toLowerCase().includes("devnet") && (
                   <p className="text-xs text-zinc-400 mt-2">
-                    Testing on Solana Devnet: This uses test SOL with no real value.{" "}
+                    Testing on Solana Devnet: This uses test USDC with no real value.{" "}
                     <a
-                      href="https://faucet.solana.com/"
+                      href="https://faucet.circle.com/"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[#E99500] hover:text-[#FFB84D] underline transition-colors"
                     >
-                      Get free test SOL from the faucet
+                      Get free test USDC from the faucet
                     </a>
                   </p>
                 )}
@@ -1623,7 +1623,7 @@ export default function PacksPage() {
                             {pack.name}
                           </p>
                           <p className="text-[10px] text-zinc-400">
-                            {parseFloat(pack.priceSol).toFixed(2)} SOL
+                            {Math.floor(parseFloat(String(pack.priceUsdc || 0)))} USDC
                           </p>
                         </div>
                       </div>
@@ -1650,20 +1650,15 @@ export default function PacksPage() {
                   <div className="text-right">
                     <p className="text-3xl font-bold text-foreground">
                       {selectedPack
-                        ? parseFloat(selectedPack.priceSol).toFixed(2)
+                        ? Math.floor(parseFloat(String(selectedPack.priceUsdc || 0)))
                         : "—"}{" "}
-                      SOL
+                      USDC
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {selectedPack
                         ? (() => {
-                            const priceSol = Number(selectedPack.priceSol ?? 0);
-                            const priceUsd =
-                              selectedPack.priceUsd ??
-                              selectedPack.priceUsdc ??
-                              (selectedPack.solPriceUsd
-                                ? priceSol * Number(selectedPack.solPriceUsd)
-                                : undefined);
+                            const priceUsdc = Number(selectedPack.priceUsdc ?? 0);
+                            const priceUsd = priceUsdc; // USDC is 1:1 with USD
                             return priceUsd !== undefined && !Number.isNaN(priceUsd)
                               ? `$${Number(priceUsd).toFixed(2)}`
                               : "";
@@ -1954,7 +1949,7 @@ export default function PacksPage() {
                       >
                         {wonSkin.rarity.toUpperCase()} •
                         {typeof pendingBuybackInfo?.skinSol === "number"
-                          ? ` ${pendingBuybackInfo.skinSol.toFixed(3)} SOL`
+                          ? ` ${Math.floor(pendingBuybackInfo.skinSol)} USDC`
                           : "Market value: —"}
                       </p>
                     </div>
@@ -1975,7 +1970,7 @@ export default function PacksPage() {
                             {typeof pendingBuybackInfo?.payoutSol === "number"
                               ? `≈ +${pendingBuybackInfo.payoutSol.toFixed(
                                   3
-                                )} SOL`
+                                )} USDC`
                               : "Calculated on next step"}
                           </div>
                         </div>

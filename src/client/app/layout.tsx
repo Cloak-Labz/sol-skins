@@ -20,11 +20,11 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "DUST3 - CS2 Skins Meet Web3",
   description:
-    "Open CS2 skin packs on Solana. Provably fair drops, instant SOL payouts, or claim to Steam. Real skins, real value.",
+    "Open CS2 skin packs on Solana. Provably fair drops, instant USDC payouts, or claim to Steam. Real skins, real value.",
   openGraph: {
     title: "DUST3 - CS2 Skins Meet Web3",
     description:
-      "Open CS2 skin packs on Solana. Provably fair drops, instant SOL payouts, or claim to Steam. Real skins, real value.",
+      "Open CS2 skin packs on Solana. Provably fair drops, instant USDC payouts, or claim to Steam. Real skins, real value.",
     type: "website",
     siteName: "DUST3",
     images: [
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     creator: "@DUST3fun",
     title: "DUST3 - CS2 Skins Meet Web3",
     description:
-      "Open CS2 skin packs on Solana. Provably fair drops, instant SOL payouts, or claim to Steam.",
+      "Open CS2 skin packs on Solana. Provably fair drops, instant USDC payouts, or claim to Steam.",
     images: ["/assets/banner2.png"],
   },
 };

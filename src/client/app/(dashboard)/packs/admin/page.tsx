@@ -851,13 +851,13 @@ export default function PackManagerPage() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label htmlFor="draft-box-price">Price (SOL)</Label>
+                        <Label htmlFor="draft-box-price">Price (USDC)</Label>
                         <Input
                           id="draft-box-price"
                           type="number"
                           step="0.01"
-                          value={draftBox.priceSol}
-                          onChange={(e) => setDraftBox({ ...draftBox, priceSol: parseFloat(e.target.value) || 0 })}
+                          value={draftBox.priceUsdc}
+                          onChange={(e) => setDraftBox({ ...draftBox, priceUsdc: parseFloat(e.target.value) || 0 })}
                           placeholder="0.00"
                         />
                       </div>
@@ -1199,7 +1199,7 @@ export default function PackManagerPage() {
                               </Badge>
                                 </div>
                             <p className="text-sm text-muted-foreground">
-                              <span className="font-medium text-foreground">{box.itemsAvailable}/{box.totalItems}</span> items available • {box.priceSol} SOL • {box.symbol}
+                              <span className="font-medium text-foreground">{box.itemsAvailable}/{box.totalItems}</span> items available • {Math.floor(Number(box.priceUsdc || 0))} USDC • {box.symbol}
                             </p>
                             {box.description && (
                               <p className="text-xs text-muted-foreground mt-1">

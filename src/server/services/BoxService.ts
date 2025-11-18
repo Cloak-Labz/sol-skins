@@ -50,16 +50,18 @@ export class BoxService {
   }
 
   private formatBoxPricing(box: Box, solPriceUsd: number) {
+    // Use priceUsdc as primary, fallback to priceSol conversion if needed
+    const priceUsdcNumber = Number(box.priceUsdc ?? 0);
     const priceSolNumber = Number(box.priceSol ?? 0);
-    const storedUsd = Number(box.priceUsdc ?? 0);
-    const computedUsd =
-      storedUsd > 0 ? storedUsd : Number((priceSolNumber * solPriceUsd).toFixed(2));
+    const computedUsdc = priceUsdcNumber > 0 
+      ? priceUsdcNumber 
+      : (priceSolNumber > 0 ? Number((priceSolNumber * solPriceUsd).toFixed(2)) : 0);
 
     return {
       ...box,
-      priceSol: priceSolNumber,
-      priceUsdc: computedUsd,
-      priceUsd: computedUsd,
+      priceSol: priceSolNumber, // Legacy field
+      priceUsdc: computedUsdc, // Primary field for pack openings
+      priceUsd: computedUsdc, // USDC is 1:1 with USD
       solPriceUsd,
     };
   }

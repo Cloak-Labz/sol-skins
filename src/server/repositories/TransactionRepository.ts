@@ -250,8 +250,12 @@ export class TransactionRepository {
       let priceSol = 0;
       let priceUsd = 0;
       
-      // Try to get price from boxPriceSol first (for pack openings)
-      if (opening.boxPriceSol) {
+      // Try to get price from boxPriceUsdc first (for pack openings - USDC)
+      if (opening.boxPriceUsdc) {
+        priceUsd = Number(opening.boxPriceUsdc); // USDC is 1:1 with USD
+        priceSol = 0; // Not used for pack openings
+      } else if (opening.boxPriceSol) {
+        // Legacy: fallback to boxPriceSol if boxPriceUsdc not set
         priceSol = Number(opening.boxPriceSol);
         priceUsd = priceSol * SOL_TO_USD; // Convert SOL to USD
       } else if (opening.lootBoxType) {

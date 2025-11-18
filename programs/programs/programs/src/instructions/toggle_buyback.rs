@@ -6,7 +6,7 @@ use crate::errors::ErrorCode;
 pub struct ToggleBuyback<'info> {
     #[account(
         mut,
-        seeds = [b"buyback_config"],
+        seeds = [b"buyback_config_v4"],
         bump = buyback_config.config_bump,
     )]
     pub buyback_config: Account<'info, BuyBackConfig>,

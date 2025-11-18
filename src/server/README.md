@@ -130,8 +130,7 @@ npm run schema:sync         # Sync schema (dev only)
 ## Solana Integration
 
 The backend integrates with:
-- **Anchor Program** - Smart contracts
-- **Switchboard VRF** - Verifiable randomness
+- **Anchor Program** - Smart contracts (buyback program)
 - **Solana Web3.js** - Blockchain interaction
 - **NFT Minting** - Creating skins as NFTs
 

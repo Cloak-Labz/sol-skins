@@ -90,7 +90,6 @@ const envSchema = Joi.object({
   
   // Solana
   SOLANA_RPC_URL: Joi.string().required(),
-  PROGRAM_ID: Joi.string().required(),
   
   // Buyback Program
   BUYBACK_PROGRAM_ID: Joi.string().required(),
@@ -119,6 +118,8 @@ const envSchema = Joi.object({
       'string.min': 'ADMIN_WALLET_PRIVATE_KEY appears to be invalid',
     }),
   BUYBACK_RATE: Joi.number().default(0.85),
+  // USDC Mint (devnet: 4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU)
+  USDC_MINT: Joi.string().optional(),
   
   // Admin authorization (public addresses only - no private keys)
   ADMIN_WALLETS: Joi.string()
@@ -188,13 +189,13 @@ export const config = {
   
   solana: {
     rpcUrl: envVars.SOLANA_RPC_URL,
-    programId: envVars.PROGRAM_ID,
   },
   
   buyback: {
     programId: envVars.BUYBACK_PROGRAM_ID,
     adminWalletPrivateKey: envVars.ADMIN_WALLET_PRIVATE_KEY,
     buybackRate: envVars.BUYBACK_RATE,
+    usdcMint: envVars.USDC_MINT || '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU', // Devnet USDC default
   },
   
   admin: {

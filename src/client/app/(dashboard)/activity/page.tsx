@@ -569,17 +569,17 @@ export default function ActivityPage() {
                         {activity.type === "case_opened"
                           ? `-${
                               activity.amount?.sol
-                                ? parseFloat(
+                                ? Math.floor(parseFloat(
                                     activity.amount.sol.toString()
-                                  ).toFixed(2)
+                                  ))
                                 : "0"
-                            } SOL`
+                            } USDC`
                           : activity.type === "payout"
                           ? `+${formatCurrency(activity.amount?.usd || 0)}`
                           : activity.amount
-                          ? `${parseFloat(
+                          ? `${Math.floor(parseFloat(
                               activity.amount.sol.toString()
-                            ).toFixed(2)} SOL`
+                            ))} USDC`
                           : formatCurrency(
                               parseFloat(activity.skin?.valueUsd || "0")
                             )}

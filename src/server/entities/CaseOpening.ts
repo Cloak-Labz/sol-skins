@@ -67,9 +67,13 @@ export class CaseOpening {
   @Column({ type: 'boolean', default: false })
   isPackOpening: boolean;
 
-  // Box price for pack openings
+  // Box price for pack openings (legacy - use boxPriceUsdc)
   @Column({ type: 'decimal', precision: 10, scale: 4, nullable: true })
   boxPriceSol?: number;
+
+  // Box price in USDC for pack openings
+  @Column({ type: 'decimal', precision: 10, scale: 2, nullable: true })
+  boxPriceUsdc?: number;
 
   // User decision
   @Column({

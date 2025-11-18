@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_lang::system_program;
-use anchor_spl::token::{self, Token, TokenAccount, Mint, Burn};
+use anchor_spl::token::{self, Token, TokenAccount, Mint, Burn, Transfer};
 use crate::state::BuyBackConfig;
 use crate::errors::ErrorCode;
 
@@ -8,7 +7,7 @@ use crate::errors::ErrorCode;
 pub struct ExecuteBuyback<'info> {
     #[account(
         mut,
-        seeds = [b"buyback_config"],
+        seeds = [b"buyback_config_v4"],
         bump = buyback_config.config_bump,
     )]
     pub buyback_config: Account<'info, BuyBackConfig>,
@@ -16,19 +15,36 @@ pub struct ExecuteBuyback<'info> {
     #[account(mut)]
     pub user: Signer<'info>,
     
-    /// CHECK: Treasury wallet
     #[account(mut)]
     pub treasury: Signer<'info>,
+
+    #[account(
+        mut,
+        constraint = treasury_usdc_account.owner == treasury.key() @ ErrorCode::InvalidTreasuryTokenAccount,
+        constraint = treasury_usdc_account.mint == usdc_mint.key() @ ErrorCode::InvalidUsdcMint,
+        constraint = treasury_usdc_account.key() == buyback_config.treasury_token_account @ ErrorCode::InvalidTreasuryTokenAccount,
+    )]
+    pub treasury_usdc_account: Account<'info, TokenAccount>,
+
+    #[account(
+        mut,
+        constraint = user_usdc_account.owner == user.key() @ ErrorCode::InvalidUserTokenAccount,
+        constraint = user_usdc_account.mint == usdc_mint.key() @ ErrorCode::InvalidUserTokenAccount,
+    )]
+    pub user_usdc_account: Account<'info, TokenAccount>,
+
+    #[account(
+        constraint = usdc_mint.key() == buyback_config.usdc_mint @ ErrorCode::InvalidUsdcMint,
+    )]
+    pub usdc_mint: Account<'info, Mint>,
     
     #[account(mut)]
     pub nft_mint: Account<'info, Mint>,
     
     #[account(mut)]
     pub user_nft_account: Account<'info, TokenAccount>,
-    
-    pub token_program: Program<'info, Token>,
 
-    pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
 }
 
 impl<'info> ExecuteBuyback<'info> {
@@ -61,7 +77,7 @@ impl<'info> ExecuteBuyback<'info> {
         }
         
         // Check 6: Treasury has funds
-        if self.treasury.lamports() < buyback_amount {
+        if self.treasury_usdc_account.amount < buyback_amount {
             return Err(ErrorCode::InsufficientTreasuryBalance.into());
         }
         
@@ -78,13 +94,14 @@ impl<'info> ExecuteBuyback<'info> {
             1,
         )?;
         
-        // Transfer SOL from treasury to user using system program
-        system_program::transfer(
+        // Transfer USDC from treasury token account to user token account
+        token::transfer(
             CpiContext::new(
-                self.system_program.to_account_info(),
-                anchor_lang::system_program::Transfer {
-                    from: self.treasury.to_account_info(),
-                    to: self.user.to_account_info(),
+                self.token_program.to_account_info(),
+                Transfer {
+                    from: self.treasury_usdc_account.to_account_info(),
+                    to: self.user_usdc_account.to_account_info(),
+                    authority: self.treasury.to_account_info(),
                 },
             ),
             buyback_amount,

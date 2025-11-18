@@ -135,8 +135,8 @@ if [ ! -z "$TOKEN" ]; then
         CASE_OPENING_ID="test-case-opening-id"
     fi
     
-    # Wait a moment for VRF processing (simulation)
-    echo "   Waiting for VRF processing..."
+    # Wait a moment for processing
+    echo "   Waiting for processing..."
     sleep 3
     
     # Test case opening status

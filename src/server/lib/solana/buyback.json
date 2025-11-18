@@ -1,5 +1,5 @@
 {
-  "address": "2ytrjrhp3XS72snNCzczVAZN11j5SXMu1qJiHAmNPg7F",
+  "address": "Gxe24iPJUAVuPCYye7qioNtk7UaJf9jVtQnfU2VzmjFJ",
   "metadata": {
     "name": "programs",
     "version": "0.1.0",
@@ -10,7 +10,7 @@
     {
       "name": "execute_buyback",
       "docs": [
-        "Execute a buyback: burn NFT and transfer SOL",
+        "Execute a buyback: burn NFT and transfer USDC",
         "Backend calculates buyback_amount based on skin price"
       ],
       "discriminator": [
@@ -45,7 +45,10 @@
                   110,
                   102,
                   105,
-                  103
+                  103,
+                  95,
+                  118,
+                  51
                 ]
               }
             ]
@@ -62,6 +65,17 @@
           "signer": true
         },
         {
+          "name": "treasury_usdc_account",
+          "writable": true
+        },
+        {
+          "name": "user_usdc_account",
+          "writable": true
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
           "name": "nft_mint",
           "writable": true
         },
@@ -72,10 +86,6 @@
         {
           "name": "token_program",
           "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
-        },
-        {
-          "name": "system_program",
-          "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
@@ -122,7 +132,10 @@
                   110,
                   102,
                   105,
-                  103
+                  103,
+                  95,
+                  118,
+                  51
                 ]
               }
             ]
@@ -135,6 +148,13 @@
         },
         {
           "name": "treasury"
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "treasury_usdc_account",
+          "writable": true
         },
         {
           "name": "collection_mint"
@@ -192,7 +212,10 @@
                   110,
                   102,
                   105,
-                  103
+                  103,
+                  95,
+                  118,
+                  51
                 ]
               }
             ]
@@ -249,36 +272,51 @@
     },
     {
       "code": 6004,
+      "name": "InvalidTreasuryTokenAccount",
+      "msg": "Invalid treasury USDC token account"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidUserTokenAccount",
+      "msg": "Invalid user USDC token account"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidUsdcMint",
+      "msg": "Invalid USDC mint provided"
+    },
+    {
+      "code": 6007,
       "name": "InvalidCollectionMint",
       "msg": "Invalid collection mint"
     },
     {
-      "code": 6005,
+      "code": 6008,
       "name": "InvalidNFTOwner",
       "msg": "User does not own the NFT"
     },
     {
-      "code": 6006,
+      "code": 6009,
       "name": "InvalidNFTMint",
       "msg": "Token account mint does not match NFT mint"
     },
     {
-      "code": 6007,
+      "code": 6010,
       "name": "InvalidNFTAmount",
       "msg": "Invalid NFT amount (must be 1)"
     },
     {
-      "code": 6008,
+      "code": 6011,
       "name": "MathOverflow",
       "msg": "Math operation overflow"
     },
     {
-      "code": 6009,
+      "code": 6012,
       "name": "InvalidMinBalance",
       "msg": "Minimum treasury balance too high"
     },
     {
-      "code": 6010,
+      "code": 6013,
       "name": "Unauthorized",
       "msg": "Unauthorized: Only authority can perform this action"
     }
@@ -295,6 +333,14 @@
           },
           {
             "name": "treasury",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury_token_account",
+            "type": "pubkey"
+          },
+          {
+            "name": "usdc_mint",
             "type": "pubkey"
           },
           {
