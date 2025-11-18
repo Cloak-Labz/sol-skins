@@ -1,7 +1,7 @@
 import { Connection, PublicKey, Keypair } from '@solana/web3.js';
 import { createUmi } from '@metaplex-foundation/umi-bundle-defaults';
 import { mplTokenMetadata, updateV1, fetchMetadataFromSeeds, createV1, findMetadataPda } from '@metaplex-foundation/mpl-token-metadata';
-import { publicKey as umiPublicKey, createSignerFromKeypair } from '@metaplex-foundation/umi';
+import { publicKey as umiPublicKey, createSignerFromKeypair, percentAmount } from '@metaplex-foundation/umi';
 import { config } from '../config/env';
 import { HttpService } from '../utils/httpService';
 import { AppDataSource } from '../config/database';
@@ -280,12 +280,16 @@ export class RevealService {
           logger.info('Mint account verified successfully', { nftMint });
           
           // Create metadata account with all required fields
+          // Convert basis points to percentage (500 basis points = 5.0%)
+          const sellerFeeBasisPoints = box?.sellerFeeBasisPoints || 500;
+          const sellerFeePercent = sellerFeeBasisPoints / 100; // Convert to percentage (500 -> 5.0)
+          
           tx = await createV1(this.umi, {
             mint: nftMintPubkeyUmi,
             authority: this.umi.payer,
             name: skinFullName,
             uri: metadataUri,
-            sellerFeeBasisPoints: box?.sellerFeeBasisPoints || 500, // Use box royalty or default 5%
+            sellerFeeBasisPoints: percentAmount(sellerFeePercent, 2), // Use box royalty or default 5%
             symbol: box?.symbol || 'SKIN',
             creators: [{
               address: this.umi.payer.publicKey,
