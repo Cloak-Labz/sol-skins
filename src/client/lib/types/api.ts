@@ -202,7 +202,7 @@ export interface LeaderboardEntry {
 
 export interface LeaderboardFilters {
   period?: 'all-time' | 'monthly' | 'weekly'
-  metric?: 'inventory-value' | 'cases-opened' | 'profit'
+  metric?: 'inventory-value' | 'cases-opened' | 'profit' | 'points'
   limit?: number
 }
 

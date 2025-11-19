@@ -13,7 +13,7 @@ export class LeaderboardController {
   getLeaderboard = catchAsync(async (req: Request, res: Response) => {
     const {
       period = 'all-time',
-      metric = 'inventory-value',
+      metric = 'points',
       limit = 100,
     } = req.query;
 
@@ -28,7 +28,7 @@ export class LeaderboardController {
 
   getUserRank = catchAsync(async (req: Request, res: Response) => {
     const userId = req.user!.id;
-    const { metric = 'inventory-value' } = req.query;
+    const { metric = 'points' } = req.query;
 
     const rank = await this.leaderboardService.getUserRank(userId, metric as any);
 

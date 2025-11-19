@@ -179,8 +179,8 @@ export const schemas = {
       .valid("all-time", "monthly", "weekly")
       .default("all-time"),
     metric: Joi.string()
-      .valid("inventory-value", "cases-opened", "profit")
-      .default("inventory-value"),
+      .valid("inventory-value", "cases-opened", "profit", "points")
+      .default("points"),
     limit: Joi.number().integer().min(1).max(1000).default(100),
   }),
 

@@ -16,7 +16,7 @@ export class LeaderboardService {
 
   async getLeaderboard(options: {
     period?: 'all-time' | 'monthly' | 'weekly';
-    metric?: 'inventory-value' | 'cases-opened' | 'profit';
+    metric?: 'inventory-value' | 'cases-opened' | 'profit' | 'points';
     limit?: number;
   }) {
     const limit = Math.min(options.limit || 100, 500); // Max 500 users
@@ -24,24 +24,26 @@ export class LeaderboardService {
     // For this implementation, we'll focus on inventory-value leaderboard
     // In a real implementation, you'd have more complex queries for different periods and metrics
     
-    const [users] = await this.userRepository.findAll({
-      take: limit,
+    // Fetch ALL users first (or at least enough to get accurate top N)
+    // We need to fetch all users, sort them, then limit to get accurate top rankings
+    const [allUsers] = await this.userRepository.findAll({
+      take: 1000, // Fetch more users to ensure accurate sorting
     });
 
     const leaderboardData = await Promise.all(
-      users.map(async (user, index) => {
+      allUsers.map(async (user) => {
         const inventoryValue = await this.userSkinRepository.getUserInventoryValue(user.id);
         const transactionSummary = await this.transactionRepository.getUserTransactionSummary(user.id);
 
         return {
-          rank: index + 1,
+          rank: 0, // Will be set after sorting
           user: {
             id: user.id,
             username: user.username || `User${user.id.slice(0, 8)}`,
             walletAddress: user.walletAddress,
           },
           inventoryValue,
-          casesOpened: user.casesOpened,
+          casesOpened: user.casesOpened || 0,
           totalSpent: parseFloat(user.totalSpent.toString()),
           totalEarned: parseFloat(user.totalEarned.toString()),
           netProfit: parseFloat(user.totalEarned.toString()) - parseFloat(user.totalSpent.toString()),
@@ -51,6 +53,10 @@ export class LeaderboardService {
 
     // Sort by the requested metric
     switch (options.metric) {
+      case 'points':
+        // Points = casesOpened * 3
+        leaderboardData.sort((a, b) => (b.casesOpened * 3) - (a.casesOpened * 3));
+        break;
       case 'cases-opened':
         leaderboardData.sort((a, b) => b.casesOpened - a.casesOpened);
         break;
@@ -67,10 +73,11 @@ export class LeaderboardService {
       entry.rank = index + 1;
     });
 
-    return leaderboardData;
+    // Now limit to the requested number
+    return leaderboardData.slice(0, limit);
   }
 
-  async getUserRank(userId: string, metric: 'inventory-value' | 'cases-opened' | 'profit' = 'inventory-value') {
+  async getUserRank(userId: string, metric: 'inventory-value' | 'cases-opened' | 'profit' | 'points' = 'points') {
     const user = await this.userRepository.findById(userId);
     
     if (!user) {
@@ -96,6 +103,9 @@ export class LeaderboardService {
     // Get the value based on the metric
     let value = 0;
     switch (metric) {
+      case 'points':
+        value = userEntry.casesOpened * 3;
+        break;
       case 'inventory-value':
         value = userEntry.inventoryValue;
         break;

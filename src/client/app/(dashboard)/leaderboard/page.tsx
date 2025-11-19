@@ -9,7 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useEffect } from "react";
 import { socialService } from "@/lib/services";
@@ -27,19 +26,18 @@ export default function LeaderboardPage() {
   const { user, isConnected } = useUser();
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [userRank, setUserRank] = useState<UserRank | null>(null);
+  const [userEntry, setUserEntry] = useState<LeaderboardEntry | null>(null);
   const [loading, setLoading] = useState(true);
   const [metric, setMetric] = useState<
-    "inventory-value" | "cases-opened"
-  >("inventory-value");
-  const [period, setPeriod] = useState<"all-time" | "monthly" | "weekly">(
-    "all-time"
-  );
+    "inventory-value" | "cases-opened" | "points"
+  >("points");
+  const period = "all-time" as const;
   const [mounted, setMounted] = useState(false);
 
-  // Load leaderboard data whenever metric or period changes
+  // Load leaderboard data whenever metric changes
   useEffect(() => {
     loadLeaderboard();
-  }, [metric, period]);
+  }, [metric]);
 
   // Load user rank if connected
   useEffect(() => {
@@ -67,7 +65,7 @@ export default function LeaderboardPage() {
       const data = await socialService.getLeaderboard({
         metric,
         period,
-        limit: 50,
+        limit: 5, // Only top 5
       });
 
       setLeaderboard(data);
@@ -82,6 +80,27 @@ export default function LeaderboardPage() {
     try {
       const data = await socialService.getUserRank(metric);
       setUserRank(data);
+      
+      // If user is not in top 5, fetch their full entry
+      if (data && data.rank > 5) {
+        try {
+          const fullLeaderboard = await socialService.getLeaderboard({
+            metric,
+            period,
+            limit: 500,
+          });
+          const userFullEntry = fullLeaderboard.find(
+            (entry) => entry.user.id === user?.id
+          );
+          if (userFullEntry) {
+            setUserEntry(userFullEntry);
+          }
+        } catch (error) {
+          // silently ignore
+        }
+      } else {
+        setUserEntry(null);
+      }
     } catch (error) {
       // silently ignore user rank errors to avoid noise
     }
@@ -89,12 +108,14 @@ export default function LeaderboardPage() {
 
   const getMetricLabel = (metric: string) => {
     switch (metric) {
+      case "points":
+        return "Points";
       case "inventory-value":
         return "Inventory Value";
       case "cases-opened":
         return "Claw Pulled";
       default:
-        return "Inventory Value";
+        return "Points";
     }
   };
 
@@ -147,9 +168,9 @@ export default function LeaderboardPage() {
       -4
     )}`;
 
-  // Derive a large "points" number for design testing (inspired by screenshot)
+  // Points based on cases opened (3 points per pack)
   const getPoints = (entry: LeaderboardEntry) =>
-    Math.max(0, Math.round(entry.inventoryValue * 1000));
+    (entry.casesOpened || 0) * 3;
 
   const podium = leaderboard.slice(0, 3);
 
@@ -176,9 +197,8 @@ export default function LeaderboardPage() {
             ))}
           </div>
 
-          {/* Tabs & Filters Skeleton */}
+          {/* Filters Skeleton */}
           <div className="flex gap-4 mb-6">
-            <div className="h-10 bg-zinc-800 rounded w-32 animate-pulse" />
             <div className="h-10 bg-zinc-800 rounded w-48 animate-pulse" />
           </div>
 
@@ -242,6 +262,7 @@ export default function LeaderboardPage() {
             .sort((a, b) => a.rank - b.rank)
             .map((p) => {
               const isFirst = p.rank === 1;
+              const isCurrentUser = user && p.user.id === user.id;
               const orderClass = isFirst
                 ? "order-2"
                 : p.rank === 2
@@ -257,7 +278,7 @@ export default function LeaderboardPage() {
                     mounted
                       ? "opacity-100 translate-y-0 scale-100"
                       : "opacity-0 translate-y-2 scale-95"
-                  }`}
+                  } ${isCurrentUser ? 'ring-2 ring-[#E99500] rounded-lg p-1' : ''}`}
                   style={{ transitionDelay: `${delayMs}ms` }}
                 >
                   <Avatar
@@ -275,6 +296,9 @@ export default function LeaderboardPage() {
                   </Avatar>
                   <p className="text-white font-semibold text-[10px] sm:text-xs truncate max-w-full text-center px-1">
                     {getDisplayName(p)}
+                    {isCurrentUser && (
+                      <span className="ml-1 text-[#E99500] font-bold">(You)</span>
+                    )}
                   </p>
                   <p className="text-white font-bold text-sm sm:text-base">
                     {getPoints(p).toLocaleString()}
@@ -302,18 +326,6 @@ export default function LeaderboardPage() {
         </div>
       )}
 
-      {/* Tabs */}
-      <Tabs
-        value={period}
-        onValueChange={(v: any) => setPeriod(v)}
-        className="mb-4"
-      >
-        <TabsList>
-          <TabsTrigger value="weekly">Weekly</TabsTrigger>
-          <TabsTrigger value="all-time">All Time</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       {/* Filters */}
       <div className="flex gap-4 mb-6">
         <Select value={metric} onValueChange={(value: any) => setMetric(value)}>
@@ -321,6 +333,7 @@ export default function LeaderboardPage() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent className="bg-zinc-950 border border-zinc-800">
+            <SelectItem value="points">Points</SelectItem>
             <SelectItem value="inventory-value">Inventory Value</SelectItem>
             <SelectItem value="cases-opened">Claw Pulled</SelectItem>
           </SelectContent>
@@ -347,6 +360,8 @@ export default function LeaderboardPage() {
                 <p className="text-foreground font-bold text-xl">
                   {userRank.metric === 'cases-opened' 
                     ? userRank.value 
+                    : userRank.metric === 'points'
+                    ? userRank.value
                     : formatCurrency(userRank.value)}
                 </p>
                 <p className="text-muted-foreground text-sm">
@@ -364,7 +379,7 @@ export default function LeaderboardPage() {
           {/* Desktop Table - Hidden on mobile */}
           <div className="hidden md:block overflow-x-auto">
             <div className="min-w-[800px]">
-              <div className="grid p-4 border-b border-zinc-800 bg-zinc-900" style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
+              <div className="grid p-4 border-b border-zinc-800 bg-zinc-900" style={{gridTemplateColumns: '40px 1.5fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
                 <div className="text-muted-foreground text-sm font-medium">#</div>
                 <div className="text-muted-foreground text-sm font-medium">Name</div>
                 <div className="text-muted-foreground text-sm font-medium">Inventory Value</div>
@@ -378,14 +393,21 @@ export default function LeaderboardPage() {
                     <p className="text-muted-foreground">No leaderboard data available</p>
                   </div>
                 ) : (
-                  leaderboard.map((entry) => (
-                      <div
-                        key={entry.user.id}
-                        className={`grid p-4 border-b border-zinc-800 last:border-b-0 transition-all duration-150 hover:bg-zinc-900 ${
-                          entry.rank <= 3 ? 'bg-zinc-900/50' : ''
-                        }`}
-                        style={{gridTemplateColumns: '40px 1fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}
-                      >
+                  <>
+                    {leaderboard.map((entry) => {
+                      const isCurrentUser = user && entry.user.id === user.id;
+                      return (
+                        <div
+                          key={entry.user.id}
+                          className={`grid p-4 border-b border-zinc-800 last:border-b-0 transition-all duration-150 hover:bg-zinc-900 ${
+                            isCurrentUser 
+                              ? 'bg-[#E99500]/10 border-[#E99500]/30' 
+                              : entry.rank <= 3 
+                              ? 'bg-zinc-900/50' 
+                              : ''
+                          }`}
+                          style={{gridTemplateColumns: '40px 1.5fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}
+                        >
                         <div className="flex items-center">
                           {getRankIcon(entry.rank)}
                         </div>
@@ -403,6 +425,9 @@ export default function LeaderboardPage() {
                           </Avatar>
                           <p className="text-foreground font-medium truncate">
                             {getDisplayName(entry)}
+                            {isCurrentUser && (
+                              <span className="ml-2 text-[#E99500] font-semibold">(You)</span>
+                            )}
                           </p>
                         </div>
                         <div className="flex items-center">
@@ -428,7 +453,58 @@ export default function LeaderboardPage() {
                           </p>
                         </div>
                       </div>
-                    ))
+                      );
+                    })}
+                    {/* Show user entry if not in top 5 */}
+                    {userEntry && userRank && userRank.rank > 5 && (
+                      <>
+                        <div className="grid p-4 border-t-2 border-[#E99500]/50 border-b border-zinc-800 bg-[#E99500]/10 transition-all duration-150" style={{gridTemplateColumns: '40px 1.5fr 1fr 1fr 1fr 1fr', columnGap: '24px'}}>
+                          <div className="flex items-center">
+                            {getRankIcon(userEntry.rank)}
+                          </div>
+                          <div className="flex items-center gap-3 min-w-0">
+                            <Avatar className="flex-shrink-0">
+                              <AvatarImage
+                                alt={getDisplayName(userEntry)}
+                                src={`https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(
+                                  getDisplayName(userEntry)
+                                )}`}
+                              />
+                              <AvatarFallback className="bg-zinc-800 text-zinc-300">
+                                {getDisplayName(userEntry).slice(0, 2).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <p className="text-foreground font-medium truncate">
+                              {getDisplayName(userEntry)}
+                              <span className="ml-2 text-[#E99500] font-semibold">(You)</span>
+                            </p>
+                          </div>
+                          <div className="flex items-center">
+                            <p className="text-foreground font-bold">
+                              {formatCurrency(userEntry.inventoryValue)}
+                            </p>
+                          </div>
+                          <div className="flex items-center">
+                            <p className="text-foreground font-bold">
+                              {formatCurrency(
+                                typeof userEntry.totalEarned === "string"
+                                  ? parseFloat(userEntry.totalEarned)
+                                  : userEntry.totalEarned
+                              )}
+                            </p>
+                          </div>
+                          <div className="flex items-center">
+                            <p className="text-muted-foreground">{userEntry.casesOpened}</p>
+                          </div>
+                          <div className="flex items-center">
+                            <p className="text-foreground font-bold">
+                              {getPoints(userEntry).toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -441,12 +517,19 @@ export default function LeaderboardPage() {
                 <p className="text-muted-foreground">No leaderboard data available</p>
               </div>
             ) : (
-              leaderboard.map((entry) => (
-                <div
-                  key={entry.user.id}
-                  className={`p-4 border-b border-zinc-800 last:border-b-0 ${
-                    entry.rank <= 3 ? 'bg-zinc-900/50' : ''
-                  }`}
+              <>
+                {leaderboard.map((entry) => {
+                  const isCurrentUser = user && entry.user.id === user.id;
+                  return (
+                    <div
+                      key={entry.user.id}
+                      className={`p-4 border-b border-zinc-800 last:border-b-0 ${
+                        isCurrentUser 
+                          ? 'bg-[#E99500]/10 border-[#E99500]/30' 
+                          : entry.rank <= 3 
+                          ? 'bg-zinc-900/50' 
+                          : ''
+                      }`}
                 >
                   <div className="flex items-center gap-3 mb-2">
                     <span className="text-sm font-bold text-gray-400">#{entry.rank}</span>
@@ -463,6 +546,9 @@ export default function LeaderboardPage() {
                     </Avatar>
                     <p className="text-foreground font-medium truncate flex-1">
                       {getDisplayName(entry)}
+                      {isCurrentUser && (
+                        <span className="ml-2 text-[#E99500] font-semibold">(You)</span>
+                      )}
                     </p>
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-sm ml-11">
@@ -476,7 +562,42 @@ export default function LeaderboardPage() {
                     </div>
                   </div>
                 </div>
-              ))
+                  );
+                })}
+                {/* Show user entry if not in top 5 */}
+                {userEntry && userRank && userRank.rank > 5 && (
+                  <div className="p-4 border-t-2 border-[#E99500]/50 border-b border-zinc-800 bg-[#E99500]/10">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-sm font-bold text-gray-400">#{userEntry.rank}</span>
+                      <Avatar className="w-8 h-8">
+                        <AvatarImage
+                          alt={getDisplayName(userEntry)}
+                          src={`https://api.dicebear.com/7.x/shapes/svg?seed=${encodeURIComponent(
+                            getDisplayName(userEntry)
+                          )}`}
+                        />
+                        <AvatarFallback className="bg-zinc-800 text-zinc-300 text-xs">
+                          {getDisplayName(userEntry).slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <p className="text-foreground font-medium truncate flex-1">
+                        {getDisplayName(userEntry)}
+                        <span className="ml-2 text-[#E99500] font-semibold">(You)</span>
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm ml-11">
+                      <div>
+                        <span className="text-muted-foreground text-xs">Points:</span>
+                        <p className="text-foreground font-bold">{getPoints(userEntry).toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground text-xs">Value:</span>
+                        <p className="text-foreground font-bold">{formatCurrency(userEntry.inventoryValue)}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </CardContent>
