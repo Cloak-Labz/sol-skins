@@ -14,7 +14,8 @@ import { discordService } from "@/lib/services/discord.service";
 import { pendingSkinsService } from "@/lib/services/pending-skins.service";
 import { apiClient } from "@/lib/services/api.service";
 import { buybackService } from "@/lib/services/buyback.service";
-import { LootBoxType } from "@/lib/types/api";
+import { activityService } from "@/lib/services/activity.service";
+import { LootBoxType, ActivityItem } from "@/lib/types/api";
 import { useRouter } from "next/navigation";
 import { SteamTradeUrlModal } from "@/components/steam-trade-url-modal";
 
@@ -48,6 +49,65 @@ const DEFAULT_ODDS: { label: string; rarity: string; pct: number; priceRange?: s
   { label: "Uncommon", rarity: "uncommon", pct: 24.0 },
   { label: "Common", rarity: "common", pct: 65.0 },
 ];
+
+function PullCard({ pull }: { pull: ActivityItem }) {
+  const [imageError, setImageError] = useState(false);
+  const normalizeImageUrl = (url?: string | null) => {
+    if (!url) return undefined;
+    const trimmed = url.trim();
+    if (!trimmed) return undefined;
+    if (trimmed.startsWith("ipfs://")) {
+      const hash = trimmed.replace("ipfs://", "").replace(/^\/+/, "");
+      return hash ? `https://ipfs.io/ipfs/${hash}` : undefined;
+    }
+    if (trimmed.startsWith("ar://")) {
+      const txId = trimmed.replace("ar://", "").replace(/^\/+/, "");
+      return txId ? `https://arweave.net/${txId}` : undefined;
+    }
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+    if (/^ipfs\.io\//i.test(trimmed)) {
+      return `https://${trimmed}`;
+    }
+    return undefined;
+  };
+  
+  const imageSrc = normalizeImageUrl(
+    pull.skin?.imageUrl ?? (pull as any)?.skin?.metadata?.image
+  );
+
+  return (
+    <div className="group rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden relative">
+      <div className="absolute inset-0 opacity-50 group-hover:opacity-90 transition-opacity duration-500 pointer-events-none">
+        <div className="absolute -inset-6 bg-gradient-to-br from-[#E99500]/60 via-transparent to-transparent blur-3xl" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#E99500]/15 via-transparent to-transparent" />
+      </div>
+      <div className="relative aspect-[3/4] bg-zinc-900/60 flex items-center justify-center p-3 transition-transform duration-500 group-hover:scale-[1.02]">
+        {imageSrc && !imageError ? (
+          <img
+            src={imageSrc}
+            alt={pull.skin?.skinName || "Skin"}
+            className="w-full h-full object-contain rounded-md"
+            loading="lazy"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <Package className="w-12 h-12 sm:w-16 sm:h-16 text-zinc-600" />
+        )}
+      </div>
+      <div className="p-3 space-y-1">
+        <div className="text-[11px] text-zinc-400">Just revealed</div>
+        <div className="text-xs text-white truncate">
+          {pull.skin?.skinName || "Unknown"}
+        </div>
+        <div className="text-[11px] text-zinc-500">
+          Claw Machine • {pull.lootBox?.name || "Pack"}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function PacksPage() {
   const walletCtx = useWallet();
@@ -98,6 +158,7 @@ export default function PacksPage() {
   } | null>(null);
   const [progressStep, setProgressStep] = useState<number>(0);
   const [showProgressModal, setShowProgressModal] = useState(false);
+  const [recentPulls, setRecentPulls] = useState<ActivityItem[]>([]);
   const [isClaimingSkin, setIsClaimingSkin] = useState(false);
   const [claimedAsset, setClaimedAsset] = useState<string | null>(null);
   const [isProcessingBuyback, setIsProcessingBuyback] = useState(false);
@@ -410,10 +471,14 @@ export default function PacksPage() {
     try {
       setLoading(true);
       setLoadingBoxes(true);
-      const data = await boxesService.getActiveBoxes();
+      const [data, pullsData] = await Promise.all([
+        boxesService.getActiveBoxes(),
+        activityService.getRecent(40).catch(() => [])
+      ]);
       // Show all active boxes (both published and unpublished)
       const activeBoxes = Array.isArray(data) ? data : [];
       setBoxes(activeBoxes);
+      setRecentPulls(pullsData);
       // Set the first box as selected pack if none is selected
       if (activeBoxes.length > 0 && !selectedPack) {
         setSelectedPack(activeBoxes[0] as any);
@@ -1795,6 +1860,7 @@ export default function PacksPage() {
           </div>
           )}
 
+
           {/* Pack Selection Skeleton */}
           {loading && (
             <div className="grid lg:grid-cols-3 gap-6 items-stretch">
@@ -1858,6 +1924,63 @@ export default function PacksPage() {
               </div>
             </div>
           )}
+
+          {/* Recent Pulls */}
+          <section className="space-y-3 mt-8">
+            <div className="flex items-center justify-between">
+              {loading ? (
+                <div className="h-6 bg-zinc-800 rounded w-32 animate-pulse" />
+              ) : (
+                <h3 className="text-white font-semibold">Recent Pulls</h3>
+              )}
+            </div>
+            {loading ? (
+              <div className="relative overflow-hidden px-4 sm:px-6 md:px-10">
+                <div className="flex gap-3" style={{ width: 'fit-content' }}>
+                  {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                    <div key={i} className="flex-shrink-0 w-[calc(50vw-1.5rem)] sm:w-[calc(33.333vw-1.5rem)] lg:w-[200px]">
+                      <div className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden">
+                        <div className="aspect-[3/4] bg-zinc-900 animate-pulse" />
+                        <div className="p-3 space-y-2">
+                          <div className="h-3 bg-zinc-800 rounded w-20 animate-pulse" />
+                          <div className="h-4 bg-zinc-800 rounded w-full animate-pulse" />
+                          <div className="h-3 bg-zinc-800 rounded w-24 animate-pulse" />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : recentPulls.length === 0 ? (
+              <div className="flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-10 text-zinc-400 gap-3">
+                <div className="font-mono text-3xl">{":("}</div>
+                <div>Nothing here yet</div>
+              </div>
+            ) : (
+              <div className="relative overflow-hidden px-4 sm:px-6 md:px-10">
+                <div className="flex gap-3 animate-scroll" style={{ width: 'fit-content' }}>
+                  {/* First set of pulls */}
+                  {recentPulls.map((p) => (
+                    <div key={p.id} className="flex-shrink-0 w-[calc(50vw-1.5rem)] sm:w-[calc(33.333vw-1.5rem)] lg:w-[200px]">
+                      <PullCard pull={p} />
+                    </div>
+                  ))}
+                  {/* Duplicate set for seamless loop */}
+                  {recentPulls.map((p) => (
+                    <div key={`duplicate-${p.id}`} className="flex-shrink-0 w-[calc(50vw-1.5rem)] sm:w-[calc(33.333vw-1.5rem)] lg:w-[200px]">
+                      <PullCard pull={p} />
+                    </div>
+                  ))}
+                  {/* Third set to ensure smooth transition */}
+                  {recentPulls.map((p) => (
+                    <div key={`triplicate-${p.id}`} className="flex-shrink-0 w-[calc(50vw-1.5rem)] sm:w-[calc(33.333vw-1.5rem)] lg:w-[200px]">
+                      <PullCard pull={p} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
         </div>
       </div>
 

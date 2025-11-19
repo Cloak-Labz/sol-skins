@@ -206,6 +206,24 @@
   animation: rotate-slow 20s linear infinite;
 }
 
+@keyframes scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(calc(-100% / 3));
+  }
+}
+
+.animate-scroll {
+  animation: scroll 50s linear infinite;
+  will-change: transform;
+}
+
+.animate-scroll:hover {
+  animation-play-state: paused;
+}
+
 /* Wallet Adapter Modal - Clean & Simple */
 .wallet-adapter-modal-wrapper {
   z-index: 9999 !important;

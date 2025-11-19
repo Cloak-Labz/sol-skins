@@ -100,7 +100,7 @@ export default function DashboardPage() {
   useEffect(() => {
     setLoading(true);
     Promise.all([
-      activityService.getRecent(12).catch(() => []),
+      activityService.getRecent(40).catch(() => []),
       boxesService.getActiveBoxes().catch(() => [])
     ]).then(([pullsData, packsData]) => {
       setPulls(pullsData);
@@ -145,14 +145,14 @@ export default function DashboardPage() {
           {/* Your Packs Skeleton */}
           <section className="space-y-3">
             <div className="h-6 bg-zinc-800 rounded w-32 animate-pulse" />
-            <div className="grid sm:grid-cols-2 lg:grid-cols-6 gap-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-4 flex flex-col h-full">
-                  <div className="aspect-[3/4] rounded-lg bg-zinc-800 animate-pulse mb-3" />
-                  <div className="flex-1 flex flex-col space-y-2">
-                    <div className="h-6 bg-zinc-800 rounded w-full animate-pulse" />
-                    <div className="h-4 bg-zinc-800 rounded w-20 animate-pulse" />
-                    <div className="mt-auto h-10 bg-zinc-800 rounded w-full animate-pulse" />
+                <div key={i} className="rounded-xl border border-zinc-800 bg-zinc-950 overflow-hidden">
+                  <div className="aspect-[3/4] bg-zinc-900 animate-pulse" />
+                  <div className="p-3 space-y-2">
+                    <div className="h-3 bg-zinc-800 rounded w-20 animate-pulse" />
+                    <div className="h-4 bg-zinc-800 rounded w-full animate-pulse" />
+                    <div className="h-3 bg-zinc-800 rounded w-24 animate-pulse" />
                   </div>
                 </div>
               ))}
@@ -255,17 +255,35 @@ export default function DashboardPage() {
           <div className="flex items-center justify-between">
             <h3 className="text-white font-semibold">Recent Pulls</h3>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-            {pulls.length === 0 && (
-              <div className="col-span-full flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-10 text-zinc-400 gap-3">
-                <div className="font-mono text-3xl">{":("}</div>
-                <div>Nothing here yet</div>
+          {pulls.length === 0 ? (
+            <div className="flex flex-col items-center justify-center rounded-xl border border-zinc-800 bg-gradient-to-b from-zinc-950 to-zinc-900 p-10 text-zinc-400 gap-3">
+              <div className="font-mono text-3xl">{":("}</div>
+              <div>Nothing here yet</div>
+            </div>
+          ) : (
+            <div className="relative overflow-hidden px-4 sm:px-6 md:px-10">
+              <div className="flex gap-3 animate-scroll" style={{ width: 'fit-content' }}>
+                {/* First set of pulls */}
+                {pulls.map((p) => (
+                  <div key={p.id} className="flex-shrink-0 w-[calc(50vw-1.5rem)] sm:w-[calc(33.333vw-1.5rem)] lg:w-[200px]">
+                    <PullCard pull={p} />
+                  </div>
+                ))}
+                {/* Duplicate set for seamless loop */}
+                {pulls.map((p) => (
+                  <div key={`duplicate-${p.id}`} className="flex-shrink-0 w-[calc(50vw-1.5rem)] sm:w-[calc(33.333vw-1.5rem)] lg:w-[200px]">
+                    <PullCard pull={p} />
+                  </div>
+                ))}
+                {/* Third set to ensure smooth transition */}
+                {pulls.map((p) => (
+                  <div key={`triplicate-${p.id}`} className="flex-shrink-0 w-[calc(50vw-1.5rem)] sm:w-[calc(33.333vw-1.5rem)] lg:w-[200px]">
+                    <PullCard pull={p} />
+                  </div>
+                ))}
               </div>
-            )}
-            {pulls.slice(0, 6).map((p) => (
-              <PullCard key={p.id} pull={p} />
-            ))}
-          </div>
+            </div>
+          )}
         </section>
       </div>
     </div>
