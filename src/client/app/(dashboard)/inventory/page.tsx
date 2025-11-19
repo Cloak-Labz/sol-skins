@@ -534,6 +534,18 @@ export default function InventoryPage() {
                       {/* Skin Stats - Bottom */}
                       <div className="space-y-2 mt-auto">
                         <div className="flex justify-between items-center">
+                          <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Weapon:</span>
+                          <span className="text-orange-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
+                            {skin.skinTemplate?.weapon || skin.name.split(' | ')[0] || 'Unknown'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Condition:</span>
+                          <span className="text-orange-400 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
+                            {skin.condition || skin.skinTemplate?.condition || 'Field-Tested'}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
                           <span className="text-orange-300 text-sm font-bold uppercase tracking-wide" style={{ fontFamily: "monospace" }}>Value:</span>
                           <span className="text-orange-400 text-base font-black uppercase tracking-wide" style={{ fontFamily: "monospace" }}>
                             ${skin.currentPriceUsd || skin.skinTemplate?.basePriceUsd || '0.00'}

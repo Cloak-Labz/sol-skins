@@ -25,6 +25,8 @@ interface CSGOSkin {
   rarity: string;
   value: number;
   image: string;
+  weapon?: string;
+  condition?: string;
 }
 
 // Helper function to get Solscan URL based on NEXT_PUBLIC_SOLANA_NETWORK
@@ -101,8 +103,13 @@ function PullCard({ pull }: { pull: ActivityItem }) {
         <div className="text-xs text-white truncate">
           {pull.skin?.skinName || "Unknown"}
         </div>
-        <div className="text-[11px] text-zinc-500">
-          Claw Machine • {pull.lootBox?.name || "Pack"}
+        <div className="text-[11px] text-zinc-500 space-y-0.5">
+          <div className="truncate">
+            {pull.skin?.weapon || "Unknown"} • {pull.skin?.condition || "Field-Tested"}
+          </div>
+          <div className="truncate">
+            {pull.skin?.rarity || "Common"} • {pull.lootBox?.name || "Pack"}
+          </div>
         </div>
       </div>
     </div>
@@ -633,6 +640,8 @@ export default function PacksPage() {
           rarity: result.skin.rarity,
           value: result.skin.basePriceUsd,
           image: result.skin.imageUrl || "icon-fallback",
+          weapon: result.skin.weapon,
+          condition: result.skin.condition,
         };
         resultDataRef.current = {
           skin: initialSkin,
@@ -677,6 +686,8 @@ export default function PacksPage() {
               rarity: result.skin.rarity,
               value: result.skin.basePriceUsd,
               image: resolvedImage || "icon-fallback",
+              weapon: result.skin.weapon,
+              condition: result.skin.condition,
             };
 
             setWonSkin(winnerSkin);
@@ -2074,7 +2085,7 @@ export default function PacksPage() {
                         className="text-lg sm:text-md md:text-xs lg:text-sm font-bold text-[#E99500] uppercase tracking-wide"
                         style={{ fontFamily: "monospace" }}
                       >
-                        {wonSkin.rarity.toUpperCase()} •
+                        {wonSkin.rarity.toUpperCase()} • {wonSkin.condition?.toUpperCase() || "FIELD-TESTED"} •
                         {typeof pendingBuybackInfo?.skinSol === "number"
                           ? ` ${Math.floor(pendingBuybackInfo.skinSol)} USDC`
                           : "Market value: —"}

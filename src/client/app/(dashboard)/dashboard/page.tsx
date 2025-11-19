@@ -57,8 +57,13 @@ function PullCard({ pull }: { pull: ActivityItem }) {
         <div className="text-xs text-white truncate">
           {pull.skin?.skinName || "Unknown"}
         </div>
-        <div className="text-[11px] text-zinc-500">
-          Claw Machine • {pull.lootBox?.name || "Pack"}
+        <div className="text-[11px] text-zinc-500 space-y-0.5">
+          <div className="truncate">
+            {pull.skin?.weapon || "Unknown"} • {pull.skin?.condition || "Field-Tested"}
+          </div>
+          <div className="truncate">
+            {pull.skin?.rarity || "Common"} • {pull.lootBox?.name || "Pack"}
+          </div>
         </div>
       </div>
     </div>
