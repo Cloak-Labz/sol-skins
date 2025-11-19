@@ -1,9 +1,12 @@
 "use client";
 
 import { WalletConnect } from "./wallet-connect";
-import { ChevronLeft, Menu } from "lucide-react";
+import { ChevronLeft, Menu, Loader2, Coins } from "lucide-react";
 import { memo, createContext, useContext, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useUsdcBalance } from "@/hooks/use-usdc-balance";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { Button } from "@/components/ui/button";
 
 // Create a context for sidebar toggle
 const SidebarContext = createContext<{
@@ -30,6 +33,8 @@ export const useSidebarContext = () => {
 
 function HeaderComponent({ onMenuClick }: { onMenuClick?: () => void }) {
   const router = useRouter();
+  const { connected } = useWallet();
+  const { balance, isLoading } = useUsdcBalance();
 
   const handleBack = () => {
     router.back();
@@ -62,6 +67,23 @@ function HeaderComponent({ onMenuClick }: { onMenuClick?: () => void }) {
         <span className="text-[#4ade80] text-[10px] sm:text-xs bg-[#4ade80]/10 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded border border-[#4ade80]/30 font-semibold">
           DEVNET LIVE
         </span>
+        {connected && (
+          <Button
+            variant="outline"
+            size="sm"
+            className="bg-card border-border text-foreground hover:bg-muted hover:text-foreground text-xs sm:text-sm px-2 sm:px-3 h-8 sm:h-9"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2 animate-spin" />
+            ) : (
+              <Coins className="w-3 h-3 sm:w-4 sm:h-4 sm:mr-2" />
+            )}
+            <span className="hidden sm:inline">Balance: </span>
+            <span className="font-semibold">{balance !== null ? Math.floor(balance) : "0"}</span>
+            <span>USDC</span>
+          </Button>
+        )}
         <WalletConnect />
       </div>
     </header>
