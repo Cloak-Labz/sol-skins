@@ -2,7 +2,14 @@
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Zap, Loader2, Package, SkipForward } from "lucide-react";
+import { Zap, Loader2, Package, SkipForward, Info } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import React from "react";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
@@ -167,6 +174,9 @@ export default function PacksPage() {
   const [showProgressModal, setShowProgressModal] = useState(false);
   const [recentPulls, setRecentPulls] = useState<ActivityItem[]>([]);
   const [isClaimingSkin, setIsClaimingSkin] = useState(false);
+  const [showOddsDetails, setShowOddsDetails] = useState(false);
+  const [skinsByRarity, setSkinsByRarity] = useState<Record<string, any[]>>({});
+  const [loadingSkins, setLoadingSkins] = useState(false);
   const [claimedAsset, setClaimedAsset] = useState<string | null>(null);
   const [isProcessingBuyback, setIsProcessingBuyback] = useState(false);
   const [buybackCompletedAsset, setBuybackCompletedAsset] = useState<string | null>(null);
@@ -1865,6 +1875,47 @@ export default function PacksPage() {
                   <p className="text-[11px] text-zinc-500">
                     Probabilities are estimates and may vary per pack.
                   </p>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={async () => {
+                      if (selectedPack?.id) {
+                        setShowOddsDetails(true);
+                        setLoadingSkins(true);
+                        try {
+                          const response = await fetch(
+                            `/api/v1/box-skins/box/${selectedPack.id}/with-templates`
+                          );
+                          const data = await response.json();
+                          if (data.success && Array.isArray(data.data)) {
+                            // Group skins by rarity
+                            const grouped: Record<string, any[]> = {
+                              legendary: [],
+                              epic: [],
+                              rare: [],
+                              uncommon: [],
+                              common: [],
+                            };
+                            data.data.forEach((skin: any) => {
+                              const rarity = (skin.rarity || '').toLowerCase();
+                              if (rarity in grouped) {
+                                grouped[rarity].push(skin);
+                              }
+                            });
+                            setSkinsByRarity(grouped);
+                          }
+                        } catch (error) {
+                          toast.error("Failed to load skin details");
+                        } finally {
+                          setLoadingSkins(false);
+                        }
+                      }
+                    }}
+                    className="text-xs text-zinc-400 hover:text-white h-7 px-2"
+                  >
+                    <Info className="w-3 h-3 mr-1" />
+                    View Details
+                  </Button>
                 </div>
               </div>
             </div>
@@ -2363,6 +2414,149 @@ export default function PacksPage() {
         )}
       </AnimatePresence>
 
+      {/* Odds Details Modal */}
+      <Dialog open={showOddsDetails} onOpenChange={setShowOddsDetails}>
+        <DialogContent 
+          className="!max-w-[70vw] !w-[70vw] max-h-[65vh] overflow-y-auto bg-[#0a0a0a] border-zinc-800 px-4 sm:px-6 lg:px-8 xl:px-12" 
+          style={{ maxWidth: '70vw !important', width: '70vw !important' } as React.CSSProperties}
+          showCloseButton={false}
+        >
+          <DialogHeader>
+            <DialogTitle className="text-white text-xl font-bold">
+              {selectedPack?.name || "Pack"} - Possible Skins
+            </DialogTitle>
+            <DialogDescription className="text-zinc-400">
+              Browse all possible skins by rarity tier
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 mt-4">
+            {(['legendary', 'epic', 'rare', 'uncommon', 'common'] as const).map((rarity) => {
+              const skins = skinsByRarity[rarity] || [];
+              
+              // Remove duplicates by skin name (case-insensitive)
+              const uniqueSkins = Array.from(
+                new Map(
+                  skins.map((skin: any) => {
+                    const skinName = (skin.name || skin.skinTemplate?.skinName || '').toLowerCase().trim();
+                    return [skinName, skin];
+                  })
+                ).values()
+              );
+              
+              const rarityOdds = oddsToUse.find(o => (o.rarity || o.label).toLowerCase() === rarity);
+              const pctNum = rarityOdds ? (typeof rarityOdds.pct === 'number' ? rarityOdds.pct : Number((rarityOdds as any).odds ?? 0)) : 0;
+              
+              if (loadingSkins) {
+                // Show skeleton while loading
+                return (
+                  <div key={rarity} className="space-y-3">
+                    <div className="flex items-center gap-3 pb-2 border-b border-zinc-800">
+                      <div className="size-3 rounded-full bg-zinc-800 animate-pulse" />
+                      <div className="h-5 bg-zinc-800 rounded w-32 animate-pulse" />
+                      <div className="h-4 bg-zinc-800 rounded w-40 animate-pulse" />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+                        <div
+                          key={i}
+                          className="rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden flex flex-col min-w-[140px]"
+                        >
+                          <div className="aspect-[3/4] bg-zinc-900 animate-pulse" />
+                          <div className="p-3 space-y-1.5">
+                            <div className="h-4 bg-zinc-800 rounded animate-pulse" />
+                            <div className="h-3 bg-zinc-800 rounded w-3/4 animate-pulse" />
+                            <div className="h-3 bg-zinc-800 rounded w-1/2 animate-pulse" />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+              
+              if (uniqueSkins.length === 0) return null;
+              
+              return (
+                <div key={rarity} className="space-y-3">
+                  <div className="flex items-center gap-3 pb-2 border-b border-zinc-800">
+                    <span className={`inline-block size-3 rounded-full bg-gradient-to-r ${getRarityColor(rarity)}`} />
+                    <h3 className="text-white font-bold uppercase text-lg">
+                      {rarity.charAt(0).toUpperCase() + rarity.slice(1)}
+                    </h3>
+                    <span className="text-zinc-400 text-sm">
+                      {uniqueSkins.length} {uniqueSkins.length === 1 ? 'skin' : 'skins'} • {pctNum.toFixed(1)}% chance
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-4">
+                    {uniqueSkins.map((skin: any) => {
+                        const normalizeImageUrl = (url?: string | null) => {
+                          if (!url) return undefined;
+                          const trimmed = url.trim();
+                          if (!trimmed) return undefined;
+                          if (trimmed.startsWith("ipfs://")) {
+                            const hash = trimmed.replace("ipfs://", "").replace(/^\/+/, "");
+                            return hash ? `https://ipfs.io/ipfs/${hash}` : undefined;
+                          }
+                          if (trimmed.startsWith("ar://")) {
+                            const txId = trimmed.replace("ar://", "").replace(/^\/+/, "");
+                            return txId ? `https://arweave.net/${txId}` : undefined;
+                          }
+                          if (/^https?:\/\//i.test(trimmed)) {
+                            return trimmed;
+                          }
+                          if (/^ipfs\.io\//i.test(trimmed)) {
+                            return `https://${trimmed}`;
+                          }
+                          return undefined;
+                        };
+                        
+                        const imageUrl = normalizeImageUrl(skin.imageUrl || skin.skinTemplate?.imageUrl);
+                        const skinName = skin.name || skin.skinTemplate?.skinName || "Unknown";
+                        const weapon = skin.weapon || skin.skinTemplate?.weapon || "Unknown";
+                        const price = skin.basePriceUsd || skin.skinTemplate?.basePriceUsd;
+                        
+                        return (
+                          <div
+                            key={skin.id}
+                            className="group rounded-lg border border-zinc-800 bg-zinc-950 overflow-hidden hover:border-zinc-700 transition-colors flex flex-col min-w-[140px]"
+                          >
+                            <div className="aspect-[3/4] bg-zinc-900/60 flex items-center justify-center p-3 flex-shrink-0">
+                              {imageUrl ? (
+                                <img
+                                  src={imageUrl}
+                                  alt={skinName}
+                                  className="w-full h-full object-contain rounded"
+                                  loading="lazy"
+                                />
+                              ) : (
+                                <Package className="w-10 h-10 text-zinc-600" />
+                              )}
+                            </div>
+                            <div className="p-3 space-y-1.5 flex-1 flex flex-col min-h-0">
+                              <div className="text-sm text-white font-medium leading-snug">
+                                {skinName}
+                              </div>
+                              <div className="text-xs text-zinc-500">
+                                {weapon}
+                              </div>
+                              {price ? (
+                                <div className="text-xs text-[#E99500] font-semibold mt-auto">
+                                  ${Number(price).toFixed(2)}
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Steam Trade URL Modal */}
       <SteamTradeUrlModal
         open={showTradeUrlModal}
@@ -2383,14 +2577,6 @@ export default function PacksPage() {
           }
         }}
       />
-
-      {/* TEST BUTTON - REMOVE BEFORE COMMIT */}
-      {/* <button
-        onClick={() => setShowTradeUrlModal(true)}
-        className="fixed bottom-4 right-4 bg-red-500 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-red-600 z-50 font-bold"
-      >
-        TEST MODAL
-      </button> */}
     </div>
   );
 }
