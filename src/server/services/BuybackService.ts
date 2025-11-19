@@ -329,6 +329,7 @@ export class BuybackService {
     const buybackConfig = await this.getBuybackConfig();
     const usdcMint = new PublicKey(buybackConfig.usdcMint);
     const treasuryUsdcAccount = new PublicKey(buybackConfig.treasuryTokenAccount);
+    await this.ensureTreasuryLiquidity(treasuryUsdcAccount, buybackAmountLamports);
     
     // Get or create user's USDC token account
     const userUsdcAccount = await getAssociatedTokenAddress(usdcMint, userPubkey);
@@ -528,6 +529,38 @@ export class BuybackService {
       console.warn('Failed to fetch buyback config from Solana program, defaulting to enabled:', error);
       // If we can't fetch the config, assume buyback is enabled for development
       return true;
+    }
+  }
+
+  private async ensureTreasuryLiquidity(
+    treasuryUsdcAccount: PublicKey,
+    requiredAmountMicroUsdc: string
+  ): Promise<void> {
+    try {
+      const balanceInfo = await this.connection.getTokenAccountBalance(treasuryUsdcAccount);
+      const currentBalanceMicro = BigInt(balanceInfo.value.amount);
+      const requiredMicro = BigInt(requiredAmountMicroUsdc);
+
+      if (currentBalanceMicro < requiredMicro) {
+        const { AppError } = require('../middlewares/errorHandler');
+
+        throw new AppError(
+          'Treasury USDC balance is too low for this buyback. Please try again later.',
+          400,
+          'TREASURY_USDC_INSUFFICIENT'
+        );
+      }
+    } catch (error: any) {
+      if (error?.code === 'TREASURY_USDC_INSUFFICIENT') {
+        throw error;
+      }
+
+      const { AppError } = require('../middlewares/errorHandler');
+      throw new AppError(
+        'Failed to verify treasury USDC balance. Please try again shortly.',
+        500,
+        'TREASURY_BALANCE_CHECK_FAILED'
+      );
     }
   }
 }

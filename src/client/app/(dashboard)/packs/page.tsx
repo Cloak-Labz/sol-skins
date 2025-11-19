@@ -727,7 +727,11 @@ export default function PacksPage() {
       let errorMessage = error?.message || "An unexpected error occurred. Please try again.";
       
       // Make error messages more user-friendly
-      if (errorMessage.includes('CSRF') || errorMessage.includes('csrf')) {
+      if (errorMessage.includes('Insufficient USDC')) {
+        errorMessage = errorMessage.replace('Insufficient USDC.', 'Insufficient USDC balance.');
+      } else if (errorMessage.includes('USDC account not found')) {
+        errorMessage = "You don't have a USDC token account yet. Make a small USDC deposit first.";
+      } else if (errorMessage.includes('CSRF') || errorMessage.includes('csrf')) {
         errorMessage = "Session expired. Please refresh the page and try again.";
       } else if (errorMessage.includes('walletId') || errorMessage.includes('wallet') || errorMessage.includes('user')) {
         errorMessage = "Wallet connection issue. Please reconnect your wallet and try again.";

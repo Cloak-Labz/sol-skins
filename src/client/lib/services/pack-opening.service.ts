@@ -106,6 +106,31 @@ export class PackOpeningService {
       new SolanaPublicKey(USDC_MINT_ADDRESS),
       new SolanaPublicKey(treasuryAddressStr)
     );
+
+    // Validate the user has enough USDC before asking for a signature
+    if (amountMicroUsdc > 0) {
+      const userUsdcAccountInfo = await solanaConnection.getAccountInfo(userUsdcAta);
+      if (!userUsdcAccountInfo) {
+        throw new Error(
+          "Insuficcient funds. Deposit USDC into your token account before opening packs."
+        );
+      }
+
+      const userUsdcBalanceInfo = await solanaConnection.getTokenAccountBalance(userUsdcAta);
+      const userUsdcBalanceMicro = BigInt(userUsdcBalanceInfo.value.amount);
+      const requiredUsdcMicro = BigInt(amountMicroUsdc);
+
+      if (userUsdcBalanceMicro < requiredUsdcMicro) {
+        const availableUsdc =
+          userUsdcBalanceInfo.value.uiAmountString ||
+          userUsdcBalanceInfo.value.uiAmount?.toString() ||
+          "0";
+
+        throw new Error(
+          `Insuficcient funds. Required: ${boxPriceUsdc.toFixed(2)} USDC, available: ${availableUsdc} USDC.`
+        );
+      }
+    }
     
     // Mint NFT using resolved config with tokenPayment guard
     const mintResult = await transactionBuilder()
