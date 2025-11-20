@@ -121,7 +121,7 @@ function LandingPageContent() {
                   </span>
                 </h1>
 
-                <p className="text-gray-400 text-xl leading-relaxed mb-8">
+                <p className="text-white/70 text-xl leading-relaxed mb-8">
                   On-chain. Transparent. Instant.
                   <br />
                   <span className="text-white font-medium">
@@ -158,19 +158,19 @@ function LandingPageContent() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.4 }}
-                className="grid grid-cols-3 gap-6 pt-8 border-t border-[#333]"
+                className="grid grid-cols-3 gap-6 pt-8 border-t border-[#1a1a1a]"
               >
                 <div>
                   <div className="text-3xl font-bold text-[#E99500]">100%</div>
-                  <div className="text-sm text-gray-400">Provably Fair</div>
+                  <div className="text-sm text-white/60">Provably Fair</div>
                 </div>
                 <div>
                   <div className="text-3xl font-bold text-[#E99500]">85%</div>
-                  <div className="text-sm text-gray-400">Instant Buyback</div>
+                  <div className="text-sm text-white/60">Instant Buyback</div>
                 </div>
                 <div>
                   <div className="text-3xl font-bold text-[#E99500]">Real</div>
-                  <div className="text-sm text-gray-400">CS:GO Inventory</div>
+                  <div className="text-sm text-white/60">CS:GO Inventory</div>
                 </div>
               </motion.div>
             </motion.div>
@@ -182,7 +182,7 @@ function LandingPageContent() {
               transition={{ duration: 0.8, delay: 0.2 }}
               className="relative"
             >
-              <div className="aspect-square rounded-2xl overflow-hidden border border-[#333]">
+              <div className="aspect-square rounded-2xl overflow-hidden border border-[#1a1a1a]">
                 <img
                   src="/assets/karambit.jpg"
                   alt="CS:GO Skin Showcase"
@@ -195,7 +195,7 @@ function LandingPageContent() {
       </section>
 
       {/* The Dust3 Difference Section */}
-      <section className="py-20 px-8 bg-[#0a0a0a]">
+      <section className="py-20 px-8 bg-black">
         <div className="max-w-7xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -207,7 +207,7 @@ function LandingPageContent() {
             <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">
               The Dust3 Difference
             </h2>
-            <p className="text-gray-400 text-lg">
+            <p className="text-white/70 text-lg">
               Built on Solana. Powered by real technology.
             </p>
           </motion.div>
@@ -251,7 +251,7 @@ function LandingPageContent() {
                 transition={{ duration: 0.5, delay: index * 0.1 }}
                 whileHover={{ scale: 1.05 }}
               >
-                <Card className="bg-[#111] border-[#333] hover:border-[#E99500] transition-all duration-300 rounded-xl overflow-hidden h-full">
+                <Card className="bg-black border border-[#1a1a1a] hover:border-[#E99500] transition-all duration-300 rounded-xl overflow-hidden h-full">
                   <CardContent className="p-6">
                     <div
                       className={`w-12 h-12 bg-gradient-to-br ${item.color} rounded-lg flex items-center justify-center mb-4`}
@@ -261,7 +261,7 @@ function LandingPageContent() {
                     <h3 className="text-xl font-bold text-white mb-2">
                       {item.title}
                     </h3>
-                    <p className="text-gray-400 text-sm leading-relaxed">
+                    <p className="text-white/60 text-sm leading-relaxed">
                       {item.description}
                     </p>
                   </CardContent>
@@ -285,7 +285,7 @@ function LandingPageContent() {
             <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">
               How It Works
             </h2>
-            <p className="text-gray-400 text-lg">
+            <p className="text-white/70 text-lg">
               Open. Reveal. Own. Or cash out instantly.
             </p>
           </motion.div>
@@ -330,7 +330,7 @@ function LandingPageContent() {
                 whileHover={{ scale: 1.05 }}
                 className="relative"
               >
-                <Card className="bg-[#111] border-[#333] hover:border-[#E99500] transition-all duration-300 rounded-xl overflow-hidden h-full">
+                <Card className="bg-black border border-[#1a1a1a] hover:border-[#E99500] transition-all duration-300 rounded-xl overflow-hidden h-full">
                   <CardContent className="p-6">
                     <div className="mb-4">
                       <div className="w-12 h-12 bg-[#E99500]/10 rounded-lg flex items-center justify-center mb-4">
@@ -343,7 +343,7 @@ function LandingPageContent() {
                     <h3 className="text-xl font-bold text-white mb-2">
                       {item.title}
                     </h3>
-                    <p className="text-gray-400 text-sm leading-relaxed">
+                    <p className="text-white/60 text-sm leading-relaxed">
                       {item.description}
                     </p>
                   </CardContent>
@@ -355,7 +355,7 @@ function LandingPageContent() {
       </section>
 
       {/* FAQ Section */}
-      <section className="py-20 px-8 bg-[#0a0a0a]">
+      <section className="py-20 px-8 bg-black">
         <div className="max-w-4xl mx-auto">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -367,7 +367,7 @@ function LandingPageContent() {
             <h2 className="text-4xl lg:text-5xl font-bold text-white mb-4">
               Frequently Asked Questions
             </h2>
-            <p className="text-gray-400 text-lg">
+            <p className="text-white/70 text-lg">
               Everything you need to know about Dust3
             </p>
           </motion.div>
@@ -406,12 +406,12 @@ function LandingPageContent() {
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
               >
-                <Card className="bg-[#111] border-[#333] hover:border-[#E99500] transition-all duration-300 rounded-xl">
+                <Card className="bg-black border border-[#1a1a1a] hover:border-[#E99500] transition-all duration-300 rounded-xl">
                   <CardContent className="p-6">
                     <h3 className="text-lg font-bold text-white mb-3">
                       {item.q}
                     </h3>
-                    <p className="text-gray-400 leading-relaxed">{item.a}</p>
+                    <p className="text-white/60 leading-relaxed">{item.a}</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -434,7 +434,7 @@ function LandingPageContent() {
             <h2 className="text-4xl lg:text-6xl font-bold text-white mb-6">
               Ready to start unboxing?
             </h2>
-            <p className="text-gray-400 text-xl mb-8">
+            <p className="text-white/70 text-xl mb-8">
               Connect your wallet and open your first pack in seconds.
             </p>
             <Link href="/packs">
