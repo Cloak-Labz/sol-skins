@@ -568,7 +568,11 @@ export default function ActivityPage() {
                       <p className="text-foreground font-bold text-sm sm:text-base sm:order-1">
                         {activity.type === "case_opened"
                           ? `-${
-                              activity.amount?.sol
+                              activity.amount?.usd
+                                ? Math.floor(parseFloat(
+                                    activity.amount.usd.toString()
+                                  ))
+                                : activity.amount?.sol
                                 ? Math.floor(parseFloat(
                                     activity.amount.sol.toString()
                                   ))
@@ -578,7 +582,7 @@ export default function ActivityPage() {
                           ? `+${formatCurrency(activity.amount?.usd || 0)}`
                           : activity.amount
                           ? `${Math.floor(parseFloat(
-                              activity.amount.sol.toString()
+                              (activity.amount.usd || activity.amount.sol || 0).toString()
                             ))} USDC`
                           : formatCurrency(
                               parseFloat(activity.skin?.valueUsd || "0")

@@ -968,7 +968,9 @@ export default function ProfilePage() {
                                 </Badge>
                                 <p className="text-foreground font-bold text-sm sm:text-base sm:order-1">
                                   {item.type === "case_opened"
-                                    ? `-${item.amount?.sol
+                                    ? `-${item.amount?.usd
+                                        ? Math.floor(parseFloat(item.amount.usd.toString()))
+                                        : item.amount?.sol
                                         ? Math.floor(parseFloat(item.amount.sol.toString()))
                                         : "0"} USDC`
                                     : item.type === "payout"
@@ -976,7 +978,7 @@ export default function ProfilePage() {
                                     : item.type === "skin_claimed"
                                     ? "0 USDC"
                                     : item.amount
-                                    ? `${Math.floor(parseFloat(item.amount.sol.toString()))} USDC`
+                                    ? `${Math.floor(parseFloat((item.amount.usd || item.amount.sol || 0).toString()))} USDC`
                                     : formatCurrency(parseFloat(item.skin?.valueUsd || "0"))}
                                 </p>
                               </div>
