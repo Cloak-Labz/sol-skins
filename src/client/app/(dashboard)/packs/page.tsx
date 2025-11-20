@@ -36,6 +36,16 @@ interface CSGOSkin {
   condition?: string;
 }
 
+const RAW_API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+const API_BASE_URL = RAW_API_BASE_URL
+  ? RAW_API_BASE_URL.endsWith("/api/v1")
+    ? RAW_API_BASE_URL
+    : `${RAW_API_BASE_URL.replace(/\/$/, "")}/api/v1`
+  : "/api/v1";
+
+const buildApiUrl = (path: string) =>
+  `${API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+
 // Helper function to get Solscan URL based on NEXT_PUBLIC_SOLANA_NETWORK
 const getSolscanUrl = (signature: string): string => {
   const network = (process.env.NEXT_PUBLIC_SOLANA_NETWORK || "").toLowerCase();
@@ -300,7 +310,7 @@ export default function PacksPage() {
     try {
       // Fetch box skins distribution from backend
       const distributionResponse = await fetch(
-        `/api/v1/box-skins/box/${boxId}/distribution`
+        buildApiUrl(`/box-skins/box/${boxId}/distribution`)
       );
       const distributionData = await distributionResponse.json();
 
@@ -322,7 +332,7 @@ export default function PacksPage() {
 
       // Fetch box skins with templates to get price values
       const boxSkinsResponse = await fetch(
-        `/api/v1/box-skins/box/${boxId}/with-templates`
+        buildApiUrl(`/box-skins/box/${boxId}/with-templates`)
       );
       const boxSkinsData = await boxSkinsResponse.json();
 
@@ -1884,7 +1894,7 @@ export default function PacksPage() {
                         setLoadingSkins(true);
                         try {
                           const response = await fetch(
-                            `/api/v1/box-skins/box/${selectedPack.id}/with-templates`
+                            buildApiUrl(`/box-skins/box/${selectedPack.id}/with-templates`)
                           );
                           const data = await response.json();
                           if (data.success && Array.isArray(data.data)) {
