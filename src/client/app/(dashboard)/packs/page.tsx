@@ -2433,7 +2433,7 @@ export default function PacksPage() {
         >
           <DialogHeader>
             <DialogTitle className="text-white text-xl font-bold">
-              {selectedPack?.name || "Pack"} - Possible Skins
+              {selectedPack?.name || "Pack"}
             </DialogTitle>
             <DialogDescription className="text-zinc-400">
               Browse all possible skins by rarity tier
