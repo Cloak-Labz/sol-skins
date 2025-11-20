@@ -91,6 +91,12 @@ class BoxesService {
     const response = await apiClient.get<BoxStats>(`${this.baseUrl}/stats`);
     return response;
   }
+
+  // Admin-only method - requires adminMiddleware on backend
+  async getAllBoxesAdmin(): Promise<Box[]> {
+    const response = await apiClient.get<Box[]>('/admin/packs');
+    return response ?? [];
+  }
 }
 
 export const boxesService = new BoxesService();

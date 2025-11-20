@@ -38,6 +38,15 @@ class ApiClient {
       if (savedWallet) {
         this.walletAddress = savedWallet;
       }
+      
+      // Debug: Log token status in development
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[ApiClient] Initialized with:', {
+          hasToken: !!this.jwtToken,
+          hasWallet: !!this.walletAddress,
+          walletAddress: this.walletAddress,
+        });
+      }
     }
 
     this.setupInterceptors();
@@ -177,16 +186,30 @@ class ApiClient {
         const isPublicEndpoint = 
           url.includes('/auth/connect') || 
           url.includes('/csrf-token') ||
-          url.startsWith('/boxes') && ['get'].includes((config.method || "get").toLowerCase()); // Public GET /boxes
+          (url.startsWith('/boxes') && ['get'].includes((config.method || "get").toLowerCase())); // Public GET /boxes
+        
+        // Admin endpoints ALWAYS require authentication
+        const isAdminEndpoint = url.startsWith('/admin');
         
         // Ensure we have the latest token (in case it was updated)
         const token = this.jwtToken || (typeof window !== 'undefined' ? localStorage.getItem(this.JWT_TOKEN_KEY) : null);
         
+        // Add token if:
+        // 1. We have a token AND it's not a public endpoint, OR
+        // 2. It's an admin endpoint (always requires auth, even if token might be missing - backend will handle 401)
         if (token && !isPublicEndpoint) {
           if (!config.headers) {
             config.headers = {} as any;
           }
           config.headers['Authorization'] = `Bearer ${token}`;
+        } else if (isAdminEndpoint && !token) {
+          // Log warning for admin endpoints without token (helps debug)
+          console.warn('[ApiClient] Admin endpoint requested without JWT token:', url);
+          console.warn('[ApiClient] Token check:', {
+            hasJwtToken: !!this.jwtToken,
+            localStorageToken: typeof window !== 'undefined' ? !!localStorage.getItem(this.JWT_TOKEN_KEY) : 'N/A',
+            walletAddress: this.walletAddress,
+          });
         }
 
         // Add CSRF token for state-changing operations (POST, PUT, DELETE)

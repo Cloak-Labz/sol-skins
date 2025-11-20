@@ -2427,7 +2427,7 @@ export default function PacksPage() {
       {/* Odds Details Modal */}
       <Dialog open={showOddsDetails} onOpenChange={setShowOddsDetails}>
         <DialogContent 
-          className="!max-w-[70vw] !w-[70vw] max-h-[65vh] overflow-y-auto bg-[#0a0a0a] border-zinc-800 px-4 sm:px-6 lg:px-8 xl:px-12" 
+          className="custom-scrollbar !max-w-[70vw] !w-[70vw] max-h-[65vh] overflow-y-auto bg-[#0a0a0a] border-zinc-800 px-4 sm:px-6 lg:px-8 xl:px-12" 
           style={{ maxWidth: '70vw !important', width: '70vw !important' } as React.CSSProperties}
           showCloseButton={false}
         >

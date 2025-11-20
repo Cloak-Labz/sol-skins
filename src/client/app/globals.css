@@ -399,6 +399,29 @@
   border-radius: 4px !important;
 }
 
+/* Custom scrollbar styling for modals */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #E99500 transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #E99500, #c77f00);
+  border-radius: 999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #f4b74c, #E99500);
+}
+
 /* Main connect button */
 .wallet-adapter-button,
 .wallet-adapter-button-trigger {

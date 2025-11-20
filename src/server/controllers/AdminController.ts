@@ -105,6 +105,25 @@ export class AdminController {
     ResponseUtil.success(res, boxes);
   });
 
+  // Debug endpoint (dev only) - check admin wallet status
+  checkAdminStatus = catchAsync(async (req: Request, res: Response) => {
+    const { getAdminWallets } = require('../middlewares/admin');
+    const adminWallets = getAdminWallets();
+    const userWallet = (req as any).user?.walletAddress;
+    
+    ResponseUtil.success(res, {
+      userWallet,
+      isAdmin: (req as any).user?.isAdmin || false,
+      adminWallets,
+      adminWalletsCount: adminWallets.length,
+      normalizedUserWallet: userWallet ? userWallet.trim().toLowerCase() : null,
+      normalizedAdminWallets: adminWallets.map((w: string) => w.trim().toLowerCase()),
+      match: userWallet ? adminWallets.some((w: string) => 
+        w.trim().toLowerCase() === userWallet.trim().toLowerCase()
+      ) : false,
+    });
+  });
+
   createPack = catchAsync(async (req: Request, res: Response) => {
     try {
       const packData = req.body;

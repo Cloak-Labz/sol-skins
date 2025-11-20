@@ -61,6 +61,11 @@ adminRoutes.put("/inventory/:id/mint", InventoryController.updateMint);
 // GET /admin/packs - List all packs (loot boxes)
 adminRoutes.get("/packs", adminController.getPacks);
 
+// GET /admin/debug/status - Debug endpoint to check admin wallet status (dev only)
+if (process.env.NODE_ENV === 'development') {
+  adminRoutes.get("/debug/status", adminController.checkAdminStatus);
+}
+
 // POST /admin/packs - Create new pack
 adminRoutes.post("/packs", adminController.createPack);
 

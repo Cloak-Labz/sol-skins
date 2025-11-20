@@ -165,7 +165,8 @@ export default function PackManagerPage() {
   const loadBoxes = async () => {
     try {
       setLoading(true);
-      const data = await boxesService.getAllBoxes();
+      // Use admin endpoint to verify admin access (backend adminMiddleware enforces this)
+      const data = await boxesService.getAllBoxesAdmin();
       setBoxes(data);
       setIsAdmin(true); // If we got here, user is admin
       
@@ -735,28 +736,42 @@ export default function PackManagerPage() {
 
   if (!connected) {
     return (
-      <div className="p-6">
-        <Card className="p-8 text-center">
-          <Shield className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Wallet Not Connected</h2>
-          <p className="text-muted-foreground">
-            Please connect your wallet to access the pack manager.
-          </p>
+      <div className="min-h-[60vh] bg-[#0a0a0a] px-4 sm:px-6 lg:px-8 py-10">
+        <div className="max-w-7xl mx-auto flex justify-center">
+          <Card className="w-full max-w-md bg-gradient-to-b from-black to-[#0b0b0b] border border-[#2b2b2b] text-center p-6 sm:p-8">
+          <div className="flex flex-col items-center gap-4">
+            <Shield className="h-12 w-12 text-muted-foreground" />
+            <h2 className="text-2xl font-semibold text-white">Wallet Not Connected</h2>
+            <p className="text-sm text-white/70 max-w-sm">
+              Connect your wallet to open the Pack Manager and manage Candy Machine boxes.
+            </p>
+            <p className="text-xs text-white/50">
+              Need help? Tap the wallet button in the header to connect.
+            </p>
+          </div>
         </Card>
+        </div>
       </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <div className="p-6">
-        <Card className="p-8 text-center border-destructive">
-          <Shield className="mx-auto h-12 w-12 text-destructive mb-4" />
-          <h2 className="text-xl font-semibold mb-2">Access Denied</h2>
-          <p className="text-muted-foreground">
-            Admin wallet required to access this page.
-          </p>
-        </Card>
+      <div className="min-h-[60vh] bg-[#0a0a0a] px-4 sm:px-6 lg:px-8 py-10">
+        <div className="max-w-7xl mx-auto flex justify-center">
+          <Card className="w-full max-w-md bg-gradient-to-b from-black to-[#0b0b0b] border border-red-500/20 text-center p-6 sm:p-8">
+            <div className="flex flex-col items-center gap-4">
+              <Shield className="h-12 w-12 text-red-500" />
+              <h2 className="text-2xl font-semibold text-white">Access Denied</h2>
+              <p className="text-sm text-white/70 max-w-sm">
+                This area is restricted to admin wallets. Switch to an authorized wallet to continue.
+              </p>
+              <p className="text-xs text-white/50">
+                If you believe this is an error, contact Dust3 support to provision access.
+              </p>
+            </div>
+          </Card>
+        </div>
       </div>
     );
   }

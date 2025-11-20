@@ -2,9 +2,11 @@ import { Request, Response, NextFunction } from "express";
 import { constantTimeAdminCheck, randomDelay } from "../utils/timingAttackProtection";
 
 // List of admin wallet addresses (load from environment)
+// Normalize: split by comma, trim whitespace, filter empty strings
 const ADMIN_WALLETS = (process.env.ADMIN_WALLETS || "")
   .split(",")
-  .filter(Boolean);
+  .map((addr: string) => addr.trim())
+  .filter((addr: string) => addr.length > 0);
 
 export interface AdminRequest extends Request {
   user?: {
@@ -40,6 +42,11 @@ export async function adminMiddleware(
     await randomDelay(20, 80); // 20-80ms delay
 
     if (!isAdmin) {
+      // Log failed admin attempt for debugging (in dev only)
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Admin Middleware] Access denied for wallet: ${req.user.walletAddress}`);
+        console.log(`[Admin Middleware] Configured admin wallets:`, ADMIN_WALLETS);
+      }
       return res.status(403).json({
         success: false,
         error: "Admin access required",
@@ -66,6 +73,15 @@ export function getAdminWallets(): string[] {
   return ADMIN_WALLETS;
 }
 
-console.log(
-  `✅ Admin middleware initialized with ${ADMIN_WALLETS.length} admin wallet(s)`
-);
+if (ADMIN_WALLETS.length === 0) {
+  console.warn(
+    `⚠️  Admin middleware initialized with NO admin wallets! Set ADMIN_WALLETS env var.`
+  );
+} else {
+  console.log(
+    `✅ Admin middleware initialized with ${ADMIN_WALLETS.length} admin wallet(s):`
+  );
+  ADMIN_WALLETS.forEach((wallet, index) => {
+    console.log(`   ${index + 1}. ${wallet}`);
+  });
+}

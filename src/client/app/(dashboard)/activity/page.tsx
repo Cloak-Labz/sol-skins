@@ -497,7 +497,7 @@ export default function ActivityPage() {
 
         {/* Activity List */}
         <Card className="bg-gradient-to-b from-zinc-950 to-zinc-900 border border-zinc-800 rounded-xl overflow-hidden">
-          <CardContent className="p-3 sm:p-6 space-y-3 sm:space-y-4 max-h-[800px] overflow-y-auto">
+          <CardContent className="custom-scrollbar p-3 sm:p-6 space-y-3 sm:space-y-4 max-h-[800px] overflow-y-auto">
             {filteredActivities.length > 0 ? (
               filteredActivities.map((activity) => {
                 const styles = getActivityStyles(activity.type);
